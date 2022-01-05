@@ -33,18 +33,17 @@ void Texture::LoadTextureFile(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_textureUploadBuffers.push_back(textureUploadBuffer);
 }
 
-void Texture::CreateSrvDescriptorHeap(const ComPtr<ID3D12Device>& device)
+void Texture::CreateTexture(const ComPtr<ID3D12Device>& device)
 {
+	// 셰이더 리소스 뷰 서술자 생성
 	if (m_srvHeap) m_srvHeap.Reset();
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
 	srvHeapDesc.NumDescriptors = m_textures.size(); // SRV 개수
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap));
-}
 
-void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
-{
+	// 셰이더 리소스 뷰 생성
 	CD3DX12_CPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ m_srvHeap->GetCPUDescriptorHandleForHeapStart() };
 	for (const auto& [_, texture] : m_textures)
 	{
@@ -58,22 +57,21 @@ void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
 	}
 }
 
-void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, int index)
 {
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ m_srvHeap->GetGPUDescriptorHandleForHeapStart() };
 
-	if (m_textureInfo)
+	if (index) // index번째의 텍스쳐를 업데이트함
 	{
-		srvDescriptorHandle.Offset(m_textureInfo->frame, g_cbvSrvDescriptorIncrementSize);
-		commandList->SetGraphicsRootDescriptorTable(m_textures[m_textureInfo->frame].first, srvDescriptorHandle);
+		srvDescriptorHandle.Offset(index, g_cbvSrvDescriptorIncrementSize);
+		commandList->SetGraphicsRootDescriptorTable(m_textures[index].first, srvDescriptorHandle);
 	}
-	else
+	else // 모든 텍스쳐들을 업데이트함
 	{
-		for (int i = 0; i < m_textures.size(); ++i)
+		for (const auto& [rootParameterIndex, _] : m_textures)
 		{
-			auto& [rootParameterIndex, _] = m_textures[i];
 			commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, srvDescriptorHandle);
 			srvDescriptorHandle.Offset(g_cbvSrvDescriptorIncrementSize);
 		}

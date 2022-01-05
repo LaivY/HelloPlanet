@@ -1,12 +1,10 @@
 ﻿#pragma once
 #include "stdafx.h"
-#include "blurFilter.h"
 #include "camera.h"
 #include "object.h"
 #include "player.h"
 #include "shadow.h"
 #include "skybox.h"
-#include "terrain.h"
 
 struct Light // 16바이트로 정렬
 {
@@ -65,15 +63,10 @@ public:
 	// 게임루프 함수
 	void Update(FLOAT deltaTime);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
-	void PostRenderProcess(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12Resource>& input);
 	
 	// 위의 함수를 구현하기 위한 함수
-	void RemoveDeletedObjects();
-	void UpdateObjectsTerrain();
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void RenderMirror(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void CreateBullet();
 
 	// 세터
 	void SetSkybox(unique_ptr<Skybox>& skybox);
@@ -84,9 +77,6 @@ public:
 	Skybox* GetSkybox() const { return m_skybox.get(); }
 	shared_ptr<Player> GetPlayer() const { return m_player; }
 	shared_ptr<Camera> GetCamera() const { return m_camera; }
-	HeightMapTerrain* GetTerrain(FLOAT x, FLOAT z) const;
-	bool doPostProcess() const { return Vector3::Length(m_player->GetVelocity()) >= 0.16f; }
-	ComPtr<ID3D12Resource> GetPostRenderProcessResult() const;
 	
 private:
 	D3D12_VIEWPORT								m_viewport;		// 뷰포트
@@ -100,14 +90,10 @@ private:
 	unordered_map<string, shared_ptr<Shader>>	m_shaders;		// 셰이더들
 	unordered_map<string, shared_ptr<Texture>>	m_textures;		// 텍스쳐들
 	unique_ptr<ShadowMap>						m_shadowMap;	// 그림자맵
-	unique_ptr<BlurFilter>						m_blurFilter;	// 블러
 
 	shared_ptr<Camera>							m_camera;		// 카메라
 	shared_ptr<Player>							m_player;		// 플레이어
+
 	unique_ptr<Skybox>							m_skybox;		// 스카이박스
-	vector<unique_ptr<HeightMapTerrain>>		m_terrains;		// 지형
 	vector<unique_ptr<GameObject>>				m_gameObjects;	// 게임오브젝트들
-	vector<unique_ptr<GameObject>>				m_translucences;// 반투명 오브젝트들
-	vector<unique_ptr<GameObject>>				m_particles;	// 파티클들
-	unique_ptr<GameObject>						m_mirror;		// 거울
 };

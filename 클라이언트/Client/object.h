@@ -2,7 +2,6 @@
 #include "stdafx.h"
 #include "mesh.h"
 #include "shader.h"
-#include "terrain.h"
 #include "texture.h"
 
 class Camera;
@@ -29,7 +28,6 @@ public:
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
-	void SetTerrain(HeightMapTerrain* terrain) { m_terrain = terrain; }
 
 	GameObjectType GetType() const { return m_type; }
 	bool isDeleted() const { return m_isDeleted; }
@@ -40,7 +38,6 @@ public:
 	XMFLOAT3 GetFront() const { return m_localZAxis; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
 
-	HeightMapTerrain* GetTerrain() const { return m_terrain; }
 	XMFLOAT3 GetNormal() const;
 	XMFLOAT3 GetLook() const;
 
@@ -53,7 +50,6 @@ protected:
 	FLOAT					m_pitch;			// x축 회전각
 	FLOAT					m_yaw;				// y축 회전각
 
-	HeightMapTerrain*		m_terrain;			// 지형
 	shared_ptr<Mesh>		m_mesh;				// 메쉬
 	shared_ptr<Shader>		m_shader;			// 셰이더
 	shared_ptr<Texture>		m_texture;			// 텍스쳐
@@ -61,21 +57,6 @@ protected:
 
 	GameObjectType			m_type;				// 게임오브젝트 타입
 	bool					m_isDeleted;		// 삭제 여부
-};
-
-class Bullet : public GameObject
-{
-public:
-	Bullet(const XMFLOAT3& position, const XMFLOAT3& direction, const XMFLOAT3& up, FLOAT speed = 30.0f, FLOAT damage = 1.0f);
-	~Bullet() = default;
-
-	virtual void Update(FLOAT deltaTime);
-
-private:
-	XMFLOAT3	m_origin;		 // 발사 시작 위치
-	XMFLOAT3	m_direction;	 // 날아가는 방향
-	FLOAT		m_speed;		 // 날아가는 속도
-	FLOAT		m_damage;		 // 피해량
 };
 
 class Particle : public GameObject

@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "stdafx.h"
 #include "object.h"
-#include "terrain.h"
 
 #define ROLL_MAX +20
 #define ROLL_MIN -10
@@ -16,10 +15,6 @@ public:
 
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
-
-	void SetPlayerInArea();
-	void SetPlayerOnTerrain();
-	void SetPlayerNormalAndLook();
 
 	void AddVelocity(const XMFLOAT3& increase);
 	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }

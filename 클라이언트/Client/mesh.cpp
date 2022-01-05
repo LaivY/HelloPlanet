@@ -5,44 +5,66 @@ Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexB
 
 }
 
-Mesh::Mesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-	void* vertexData, UINT sizePerVertexData, UINT vertexDataCount, void* indexData, UINT indexDataCount, D3D_PRIMITIVE_TOPOLOGY primitiveTopology)
-	: m_nVertices{ vertexDataCount }, m_nIndices{ indexDataCount }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ primitiveTopology }
+void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
 {
-	if (vertexData) CreateVertexBuffer(device, commandList, vertexData, sizePerVertexData, vertexDataCount);
-	if (indexData) CreateIndexBuffer(device, commandList, indexData, indexDataCount);
-}
-
-Mesh::Mesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, D3D_PRIMITIVE_TOPOLOGY primitiveTopology)
-	: m_nIndices{ 0 }, m_primitiveTopology{ primitiveTopology }
-{
-	ifstream file{ fileName, ios::binary };
-
-	// 정점 개수
+	ifstream file{ fileName };
+	
 	int nVertices{ 0 };
-	file.read(reinterpret_cast<char*>(&nVertices), sizeof(int));
-
-	// 정점 데이터
+	file >> nVertices;
+	
 	vector<Vertex> vertices(nVertices);
 	for (int i = 0; i < nVertices; ++i)
 	{
-		// 위치, 노말, 텍스쳐 UV
-		XMFLOAT3 position{};
-		XMFLOAT3 normal{};
-		XMFLOAT2 uv{};
-
-		file.read(reinterpret_cast<char*>(&position), sizeof(XMFLOAT3));
-		file.read(reinterpret_cast<char*>(&normal), sizeof(XMFLOAT3));
-		file.read(reinterpret_cast<char*>(&uv), sizeof(XMFLOAT2));
-
 		Vertex v;
-		v.position = position;
-		v.normal = normal;
-		v.uv0 = uv;
+		file >> v.position.x >> v.position.y >> v.position.z;
+		file >> v.normal.x >> v.normal.y >> v.normal.z;
+		file >> v.uv.x >> v.uv.y;
+		file >> v.boneIndex.x >> v.boneIndex.y >> v.boneIndex.z >> v.boneIndex.w;
+		file >> v.boneWeight.x >> v.boneWeight.y >> v.boneWeight.z >> v.boneWeight.w;
 		vertices.push_back(v);
 	}
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+}
+
+void Mesh::LoadAnimation(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
+{
+	ifstream file{ fileName };
+
+	int nJoints{ 0 };
+	file >> nJoints;
+
+	vector<Joint> joints(nJoints);
+	for (int i = 0; i < nJoints; ++i)
+	{
+		Joint joint;
+		int index{ 0 };
+		int nameLength{ 0 };
+		file >> index;
+		file >> nameLength;
+		file >> joint.name;
+		file >> joint.parentIndex;
+
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				file >> joint.idontknow.m[i][j];
+	}
+
+	int nFrame{ 0 };
+	file >> nFrame;
+
+	for (Joint& j : joints)
+	{
+		j.transformMatrix.reserve(nFrame);
+		for (int i = 0; i < nFrame; ++i)
+		{
+			XMFLOAT4X4 matrix{};
+			for (int y = 0; y < 4; ++y)
+				for (int x = 0; x < 4; ++x)
+					file >> matrix.m[y][x];
+			j.transformMatrix.push_back(matrix);
+		}
+	}
 }
 
 void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -104,239 +126,13 @@ void Mesh::ReleaseUploadBuffer()
 	if (m_indexUploadBuffer) m_indexUploadBuffer.Reset();
 }
 
-CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height)
-{
-	m_nIndices = 0;
-	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// 큐브 가로, 세로, 높이
-	FLOAT sx{ width }, sy{ length }, sz{ height };
-
-	Vertex v;
-	vector<Vertex> vertices(36);
-
-	// 앞면
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 오른쪽면
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 왼쪽면
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 뒷면
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 윗면
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 밑면
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-}
-
-ReverseCubeMesh::ReverseCubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height)
-{
-	m_nIndices = 0;
-	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// 큐브 가로, 세로, 높이
-	FLOAT sx{ width }, sy{ length }, sz{ height };
-
-	// 앞면
-	Vertex v;
-	vector<Vertex> vertices(36);
-
-	// 앞면
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 오른쪽면
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 왼쪽면
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 뒷면
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 윗면
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { -sx, +sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { +sx, +sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { -sx, +sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 밑면
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, +sz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-	v.position = { +sx, -sy, +sz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { -sx, -sy, -sz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-	v.position = { +sx, -sy, -sz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-
-	// 큐브 메쉬의 정점 순서를 거꾸로하면 안밖이 바뀜
-	std::reverse(vertices.begin(), vertices.end());
-
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-}
-
-TextureRectMesh::TextureRectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height, XMFLOAT3 position)
-{
-	m_nIndices = 0;
-	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	Vertex v;
-	vector<Vertex> vertices(6);
-	FLOAT hx{ position.x + width / 2.0f }, hy{ position.y + height / 2.0f }, hz{ position.z + length / 2.0f };
-	
-	if (width == 0.0f)
-	{
-		// 분기하는 이유는 위치에 따라 삼각형 와인딩 순서가 달라지기 때문에
-		// YZ평면
-		if (position.x > 0.0f)
-		{
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, -hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, -hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-		}
-		else
-		{
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, -hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-		}
-	}
-	else if (length == 0.0f)
-	{
-		// XY평면
-		if (position.z > 0.0f)
-		{
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { -hx, -hy, +hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-		}
-		else
-		{
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-			v.position = { -hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { -hx, -hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { +hx, -hy, +hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-		}
-	}
-	else if (height == 0.0f)
-	{
-		// XZ평면
-		if (position.y > 0.0f)
-		{
-			v.position = { -hx, +hy, -hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-
-			v.position = { -hx, +hy, -hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-		}
-		else
-		{
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { -hx, +hy, -hz }; v.uv0 = { 0.0f, 1.0f }; vertices.push_back(v);
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-
-			v.position = { +hx, +hy, -hz }; v.uv0 = { 1.0f, 1.0f }; vertices.push_back(v);
-			v.position = { -hx, +hy, +hz }; v.uv0 = { 0.0f, 0.0f }; vertices.push_back(v);
-			v.position = { +hx, +hy, +hz }; v.uv0 = { 1.0f, 0.0f }; vertices.push_back(v);
-		}
-	}
-
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-}
-
 BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT2& size)
 {
 	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 
 	Vertex v;
 	v.position = position;
-	v.uv0 = size;
+	v.uv = size;
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
 }
 

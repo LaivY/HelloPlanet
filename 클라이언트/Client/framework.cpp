@@ -260,24 +260,6 @@ void GameFramework::CreateRootSignature()
 	DX::ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 }
 
-void GameFramework::CreatePostProcessRootSignature()
-{
-	CD3DX12_DESCRIPTOR_RANGE ranges[2];
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // Texture2D g_input				: t0;
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0); // RWTexture2D<float4> g_output	: u0;
-	
-	CD3DX12_ROOT_PARAMETER rootParameter[2];
-	rootParameter[0].InitAsDescriptorTable(1, &ranges[0]);
-	rootParameter[1].InitAsDescriptorTable(1, &ranges[1]);
-
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 0, NULL, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-	ComPtr<ID3DBlob> signature, error;
-	DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
-	DX::ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_postProcessRootSignature)));
-}
-
 void GameFramework::CreateShaderVariable()
 {
 	ComPtr<ID3D12Resource> dummy;
@@ -329,9 +311,6 @@ void GameFramework::LoadPipeline()
 
 	// 루트시그니쳐 생성
 	CreateRootSignature();
-
-	// 블러를 위한 계산셰이더 루트시그니쳐 생성
-	CreatePostProcessRootSignature();
 
 	// 명령할당자 생성
 	DX::ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
@@ -409,22 +388,7 @@ void GameFramework::PopulateCommandList() const
 	// 씬 렌더링
 	if (m_scene) m_scene->Render(m_commandList, rtvHandle, dsvHandle);
 
-	// 후처리(블러링)
-	if (m_scene && m_scene->doPostProcess())
-	{
-		// 블러링 진행
-		m_scene->PostRenderProcess(m_commandList, m_postProcessRootSignature, m_renderTargets[m_frameIndex]);
-
-		// 블러링한 결과를 렌더 타겟으로 복사하기 위한 리소스 베리어 설정
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST));
-
-		// 복사
-		m_commandList->CopyResource(m_renderTargets[m_frameIndex].Get(), m_scene->GetPostRenderProcessResult().Get());
-
-		// 출력 상태로 리소스 베리어 설정
-		m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT));
-	}
-	else m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	DX::ThrowIfFailed(m_commandList->Close());
 }

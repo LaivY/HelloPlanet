@@ -177,5 +177,5 @@ extern UINT g_cbvSrvDescriptorIncrementSize; // 상수버퍼뷰, 셰이더리소
 ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const void* data, UINT sizePerData, UINT dataCount,
     D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ComPtr<ID3D12Resource>& uploadBuffer);
 
-string sPATH(const string& fileName);
-wstring wPATH(const string& fileName);
+string PATH(const string& fileName);
+wstring PATH(const wstring& fileName);

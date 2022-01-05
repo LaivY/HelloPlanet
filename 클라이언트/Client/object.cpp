@@ -2,7 +2,7 @@
 #include "camera.h"
 
 GameObject::GameObject() : m_type{ GameObjectType::DEFAULT }, m_isDeleted{ false }, m_localXAxis{ 1.0f, 0.0f, 0.0f }, m_localYAxis{ 0.0f, 1.0f, 0.0f }, m_localZAxis{ 0.0f, 0.0f, 1.0f },
-						   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_terrain{ nullptr }, m_textureInfo{ nullptr }
+						   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_textureInfo{ nullptr }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -34,7 +34,7 @@ void GameObject::Update(FLOAT deltaTime)
 
 	if (m_textureInfo->frame >= m_texture->GetTextureCount())
 	{
-		if (m_textureInfo->isFrameRepeat) m_textureInfo->frame = 0;
+		if (m_textureInfo->doRepeat) m_textureInfo->frame = 0;
 		else
 		{
 			m_textureInfo->frame = m_texture->GetTextureCount() - 1;
@@ -67,11 +67,7 @@ void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& c
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &Matrix::Transpose(m_worldMatrix), 0);
 
 	// 텍스쳐 최신화
-	if (m_texture)
-	{
-		if (m_textureInfo) m_texture->SetTextureInfo(m_textureInfo.get());
-		m_texture->UpdateShaderVariable(commandList);
-	}
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureInfo ? m_textureInfo->frame : 0);
 }
 
 void GameObject::SetPosition(const XMFLOAT3& position)
@@ -117,45 +113,6 @@ XMFLOAT3 GameObject::GetNormal() const
 XMFLOAT3 GameObject::GetLook() const
 {
 	return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 };
-}
-
-// --------------------------------------
-
-Bullet::Bullet(const XMFLOAT3& position, const XMFLOAT3& direction, const XMFLOAT3& up, FLOAT speed, FLOAT damage)
-	: m_origin{ position }, m_direction{ direction }, m_speed{ speed }, m_damage{ damage }
-{
-	m_type = GameObjectType::BULLET;
-
-	SetPosition(position);
-
-	XMFLOAT3 look{ Vector3::Normalize(m_direction) };
-	XMFLOAT3 right{ Vector3::Normalize(Vector3::Cross(up, look)) };
-	m_worldMatrix._11 = right.x;	m_worldMatrix._12 = right.y;	m_worldMatrix._13 = right.z;
-	m_worldMatrix._21 = up.x;		m_worldMatrix._22 = up.y;		m_worldMatrix._23 = up.z;
-	m_worldMatrix._31 = look.x;		m_worldMatrix._32 = look.y;		m_worldMatrix._33 = look.z;
-}
-
-void Bullet::Update(FLOAT deltaTime)
-{
-	GameObject::Update(deltaTime);
-
-	// 일정 거리 날아가면 삭제
-	if (Vector3::Length(Vector3::Sub(GetPosition(), m_origin)) > 100.0f)
-		m_isDeleted = true;
-
-	// 지형에 닿으면 삭제
-	if (m_terrain)
-	{
-		XMFLOAT3 position{ GetPosition() };
-		if (position.y < m_terrain->GetHeight(position.x, position.z))
-			m_isDeleted = true;
-	}
-
-	// 삭제될 객체는 업데이트할 필요 없음
-	if (m_isDeleted) return;
-
-	// 총알 진행 방향으로 이동
-	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
 }
 
 void Particle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader) const

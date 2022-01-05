@@ -11,7 +11,7 @@ public:
 	~Shader() = default;
 
 	ComPtr<ID3D12PipelineState> GetPipelineState() const { return m_pipelineState; }
-	wstring PATH(const string& fileName) const;
+	wstring PATH(const wstring& fileName) const;
 
 protected:
 	ComPtr<ID3D12PipelineState>			m_pipelineState;

@@ -35,7 +35,6 @@ public:
 	void CreateRenderTargetView();
 	void CreateDepthStencilView();
 	void CreateRootSignature();
-	void CreatePostProcessRootSignature();
 	void CreateShaderVariable();
 	void UpdateShaderVariable() const;
 	void LoadPipeline();

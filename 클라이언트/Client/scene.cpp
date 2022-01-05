@@ -100,41 +100,7 @@ void Scene::OnKeyboardEvent(FLOAT deltaTime)
 
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	// 지형 와이어프레임 ON, OFF
-	static bool drawAsWireframe{ false };
-	if (wParam == 'q' || wParam == 'Q')
-	{
-		drawAsWireframe = !drawAsWireframe;
-		for (auto& terrain : m_terrains)
-			if (drawAsWireframe)
-				terrain->SetShader(m_shaders.at("TERRAINTESSWIRE"));
-			else
-				terrain->SetShader(m_shaders.at("TERRAINTESS"));
-	}
-
-	// 실내로 이동
-	else if (wParam == 'i' || wParam == 'I')
-	{
-		// right up look 초기화
-		XMFLOAT3 rpy{ m_player->GetRollPitchYaw() };
-		m_player->Rotate(-rpy.x, -rpy.y, -rpy.z);
-		
-		XMFLOAT4X4 worldMatrix{ Matrix::Identity() };
-		worldMatrix._11 = 1.0f; worldMatrix._12 = 0.0f; worldMatrix._13 = 0.0f;
-		worldMatrix._21 = 0.0f; worldMatrix._22 = 1.0f; worldMatrix._23 = 0.0f;
-		worldMatrix._31 = 0.0f; worldMatrix._32 = 0.0f; worldMatrix._33 = 1.0f;
-		m_player->SetWorldMatrix(worldMatrix);
-		m_player->SetPosition({ 0.0f, 500.0f - 15.0f, 0.0f });
-	}
-
-	// 지형 위로 이동
-	else if (wParam == 'e' || wParam == 'E')
-	{
-		m_player->SetPosition({ 0.0f, 0.0f, 0.0f });
-	}
-
-	// 종료
-	else if (wParam == VK_ESCAPE)
+	if (wParam == VK_ESCAPE)
 	{
 		exit(0);
 	}
@@ -148,8 +114,6 @@ void Scene::OnUpdate(FLOAT deltaTime)
 	if (m_skybox) m_skybox->Update();
 	for (auto& object : m_gameObjects)
 		object->Update(deltaTime);
-	for (auto& particle : m_translucences)
-		particle->Update(deltaTime);
 }
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -163,119 +127,34 @@ void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPt
 
 void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	m_meshes["TANK"] = make_shared<Mesh>(device, commandList, sPATH("result.bin"));
-	//m_meshes["CUBE"] = make_shared<CubeMesh>(device, commandList, 1.0f, 1.0f, 1.0f);
-	//m_meshes["INDOOR"] = make_shared<ReverseCubeMesh>(device, commandList, 15.0f, 15.0f, 15.0f);
-	//m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 0.1f);
-	//m_meshes["EXPLOSION"] = make_shared<BillboardMesh>(device, commandList, XMFLOAT3{}, XMFLOAT2{ 5.0f, 5.0f });
-	//m_meshes["SMOKE"] = make_shared<BillboardMesh>(device, commandList, XMFLOAT3{}, XMFLOAT2{ 5.0f, 5.0f });
-	//m_meshes["MIRROR"] = make_shared<TextureRectMesh>(device, commandList, 15.0f, 0.0f, 15.0f, XMFLOAT3{ 0.0f, 0.0f, 0.1f });
-	//m_meshes["PARTICLE"] = make_shared<ParticleMesh>(device, commandList, XMFLOAT2{ 0.05f, 5.0f });
-
-	//m_meshes["SKYBOX_FRONT"] = make_shared<TextureRectMesh>(device, commandList, 20.0f, 0.0f, 20.0f, XMFLOAT3{ 0.0f, 0.0f, 10.0f });
-	//m_meshes["SKYBOX_LEFT"] = make_shared<TextureRectMesh>(device, commandList, 0.0f, 20.0f, 20.0f, XMFLOAT3{ -10.0f, 0.0f, 0.0f });
-	//m_meshes["SKYBOX_RIGHT"] = make_shared<TextureRectMesh>(device, commandList, 0.0f, 20.0f, 20.0f, XMFLOAT3{ 10.0f, 0.0f, 0.0f });
-	//m_meshes["SKYBOX_BACK"] = make_shared<TextureRectMesh>(device, commandList, 20.0f, 0.0f, 20.0f, XMFLOAT3{ 0.0f, 0.0f, -10.0f });
-	//m_meshes["SKYBOX_TOP"] = make_shared<TextureRectMesh>(device, commandList, 20.0f, 20.0f, 0.0f, XMFLOAT3{ 0.0f, 10.0f, 0.0f });
-	//m_meshes["SKYBOX_BOT"] = make_shared<TextureRectMesh>(device, commandList, 20.0f, 20.0f, 0.0f, XMFLOAT3{ 0.0f, -10.0f, 0.0f });
+	m_meshes["PLAYER"] = make_shared<Mesh>();
+	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
+	m_meshes["PLAYER"]->LoadAnimation(commandList, PATH("Player_Idle.txt"), "IDLE");
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
-	m_shaders["COLOR"] = make_shared<Shader>(device, rootSignature);
-	m_shaders["TEXTURE"] = make_shared<TextureShader>(device, rootSignature);
-	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature);
-	m_shaders["TERRAIN"] = make_shared<TerrainShader>(device, rootSignature);
-	m_shaders["TERRAINTESS"] = make_shared<TerrainTessShader>(device, rootSignature);
-	m_shaders["TERRAINTESSWIRE"] = make_shared<TerrainTessWireShader>(device, rootSignature);
-	m_shaders["BLENDING"] = make_shared<BlendingShader>(device, rootSignature);
-	m_shaders["BLENDINGDEPTH"] = make_shared<BlendingDepthShader>(device, rootSignature);
-	m_shaders["STENCIL"] = make_shared<StencilShader>(device, rootSignature);
-	m_shaders["MIRROR"] = make_shared<MirrorShader>(device, rootSignature);
-	m_shaders["MIRRORTEXTURE"] = make_shared<MirrorTextureShader>(device, rootSignature);
-	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature);
-	m_shaders["SHADOW"] = make_shared<ShadowShader>(device, rootSignature);
-	m_shaders["HORZBLUR"] = make_shared<HorzBlurShader>(device, postProcessRootSignature);
-	m_shaders["VERTBLUR"] = make_shared<VertBlurShader>(device, postProcessRootSignature);
-	m_shaders["STREAM"] = make_shared<StreamShader>(device, rootSignature);
+	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature);
+	//m_shaders["TEXTURE"] = make_shared<TextureShader>(device, rootSignature);
+	//m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature);
+	//m_shaders["TERRAIN"] = make_shared<TerrainShader>(device, rootSignature);
+	//m_shaders["TERRAINTESS"] = make_shared<TerrainTessShader>(device, rootSignature);
+	//m_shaders["TERRAINTESSWIRE"] = make_shared<TerrainTessWireShader>(device, rootSignature);
+	//m_shaders["BLENDING"] = make_shared<BlendingShader>(device, rootSignature);
+	//m_shaders["BLENDINGDEPTH"] = make_shared<BlendingDepthShader>(device, rootSignature);
+	//m_shaders["STENCIL"] = make_shared<StencilShader>(device, rootSignature);
+	//m_shaders["MIRROR"] = make_shared<MirrorShader>(device, rootSignature);
+	//m_shaders["MIRRORTEXTURE"] = make_shared<MirrorTextureShader>(device, rootSignature);
+	//m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature);
+	//m_shaders["SHADOW"] = make_shared<ShadowShader>(device, rootSignature);
+	//m_shaders["HORZBLUR"] = make_shared<HorzBlurShader>(device, postProcessRootSignature);
+	//m_shaders["VERTBLUR"] = make_shared<VertBlurShader>(device, postProcessRootSignature);
+	//m_shaders["STREAM"] = make_shared<StreamShader>(device, rootSignature);
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	auto rockTexture{ make_shared<Texture>() };
-	rockTexture->LoadTextureFile(device, commandList, 2, wPATH("Rock.dds"));
-	rockTexture->CreateSrvDescriptorHeap(device);
-	rockTexture->CreateShaderResourceView(device);
-	m_textures["ROCK"] = rockTexture;
 
-	auto terrainTexture{ make_shared<Texture>() };
-	terrainTexture->LoadTextureFile(device, commandList, 2, wPATH("BaseTerrain.dds"));
-	terrainTexture->LoadTextureFile(device, commandList, 3, wPATH("DetailTerrain.dds"));
-	terrainTexture->CreateSrvDescriptorHeap(device);
-	terrainTexture->CreateShaderResourceView(device);
-	m_textures["TERRAIN"] = terrainTexture;
-
-	auto explosionTexture{ make_shared<Texture>() };
-	for (int i = 1; i <= 33; ++i)
-		explosionTexture->LoadTextureFile(device, commandList, 2, wPATH("explosion (" + to_string(i) + ").dds"));
-	explosionTexture->CreateSrvDescriptorHeap(device);
-	explosionTexture->CreateShaderResourceView(device);
-	m_textures["EXPLOSION"] = explosionTexture;
-
-	auto smokeTexture{ make_shared<Texture>() };
-	for (int i = 1; i <= 91; ++i)
-		smokeTexture->LoadTextureFile(device, commandList, 2, wPATH("smoke (" + to_string(i) + ").dds"));
-	smokeTexture->CreateSrvDescriptorHeap(device);
-	smokeTexture->CreateShaderResourceView(device);
-	m_textures["SMOKE"] = smokeTexture;
-
-	auto indoorTexture{ make_shared<Texture>() };
-	indoorTexture->LoadTextureFile(device, commandList, 2, wPATH("Wall.dds"));
-	indoorTexture->CreateSrvDescriptorHeap(device);
-	indoorTexture->CreateShaderResourceView(device);
-	m_textures["INDOOR"] = indoorTexture;
-
-	auto mirrorTexture{ make_shared<Texture>() };
-	mirrorTexture->LoadTextureFile(device, commandList, 2, wPATH("Mirror.dds"));
-	mirrorTexture->CreateSrvDescriptorHeap(device);
-	mirrorTexture->CreateShaderResourceView(device);
-	m_textures["MIRROR"] = mirrorTexture;
-
-	auto skyboxFrontTexture{ make_shared<Texture>() };
-	skyboxFrontTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxFront.dds"));
-	skyboxFrontTexture->CreateSrvDescriptorHeap(device);
-	skyboxFrontTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_FRONT"] = skyboxFrontTexture;
-
-	auto skyboxLeftTexture{ make_shared<Texture>() };
-	skyboxLeftTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxLeft.dds"));
-	skyboxLeftTexture->CreateSrvDescriptorHeap(device);
-	skyboxLeftTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_LEFT"] = skyboxLeftTexture;
-
-	auto skyboxRightTexture{ make_shared<Texture>() };
-	skyboxRightTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxRight.dds"));
-	skyboxRightTexture->CreateSrvDescriptorHeap(device);
-	skyboxRightTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_RIGHT"] = skyboxRightTexture;
-
-	auto skyboxBackTexture{ make_shared<Texture>() };
-	skyboxBackTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxBack.dds"));
-	skyboxBackTexture->CreateSrvDescriptorHeap(device);
-	skyboxBackTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_BACK"] = skyboxBackTexture;
-
-	auto skyboxTopTexture{ make_shared<Texture>() };
-	skyboxTopTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxTop.dds"));
-	skyboxTopTexture->CreateSrvDescriptorHeap(device);
-	skyboxTopTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_TOP"] = skyboxTopTexture;
-
-	auto skyboxBotTexture{ make_shared<Texture>() };
-	skyboxBotTexture->LoadTextureFile(device, commandList, 2, wPATH("SkyboxBot.dds"));
-	skyboxBotTexture->CreateSrvDescriptorHeap(device);
-	skyboxBotTexture->CreateShaderResourceView(device);
-	m_textures["SKYBOX_BOT"] = skyboxBotTexture;
 }
 
 void Scene::CreateLightAndMeterial()
@@ -311,8 +190,8 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 플레이어 생성
 	auto player{ make_shared<Player>() };
-	player->SetMesh(m_meshes.at("TANK"));
-	player->SetShader(m_shaders.at("MODEL"));
+	player->SetMesh(m_meshes.at("PLAYER"));
+	player->SetShader(m_shaders.at("DEFAULT"));
 	SetPlayer(player);
 
 	// 카메라, 플레이어 서로 설정
@@ -341,9 +220,6 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	commandList->RSSetScissorRects(1, &m_scissorRect);
 	commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
-	// 반사상, 거울 렌더링
-	if (m_mirror && m_player) RenderMirror(commandList, dsvHandle);
-
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
@@ -353,113 +229,6 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 게임오브젝트 렌더링
 	for (const auto& gameObject : m_gameObjects)
 		gameObject->Render(commandList);
-
-	// 지형 렌더링
-	for (const auto& terrain : m_terrains)
-		terrain->Render(commandList);
-
-	// 불투명 오브젝트 렌더링
-	for (const auto& translucence : m_translucences)
-		translucence->Render(commandList);
-
-	// 파티클 렌더링
-	for (const auto& particle : m_particles)
-		particle->Render(commandList);
-}
-
-void Scene::PostRenderProcess(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12Resource>& input)
-{
-	if (m_blurFilter) m_blurFilter->Excute(commandList, rootSignature, m_shaders["HORZBLUR"], m_shaders["VERTBLUR"], input);
-}
-
-void Scene::RemoveDeletedObjects()
-{
-	vector<unique_ptr<GameObject>> newParticles;
-
-	auto pred = [&](unique_ptr<GameObject>& object) {
-		if (object->isDeleted() && object->GetType() == GameObjectType::BULLET)
-		{
-			// 폭발 이펙트 생성
-			auto textureInfo{ make_unique<TextureInfo>() };
-			textureInfo->frameInterver *= 1.5f;
-			textureInfo->isFrameRepeat = false;
-
-			auto explosion{ make_unique<GameObject>() };
-			explosion->SetPosition(object->GetPosition());
-			explosion->SetMesh(m_meshes.at("EXPLOSION"));
-			explosion->SetShader(m_shaders.at("BLENDING"));
-			explosion->SetTexture(m_textures.at("EXPLOSION"));
-			explosion->SetTextureInfo(textureInfo);
-			newParticles.push_back(move(explosion));
-
-			// 연기 이펙트 생성
-			textureInfo = make_unique<TextureInfo>();
-			textureInfo->frameInterver *= 3.0f;
-			textureInfo->isFrameRepeat = false;
-
-			auto smoke{ make_unique<GameObject>() };
-			smoke->SetPosition(object->GetPosition());
-			smoke->SetMesh(m_meshes.at("SMOKE"));
-			smoke->SetShader(m_shaders.at("BLENDING"));
-			smoke->SetTexture(m_textures.at("SMOKE"));
-			smoke->SetTextureInfo(textureInfo);
-			newParticles.push_back(move(smoke));
-		}
-		return object->isDeleted();
-	};
-	m_gameObjects.erase(remove_if(m_gameObjects.begin(), m_gameObjects.end(), pred), m_gameObjects.end());
-	m_translucences.erase(remove_if(m_translucences.begin(), m_translucences.end(), pred), m_translucences.end());
-
-	// 총알 삭제될 때 생기는 이펙트는 파티클 객체에 추가한다.
-	for (auto& object : newParticles)
-		m_translucences.push_back(move(object));
-}
-
-void Scene::UpdateObjectsTerrain()
-{
-	XMFLOAT3 pos{};
-	auto pred = [&pos](unique_ptr<HeightMapTerrain>& terrain) {
-		XMFLOAT3 tPos{ terrain->GetPosition() };
-		XMFLOAT3 scale{ terrain->GetScale() };
-		float width{ terrain->GetWidth() * scale.x };
-		float length{ terrain->GetLength() * scale.z };
-
-		// 하늘에서 +z축을 머리쪽으로 두고 지형을 봤을 때를 기준
-		float left{ tPos.x };
-		float right{ tPos.x + width };
-		float top{ tPos.z + length };
-		float bot{ tPos.z };
-
-		if ((left <= pos.x && pos.x <= right) &&
-			(bot <= pos.z && pos.z <= top))
-			return true;
-		return false;
-	};
-
-	if (m_player)
-	{
-		pos = m_player->GetPosition();
-		auto terrain = find_if(m_terrains.begin(), m_terrains.end(), pred);
-		m_player->SetTerrain(terrain != m_terrains.end() ? terrain->get() : nullptr);
-	}
-	if (m_camera)
-	{
-		pos = m_camera->GetEye();
-		auto terrain = find_if(m_terrains.begin(), m_terrains.end(), pred);
-		m_camera->SetTerrain(terrain != m_terrains.end() ? terrain->get() : nullptr);
-	}
-	for (auto& object : m_gameObjects)
-	{
-		pos = object->GetPosition();
-		auto terrain = find_if(m_terrains.begin(), m_terrains.end(), pred);
-		object->SetTerrain(terrain != m_terrains.end() ? terrain->get() : nullptr);
-	}
-	for (auto& object : m_translucences)
-	{
-		pos = object->GetPosition();
-		auto terrain = find_if(m_terrains.begin(), m_terrains.end(), pred);
-		object->SetTerrain(terrain != m_terrains.end() ? terrain->get() : nullptr);
-	}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -509,44 +278,6 @@ void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comman
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);
 }
 
-void Scene::RenderMirror(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
-{
-	// 스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-	// 스텐실 참조값 설정
-	commandList->OMSetStencilRef(1);
-
-	// 거울 위치를 스텐실 버퍼에 표시
-	m_mirror->Render(commandList, m_shaders.at("STENCIL"));
-
-	// 반사 행렬
-	XMVECTOR mirrorPlane{ XMVectorSet(0.0f, 0.0f, -1.0f, m_mirror->GetPosition().z) };
-	XMFLOAT4X4 reflectMatrix;
-	XMStoreFloat4x4(&reflectMatrix, XMMatrixReflect(mirrorPlane));
-
-	// 실내 반사상 렌더링
-	for (const auto& object : m_gameObjects)
-	{
-		XMFLOAT4X4 temp{ object->GetWorldMatrix() };
-		object->SetWorldMatrix(Matrix::Mul(temp, reflectMatrix));
-		object->Render(commandList, m_shaders.at("MIRRORTEXTURE"));
-		object->SetWorldMatrix(temp);
-	}
-
-	// 플레이어 반사상 렌더링
-	XMFLOAT4X4 originWorldMatrix{ m_player->GetWorldMatrix() };
-	m_player->SetWorldMatrix(Matrix::Mul(originWorldMatrix, reflectMatrix));
-	m_player->Render(commandList, m_shaders.at("MIRROR"));
-	m_player->SetWorldMatrix(originWorldMatrix);
-
-	// 거울 렌더링
-	m_mirror->Render(commandList);
-
-	// 스텐실 참조값 초기화
-	commandList->OMSetStencilRef(0);
-}
-
 void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	if (!m_shadowMap) return;
@@ -578,16 +309,6 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void Scene::CreateBullet()
-{
-	unique_ptr<Bullet> bullet{ make_unique<Bullet>(m_player->GetPosition(), m_player->GetLook(), m_player->GetNormal(), 100.0f) };
-	bullet->SetPosition(Vector3::Add(m_player->GetPosition(), Vector3::Mul(m_player->GetNormal(), 0.5f)));
-	bullet->SetMesh(m_meshes.at("BULLET"));
-	bullet->SetShader(m_shaders.at("TEXTURE"));
-	bullet->SetTexture(m_textures.at("ROCK"));
-	m_gameObjects.push_back(move(bullet));
-}
-
 void Scene::SetSkybox(unique_ptr<Skybox>& skybox)
 {
 	if (m_skybox) m_skybox.reset();
@@ -604,32 +325,4 @@ void Scene::SetCamera(const shared_ptr<Camera>& camera)
 {
 	if (m_camera) m_camera.reset();
 	m_camera = camera;
-}
-
-HeightMapTerrain* Scene::GetTerrain(FLOAT x, FLOAT z) const
-{
-	auto terrain = find_if(m_terrains.begin(), m_terrains.end(), [&x, &z](const unique_ptr<HeightMapTerrain>& t) {
-		XMFLOAT3 scale{ t->GetScale() };
-		XMFLOAT3 pos{ t->GetPosition() };
-		float width{ t->GetWidth() * scale.x };
-		float length{ t->GetLength() * scale.z };
-
-		// 지형을 하늘에서 밑으로 봤을 때
-		float left{ pos.x };			// 왼쪽
-		float right{ pos.x + width };	// 오른쪽
-		float top{ pos.z + length };	// 위
-		float bot{ pos.z };				// 밑
-
-		if ((left <= x && x <= right) && (bot <= z && z <= top))
-			return true;
-		return false;
-		});
-
-	return terrain != m_terrains.end() ? terrain->get() : nullptr;
-}
-
-ComPtr<ID3D12Resource> Scene::GetPostRenderProcessResult() const
-{
-	if (m_blurFilter) return m_blurFilter->GetResult();
-	return nullptr;
 }

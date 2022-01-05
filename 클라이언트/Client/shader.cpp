@@ -8,13 +8,14 @@ Shader::Shader()
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "BONEINDEX", 0, DXGI_FORMAT_R32G32B32A32_UINT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BONEWEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 64, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 }
 
 Shader::Shader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature) : Shader{}
 {
-	ComPtr<ID3DBlob> vertexShader, pixelShader;
+	ComPtr<ID3DBlob> vertexShader, pixelShader, error;
 
 #if defined(_DEBUG)
 	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -22,8 +23,8 @@ Shader::Shader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignat
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("default.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VS", "vs_5_1", compileFlags, 0, &vertexShader, &error));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("default.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PS", "ps_5_1", compileFlags, 0, &pixelShader, &error));
 
 	// PSO 생성
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
@@ -43,10 +44,9 @@ Shader::Shader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignat
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
-wstring Shader::PATH(const string& fileName) const
+wstring Shader::PATH(const wstring& fileName) const
 {
-	wstring wStr{ fileName.begin(), fileName.end() };
-	return TEXT("Shader/") + wStr;
+	return TEXT("Shader/") + fileName;
 }
 
 TextureShader::TextureShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature)
@@ -59,8 +59,8 @@ TextureShader::TextureShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// PSO 생성
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
@@ -90,8 +90,8 @@ TerrainShader::TerrainShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
@@ -120,10 +120,10 @@ TerrainTessShader::TerrainTessShader(const ComPtr<ID3D12Device>& device, const C
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainTessMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HSTerrainTessMain", "hs_5_1", compileFlags, 0, &hullShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "DSTerrainTessMain", "ds_5_1", compileFlags, 0, &domainShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainTessMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainTessMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HSTerrainTessMain", "hs_5_1", compileFlags, 0, &hullShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "DSTerrainTessMain", "ds_5_1", compileFlags, 0, &domainShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainTessMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
@@ -154,10 +154,10 @@ TerrainTessWireShader::TerrainTessWireShader(const ComPtr<ID3D12Device>& device,
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainTessMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HSTerrainTessMain", "hs_5_1", compileFlags, 0, &hullShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "DSTerrainTessMain", "ds_5_1", compileFlags, 0, &domainShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainTessWireMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTerrainTessMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HSTerrainTessMain", "hs_5_1", compileFlags, 0, &hullShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "DSTerrainTessMain", "ds_5_1", compileFlags, 0, &domainShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTerrainTessWireMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	auto RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
@@ -191,8 +191,8 @@ SkyboxShader::SkyboxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 깊이 검사 OFF
 	// 깊이 쓰기 OFF
@@ -231,9 +231,9 @@ BlendingShader::BlendingShader(const ComPtr<ID3D12Device>& device, const ComPtr<
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSBillboardMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSBillboardMain", "gs_5_1", compileFlags, 0, &geometryShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSBillboardMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSBillboardMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSBillboardMain", "gs_5_1", compileFlags, 0, &geometryShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSBillboardMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 깊이 쓰기 OFF
 	CD3DX12_DEPTH_STENCIL_DESC depthStencilState{ D3D12_DEFAULT };
@@ -275,8 +275,8 @@ BlendingDepthShader::BlendingDepthShader(const ComPtr<ID3D12Device>& device, con
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 블렌딩 설정
 	CD3DX12_BLEND_DESC blendState{ D3D12_DEFAULT };
@@ -313,7 +313,7 @@ StencilShader::StencilShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
 
 	// 깊이 테스트		ON
 	// 깊이 버퍼 쓰기	OFF
@@ -354,8 +354,8 @@ MirrorShader::MirrorShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 거울에서는 앞면이 뒷면으로 뒷면이 앞면으로 바뀐다.
 	CD3DX12_RASTERIZER_DESC rasterizerState{ D3D12_DEFAULT };
@@ -393,8 +393,8 @@ MirrorTextureShader::MirrorTextureShader(const ComPtr<ID3D12Device>& device, con
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	CD3DX12_RASTERIZER_DESC rasterizerState{ D3D12_DEFAULT };
 	rasterizerState.FrontCounterClockwise = TRUE;
@@ -430,8 +430,8 @@ ModelShader::ModelShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSModelMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSModelMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSModelMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSModelMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
@@ -460,7 +460,7 @@ ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("shaders.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSShadowMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSShadowMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
 
 	// 깊이값 바이어스 설정
 	CD3DX12_RASTERIZER_DESC rasterizerState{ D3D12_DEFAULT };
@@ -495,7 +495,7 @@ HorzBlurShader::HorzBlurShader(const ComPtr<ID3D12Device>& device, const ComPtr<
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("blur.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HorzBlurCS", "cs_5_1", compileFlags, 0, &computeShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("blur.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "HorzBlurCS", "cs_5_1", compileFlags, 0, &computeShader, NULL));
 
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = rootSignature.Get();
@@ -514,7 +514,7 @@ VertBlurShader::VertBlurShader(const ComPtr<ID3D12Device>& device, const ComPtr<
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("blur.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VertBlurCS", "cs_5_1", compileFlags, 0, &computeShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("blur.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VertBlurCS", "cs_5_1", compileFlags, 0, &computeShader, NULL));
 
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = rootSignature.Get();
@@ -541,10 +541,10 @@ StreamShader::StreamShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("particle.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSParticleMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("particle.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSParticleDraw", "gs_5_1", compileFlags, 0, &geometryShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("particle.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSParticleStreamOutput", "gs_5_1", compileFlags, 0, &streamGeometryShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH("particle.hlsl").c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSParticleMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("particle.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSParticleMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("particle.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSParticleDraw", "gs_5_1", compileFlags, 0, &geometryShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("particle.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "GSParticleStreamOutput", "gs_5_1", compileFlags, 0, &streamGeometryShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("particle.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSParticleMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 스트림 출력
 	D3D12_SO_DECLARATION_ENTRY* SODeclaration{ new D3D12_SO_DECLARATION_ENTRY[3] };

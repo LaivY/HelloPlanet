@@ -31,9 +31,6 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="blurFilter.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="camera.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -76,9 +73,6 @@
     <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="terrain.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="texture.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -90,9 +84,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="blurFilter.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="camera.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -129,9 +120,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="terrain.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="texture.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -153,6 +141,9 @@
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Shader\shaders.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Shader\default.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
   </ItemGroup>

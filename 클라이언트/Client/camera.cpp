@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
 Camera::Camera() : m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_terrain{ nullptr }, m_pcbCamera{ nullptr }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_pcbCamera{ nullptr }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -91,7 +91,7 @@ void Camera::SetPlayer(const shared_ptr<Player>& player)
 
 // --------------------------------------
 
-ThirdPersonCamera::ThirdPersonCamera() : Camera{}, m_distance{ 5.0f }, m_delay{ 0.01f }
+ThirdPersonCamera::ThirdPersonCamera() : Camera{}, m_distance{ 500.0f }, m_delay{ 0.01f }
 {
 	m_offset = Vector3::Normalize(XMFLOAT3{ 0.0f, 1.0f, -5.0f });
 }
@@ -103,14 +103,6 @@ void ThirdPersonCamera::Update(FLOAT deltaTime)
 	XMFLOAT3 direction{ Vector3::Sub(destination, m_eye) };
 	XMFLOAT3 shift{ Vector3::Mul(direction, fmax((1.0f - m_delay) * deltaTime * 10.0f, 0.01f)) };
 	SetEye(Vector3::Add(m_eye, shift));
-
-	// 카메라가 지형 밑으로 내려가지 않도록함
-	if (m_terrain)
-	{
-		FLOAT height{ m_terrain->GetHeight(m_eye.x, m_eye.z) };
-		if (m_eye.y < height + 0.5f)
-			SetEye(XMFLOAT3{ m_eye.x, height + 0.5f, m_eye.z });
-	}
 
 	// 카메라 뷰 변환 행렬 최신화
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));

@@ -41,11 +41,12 @@ SamplerComparisonState g_shadowSampler  : register(s1);
 
 struct VS_INPUT
 {
-    float4 position : POSITION;
-    float3 normal   : NORMAL;
-    float4 color    : COLOR;
-    float2 uv0      : TEXCOORD0;
-    float2 uv1      : TEXCOORD1;
+    float4 position     : POSITION;
+    float3 normal       : NORMAL;
+    float4 color        : COLOR;
+    float2 uv           : TEXCOORD;
+    uint4 boneIndex     : BONEINDEX;
+    float4 boneWeight   : BONEWEIGHT;
 };
 
 struct PS_INPUT
@@ -55,8 +56,7 @@ struct PS_INPUT
     float4 shadowPosH   : POSITION1;
     float3 normalW      : NORMAL;
     float4 color        : COLOR;
-    float2 uv0          : TEXCOORD0;
-    float2 uv1          : TEXCOORD1;
+    float2 uv           : TEXCOORD;
 };
 
 struct PatchTess

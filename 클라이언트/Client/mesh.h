@@ -3,11 +3,14 @@
 
 struct Vertex
 {
-	XMFLOAT3 position{};
-	XMFLOAT3 normal{};
-	XMFLOAT4 color{};
-	XMFLOAT2 uv0{};
-	XMFLOAT2 uv1{};
+	Vertex() : position{}, normal{}, color{}, uv{}, boneIndex{}, boneWeight{} { }
+
+	XMFLOAT3	position;
+	XMFLOAT3	normal;
+	XMFLOAT4	color;
+	XMFLOAT2	uv;
+	XMUINT4		boneIndex;
+	XMFLOAT4	boneWeight;
 };
 
 struct ParticleVertex
@@ -17,14 +20,27 @@ struct ParticleVertex
 	FLOAT speed{};
 };
 
+struct Joint
+{
+	string name;
+	INT parentIndex;
+	XMFLOAT4X4 idontknow;
+	vector<XMFLOAT4X4> transformMatrix;
+};
+
+struct Animation
+{
+	vector<Joint> joints;
+};
+
 class Mesh
 {
 public:
 	Mesh();
-	Mesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-		void* vertexData, UINT sizePerVertexData, UINT vertexDataCount, void* indexData, UINT indexDataCount, D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	Mesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, D3D_PRIMITIVE_TOPOLOGY primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	~Mesh() = default;
+
+	void LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
+	void LoadAnimation(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
 
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
@@ -46,27 +62,8 @@ protected:
 	D3D12_INDEX_BUFFER_VIEW		m_indexBufferView;
 
 	D3D_PRIMITIVE_TOPOLOGY		m_primitiveTopology;
-};
 
-class CubeMesh : public Mesh
-{
-public:
-	CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height);
-	~CubeMesh() = default;
-};
-
-class ReverseCubeMesh : public Mesh
-{
-public:
-	ReverseCubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height);
-	~ReverseCubeMesh() = default;
-};
-
-class TextureRectMesh : public Mesh
-{
-public:
-	TextureRectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, FLOAT height, XMFLOAT3 position);
-	~TextureRectMesh() = default;
+	unordered_map<string, Animation> m_animations;
 };
 
 class BillboardMesh : public Mesh

@@ -97,13 +97,12 @@ ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, 
 	return NULL;
 }
 
-string sPATH(const string& filePath)
+string PATH(const string& filePath)
 {
-	return "../Resource/" + filePath;
+	return "Resource/" + filePath;
 }
 
-wstring wPATH(const string& filePath)
+wstring PATH(const wstring& filePath)
 {
-	wstring wStr{ filePath.begin(), filePath.end() };
-	return TEXT("../Resource/") + wStr;
+	return TEXT("Resource/") + filePath;
 }
