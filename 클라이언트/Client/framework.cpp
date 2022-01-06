@@ -210,20 +210,19 @@ void GameFramework::CreateDepthStencilView()
 
 void GameFramework::CreateRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE ranges[3];
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND); // Texture2D g_texture		 : t0
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND); // Texture2D g_detailTexture : t1
-	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND); // Texture2D g_shadowMap	 : t2
+	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 
 	// 자주 갱신하는 순서대로 해야 성능에 좋음
 	CD3DX12_ROOT_PARAMETER rootParameter[7];
-	rootParameter[0].InitAsConstants(16, 0, 0);		// cbGameObject : b0
-	rootParameter[1].InitAsConstantBufferView(1);	// cbCamera : b1
-	rootParameter[2].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameter[3].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameter[4].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameter[5].InitAsConstantBufferView(2);	// cbScene : b2
-	rootParameter[6].InitAsConstantBufferView(3);	// cbGameFramework : b3
+	rootParameter[0].InitAsConstants(16, 0, 0);												// cbGameObject : b0
+	rootParameter[1].InitAsConstantBufferView(1);											// cbMesh : b1
+	rootParameter[2].InitAsConstantBufferView(2);											// cbCamera : b2
+	rootParameter[3].InitAsConstantBufferView(3);											// cbScene : b3
+	rootParameter[4].InitAsConstantBufferView(4);											// cbGameFramework : b4
+	rootParameter[5].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_texture : t0
+	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1
 
 	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
 	samplerDesc[0].Init(
@@ -273,7 +272,7 @@ void GameFramework::UpdateShaderVariable() const
 {
 	m_cbGameFrameworkData->deltaTime = m_timer.GetDeltaTime();
 	memcpy(m_pcbGameFramework, m_cbGameFrameworkData.get(), sizeof(cbGameFramework));
-	m_commandList->SetGraphicsRootConstantBufferView(6, m_cbGameFramework->GetGPUVirtualAddress());
+	m_commandList->SetGraphicsRootConstantBufferView(4, m_cbGameFramework->GetGPUVirtualAddress());
 }
 
 void GameFramework::LoadPipeline()

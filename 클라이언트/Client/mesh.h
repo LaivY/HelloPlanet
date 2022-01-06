@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "stdafx.h"
+#define MAX_JOINT 96
 
 struct Vertex
 {
@@ -13,15 +14,10 @@ struct Vertex
 	XMFLOAT4	boneWeight;
 };
 
-struct ParticleVertex
-{
-	XMFLOAT3 position{};
-	XMFLOAT2 size{};
-	FLOAT speed{};
-};
-
 struct Joint
 {
+	Joint() : name{}, parentIndex{ -1 }, idontknow{} { }
+
 	string name;
 	INT parentIndex;
 	XMFLOAT4X4 idontknow;
@@ -33,21 +29,24 @@ struct Animation
 	vector<Joint> joints;
 };
 
+struct cbMesh
+{
+	array<XMFLOAT4X4, MAX_JOINT> boneTransformMatrix;
+};
+
 class Mesh
 {
 public:
 	Mesh();
-	~Mesh() = default;
+	~Mesh();
 
 	void LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
-	void LoadAnimation(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
-
+	void LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
+	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
-
+	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT frame) const;
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const D3D12_VERTEX_BUFFER_VIEW& instanceBufferView, UINT count) const;
-
 	void ReleaseUploadBuffer();
 
 protected:
@@ -63,7 +62,10 @@ protected:
 
 	D3D_PRIMITIVE_TOPOLOGY		m_primitiveTopology;
 
-	unordered_map<string, Animation> m_animations;
+	unordered_map<string, Animation>	m_animations;
+	ComPtr<ID3D12Resource>				m_cbMesh;
+	cbMesh*								m_pcbMesh;
+	unique_ptr<cbMesh>					m_cbMeshData;
 };
 
 class BillboardMesh : public Mesh
@@ -71,30 +73,4 @@ class BillboardMesh : public Mesh
 public:
 	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT2& size);
 	~BillboardMesh() = default;
-};
-
-class ParticleMesh : public Mesh
-{
-public:
-	ParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT2& size);
-	~ParticleMesh() = default;
-
-	void CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-
-	void RenderStreamOutput(const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
-
-private:
-	ComPtr<ID3D12Resource>			m_streamOutputBuffer;				// 스트림 출력 버퍼
-	D3D12_STREAM_OUTPUT_BUFFER_VIEW m_streamOutputBufferView;			// 스트림 출력 버퍼 뷰
-	
-	ComPtr<ID3D12Resource>			m_streamFilledSizeBuffer;			// 스트림 버퍼에 쓰여진 데이터 크기를 받을 버퍼
-	ComPtr<ID3D12Resource>			m_streamFilledSizeUploadBuffer;		// 위의 버퍼에 복사할 때 쓰일 업로드 버퍼
-	UINT*							m_pFilledSize;						// 스트림 버퍼에 쓰여진 데이터 크기
-
-	ComPtr<ID3D12Resource>			m_streamFilledSizeReadBackBuffer;	// 쓰여진 데이터 크기를 읽어올 때 쓰일 리드백 버퍼
-
-	ComPtr<ID3D12Resource>			m_drawBuffer;						// 스트림 출력된 결과를 복사해서 출력할 때 쓰일 버퍼
-
-	BOOL							m_isFirst;							// 처음 시작할때는 정점 버퍼와 바인딩, 그 이후엔 렌더링 결과와 바인딩
 };

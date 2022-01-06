@@ -34,7 +34,7 @@ void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comma
 	m_pcbCamera->viewMatrix = Matrix::Transpose(m_viewMatrix);
 	m_pcbCamera->projMatrix = Matrix::Transpose(m_projMatrix);
 	m_pcbCamera->eye = GetEye();
-	commandList->SetGraphicsRootConstantBufferView(1, m_cbCamera->GetGPUVirtualAddress());
+	commandList->SetGraphicsRootConstantBufferView(2, m_cbCamera->GetGPUVirtualAddress());
 }
 
 void Camera::Move(const XMFLOAT3& shift)

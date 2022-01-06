@@ -1,43 +1,44 @@
 #include "lighting.hlsl"
 #define MAX_LIGHT       1
 #define MAX_MATERIAL    2
-
-// --------------------------------------
-
-cbuffer cbGameObject : register(b0)
-{
-    matrix worldMatrix;
-};
-
-cbuffer cbCamera : register(b1)
-{
-    matrix viewMatrix;
-    matrix projMatrix;
-    float3 eye;
-}
-
-cbuffer cbScene : register(b2)
-{
-    Light lights[MAX_LIGHT];
-    Material materials[MAX_MATERIAL];
-    
-    matrix lightViewMatrix;
-    matrix lightProjMatrix;
-    matrix NDCToTextureMatrix;
-}
-
-cbuffer cbGameFramework : register(b3)
-{
-    float g_deltaTime;
-}
+#define MAX_JOINT       96
 
 Texture2D g_texture                     : register(t0);
-Texture2D g_detailTexture               : register(t1);
-Texture2D g_shadowMap                   : register(t2);
+Texture2D g_shadowMap                   : register(t1);
 SamplerState g_sampler                  : register(s0);
 SamplerComparisonState g_shadowSampler  : register(s1);
 
-// --------------------------------------
+cbuffer cbGameObject : register(b0)
+{
+    matrix g_worldMatrix;
+};
+
+cbuffer cbMesh : register(b1)
+{
+    matrix g_boneTransformMatrix[MAX_JOINT];
+};
+
+cbuffer cbCamera : register(b2)
+{
+    matrix g_viewMatrix;
+    matrix g_projMatrix;
+    float3 g_eye;
+}
+
+cbuffer cbScene : register(b3)
+{
+    Light g_lights[MAX_LIGHT];
+    Material g_materials[MAX_MATERIAL];
+    
+    matrix g_lightViewMatrix;
+    matrix g_lightProjMatrix;
+    matrix g_NDCToTextureMatrix;
+}
+
+cbuffer cbGameFramework : register(b4)
+{
+    float g_deltaTime;
+}
 
 struct VS_INPUT
 {
@@ -103,12 +104,12 @@ float4 Lighting(Material material, float3 positionW, float3 normalW, bool shadow
     
     // 노말, 점에서 카메라를 바라보는 방향 벡터
     normalW = normalize(normalW);
-    float3 toEye = normalize(eye - positionW);
+    float3 toEye = normalize(g_eye - positionW);
     
     for (int i = 0; i < MAX_LIGHT; ++i)
     {
         // 꺼져있는 조명은 패스
-        if (!lights[i].isActivate)
+        if (!g_lights[i].isActivate)
             continue;
         
         // 그림자 계수 계산
@@ -119,9 +120,9 @@ float4 Lighting(Material material, float3 positionW, float3 normalW, bool shadow
         }
         
         // 조명 계산
-        if (lights[i].type == DIRECTIONAL_LIGHT)
+        if (g_lights[i].type == DIRECTIONAL_LIGHT)
         {
-            output += ComputeDirectionalLight(lights[i], material, normalW, toEye) * shadowFactor;
+            output += ComputeDirectionalLight(g_lights[i], material, normalW, toEye) * shadowFactor;
         }
     }
     return float4(output, material.diffuseAlbedo.a);

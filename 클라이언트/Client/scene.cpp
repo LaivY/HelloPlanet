@@ -129,7 +129,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 {
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
-	m_meshes["PLAYER"]->LoadAnimation(commandList, PATH("Player_Idle.txt"), "IDLE");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_Reload.txt"), "RELOAD");
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -272,7 +272,7 @@ void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comman
 
 	// 셰이더로 복사
 	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
-	commandList->SetGraphicsRootConstantBufferView(5, m_cbScene->GetGPUVirtualAddress());
+	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());
 
 	// 카메라 셰이더 변수 최신화
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);

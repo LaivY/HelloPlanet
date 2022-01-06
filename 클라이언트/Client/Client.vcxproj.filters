@@ -128,19 +128,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader\blur.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
     <FxCompile Include="Shader\common.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Shader\lighting.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\particle.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\shaders.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Shader\default.hlsl">

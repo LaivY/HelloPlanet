@@ -114,23 +114,3 @@ XMFLOAT3 GameObject::GetLook() const
 {
 	return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 };
 }
-
-void Particle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader) const
-{
-	// 셰이더 변수 최신화
-	UpdateShaderVariable(commandList);
-
-	// 파티클 객체가 갖고있는 셰이더는 반드시 class StreamShader이다.
-	StreamShader* streamShader{ reinterpret_cast<StreamShader*>(m_shader.get()) };
-
-	// 파티클 객체가 갖고있는 메쉬는 반드시 ParticleMesh이다.
-	ParticleMesh* particleMesh{ reinterpret_cast<ParticleMesh*>(m_mesh.get()) };
-
-	// 스트림 출력 패스
-	commandList->SetPipelineState(streamShader->GetStreamPipelineState().Get());
-	if (particleMesh) particleMesh->RenderStreamOutput(commandList);
-
-	// 통상 렌더링 패스
-	commandList->SetPipelineState(streamShader->GetPipelineState().Get());
-	if (particleMesh) particleMesh->Render(commandList);
-}

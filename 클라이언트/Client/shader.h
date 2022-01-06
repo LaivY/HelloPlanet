@@ -115,15 +115,3 @@ public:
 	VertBlurShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~VertBlurShader() = default;
 };
-
-class StreamShader : public Shader
-{
-public:
-	StreamShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
-	~StreamShader() = default;
-
-	ComPtr<ID3D12PipelineState> GetStreamPipelineState() const { return m_streamPipelineState; }
-
-private:
-	ComPtr<ID3D12PipelineState> m_streamPipelineState; // 스트림출력에 사용되는 PSO
-};
