@@ -8,14 +8,12 @@ using namespace std;
 
 // 참고한 깃허브 주소
 // https://github.com/lang1991/FBXExporter
+// https://github.com/YujinJung/FBX-Loader
 
 // 블렌딩 정보는 조인트 인덱스와 가중치를 갖는다.
 struct BlendingDatum
 {
-	BlendingDatum() : blendingIndex{}, blendingWeight{}
-	{
-
-	}
+	BlendingDatum() : blendingIndex{}, blendingWeight{} { }
 
 	int		blendingIndex;
 	double	blendingWeight;
@@ -24,7 +22,7 @@ struct BlendingDatum
 // 제어점은 좌표와 4개의 가중치 정보를 갖는다.
 struct CtrlPoint
 {
-	CtrlPoint() : position{}
+	CtrlPoint() : position{} 
 	{
 		blendingData.reserve(4);
 	}
@@ -38,7 +36,7 @@ struct Keyframe
 {
 	Keyframe() : frameNum{}
 	{
-		globalTransformMatrix.SetIdentity();
+		globalTransformMatrix.SetIdentity(); 
 	}
 
 	FbxLongLong frameNum;
@@ -100,6 +98,5 @@ namespace Utilities
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				s << static_cast<float>(m.Get(i, j)) << " ";
-		s << endl;
 	}
 }

@@ -1,6 +1,6 @@
 ﻿#include "FBXExporter.h"
 
-FBXExporter::FBXExporter() : m_scene{ nullptr }
+FBXExporter::FBXExporter() : m_scene{ nullptr }, m_animationLength{}
 {
 	// Fbx 매니저 생성
 	m_manager = FbxManager::Create();
@@ -60,8 +60,8 @@ void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)
 	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
 		Joint joint;
-		joint.parentIndex = parentIndex;
 		joint.name = node->GetName();
+		joint.parentIndex = parentIndex;
 		m_joints.push_back(joint);
 	}
 	for (int i = 0; i < node->GetChildCount(); ++i)
@@ -115,6 +115,8 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 
 			FbxAMatrix transformMatrix;		// 메쉬의 변환 행렬
 			FbxAMatrix transformLinkMatrix;	// 모델좌표계 -> 자신의 조인트 좌표계 변환 행렬
+			cluster->GetTransformMatrix(transformMatrix);
+			cluster->GetTransformLinkMatrix(transformLinkMatrix);
 
 			m_joints[ji].globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * geometryTransform;
 			m_joints[ji].node = cluster->GetLink();
@@ -270,52 +272,56 @@ XMFLOAT2 FBXExporter::GetUV(FbxMesh* mesh, int controlPointIndex, int vertexCoun
 
 void FBXExporter::ExportMesh()
 {
-	/*
-	아직 개발 단계이기 때문에 직접 확인할 수 있도록 바이너리로 저장하지 않음
-	추후 완성되면 바이너리로 저장하여 불러올 때 빠르게 읽어올 수 있도록함
+	// 아직 개발 단계이기 때문에 메모장으로 열어 확인할 수 있도록 저장한다.
+	ofstream file{ m_outputFileName };
 
-	3ds Max와 DirectX의 좌표계가 다르기 때문에 수정이 필요하다.
-	(FBX로 저장할 때 y-up 옵션으로 저장한다.)
-	*/
-
-	ofstream file{ m_outputFileName + ".txt" };
-
-	// 정점 개수, 좌표, 노말, 텍스쳐좌표, 조인트 인덱스 x 4, 가중치 x 4
-	file << m_vertices.size() << endl;
+	// 정점 개수
+	file << "VC: " << m_vertices.size() << endl << endl;
 	for (const auto& v : m_vertices)
 	{
-		file << v.position.x << " " << v.position.y << " " << v.position.z << " ";
-		file << v.normal.x << " " << v.normal.y << " " << v.normal.z << " ";
-		file << v.uv.x << " " << v.uv.y << " ";
+		file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
+		file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
+		file << "T: " << v.uv.x << " " << v.uv.y << endl;
 
+		file << "BI: ";
 		for (int i = 0; i < 4; ++i)
 			file << v.blendingData[i].blendingIndex << " ";
+		file << endl;
+
+		file << "BW: ";
 		for (int i = 0; i < 4; ++i)
 			file << v.blendingData[i].blendingWeight << " ";
-		file << endl;
+		file << endl << endl;
 	}
 }
 
 void FBXExporter::ExportAnimation()
 {
-	ofstream file{ m_outputFileName + "_" + m_animationName + ".txt" };
+	ofstream file{ m_animationName + "_" + m_outputFileName };
 
-	// 조인트 개수, 인덱스, 이름 길이, 이름, 부모 인덱스, 자신의 좌표계로의 변환 행렬
-	file << m_joints.size() << endl;
-	for (int i = 0; i < m_joints.size(); ++i)
+	// 조인트 개수, 애니메이션 길이
+	file << "JC: " << m_joints.size() << endl;
+	file << "FC: " << m_animationLength << endl << endl;
+
+	// 뼈 이름, 부모인덱스, 변환행렬
+	for (const Joint& j : m_joints)
 	{
-		file << i << " " << m_joints[i].name.size() << " " << m_joints[i].name << " " << m_joints[i].parentIndex << endl;
-		Utilities::WriteFbxAMatrixToStream(file, m_joints[i].globalBindposeInverseMatrix);
+		file << "N: " << j.name << endl;
+		file << "P: " << j.parentIndex << endl;
+		file << "M: ";
+		Utilities::WriteFbxAMatrixToStream(file, j.globalBindposeInverseMatrix);
+		file << endl << endl;
 	}
 
-	// 애니메이션 길이, 이름 길이, 이름
-	file << endl << m_animationLength << " " << m_animationName.size() << " " << m_animationName << endl;
-	for (int i = 0; i < m_joints.size(); ++i)
+	// 애니메이션 프레임 번호, 
+	for (const Joint& j : m_joints)
 	{
-		for (const auto& k : m_joints[i].keyframes)
+		file << j.name << endl;
+		for (const Keyframe& k : j.keyframes)
 		{
-			file << k.frameNum << " ";
 			Utilities::WriteFbxAMatrixToStream(file, k.globalTransformMatrix);
+			file << endl;
 		}
+		file << endl;
 	}
 }

@@ -38,9 +38,9 @@ private:
 	string					m_inputFileName;	// 변환할 FBX 파일 이름
 	string					m_outputFileName;	// 결과 파일 이름
 
-	vector<Joint>			m_joints;			// 스켈레톤(조인트들)
-	vector<CtrlPoint>		m_ctrlPoints;		// 제어점들
-	vector<Vertex>			m_vertices;			// 정점들
+	vector<Joint>			m_joints;			// 뼈
+	vector<CtrlPoint>		m_ctrlPoints;		// 제어점
+	vector<Vertex>			m_vertices;			// 정점
 	string					m_animationName;	// 애니메이션 이름
 	FbxLongLong				m_animationLength;	// 애니메이션 길이
 };
