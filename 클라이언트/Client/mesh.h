@@ -16,12 +16,12 @@ struct Vertex
 
 struct Joint
 {
-	Joint() : name{}, parentIndex{ -1 }, idontknow{} { }
+	Joint() : name{}, parentIndex{ -1 }, globalBindposeInverseMatrix{} { }
 
-	string name;
-	INT parentIndex;
-	XMFLOAT4X4 idontknow;
-	vector<XMFLOAT4X4> transformMatrix;
+	string				name;
+	INT					parentIndex;
+	XMFLOAT4X4			globalBindposeInverseMatrix;
+	vector<XMFLOAT4X4>	animationTransformMatrix;
 };
 
 struct Animation

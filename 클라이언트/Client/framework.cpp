@@ -380,7 +380,7 @@ void GameFramework::PopulateCommandList() const
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	// 렌더타겟, 깊이스텐실 버퍼 지우기
-	const FLOAT clearColor[]{ 1.0f, 1.0f, 1.0f, 1.0f };
+	const FLOAT clearColor[]{ 0.15625f, 0.171875f, 0.203125f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, NULL);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 

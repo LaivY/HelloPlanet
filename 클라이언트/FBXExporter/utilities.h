@@ -10,43 +10,42 @@ using namespace std;
 // https://github.com/lang1991/FBXExporter
 // https://github.com/YujinJung/FBX-Loader
 
-// 블렌딩 정보는 조인트 인덱스와 가중치를 갖는다.
-struct BlendingDatum
-{
-	BlendingDatum() : blendingIndex{}, blendingWeight{} { }
+// 애니메이션 강의 유튜브
+// https://www.youtube.com/watch?v=RYW-ShkhY6Q
 
-	int		blendingIndex;
-	double	blendingWeight;
+struct Vertex
+{
+	Vertex() : position{}, normal{}, uv{}, boneIndices{}, boneWeights{} { }
+
+	XMFLOAT3	position;
+	XMFLOAT3	normal;
+	XMFLOAT2	uv;
+	XMUINT4		boneIndices;
+	XMFLOAT4	boneWeights;
 };
 
-// 제어점은 좌표와 4개의 가중치 정보를 갖는다.
 struct CtrlPoint
 {
-	CtrlPoint() : position{} 
-	{
-		blendingData.reserve(4);
-	}
+	CtrlPoint() : position{} { }
 
-	XMFLOAT3				position;
-	vector<BlendingDatum>	blendingData;
+	XMFLOAT3					position;
+	vector<pair<int, double>>	weights;
 };
 
-// 키프레임은 몇 번째 프레임인지와 해당 프레임일 때 제어점의 모델 좌표계 변환 행렬을 갖는다.
 struct Keyframe
 {
 	Keyframe() : frameNum{}
 	{
-		globalTransformMatrix.SetIdentity(); 
+		aniTransMatrix.SetIdentity(); 
 	}
 
 	FbxLongLong frameNum;
-	FbxAMatrix	globalTransformMatrix;
+	FbxAMatrix	aniTransMatrix;
 };
 
-// 조인트는 이름, 부모 조인트의 인덱스, 로컬 -> 모델 좌표계 변환 행렬, 노드, 키프레임을 갖는다.
 struct Joint
 {
-	Joint() : name{}, parentIndex{ -1 }, node{ nullptr }
+	Joint() : name{}, parentIndex{ -1 }
 	{
 		globalBindposeInverseMatrix.SetIdentity();
 	}
@@ -54,22 +53,7 @@ struct Joint
 	string				name;
 	int					parentIndex;
 	FbxAMatrix			globalBindposeInverseMatrix;
-	FbxNode*			node;
 	vector<Keyframe>	keyframes;
-};
-
-// 정점은 좌표, 노말, 텍스쳐 좌표, 블렌딩 정보를 갖는다.
-struct Vertex
-{
-	Vertex() : position{}, normal{}, uv{}
-	{
-
-	}
-
-	XMFLOAT3				position;
-	XMFLOAT3				normal;
-	XMFLOAT2				uv;
-	vector<BlendingDatum>	blendingData;
 };
 
 namespace Utilities
@@ -98,5 +82,15 @@ namespace Utilities
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				s << static_cast<float>(m.Get(i, j)) << " ";
+	}
+
+	inline void PrintFbxAMatrix(const FbxAMatrix& m)
+	{
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = 0; j < 4; ++j)
+				cout << m.Get(i, j) << " ";
+			cout << endl;
+		}
 	}
 }

@@ -13,19 +13,20 @@ Mesh::~Mesh()
 void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
 {
 	ifstream file{ fileName };
-	
+
+	string dumy{};
 	int nVertices{ 0 };
-	file >> nVertices;
+	file >> dumy >> nVertices;
 	
 	vector<Vertex> vertices(nVertices);
 	for (int i = 0; i < nVertices; ++i)
 	{
 		Vertex v;
-		file >> v.position.x >> v.position.y >> v.position.z;
-		file >> v.normal.x >> v.normal.y >> v.normal.z;
-		file >> v.uv.x >> v.uv.y;
-		file >> v.boneIndex.x >> v.boneIndex.y >> v.boneIndex.z >> v.boneIndex.w;
-		file >> v.boneWeight.x >> v.boneWeight.y >> v.boneWeight.z >> v.boneWeight.w;
+		file >> dumy >> v.position.x >> v.position.y >> v.position.z;
+		file >> dumy >> v.normal.x >> v.normal.y >> v.normal.z;
+		file >> dumy >> v.uv.x >> v.uv.y;
+		file >> dumy >> v.boneIndex.x >> v.boneIndex.y >> v.boneIndex.z >> v.boneIndex.w;
+		file >> dumy >> v.boneWeight.x >> v.boneWeight.y >> v.boneWeight.z >> v.boneWeight.w;
 		vertices.push_back(v);
 	}
 
@@ -36,38 +37,33 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 {
 	ifstream file{ fileName };
 
-	int nJoints{ 0 };
-	file >> nJoints;
+	string dumy{};
+	int nJoints{}, nFrame{};
+	file >> dumy >> nJoints >> dumy >> nFrame;
 
 	vector<Joint> joints(nJoints);
 	for (int i = 0; i < nJoints; ++i)
 	{
-		Joint joint;
-		int index{ 0 };
-		int nameLength{ 0 };
-		file >> index;
-		file >> nameLength;
-		file >> joint.name;
-		file >> joint.parentIndex;
-
-		for (int i = 0; i < 4; ++i)
-			for (int j = 0; j < 4; ++j)
-				file >> joint.idontknow.m[i][j];
+		file >> dumy >> joints[i].name;
+		file >> dumy >> joints[i].parentIndex;
+		file >> dumy;
+		for (int y = 0; y < 4; ++y)
+			for (int x = 0; x < 4; ++x)
+				file >> joints[i].globalBindposeInverseMatrix.m[y][x];
 	}
-
-	int nFrame{ 0 };
-	file >> nFrame;
 
 	for (Joint& j : joints)
 	{
-		j.transformMatrix.reserve(nFrame);
+		j.animationTransformMatrix.reserve(nFrame);
+
+		file >> dumy;
 		for (int i = 0; i < nFrame; ++i)
 		{
 			XMFLOAT4X4 matrix{};
 			for (int y = 0; y < 4; ++y)
 				for (int x = 0; x < 4; ++x)
 					file >> matrix.m[y][x];
-			j.transformMatrix.push_back(matrix);
+			j.animationTransformMatrix.push_back(matrix);
 		}
 	}
 
@@ -75,7 +71,7 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	animation.joints = move(joints);
 	m_animations[animationName] = animation;
 
-	// 애니메이션을 처음 불러왔다면 상수 버퍼를 만듦
+	// 애니메이션을 처음 불러온거라면 상수 버퍼를 만듦
 	if (!m_cbMeshData) CreateShaderVariable(device, commandList);
 }
 
@@ -126,16 +122,20 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	const Animation& ani{ m_animations.at("RELOAD") };
 	for (int i = 0; i < ani.joints.size(); ++i)
 	{
-		m_cbMeshData->boneTransformMatrix[i] = ani.joints[i].transformMatrix[f];
+		XMFLOAT4X4 m{ Matrix::Mul(ani.joints[i].globalBindposeInverseMatrix, ani.joints[i].animationTransformMatrix[f]) };
+		m_cbMeshData->boneTransformMatrix[i] = Matrix::Transpose(m);
 	}
-
 	memcpy(m_pcbMesh, m_cbMeshData.get(), sizeof(cbMesh));
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 
 void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	UpdateShaderVariable(commandList, 0.0f);
+	// 애니메이션 테스트용
+	static float frame{ 0.0f };
+	frame += 0.2f;
+	if (frame > 80.0f) frame = 0.0f;
+	UpdateShaderVariable(commandList, frame);
 
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);

@@ -57,6 +57,11 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 
 void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)
 {
+	/*
+	Joint는 뼈를 의미한다.
+	모든 뼈들을 순회하면서 이름과 부모-자식 관계를 불러온다.
+	*/
+
 	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
 		Joint joint;
@@ -78,7 +83,6 @@ void FBXExporter::LoadMesh(FbxNode* node)
 		LoadAnimation(node);
 		LoadVertices(node);
 	}
-
 	for (int i = 0; i < node->GetChildCount(); ++i)
 		LoadMesh(node->GetChild(i));
 }
@@ -101,7 +105,7 @@ void FBXExporter::LoadCtrlPoints(FbxNode* node)
 void FBXExporter::LoadAnimation(FbxNode* node)
 {
 	FbxMesh* mesh{ node->GetMesh() };
-	FbxAMatrix geometryTransform{ Utilities::GetGeometryTransformation(node) };
+	FbxAMatrix geometryTransform{ Utilities::GetGeometryTransformation(node) }; // 거의 항등행렬
 
 	for (int di = 0; di < mesh->GetDeformerCount(FbxDeformer::eSkin); ++di)
 	{
@@ -111,53 +115,67 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 		for (int ci = 0; ci < skin->GetClusterCount(); ++ci)
 		{
 			FbxCluster* cluster{ skin->GetCluster(ci) };
-			int ji{ GetJointIndexByName(cluster->GetLink()->GetName()) };
+			FbxNode* bone{ cluster->GetLink() };
+			int ji{ GetJointIndexByName(bone->GetName()) };
 
-			FbxAMatrix transformMatrix;		// 메쉬의 변환 행렬
-			FbxAMatrix transformLinkMatrix;	// 모델좌표계 -> 자신의 조인트 좌표계 변환 행렬
-			cluster->GetTransformMatrix(transformMatrix);
-			cluster->GetTransformLinkMatrix(transformLinkMatrix);
-
-			m_joints[ji].globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * geometryTransform;
-			m_joints[ji].node = cluster->GetLink();
+			// 제어점에 가중치 정보 추가
 			for (int cpi = 0; cpi < cluster->GetControlPointIndicesCount(); ++cpi)
 			{
-				BlendingDatum blendingDatum;
-				blendingDatum.blendingIndex = ji;
-				blendingDatum.blendingWeight = cluster->GetControlPointWeights()[cpi];
-				m_ctrlPoints[cluster->GetControlPointIndices()[cpi]].blendingData.push_back(blendingDatum);
+				int index{ cluster->GetControlPointIndices()[cpi] };
+				double weight{ cluster->GetControlPointWeights()[cpi] };
+				m_ctrlPoints[index].weights.push_back(make_pair(ji, weight));
 			}
+
+			// 메쉬 변환 행렬
+			FbxAMatrix transformMatrix; cluster->GetTransformMatrix(transformMatrix);
+
+			// 뼈 좌표계 -> 루트 좌표계 변환 행렬
+			FbxAMatrix transformLinkMatrix; cluster->GetTransformLinkMatrix(transformLinkMatrix);
+
+			// 루트 좌표계 -> 뼈 좌표계 변환 행렬
+			m_joints[ji].globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * geometryTransform;
 
 			// 애니메이션 정보
 			FbxAnimStack* animStack{ m_scene->GetSrcObject<FbxAnimStack>(0) };
 			FbxString animStackName{ animStack->GetName() };
 			m_animationName = animStackName.Buffer();
 
+			// 애니메이션 프레임 정보
 			FbxTakeInfo* takeInfo{ m_scene->GetTakeInfo(animStackName) };
 			FbxTime start{ takeInfo->mLocalTimeSpan.GetStart() };
 			FbxTime end{ takeInfo->mLocalTimeSpan.GetStop() };
 			m_animationLength = end.GetFrameCount(FbxTime::eFrames24) - start.GetFrameCount(FbxTime::eFrames24) + 1;
 
+			// 애니메이션은 T-pose일 때를 기준으로 설정되어있다.
+			// 따라서 애니메이션 변환 행렬을 계산할 때 루트 좌표계 기준으로 계산해야한다.
 			for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i <= end.GetFrameCount(FbxTime::eFrames24); ++i)
 			{
 				FbxTime curr;
 				curr.SetFrame(i, FbxTime::eFrames24);
-				FbxAMatrix transformOffset{ node->EvaluateGlobalTransform(curr) * geometryTransform };
+
+				// curr일 때의 T-pose -> 루트 좌표계 변환 행렬
+				FbxAMatrix toRoot{ (node->EvaluateGlobalTransform(curr) * geometryTransform).Inverse() };
 
 				Keyframe keyframe;
 				keyframe.frameNum = i;
-				keyframe.globalTransformMatrix = transformOffset.Inverse() * cluster->GetLink()->EvaluateGlobalTransform(curr);
+				keyframe.aniTransMatrix = toRoot * bone->EvaluateGlobalTransform(curr);
 				m_joints[ji].keyframes.push_back(keyframe);
 			}
 		}
 	}
 
 	// 제어점 중 가충치를 4개 이하로 갖고있는 제어점들은 4개로 채워줌
-	BlendingDatum dumyBlendingDatum;
+	for (CtrlPoint& ctrlPoint : m_ctrlPoints)
+		for (int i = ctrlPoint.weights.size(); i < 4; ++i)
+			ctrlPoint.weights.push_back(make_pair(0, 0.0));
+
+	// 제어점이 갖고있는 가중치 정보를 가중치가 높은 순서로 정렬
 	for (CtrlPoint& ctrlPoint : m_ctrlPoints)
 	{
-		for (int i = ctrlPoint.blendingData.size(); i < 4; ++i)
-			ctrlPoint.blendingData.push_back(dumyBlendingDatum);
+		partial_sort(ctrlPoint.weights.begin(), ctrlPoint.weights.begin() + 4, ctrlPoint.weights.end(),
+			[](const auto& a, const auto& b) {
+				return a.second > b.second;
+			});
 	}
 }
 
@@ -172,18 +190,19 @@ void FBXExporter::LoadVertices(FbxNode* node)
 		{
 			// i번째 삼각형의 j번째 제어점
 			int ctrlPointIndex{ mesh->GetPolygonVertex(i, j) };
-			CtrlPoint ctrlPoint{ m_ctrlPoints[ctrlPointIndex] };
+			const CtrlPoint& ctrlPoint{ m_ctrlPoints[ctrlPointIndex] };
 
 			Vertex vertex;
 			vertex.position = ctrlPoint.position;
 			vertex.normal = GetNormal(mesh, ctrlPointIndex, vertexCountIndex);
 			vertex.uv = GetUV(mesh, ctrlPointIndex, vertexCountIndex);
-			vertex.blendingData = ctrlPoint.blendingData;
-
-			// 블렌딩 정보 중 가중치가 가장 높은 4개를 가중치 순으로 정렬
-			partial_sort(vertex.blendingData.begin(), vertex.blendingData.begin() + 4, vertex.blendingData.end(), [](const BlendingDatum& a, const BlendingDatum& b) {
-				return a.blendingWeight > b.blendingWeight;
-				});
+			vertex.boneIndices = XMUINT4( ctrlPoint.weights[0].first, ctrlPoint.weights[1].first, ctrlPoint.weights[2].first, ctrlPoint.weights[3].first );
+			vertex.boneWeights = XMFLOAT4(
+				ctrlPoint.weights[0].second,
+				ctrlPoint.weights[1].second,
+				ctrlPoint.weights[2].second,
+				ctrlPoint.weights[3].second
+			);
 			m_vertices.push_back(vertex);
 
 			// 정점 개수 증가
@@ -279,19 +298,16 @@ void FBXExporter::ExportMesh()
 	file << "VC: " << m_vertices.size() << endl << endl;
 	for (const auto& v : m_vertices)
 	{
+		// 위치, 노말, 텍스쳐
 		file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
 		file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
 		file << "T: " << v.uv.x << " " << v.uv.y << endl;
 
-		file << "BI: ";
-		for (int i = 0; i < 4; ++i)
-			file << v.blendingData[i].blendingIndex << " ";
-		file << endl;
+		// 뼈 인덱스
+		file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
 
-		file << "BW: ";
-		for (int i = 0; i < 4; ++i)
-			file << v.blendingData[i].blendingWeight << " ";
-		file << endl << endl;
+		// 뼈 가중치
+		file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl << endl;
 	}
 }
 
@@ -313,13 +329,13 @@ void FBXExporter::ExportAnimation()
 		file << endl << endl;
 	}
 
-	// 애니메이션 프레임 번호, 
+	// 애니메이션 프레임 번호, 변환 행렬
 	for (const Joint& j : m_joints)
 	{
 		file << j.name << endl;
 		for (const Keyframe& k : j.keyframes)
 		{
-			Utilities::WriteFbxAMatrixToStream(file, k.globalTransformMatrix);
+			Utilities::WriteFbxAMatrixToStream(file, k.aniTransMatrix);
 			file << endl;
 		}
 		file << endl;

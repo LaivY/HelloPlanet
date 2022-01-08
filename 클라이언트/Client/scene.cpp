@@ -54,7 +54,9 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	int dx = newMousePosition.x - oldMousePosition.x;
 	int dy = newMousePosition.y - oldMousePosition.y;
 	float sensitive{ 2.5f };
-	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+	
+	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+	//if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 
 	// 마우스를 화면 가운데로 이동
 	SetCursorPos(oldMousePosition.x, oldMousePosition.y);
@@ -79,22 +81,31 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
 {
-	const int speed = 1.0f;
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
-		m_player->AddVelocity(Vector3::Mul(m_player->GetFront(), speed * deltaTime));
+		m_camera->Move(m_camera->GetAt());
 	}
 	if (GetAsyncKeyState('A') & 0x8000)
 	{
-		m_player->AddVelocity(Vector3::Mul(m_player->GetLocalXAxis(), -speed * deltaTime));
+		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+		m_camera->Move(Vector3::Mul(right, -1));
 	}
 	if (GetAsyncKeyState('S') & 0x8000)
 	{
-		m_player->AddVelocity(Vector3::Mul(m_player->GetFront(), -speed * deltaTime));
+		m_camera->Move(Vector3::Mul(m_camera->GetAt(), -1));
 	}
 	if (GetAsyncKeyState('D') & 0x8000)
 	{
-		m_player->AddVelocity(Vector3::Mul(m_player->GetLocalXAxis(), speed * deltaTime));
+		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+		m_camera->Move(right);
+	}
+	if (GetAsyncKeyState(' ') & 0x8000)
+	{
+		m_camera->Move(XMFLOAT3{ 0.0f, 1.0f, 0.0f });
+	}
+	if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+	{
+		m_camera->Move(XMFLOAT3{ 0.0f, -1.0f, 0.0f });
 	}
 }
 
@@ -179,7 +190,7 @@ void Scene::CreateLightAndMeterial()
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라 생성
-	auto camera{ make_shared<ThirdPersonCamera>() };
+	auto camera{ make_shared<Camera>() };
 	camera->CreateShaderVariable(device, commandList);
 	SetCamera(camera);
 
