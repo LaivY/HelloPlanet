@@ -316,26 +316,16 @@ void FBXExporter::ExportAnimation()
 	ofstream file{ m_animationName + "_" + m_outputFileName };
 
 	// 조인트 개수, 애니메이션 길이
-	file << "JC: " << m_joints.size() << endl;
-	file << "FC: " << m_animationLength << endl << endl;
+	file << "JOINT_COUNT: " << m_joints.size() << endl;
+	file << "FRAME_LENGTH: " << m_animationLength << endl << endl;
 
-	// 뼈 이름, 부모인덱스, 변환행렬
-	for (const Joint& j : m_joints)
-	{
-		file << "N: " << j.name << endl;
-		file << "P: " << j.parentIndex << endl;
-		file << "M: ";
-		Utilities::WriteFbxAMatrixToStream(file, j.globalBindposeInverseMatrix);
-		file << endl << endl;
-	}
-
-	// 애니메이션 프레임 번호, 변환 행렬
+	// 애니메이션 변환 행렬
 	for (const Joint& j : m_joints)
 	{
 		file << j.name << endl;
 		for (const Keyframe& k : j.keyframes)
 		{
-			Utilities::WriteFbxAMatrixToStream(file, k.aniTransMatrix);
+			Utilities::WriteFbxAMatrixToStream(file, k.aniTransMatrix * j.globalBindposeInverseMatrix);
 			file << endl;
 		}
 		file << endl;

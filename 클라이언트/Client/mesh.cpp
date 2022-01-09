@@ -42,20 +42,8 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	file >> dumy >> nJoints >> dumy >> nFrame;
 
 	vector<Joint> joints(nJoints);
-	for (int i = 0; i < nJoints; ++i)
-	{
-		file >> dumy >> joints[i].name;
-		file >> dumy >> joints[i].parentIndex;
-		file >> dumy;
-		for (int y = 0; y < 4; ++y)
-			for (int x = 0; x < 4; ++x)
-				file >> joints[i].globalBindposeInverseMatrix.m[y][x];
-	}
-
 	for (Joint& j : joints)
 	{
-		j.animationTransformMatrix.reserve(nFrame);
-
 		file >> dumy;
 		for (int i = 0; i < nFrame; ++i)
 		{
@@ -122,7 +110,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	const Animation& ani{ m_animations.at("RELOAD") };
 	for (int i = 0; i < ani.joints.size(); ++i)
 	{
-		XMFLOAT4X4 m{ Matrix::Mul(ani.joints[i].globalBindposeInverseMatrix, ani.joints[i].animationTransformMatrix[f]) };
+		XMFLOAT4X4 m{ ani.joints[i].animationTransformMatrix[f] };
 		m_cbMeshData->boneTransformMatrix[i] = Matrix::Transpose(m);
 	}
 	memcpy(m_pcbMesh, m_cbMeshData.get(), sizeof(cbMesh));
@@ -133,7 +121,7 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 애니메이션 테스트용
 	static float frame{ 0.0f };
-	frame += 0.2f;
+	frame += 0.01f;
 	if (frame > 80.0f) frame = 0.0f;
 	UpdateShaderVariable(commandList, frame);
 
