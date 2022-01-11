@@ -141,6 +141,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_Reload.txt"), "RELOAD");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_Run.txt"), "RUN");
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -203,6 +204,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto player{ make_shared<Player>() };
 	player->SetMesh(m_meshes.at("PLAYER"));
 	player->SetShader(m_shaders.at("DEFAULT"));
+	player->PlayAnimation("RUN");
 	SetPlayer(player);
 
 	// 카메라, 플레이어 서로 설정

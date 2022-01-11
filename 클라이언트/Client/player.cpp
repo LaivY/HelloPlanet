@@ -3,11 +3,13 @@
 
 Player::Player() : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }
 {
-	m_type = GameObjectType::PLAYER;
+	
 }
 
 void Player::Update(FLOAT deltaTime)
 {
+	GameObject::Update(deltaTime);
+
 	Move(m_velocity);
 
 	// 마찰력

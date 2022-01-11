@@ -44,6 +44,7 @@ using namespace DirectX;
 #define SCREEN_HEIGHT       720
 #define MAX_LIGHT           1
 #define MAX_MATERIAL        2
+#define MAX_JOINT           96
 #define DIRECTIONAL_LIGHT   0
 #define POINT_LIGHT         1
 
@@ -145,7 +146,6 @@ namespace Matrix
         XMStoreFloat4x4(&result, x * y);
         return result;
     }
-
     inline XMFLOAT4X4 Transpose(const XMFLOAT4X4& a)
     {
         XMFLOAT4X4 result;
@@ -153,7 +153,6 @@ namespace Matrix
         XMStoreFloat4x4(&result, m);
         return result;
     }
-
     inline XMFLOAT4X4 Inverse(const XMFLOAT4X4& a)
     {
         XMFLOAT4X4 result;
@@ -161,7 +160,14 @@ namespace Matrix
         XMStoreFloat4x4(&result, m);
         return result;
     }
-
+    inline XMFLOAT4X4 Interpolate(const XMFLOAT4X4& a, const XMFLOAT4X4& b, const FLOAT& t)
+    {
+        XMFLOAT4X4 result;
+        for (int i = 0; i < 4; ++i)
+            for (int j = 0; j < 4; ++j)
+                result.m[i][j] = a.m[i][j] * (1.0f - t) + b.m[i][j] * t;
+        return result;
+    }
     inline XMFLOAT4X4 Identity()
     {
         XMFLOAT4X4 result;

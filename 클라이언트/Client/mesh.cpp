@@ -1,6 +1,7 @@
 ﻿#include "mesh.h"
+#include "object.h"
 
-Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }, m_cbMeshData{ nullptr }
+Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }
 {
 
 }
@@ -41,26 +42,29 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	int nJoints{}, nFrame{};
 	file >> dumy >> nJoints >> dumy >> nFrame;
 
-	vector<Joint> joints(nJoints);
-	for (Joint& j : joints)
+	Animation animation{};
+	animation.length = nFrame;
+	animation.joints.reserve(nJoints);
+	for (int i = 0; i < nJoints; ++i)
 	{
-		file >> dumy;
+		Joint joint;
+		joint.animationTransformMatrix.reserve(nFrame);
+
+		file >> joint.name;
 		for (int i = 0; i < nFrame; ++i)
 		{
 			XMFLOAT4X4 matrix{};
 			for (int y = 0; y < 4; ++y)
 				for (int x = 0; x < 4; ++x)
 					file >> matrix.m[y][x];
-			j.animationTransformMatrix.push_back(matrix);
+			joint.animationTransformMatrix.push_back(move(matrix));
 		}
+		animation.joints.push_back(move(joint));
 	}
-
-	Animation animation{};
-	animation.joints = move(joints);
-	m_animations[animationName] = animation;
+	m_animations[animationName] = move(animation);
 
 	// 애니메이션을 처음 불러온거라면 상수 버퍼를 만듦
-	if (!m_cbMeshData) CreateShaderVariable(device, commandList);
+	if (!m_cbMesh) CreateShaderVariable(device, commandList);
 }
 
 void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -69,7 +73,6 @@ void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr
 	UINT cbSceneByteSize{ (sizeof(cbMesh) + 255) & ~255 };
 	m_cbMesh = CreateBufferResource(device, commandList, NULL, cbSceneByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
 	m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
-	m_cbMeshData = make_unique<cbMesh>();
 }
 
 void Mesh::CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount)
@@ -100,31 +103,26 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT frame) const
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, const FLOAT& frame) const
 {
-	if (!m_cbMeshData) return;
+	UINT currFrame{ static_cast<UINT>(floorf(frame)) };
+	UINT nextFrame{ static_cast<UINT>(ceilf(frame)) };
+	currFrame = min(currFrame, m_animations.at(animationName).length - 1);
+	nextFrame = min(nextFrame, m_animations.at(animationName).length - 1);
 
-	// 아직 프레임을 보간하지 않음
-	UINT f{ static_cast<UINT>(floorf(frame)) };
-
-	const Animation& ani{ m_animations.at("RELOAD") };
+	const Animation& ani{ m_animations.at(animationName) };
 	for (int i = 0; i < ani.joints.size(); ++i)
 	{
-		XMFLOAT4X4 m{ ani.joints[i].animationTransformMatrix[f] };
-		m_cbMeshData->boneTransformMatrix[i] = Matrix::Transpose(m);
+		XMFLOAT4X4 m{ Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
+										  ani.joints[i].animationTransformMatrix[nextFrame],
+										  frame - static_cast<int>(frame)) };
+		m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
 	}
-	memcpy(m_pcbMesh, m_cbMeshData.get(), sizeof(cbMesh));
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	// 애니메이션 테스트용
-	static float frame{ 0.0f };
-	frame += 0.01f;
-	if (frame > 80.0f) frame = 0.0f;
-	UpdateShaderVariable(commandList, frame);
-
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	if (m_nIndices)
@@ -133,6 +131,20 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 		commandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
 	}
 	else commandList->DrawInstanced(m_nVertices, 1, 0, 0);
+}
+
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, FLOAT timer, GameObject* object) const
+{
+	if (m_cbMesh)
+	{
+		const Animation& animation{ m_animations.at(animationName) };
+		float frame{ timer / (1.0f / 24.0f) };
+		frame = clamp(frame, 0.0f, static_cast<float>(animation.length));
+
+		object->OnAnimation(animationName, frame, animation.length);
+		UpdateShaderVariable(commandList, animationName, frame);
+	}
+	Mesh::Render(commandList);
 }
 
 void Mesh::ReleaseUploadBuffer()

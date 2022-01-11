@@ -2,16 +2,6 @@
 #include "stdafx.h"
 #include "DDSTextureLoader12.h"
 
-struct TextureInfo
-{
-	TextureInfo() : frame{ 0 }, frameTimer{ 0 }, frameInterver{ 1.0f / 60.0f }, doRepeat{ TRUE } { }
-
-	INT		frame;
-	FLOAT	frameTimer;
-	FLOAT	frameInterver;
-	BOOL	doRepeat;
-};
-
 class Texture
 {
 public:
