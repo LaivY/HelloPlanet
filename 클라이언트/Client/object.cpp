@@ -30,7 +30,8 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	if (m_mesh)
 	{
 		if (m_animationInfo)
-			m_mesh->Render(commandList, m_animationInfo->animationName, m_animationInfo->timer, this);
+			//m_mesh->Render(commandList, m_animationInfo->animationName, m_animationInfo->timer, this);
+			m_mesh->Render(commandList, this);
 		else
 			m_mesh->Render(commandList);
 	}

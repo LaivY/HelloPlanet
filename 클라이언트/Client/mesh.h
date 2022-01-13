@@ -50,7 +50,7 @@ public:
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, const FLOAT& frame) const;
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, FLOAT timer, GameObject* object) const;
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const;
 	void ReleaseUploadBuffer();
 
 protected:

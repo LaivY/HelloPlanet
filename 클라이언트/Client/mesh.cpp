@@ -133,17 +133,25 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 	else commandList->DrawInstanced(m_nVertices, 1, 0, 0);
 }
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, FLOAT timer, GameObject* object) const
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
 {
-	if (m_cbMesh)
+	// 애니메이션
+	AnimationInfo* aniInfo{ object->GetAnimationInfo() };
+	if (aniInfo)
 	{
-		const Animation& animation{ m_animations.at(animationName) };
-		float frame{ timer / (1.0f / 24.0f) };
-		frame = clamp(frame, 0.0f, static_cast<float>(animation.length));
+		const Animation& ani{ m_animations.at(aniInfo->animationName) };
+		float frame{ aniInfo->timer / (1.0f / 24.0f) };
+		UINT length{ ani.length };
+		if (m_cbMesh)
+		{
+			frame = clamp(frame, 0.0f, static_cast<float>(length));
+			UpdateShaderVariable(commandList, aniInfo->animationName, frame);
 
-		object->OnAnimation(animationName, frame, animation.length);
-		UpdateShaderVariable(commandList, animationName, frame);
+			// 애니메이션 콜백 함수 호출
+			object->OnAnimation(aniInfo->animationName, frame, length);
+		}
 	}
+
 	Mesh::Render(commandList);
 }
 

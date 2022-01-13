@@ -31,7 +31,6 @@ public:
 	~GameObject() = default;
 
 	virtual void OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame);
-
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader=nullptr);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Move(const XMFLOAT3& shift);
@@ -52,6 +51,7 @@ public:
 	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
 	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
+	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	BOOL isDeleted() const { return m_isDeleted; }
 
 protected:
