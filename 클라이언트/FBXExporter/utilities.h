@@ -15,13 +15,20 @@ using namespace std;
 
 struct Vertex
 {
-	Vertex() : position{}, normal{}, uv{}, boneIndices{}, boneWeights{} { }
+	Vertex() : position{}, normal{}, uv{}, boneIndices{}, boneWeights{}, materialIndex{ -1 } { }
 
 	XMFLOAT3	position;
 	XMFLOAT3	normal;
 	XMFLOAT2	uv;
 	XMUINT4		boneIndices;
 	XMFLOAT4	boneWeights;
+	int			materialIndex;
+};
+
+struct Material
+{
+	string		name;
+	XMFLOAT4	baseColor;
 };
 
 struct CtrlPoint

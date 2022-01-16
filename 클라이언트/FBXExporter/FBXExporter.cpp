@@ -26,7 +26,7 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 
 	// 임포터 생성 및 초기화
 	FbxImporter* fbxImporter{ FbxImporter::Create(m_manager, "IMPORTER") };
-	if (!fbxImporter->Initialize(inputFileName.c_str(), -1, m_manager->GetIOSettings()))
+	if (!fbxImporter->Initialize(m_inputFileName.c_str(), -1, m_manager->GetIOSettings()))
 	{
 		cout << "FbxImporter 초기화 실패" << endl;
 		cout << fbxImporter->GetStatus().GetErrorString() << endl;
@@ -45,6 +45,7 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 	FbxNode* rootNode{ m_scene->GetRootNode() };
 
 	// 데이터 로딩
+	LoadMaterials();
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
 		LoadSkeleton(rootNode->GetChild(i), 0, -1);
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
@@ -53,6 +54,53 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 	// 출력
 	ExportMesh();
 	ExportAnimation();
+}
+
+void FBXExporter::LoadMaterials()
+{
+	for (int i = 0; i < m_scene->GetMaterialCount(); ++i)
+	{
+		FbxSurfaceMaterial* material{ m_scene->GetMaterial(i) };
+
+		Material m{};
+		m.name = material->GetName();
+		if (FbxProperty p = material->FindPropertyHierarchical("3dsMax|Parameters|base_color"); p.IsValid())
+		{
+			FbxColor a = p.Get<FbxColor>();
+			m.baseColor = XMFLOAT4{ static_cast<float>(a[0]), static_cast<float>(a[1]), static_cast<float>(a[2]), static_cast<float>(a[3]) };
+		}
+		//if (FbxProperty p{ material->FindProperty("AmbientColor") }; p.IsValid())
+		//{
+		//	FbxColor ambientColor{ p.Get<FbxColor>() };
+		//	cout << "AmbientColor : " << ambientColor[0] << ", " << ambientColor[1] << ", " << ambientColor[2] << ", " << ambientColor[3] << endl;
+		//}
+		//if (FbxProperty p{ material->FindProperty("DiffuseColor") }; p.IsValid())
+		//{
+		//	FbxColor diffuseColor{ p.Get<FbxColor>() };
+		//	cout << "DiffuseColor : " << diffuseColor[0] << ", " << diffuseColor[1] << ", " << diffuseColor[2] << ", " << diffuseColor[3] << endl;
+		//}
+		//if (FbxProperty p{ material->FindProperty("SpecularColor") }; p.IsValid())
+		//{
+		//	FbxColor specularColor{ p.Get<FbxColor>() };
+		//	cout << "SpecularColor : " << specularColor[0] << ", " << specularColor[1] << ", " << specularColor[2] << ", " << specularColor[3] << endl;
+		//}
+		//if (FbxProperty p{ material->FindProperty("EmissiveColor") }; p.IsValid())
+		//{
+		//	FbxColor emissiveColor{ p.Get<FbxColor>() };
+		//	cout << "EmissiveColor : " << emissiveColor[0] << ", " << emissiveColor[1] << ", " << emissiveColor[2] << ", " << emissiveColor[3] << endl;
+		//}
+		//if (FbxProperty p{ material->FindProperty("ShininessExponent") }; p.IsValid())
+		//{
+		//	FbxDouble shininessExponent{ p.Get<FbxDouble>() };
+		//	cout << "ShininessExponent : " << shininessExponent << endl;
+		//}
+		//if (FbxProperty p{ material->FindProperty("TransparencyFactor") }; p.IsValid())
+		//{
+		//	FbxDouble transparencyFactor{ p.Get<FbxDouble>() };
+		//	cout << "TransparencyFactor : " << transparencyFactor << endl;
+		//}
+		m_materials.push_back(move(m));
+	}
 }
 
 void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)
@@ -196,14 +244,10 @@ void FBXExporter::LoadVertices(FbxNode* node)
 			vertex.position = ctrlPoint.position;
 			vertex.normal = GetNormal(mesh, ctrlPointIndex, vertexCountIndex);
 			vertex.uv = GetUV(mesh, ctrlPointIndex, vertexCountIndex);
-			vertex.boneIndices = XMUINT4( ctrlPoint.weights[0].first, ctrlPoint.weights[1].first, ctrlPoint.weights[2].first, ctrlPoint.weights[3].first );
-			vertex.boneWeights = XMFLOAT4(
-				ctrlPoint.weights[0].second,
-				ctrlPoint.weights[1].second,
-				ctrlPoint.weights[2].second,
-				ctrlPoint.weights[3].second
-			);
-			m_vertices.push_back(vertex);
+			vertex.materialIndex = GetMaterial(mesh, ctrlPointIndex, vertexCountIndex);
+			vertex.boneIndices = XMUINT4(ctrlPoint.weights[0].first, ctrlPoint.weights[1].first, ctrlPoint.weights[2].first, ctrlPoint.weights[3].first);
+			vertex.boneWeights = XMFLOAT4(ctrlPoint.weights[0].second, ctrlPoint.weights[1].second, ctrlPoint.weights[2].second, ctrlPoint.weights[3].second);
+			m_vertices.push_back(move(vertex));
 
 			// 정점 개수 증가
 			++vertexCountIndex;
@@ -289,31 +333,88 @@ XMFLOAT2 FBXExporter::GetUV(FbxMesh* mesh, int controlPointIndex, int vertexCoun
 	return XMFLOAT2(result[0], result[1]);
 }
 
+XMFLOAT4 FBXExporter::GetColor(FbxMesh * mesh, int controlPointIndex, int vertexCountIndex)
+{
+	FbxColor result{};
+	if (mesh->GetElementVertexColorCount() < 1)
+		return XMFLOAT4{};
+
+	FbxGeometryElementVertexColor* color{ mesh->GetElementVertexColor(0) };
+	if (color->GetMappingMode() == FbxGeometryElement::eByControlPoint)
+	{
+		if (color->GetReferenceMode() == FbxGeometryElement::eDirect)
+		{
+			result = color->GetDirectArray().GetAt(controlPointIndex);
+		}
+		else if (color->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
+		{
+			int index{ color->GetIndexArray().GetAt(controlPointIndex) };
+			result = color->GetDirectArray().GetAt(index);
+		}
+	}
+	else if (color->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+	{
+		if (color->GetReferenceMode() == FbxGeometryElement::eDirect)
+		{
+			result = color->GetDirectArray().GetAt(vertexCountIndex);
+		}
+		else if (color->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
+		{
+			int index{ color->GetIndexArray().GetAt(vertexCountIndex) };
+			result = color->GetDirectArray().GetAt(index);
+		}
+	}
+	return XMFLOAT4(result[0], result[1], result[2], result[3]);
+}
+
+int FBXExporter::GetMaterial(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex)
+{
+	FbxGeometryElementMaterial* material{ mesh->GetElementMaterial(0) };
+	if (material->GetMappingMode() == FbxGeometryElement::eByPolygon &&
+		material->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
+	{
+		return material->GetIndexArray().GetAt(vertexCountIndex);
+	}
+	return -1;
+}
+
 void FBXExporter::ExportMesh()
 {
 	// 아직 개발 단계이기 때문에 메모장으로 열어 확인할 수 있도록 저장한다.
-	ofstream file{ m_outputFileName };
+	ofstream file{ m_outputFileName + ".mesh" };
 
-	// 정점 개수
-	file << "VC: " << m_vertices.size() << endl << endl;
+	// 정점, 재질 개수
+	file << "VERTEX_COUNT: " << m_vertices.size() << endl << endl;
 	for (const auto& v : m_vertices)
 	{
-		// 위치, 노말, 텍스쳐
+		// 위치, 노말, 텍스쳐 좌표
 		file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
 		file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
 		file << "T: " << v.uv.x << " " << v.uv.y << endl;
+
+		// 재질 인덱스
+		file << "MI: " << v.materialIndex << endl;
 
 		// 뼈 인덱스
 		file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
 
 		// 뼈 가중치
-		file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl << endl;
+		file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
+		file << endl;
+	}
+
+	file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
+	for (const auto& m : m_materials)
+	{
+		file << "NAME: " << m.name << endl;
+		file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
+		file << endl;
 	}
 }
 
 void FBXExporter::ExportAnimation()
 {
-	ofstream file{ m_animationName + "_" + m_outputFileName };
+	ofstream file{ m_outputFileName + ".ani" };
 
 	// 조인트 개수, 애니메이션 길이
 	file << "JOINT_COUNT: " << m_joints.size() << endl;

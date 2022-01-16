@@ -3,5 +3,5 @@
 int main()
 {
 	FBXExporter fbxExporter{};
-	fbxExporter.Process("target.fbx", "result.txt");
+	fbxExporter.Process("target/player.fbx", "result/player");
 }
