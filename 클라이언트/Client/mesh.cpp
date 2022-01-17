@@ -14,11 +14,10 @@ Mesh::~Mesh()
 void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
 {
 	ifstream file{ fileName };
-
 	string dumy{};
+
 	int nVertices{ 0 };
 	file >> dumy >> nVertices;
-	
 	vector<Vertex> vertices(nVertices);
 	for (int i = 0; i < nVertices; ++i)
 	{
@@ -26,9 +25,21 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 		file >> dumy >> v.position.x >> v.position.y >> v.position.z;
 		file >> dumy >> v.normal.x >> v.normal.y >> v.normal.z;
 		file >> dumy >> v.uv.x >> v.uv.y;
+		file >> dumy >> v.materialIndex;
 		file >> dumy >> v.boneIndex.x >> v.boneIndex.y >> v.boneIndex.z >> v.boneIndex.w;
 		file >> dumy >> v.boneWeight.x >> v.boneWeight.y >> v.boneWeight.z >> v.boneWeight.w;
-		vertices.push_back(v);
+		vertices.push_back(move(v));
+	}
+
+	int nMaterial{ 0 };
+	file >> dumy >> nMaterial;
+	vector<Material> materials(nMaterial);
+	for (int i = 0; i < nMaterial; ++i)
+	{
+		Material m;
+		file >> dumy >> dumy;
+		file >> dumy >> m.color.x >> m.color.y >> m.color.z >> m.color.w;
+		m_materials.push_back(move(m));
 	}
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
@@ -103,6 +114,13 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	for (int i = 0; i < MAX_MATERIAL; ++i)
+		m_pcbMesh->materials[i] = m_materials[i];
+	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
+}
+
 void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, const FLOAT& frame) const
 {
 	UINT currFrame{ static_cast<UINT>(floorf(frame)) };
@@ -118,7 +136,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 										  frame - static_cast<int>(frame)) };
 		m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
 	}
-	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
+	Mesh::UpdateShaderVariable(commandList);
 }
 
 void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -136,8 +154,7 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
 {
 	// 애니메이션
-	AnimationInfo* aniInfo{ object->GetAnimationInfo() };
-	if (aniInfo)
+	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() }; aniInfo)
 	{
 		const Animation& ani{ m_animations.at(aniInfo->animationName) };
 		float frame{ aniInfo->timer / (1.0f / 24.0f) };
@@ -151,7 +168,6 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObje
 			object->OnAnimation(aniInfo->animationName, frame, length);
 		}
 	}
-
 	Mesh::Render(commandList);
 }
 

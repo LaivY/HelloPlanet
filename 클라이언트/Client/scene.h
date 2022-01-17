@@ -6,32 +6,19 @@
 #include "shadow.h"
 #include "skybox.h"
 
-struct Light // 16바이트로 정렬
+struct Light
 {
-	XMFLOAT3	strength;					// 색상					:: 12
-	FLOAT		fallOffStart;				// 감쇠 시작 거리		:: 4
-	XMFLOAT3	direction;					// 방향					:: 12
-	FLOAT		fallOffEnd;					// 감쇠 끝 거리			:: 4
-	XMFLOAT3	position;					// 위치					:: 12
-	bool		isActivate;					// 활성화 여부			:: 4
-	int			type;						// 0 : 방향, 1 : 점		:: 4
-	XMFLOAT3	padding;					// 채우기용				:: 12
-};
-
-struct Material // 16바이트로 정렬
-{
-	XMFLOAT4	diffuseAlbedo;				// 분산 반사율(전체적인 색감)
-	XMFLOAT3	fresnelR0;					// 반사광
-	FLOAT		roughness;					// 표면의 거칠기
+	XMFLOAT4X4	lightViewMatrix;
+	XMFLOAT4X4	lightProjMatrix;
+	XMFLOAT3	position;
+	FLOAT		padding1;
+	XMFLOAT3	direction;
+	FLOAT		padding2;
 };
 
 struct cbScene
 {
-	Light		ligths[MAX_LIGHT];			// 조명들
-	Material	materials[MAX_MATERIAL];	// 재질들
-	XMFLOAT4X4	lightViewMatrix;			// 그림자를 만드는 조명 뷰 변환 행렬
-	XMFLOAT4X4	lightProjMatrix;			// 그림자를 만드는 조명 투영 변환 행렬
-	XMFLOAT4X4	NDCToTextureMatrix;			// NDC -> 텍스쳐 좌표계 변환 행렬
+	Light		ligths[MAX_LIGHT];
 };
 
 class Scene
@@ -54,7 +41,7 @@ public:
 	void CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
 	void CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void CreateLightAndMeterial();
+	void CreateLights();
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 	// 초기화 후 호출되는 함수
@@ -66,6 +53,7 @@ public:
 	
 	// 위의 함수를 구현하기 위한 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void UpdateLights(FLOAT deltaTime);
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 	// 세터
@@ -86,14 +74,12 @@ private:
 	cbScene*									m_pcbScene;		// 씬 상수 버퍼 포인터
 	unique_ptr<cbScene>							m_cbSceneData;	// 씬 상수 버퍼 데이터
 
-	unordered_map<string, shared_ptr<Mesh>>		m_meshes;		// 메쉬들
-	unordered_map<string, shared_ptr<Shader>>	m_shaders;		// 셰이더들
-	unordered_map<string, shared_ptr<Texture>>	m_textures;		// 텍스쳐들
+	unordered_map<string, shared_ptr<Mesh>>		m_meshes;		// 메쉬
+	unordered_map<string, shared_ptr<Shader>>	m_shaders;		// 셰이더
+	unordered_map<string, shared_ptr<Texture>>	m_textures;		// 텍스쳐
 	unique_ptr<ShadowMap>						m_shadowMap;	// 그림자맵
-
+	unique_ptr<Skybox>							m_skybox;		// 스카이박스
 	shared_ptr<Camera>							m_camera;		// 카메라
 	shared_ptr<Player>							m_player;		// 플레이어
-
-	unique_ptr<Skybox>							m_skybox;		// 스카이박스
 	vector<unique_ptr<GameObject>>				m_gameObjects;	// 게임오브젝트들
 };

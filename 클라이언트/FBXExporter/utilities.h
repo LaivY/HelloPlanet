@@ -27,6 +27,8 @@ struct Vertex
 
 struct Material
 {
+	Material() : name{}, baseColor{} { }
+
 	string		name;
 	XMFLOAT4	baseColor;
 };

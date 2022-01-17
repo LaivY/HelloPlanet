@@ -29,7 +29,7 @@ public:
 	XMFLOAT3 GetNormal(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
 	XMFLOAT2 GetUV(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
 	XMFLOAT4 GetColor(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
-	int GetMaterial(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
+	int GetMaterial(FbxMesh* mesh, int polygonIndex);
 
 	void ExportMesh();
 	void ExportAnimation();

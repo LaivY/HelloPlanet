@@ -35,7 +35,7 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	//m_blurFilter = make_unique<BlurFilter>(device);
 
 	// 조명, 재질 생성
-	CreateLightAndMeterial();
+	CreateLights();
 
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
@@ -140,28 +140,14 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 {
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_Reload.txt"), "RELOAD");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_Run.txt"), "RUN");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("player_aiming.txt"), "AIMING");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_reload.txt"), "RELOAD");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_run.txt"), "RUN");
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature);
-	//m_shaders["TEXTURE"] = make_shared<TextureShader>(device, rootSignature);
-	//m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature);
-	//m_shaders["TERRAIN"] = make_shared<TerrainShader>(device, rootSignature);
-	//m_shaders["TERRAINTESS"] = make_shared<TerrainTessShader>(device, rootSignature);
-	//m_shaders["TERRAINTESSWIRE"] = make_shared<TerrainTessWireShader>(device, rootSignature);
-	//m_shaders["BLENDING"] = make_shared<BlendingShader>(device, rootSignature);
-	//m_shaders["BLENDINGDEPTH"] = make_shared<BlendingDepthShader>(device, rootSignature);
-	//m_shaders["STENCIL"] = make_shared<StencilShader>(device, rootSignature);
-	//m_shaders["MIRROR"] = make_shared<MirrorShader>(device, rootSignature);
-	//m_shaders["MIRRORTEXTURE"] = make_shared<MirrorTextureShader>(device, rootSignature);
-	//m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature);
-	//m_shaders["SHADOW"] = make_shared<ShadowShader>(device, rootSignature);
-	//m_shaders["HORZBLUR"] = make_shared<HorzBlurShader>(device, postProcessRootSignature);
-	//m_shaders["VERTBLUR"] = make_shared<VertBlurShader>(device, postProcessRootSignature);
-	//m_shaders["STREAM"] = make_shared<StreamShader>(device, rootSignature);
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -169,23 +155,9 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 }
 
-void Scene::CreateLightAndMeterial()
+void Scene::CreateLights()
 {
-	// 씬 전체를 감싸는 조명
-	m_cbSceneData->ligths[0].isActivate = true;
-	m_cbSceneData->ligths[0].type = DIRECTIONAL_LIGHT;
-	m_cbSceneData->ligths[0].strength = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
-	m_cbSceneData->ligths[0].direction = XMFLOAT3{ 1.0f, -1.0f, 1.0f };
 
-	// 탱크 재질
-	m_cbSceneData->materials[0].diffuseAlbedo = XMFLOAT4{ 0.1f, 0.1f, 0.1f, 1.0f };
-	m_cbSceneData->materials[0].fresnelR0 = XMFLOAT3{ 0.95f, 0.93f, 0.88f };
-	m_cbSceneData->materials[0].roughness = 0.05f;
-
-	// 지형 재질
-	m_cbSceneData->materials[1].diffuseAlbedo = XMFLOAT4{ 0.1f, 0.1f, 0.1f, 1.0f };
-	m_cbSceneData->materials[1].fresnelR0 = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
-	m_cbSceneData->materials[1].roughness = 0.95f;
 }
 
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -204,7 +176,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto player{ make_shared<Player>() };
 	player->SetMesh(m_meshes.at("PLAYER"));
 	player->SetShader(m_shaders.at("DEFAULT"));
-	player->PlayAnimation("RUN");
+	player->PlayAnimation("AIMING");
 	SetPlayer(player);
 
 	// 카메라, 플레이어 서로 설정
@@ -222,8 +194,7 @@ void Scene::ReleaseUploadBuffer()
 
 void Scene::Update(FLOAT deltaTime)
 {
-	//RemoveDeletedObjects();
-	//UpdateObjectsTerrain();
+	UpdateLights(deltaTime);
 }
 
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
@@ -246,49 +217,32 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	// 씬 셰이더 변수 최신화
-	// 씬을 모두 감싸는 바운딩 구
-	BoundingSphere sceneSphere{ XMFLOAT3{ 0.0f, 0.0f, 0.0f }, 128.5f * sqrt(2.0f) };
-
-	// 메쉬 정점을 조명 좌표계로 바꿔주는 행렬 계산
-	XMFLOAT3 lightDir{ 1.0f, -1.0f, 1.0f };
-	XMFLOAT3 lightPos{ Vector3::Mul(lightDir, -2.0f * sceneSphere.Radius) };
-	XMFLOAT3 targetPos{ sceneSphere.Center };
-	XMFLOAT3 lightUp{ 0.0f, 1.0f, 0.0f };
-
-	XMFLOAT4X4 lightViewMatrix;
-	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&lightPos), XMLoadFloat3(&targetPos), XMLoadFloat3(&lightUp)));
-
-	// 조명 좌표계에서의 씬 구 원점
-	XMFLOAT3 sphereCenterLS{ Vector3::TransformCoord(targetPos, lightViewMatrix) };
-
-	// 직교 투영 행렬 설정
-	float l = sphereCenterLS.x - sceneSphere.Radius;
-	float b = sphereCenterLS.y - sceneSphere.Radius;
-	float n = sphereCenterLS.z - sceneSphere.Radius;
-	float r = sphereCenterLS.x + sceneSphere.Radius;
-	float t = sphereCenterLS.y + sceneSphere.Radius;
-	float f = sphereCenterLS.z + sceneSphere.Radius;
-	XMFLOAT4X4 lightProjMatrix;
-	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicOffCenterLH(l, r, b, t, n, f));
-
-	// 상수 버퍼 데이터에 저장
-	m_cbSceneData->lightViewMatrix = Matrix::Transpose(lightViewMatrix);
-	m_cbSceneData->lightProjMatrix = Matrix::Transpose(lightProjMatrix);
-	m_cbSceneData->NDCToTextureMatrix = Matrix::Transpose(
-	{
-		0.5f,  0.0f, 0.0f, 0.0f,
-		0.0f, -0.5f, 0.0f, 0.0f,
-		0.0f,  0.0f, 1.0f, 0.0f,
-		0.5f,  0.5f, 0.0f, 1.0f
-	});
-
-	// 셰이더로 복사
-	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
+	// 조명 셰이더 변수 최신화
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());
 
 	// 카메라 셰이더 변수 최신화
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);
+}
+
+void Scene::UpdateLights(FLOAT deltaTime)
+{
+	// 0 ~ 2pi
+	static float t{ 0.0f };
+
+	float radius{ 50.0f };
+	XMFLOAT3 position{ radius * cosf(t), 0.0f, radius * sinf(t) };
+	XMFLOAT3 direction{ Vector3::Normalize(Vector3::Mul(position, -1)) };
+
+	// 데이터 설정
+	m_cbSceneData->ligths[0].position = position;
+	m_cbSceneData->ligths[0].direction = direction;
+	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
+
+	t += 0.5f * deltaTime;
+	if (t >= 2.0f * 3.141592f)
+	{
+		t = 0.0f;
+	}
 }
 
 void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

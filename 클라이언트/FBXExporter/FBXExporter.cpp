@@ -62,12 +62,12 @@ void FBXExporter::LoadMaterials()
 	{
 		FbxSurfaceMaterial* material{ m_scene->GetMaterial(i) };
 
-		Material m{};
+		Material m;
 		m.name = material->GetName();
-		if (FbxProperty p = material->FindPropertyHierarchical("3dsMax|Parameters|base_color"); p.IsValid())
+		if (FbxProperty p{ material->FindPropertyHierarchical("3dsMax|Parameters|base_color") }; p.IsValid())
 		{
-			FbxColor a = p.Get<FbxColor>();
-			m.baseColor = XMFLOAT4{ static_cast<float>(a[0]), static_cast<float>(a[1]), static_cast<float>(a[2]), static_cast<float>(a[3]) };
+			FbxColor baseColor{ p.Get<FbxColor>() };
+			m.baseColor = XMFLOAT4{ static_cast<float>(baseColor[0]), static_cast<float>(baseColor[1]), static_cast<float>(baseColor[2]), static_cast<float>(baseColor[3]) };
 		}
 		//if (FbxProperty p{ material->FindProperty("AmbientColor") }; p.IsValid())
 		//{
@@ -244,7 +244,7 @@ void FBXExporter::LoadVertices(FbxNode* node)
 			vertex.position = ctrlPoint.position;
 			vertex.normal = GetNormal(mesh, ctrlPointIndex, vertexCountIndex);
 			vertex.uv = GetUV(mesh, ctrlPointIndex, vertexCountIndex);
-			vertex.materialIndex = GetMaterial(mesh, ctrlPointIndex, vertexCountIndex);
+			vertex.materialIndex = GetMaterial(mesh, i);
 			vertex.boneIndices = XMUINT4(ctrlPoint.weights[0].first, ctrlPoint.weights[1].first, ctrlPoint.weights[2].first, ctrlPoint.weights[3].first);
 			vertex.boneWeights = XMFLOAT4(ctrlPoint.weights[0].second, ctrlPoint.weights[1].second, ctrlPoint.weights[2].second, ctrlPoint.weights[3].second);
 			m_vertices.push_back(move(vertex));
@@ -367,13 +367,13 @@ XMFLOAT4 FBXExporter::GetColor(FbxMesh * mesh, int controlPointIndex, int vertex
 	return XMFLOAT4(result[0], result[1], result[2], result[3]);
 }
 
-int FBXExporter::GetMaterial(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex)
+int FBXExporter::GetMaterial(FbxMesh* mesh, int polygonIndex)
 {
 	FbxGeometryElementMaterial* material{ mesh->GetElementMaterial(0) };
 	if (material->GetMappingMode() == FbxGeometryElement::eByPolygon &&
 		material->GetReferenceMode() == FbxGeometryElement::eIndexToDirect)
 	{
-		return material->GetIndexArray().GetAt(vertexCountIndex);
+		return material->GetIndexArray().GetAt(polygonIndex);
 	}
 	return -1;
 }
