@@ -217,7 +217,7 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	// 조명 셰이더 변수 최신화
+	// 씬 셰이더 변수 최신화
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());
 
 	// 카메라 셰이더 변수 최신화
@@ -238,7 +238,7 @@ void Scene::UpdateLights(FLOAT deltaTime)
 	m_cbSceneData->ligths[0].direction = direction;
 	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
 
-	t += 0.5f * deltaTime;
+	t += 0.25f * deltaTime;
 	if (t >= 2.0f * 3.141592f)
 	{
 		t = 0.0f;

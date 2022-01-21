@@ -8,15 +8,22 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_tex
 
 void GameObject::OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame)
 {
-	if (currFrame >= endFrame)
+	if (m_animationInfo->beforeAnimationName.empty()) // 애니메이션 프레임 진행 중
 	{
-		PlayAnimation(animationName);
-		//if (animationName == "AIMING")
-		//	PlayAnimation("RELOAD");
-		//else if (animationName == "RELOAD")
-		//	PlayAnimation("RUN");
-		//else if (animationName == "RUN")
-		//	PlayAnimation("AIMING");
+		if (currFrame >= endFrame)
+		{
+			if (animationName == "AIMING")
+				PlayAnimation("RUN", TRUE);
+			else
+				PlayAnimation("AIMING");
+		}
+	}
+	else // 애니메이션 블렌딩 진행 중
+	{
+		if (currFrame >= endFrame)
+		{
+			PlayAnimation(m_animationInfo->animationName);
+		}
 	}
 }
 
@@ -30,13 +37,7 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
 
 	// 메쉬 렌더링
-	if (m_mesh)
-	{
-		if (m_animationInfo)
-			m_mesh->Render(commandList, this);
-		else
-			m_mesh->Render(commandList);
-	}
+	if (m_mesh) m_mesh->Render(commandList, this);
 }
 
 void GameObject::Update(FLOAT deltaTime)
@@ -67,7 +68,11 @@ void GameObject::Update(FLOAT deltaTime)
 	}
 
 	// 타이머 진행
-	if (m_animationInfo) m_animationInfo->timer += deltaTime;
+	if (m_animationInfo)
+	{
+		m_animationInfo->timer += deltaTime;
+		m_animationInfo->blendingTimer += deltaTime;
+	}
 }
 
 void GameObject::Move(const XMFLOAT3& shift)
@@ -122,9 +127,18 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 	m_textureInfo = move(textureInfo);
 }
 
-void GameObject::PlayAnimation(const string& animationName)
+void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	if (!m_animationInfo) m_animationInfo = make_unique<AnimationInfo>();
+	if (doBlending)
+	{
+		m_animationInfo->beforeAnimationName = m_animationInfo->animationName;
+		m_animationInfo->blendingTimer = 0.0f;
+	}
+	else
+	{
+		m_animationInfo->beforeAnimationName.clear();
+		m_animationInfo->timer = 0.0f;
+	}
 	m_animationInfo->animationName = animationName;
-	m_animationInfo->timer = 0.0f;
 }

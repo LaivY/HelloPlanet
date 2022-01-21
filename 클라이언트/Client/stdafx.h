@@ -165,7 +165,7 @@ namespace Matrix
         XMFLOAT4X4 result;
         for (int i = 0; i < 4; ++i)
             for (int j = 0; j < 4; ++j)
-                result.m[i][j] = a.m[i][j] * (1.0f - t) + b.m[i][j] * t;
+                result.m[i][j] = lerp(a.m[i][j], b.m[i][j], t);
         return result;
     }
     inline XMFLOAT4X4 Identity()

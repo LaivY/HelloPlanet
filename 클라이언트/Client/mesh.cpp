@@ -43,6 +43,9 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 	}
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+
+	// 상수 버퍼가 없다면 생성
+	if (!m_cbMesh) CreateShaderVariable(device, commandList);
 }
 
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
@@ -74,7 +77,7 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	}
 	m_animations[animationName] = move(animation);
 
-	// 애니메이션을 처음 불러온거라면 상수 버퍼를 만듦
+	// 상수 버퍼가 없다면 생성
 	if (!m_cbMesh) CreateShaderVariable(device, commandList);
 }
 
@@ -114,33 +117,68 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
 {
+	// 재질
 	for (int i = 0; i < MAX_MATERIAL; ++i)
 		m_pcbMesh->materials[i] = m_materials[i];
+
+	// 애니메이션
+	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() }; aniInfo)
+	{
+		if (aniInfo->beforeAnimationName.empty()) // 프레임 진행
+		{
+			const Animation& ani{ m_animations.at(aniInfo->animationName) };
+			float frame{ aniInfo->timer / (1.0f / 24.0f) };
+			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), m_animations.at(aniInfo->animationName).length - 1) };
+			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), m_animations.at(aniInfo->animationName).length - 1) };
+			float t{ frame - static_cast<int>(frame) };
+
+			for (int i = 0; i < ani.joints.size(); ++i)
+			{
+				XMFLOAT4X4 m{ Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
+												  ani.joints[i].animationTransformMatrix[nextFrame],
+												  t) };
+				m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
+			}
+			object->OnAnimation(aniInfo->animationName, frame, m_animations.at(aniInfo->animationName).length);
+		}
+		else // 애니메이션 블렌딩
+		{
+			// before -> after로 애니메이션 블렌딩 진행
+			const Animation& beforeAni{ m_animations.at(aniInfo->beforeAnimationName) };
+			const Animation& afterAni{ m_animations.at(aniInfo->animationName) };
+
+			float frame{ aniInfo->timer / (1.0f / 24.0f) };
+			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), beforeAni.length - 1) };
+			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), beforeAni.length - 1) };
+			float t1{ frame - static_cast<int>(frame) };
+
+			// 애니메이션 블렌딩은 n프레임에 걸쳐되도록 설정
+			UINT iFrame{ 3 };
+			float blendingFrame{ iFrame * (1.0f / 24.0f) };
+			float t2{ clamp(aniInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
+
+			for (int i = 0; i < beforeAni.joints.size(); ++i)
+			{
+				XMFLOAT4X4 before{ Matrix::Interpolate(beforeAni.joints[i].animationTransformMatrix.at(currFrame),
+													   beforeAni.joints[i].animationTransformMatrix.at(nextFrame),
+													   t1) };
+				XMFLOAT4X4 after{ afterAni.joints[i].animationTransformMatrix[0] };
+				XMFLOAT4X4 m{ Matrix::Interpolate(before, after, t2) };
+				m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
+			}
+			object->OnAnimation("BLENDING", aniInfo->blendingTimer / (1.0f / 24.0f), iFrame);
+		}
+	}
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, const FLOAT& frame) const
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
 {
-	UINT currFrame{ static_cast<UINT>(floorf(frame)) };
-	UINT nextFrame{ static_cast<UINT>(ceilf(frame)) };
-	currFrame = min(currFrame, m_animations.at(animationName).length - 1);
-	nextFrame = min(nextFrame, m_animations.at(animationName).length - 1);
+	// 애니메이션
+	UpdateShaderVariable(commandList, object);
 
-	const Animation& ani{ m_animations.at(animationName) };
-	for (int i = 0; i < ani.joints.size(); ++i)
-	{
-		XMFLOAT4X4 m{ Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
-										  ani.joints[i].animationTransformMatrix[nextFrame],
-										  frame - static_cast<int>(frame)) };
-		m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
-	}
-	Mesh::UpdateShaderVariable(commandList);
-}
-
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
-{
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	if (m_nIndices)
@@ -149,26 +187,6 @@ void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 		commandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
 	}
 	else commandList->DrawInstanced(m_nVertices, 1, 0, 0);
-}
-
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
-{
-	// 애니메이션
-	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() }; aniInfo)
-	{
-		const Animation& ani{ m_animations.at(aniInfo->animationName) };
-		float frame{ aniInfo->timer / (1.0f / 24.0f) };
-		UINT length{ ani.length };
-		if (m_cbMesh)
-		{
-			frame = clamp(frame, 0.0f, static_cast<float>(length));
-			UpdateShaderVariable(commandList, aniInfo->animationName, frame);
-
-			// 애니메이션 콜백 함수 호출
-			object->OnAnimation(aniInfo->animationName, frame, length);
-		}
-	}
-	Mesh::Render(commandList);
 }
 
 void Mesh::ReleaseUploadBuffer()

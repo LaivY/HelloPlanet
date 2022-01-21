@@ -57,9 +57,7 @@ public:
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
-	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& animationName, const FLOAT& frame) const;
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const;
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const;
 	void ReleaseUploadBuffer();
 

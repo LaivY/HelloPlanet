@@ -18,10 +18,13 @@ struct TextureInfo
 
 struct AnimationInfo
 {
-	AnimationInfo() : animationName{}, timer{} { }
+	AnimationInfo() : animationName{}, timer{}, beforeAnimationName{}, blendingTimer{} { }
 
 	string	animationName;
 	FLOAT	timer;
+
+	string	beforeAnimationName;
+	FLOAT	blendingTimer;
 };
 
 class GameObject
@@ -43,7 +46,7 @@ public:
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
-	void PlayAnimation(const string& animationName);
+	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
 	XMFLOAT3 GetRight() const { return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 }; }
