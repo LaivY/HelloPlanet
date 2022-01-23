@@ -55,8 +55,8 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	int dy = newMousePosition.y - oldMousePosition.y;
 	float sensitive{ 2.5f };
 	
-	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
-	//if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+	//if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 
 	// 마우스를 화면 가운데로 이동
 	SetCursorPos(oldMousePosition.x, oldMousePosition.y);
@@ -81,36 +81,40 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
 {
-	if (GetAsyncKeyState('W') & 0x8000)
-	{
-		m_camera->Move(m_camera->GetAt());
-	}
-	if (GetAsyncKeyState('A') & 0x8000)
-	{
-		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
-		m_camera->Move(Vector3::Mul(right, -1));
-	}
-	if (GetAsyncKeyState('S') & 0x8000)
-	{
-		m_camera->Move(Vector3::Mul(m_camera->GetAt(), -1));
-	}
-	if (GetAsyncKeyState('D') & 0x8000)
-	{
-		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
-		m_camera->Move(right);
-	}
-	if (GetAsyncKeyState(' ') & 0x8000)
-	{
-		m_camera->Move(XMFLOAT3{ 0.0f, 1.0f, 0.0f });
-	}
-	if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-	{
-		m_camera->Move(XMFLOAT3{ 0.0f, -1.0f, 0.0f });
-	}
+	//static const float speed{ 2.0f * deltaTime };
+	//if (GetAsyncKeyState('A') & 0x8000)
+	//{
+	//	XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+	//	m_camera->Move(Vector3::Mul(right, -1.0f * speed));
+	//}
+	//if (GetAsyncKeyState('S') & 0x8000)
+	//{
+	//	m_camera->Move(Vector3::Mul(m_camera->GetAt(), -1.0f * speed));
+	//}
+	//if (GetAsyncKeyState('D') & 0x8000)
+	//{
+	//	XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+	//	m_camera->Move(Vector3::Mul(right, speed));
+	//}
+	//if (GetAsyncKeyState(' ') & 0x8000)
+	//{
+	//	m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, speed));
+	//}
+	//if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+	//{
+	//	m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, -1.0f, 0.0f }, speed));
+	//}
 }
 
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (wParam == 'r' || wParam == 'R')
+	{
+		if (message == WM_KEYDOWN && m_player->GetAnimationInfo()->animationName != "RELOAD")
+		{
+			m_player->PlayAnimation("RELOAD");
+		}
+	}
 	if (wParam == VK_ESCAPE)
 	{
 		exit(0);
@@ -163,7 +167,7 @@ void Scene::CreateLights()
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라 생성
-	auto camera{ make_shared<Camera>() };
+	auto camera{ make_shared<ThirdPersonCamera>() };
 	camera->CreateShaderVariable(device, commandList);
 	SetCamera(camera);
 

@@ -6,9 +6,6 @@
 #include <windows.h>
 
 // C/C++
-#include <stdlib.h>
-#include <malloc.h>
-#include <memory.h>
 #include <tchar.h>
 #include <wrl.h>
 #include <algorithm>
@@ -17,7 +14,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <sstream>
 #include <map>
 #include <unordered_map>
 #include <vector>

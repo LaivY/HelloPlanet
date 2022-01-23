@@ -1,5 +1,6 @@
 #include "common.hlsl"
 #define ANIMATION
+//#define LIGHTING
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -27,7 +28,10 @@ PS_INPUT VS(VS_INPUT input)
 
 float4 PS(PS_INPUT input) : SV_TARGET
 {
+#ifdef LIGHTING
     float4 lightColor = Lighting(input.positionW, input.normalW);
     return g_materials[input.materialIndex].baseColor + lightColor;
-    //return g_materials[input.materialIndex].baseColor;
+#else
+    return g_materials[input.materialIndex].baseColor;
+#endif
 }

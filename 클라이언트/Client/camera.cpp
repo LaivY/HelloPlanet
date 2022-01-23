@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
-Camera::Camera() : m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_pcbCamera{ nullptr }
+Camera::Camera() : m_pcbCamera{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 0.0f, 0.0f }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -14,6 +14,8 @@ Camera::~Camera()
 
 void Camera::Update(FLOAT deltaTime)
 {
+	//if (m_player) SetEye(Vector3::Add(m_player->GetPosition(), m_offset));
+
 	// 카메라 뷰 변환 행렬 최신화
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
 }
@@ -55,7 +57,7 @@ void Camera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	}
 	if (pitch != 0.0f)
 	{
-		// x축(pitch)의 경우 MIN_PITCH ~ MAX_PITCH
+		// x축 회전각 제한
 		axis = XMLoadFloat3(&Vector3::Cross(m_up, m_at));
 		if (m_pitch + pitch > MAX_PITCH)
 		{
@@ -86,26 +88,41 @@ void Camera::SetPlayer(const shared_ptr<Player>& player)
 {
 	if (m_player) m_player.reset();
 	m_player = player;
-	SetEye(m_player->GetPosition());
 }
 
 // --------------------------------------
 
-ThirdPersonCamera::ThirdPersonCamera() : Camera{}, m_distance{ 500.0f }, m_delay{ 0.01f }
+ThirdPersonCamera::ThirdPersonCamera() : Camera{}, m_distance{ 70.0f }, m_delay{ 0.01f }
 {
-	m_offset = Vector3::Normalize(XMFLOAT3{ 0.0f, 1.0f, -5.0f });
+	m_focusOffset = XMFLOAT3{ 0.0f, 50.0f, 0.0f };
+	m_offset = Vector3::Normalize(XMFLOAT3{ 0.0f, 1.0f, -2.0f });
 }
 
 void ThirdPersonCamera::Update(FLOAT deltaTime)
 {
-	// 플레이어 위치 + 오프셋 위치로 이동
-	XMFLOAT3 destination{ Vector3::Add(m_player->GetPosition(), Vector3::Mul(m_offset, m_distance)) };
+	// 카메라가 바라보는 곳 : 플레이어 위치 + m_focusOffset
+	XMFLOAT3 focus{ Vector3::Add(m_player->GetPosition(), m_focusOffset) };
+
+	// 카메라의 목적지 : focus + m_offset * m_distance
+	XMFLOAT3 destination{ Vector3::Add(focus, Vector3::Mul(m_offset, m_distance)) };
+
+	// 현재 위치에서 목적지로의 벡터
 	XMFLOAT3 direction{ Vector3::Sub(destination, m_eye) };
+
+	// 이동
 	XMFLOAT3 shift{ Vector3::Mul(direction, fmax((1.0f - m_delay) * deltaTime * 10.0f, 0.01f)) };
 	SetEye(Vector3::Add(m_eye, shift));
 
+	// 항상 플레이어를 바라보도록 설정
+	XMFLOAT3 look{ Vector3::Sub(focus, m_eye) };
+	if (Vector3::Length(look))
+		m_at = Vector3::Normalize(look);
+
 	// 카메라 뷰 변환 행렬 최신화
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
+
+	//string str{ to_string(m_roll) + ", " + to_string(m_pitch) + ", " + to_string(m_yaw) + "\n" };
+	//OutputDebugStringA(str.c_str());
 }
 
 void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -115,7 +132,7 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 
 	if (roll != 0.0f)
 	{
-		XMFLOAT3 right{ m_player->GetRight() };
+		XMFLOAT3 right{ m_player->GetLook() };
 		right.y = 0.0f;
 		right = Vector3::Normalize(right);
 		axis = XMLoadFloat3(&right);
@@ -124,12 +141,27 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	}
 	if (pitch != 0.0f)
 	{
-		XMFLOAT3 look{ m_player->GetLook() };
+		XMFLOAT3 look{ m_player->GetRight() };
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
 		axis = XMLoadFloat3(&look);
-		rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(pitch));
-		m_pitch += pitch;
+
+		// x축 회전각 제한
+		if (m_pitch + pitch > MAX_PITCH)
+		{
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MAX_PITCH - m_pitch));
+			m_pitch = MAX_PITCH;
+		}
+		else if (m_pitch + pitch < MIN_PITCH)
+		{
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MIN_PITCH - m_pitch));
+			m_pitch = MIN_PITCH;
+		}
+		else
+		{
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(pitch));
+			m_pitch += pitch;
+		}
 	}
 	if (yaw != 0.0f)
 	{
@@ -140,7 +172,7 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	XMStoreFloat3(&m_offset, XMVector3TransformNormal(XMLoadFloat3(&m_offset), rotate));
 
 	// 항상 플레이어를 바라보도록 설정
-	XMFLOAT3 look{ Vector3::Sub(m_player->GetPosition(), m_eye) };
-	if (Vector3::Length(look))
-		m_at = look;
+	//XMFLOAT3 look{ Vector3::Sub(m_player->GetPosition(), m_eye) };
+	//if (Vector3::Length(look))
+	//	m_at = Vector3::Normalize(look);
 }

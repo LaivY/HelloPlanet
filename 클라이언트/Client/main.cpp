@@ -123,6 +123,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         g_GameFramework.OnMouseEvent(hWnd, message, wParam, lParam);
         break;
     case WM_KEYDOWN:
+    case WM_KEYUP:
         g_GameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
         break;
     case WM_DESTROY:

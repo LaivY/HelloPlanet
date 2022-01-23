@@ -73,7 +73,6 @@ void GameFramework::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPAR
 	if (m_scene) m_scene->OnKeyboardEvent(hWnd, message, wParam, lParam);
 }
 
-
 void GameFramework::Update(FLOAT deltaTime)
 {
 	wstring title{ TEXT("DirectX12 (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };

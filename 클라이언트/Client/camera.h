@@ -3,7 +3,7 @@
 #include "player.h"
 
 #define MAX_PITCH +60
-#define MIN_PITCH -80
+#define MIN_PITCH -60
 
 struct cbCamera
 {
@@ -41,6 +41,9 @@ protected:
 	XMFLOAT4X4				m_viewMatrix;	// 뷰변환 행렬
 	XMFLOAT4X4				m_projMatrix;	// 투영변환 행렬
 
+	ComPtr<ID3D12Resource>	m_cbCamera;		// 상수 버퍼
+	cbCamera*				m_pcbCamera;	// 상수 버퍼 포인터
+
 	XMFLOAT3				m_eye;			// 카메라 위치
 	XMFLOAT3				m_at;			// 카메라가 바라보는 방향
 	XMFLOAT3				m_up;			// 카메라 Up벡터
@@ -50,9 +53,7 @@ protected:
 	FLOAT					m_yaw;			// z축 회전각
 
 	shared_ptr<Player>		m_player;		// 플레이어
-
-	ComPtr<ID3D12Resource>	m_cbCamera;		// 상수 버퍼
-	cbCamera*				m_pcbCamera;	// 상수 버퍼 포인터
+	XMFLOAT3				m_offset;		// 플레이어로부터 떨어져있는 위치
 };
 
 class ThirdPersonCamera : public Camera
@@ -64,15 +65,15 @@ public:
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 
-	XMFLOAT3 GetOffset() const { return m_offset; }
-	FLOAT GetDistance() const { return m_distance; }
-
-	void SetOffset(const XMFLOAT3& offset) { m_offset = offset; }
+	void SetFocusOffset(const XMFLOAT3& focusOffset) { m_focusOffset = focusOffset; }
 	void SetDistance(FLOAT distance) { m_distance = clamp(distance, 3.0f, 9999.0f); }
 	void SetDelay(FLOAT delay) { m_delay = delay; }
 
+	XMFLOAT3 GetFocusOffset() const { return m_focusOffset; }
+	FLOAT GetDistance() const { return m_distance; }
+
 private:
-	XMFLOAT3	m_offset;	// 플레이어로부터 떨어져있는 위치
-	FLOAT		m_distance;	// 오프셋 방향으로 떨어진 거리
-	FLOAT		m_delay;	// 움직임 딜레이 (0.0 ~ 1.0)
+	XMFLOAT3	m_focusOffset;	// 카메라가 바라볼 위치
+	FLOAT		m_distance;		// 오프셋 방향으로 떨어진 거리
+	FLOAT		m_delay;		// 움직임 딜레이 (0.0 ~ 1.0)
 };

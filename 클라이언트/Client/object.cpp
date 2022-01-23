@@ -12,10 +12,7 @@ void GameObject::OnAnimation(const string& animationName, FLOAT currFrame, UINT 
 	{
 		if (currFrame >= endFrame)
 		{
-			if (animationName == "AIMING")
-				PlayAnimation("RUN", TRUE);
-			else
-				PlayAnimation("AIMING");
+			PlayAnimation("AIMING", TRUE);
 		}
 	}
 	else // 애니메이션 블렌딩 진행 중
