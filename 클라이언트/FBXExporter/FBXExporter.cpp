@@ -131,7 +131,7 @@ void FBXExporter::LoadMesh(FbxNode* node)
 		m_meshes.back().name = node->GetName();
 		m_meshes.back().isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;		
 		if (m_meshes.back().isLinked)
-			m_meshes.back().parentName = node->GetParent()->GetName();
+			m_meshes.back().parentJointIndex = GetJointIndexByName(node->GetParent()->GetName());
 		LoadCtrlPoints(node, m_meshes.size() - 1);
 		LoadAnimation(node, m_meshes.size() - 1);
 		LoadVertices(node, m_meshes.size() - 1);
@@ -387,6 +387,49 @@ void FBXExporter::ExportMesh()
 {
 #define SEPARATE
 #ifdef SEPARATE
+	for (const Mesh& mesh : m_meshes)
+	{
+		ofstream file{ m_outputFileName + mesh.name + ".mesh.txt" };
+
+		// 정점 데이터
+		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
+		for (const auto& v : mesh.vertices)
+		{
+			// 위치, 노말, 텍스쳐 좌표
+			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
+			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
+			file << "T: " << v.uv.x << " " << v.uv.y << endl;
+
+			// 재질 인덱스
+			file << "MI: " << v.materialIndex << endl;
+
+			// 링크되어 있다면 링크된 뼈의 가중치를 1로 설정
+			if (mesh.isLinked)
+			{
+				file << "BI: " << mesh.parentJointIndex << " " << 0 << " " << 0 << " " << 0 << endl;
+				file << "BW: " << 1.0f << " " << 0.0f << " " << 0.0f << " " << 0.0f << endl;
+				file << endl;
+				continue;
+			}
+
+			// 뼈 인덱스
+			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
+
+			// 뼈 가중치
+			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
+			file << endl;
+		}
+
+		// 재질 데이터
+		file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
+		for (const auto& m : m_materials)
+		{
+			file << "NAME: " << m.name << endl;
+			file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
+			file << endl;
+		}
+	}
+#else
 	ofstream file{ m_outputFileName + ".mesh.txt" };
 
 	// 매쉬 개수
@@ -414,40 +457,6 @@ void FBXExporter::ExportMesh()
 			file << endl;
 		}
 	}
-#else
-	for (const Mesh& mesh : m_meshes)
-	{
-		ofstream file{ m_outputFileName + mesh.name + ".mesh.txt" };
-
-		// 정점 데이터
-		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
-		for (const auto& v : mesh.vertices)
-		{
-			// 위치, 노말, 텍스쳐 좌표
-			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
-			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
-			file << "T: " << v.uv.x << " " << v.uv.y << endl;
-
-			// 재질 인덱스
-			file << "MI: " << v.materialIndex << endl;
-
-			// 뼈 인덱스
-			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
-
-			// 뼈 가중치
-			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
-			file << endl;
-		}
-
-		// 재질 데이터
-		file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
-		for (const auto& m : m_materials)
-		{
-			file << "NAME: " << m.name << endl;
-			file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
-			file << endl;
-		}
-	}
 #endif
 }
 
@@ -456,8 +465,9 @@ void FBXExporter::ExportAnimation()
 	ofstream file{ m_outputFileName + "animation.ani.txt" };
 
 	// 애니메이션 데이터가 없는 조인트 삭제
-	m_joints.erase(remove_if(m_joints.begin(), m_joints.end(), [](const Joint& j) {
-		return j.keyframes.empty();
+	m_joints.erase(remove_if(m_joints.begin(), m_joints.end(), 
+		[](const Joint& j) {
+			return j.keyframes.empty();
 		}), m_joints.end());
 
 	// 조인트 개수, 애니메이션 길이

@@ -153,10 +153,14 @@ void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPt
 void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("player_aiming.txt"), "AIMING");
+	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
 	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_reload.txt"), "RELOAD");
 	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_walk.txt"), "WALK");
+
+	m_meshes["GUN"] = make_shared<Mesh>();
+	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
@@ -202,6 +206,13 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 카메라, 플레이어 서로 설정
 	camera->SetPlayer(player);
 	player->SetCamera(camera);
+
+	// 총
+	auto gun{ make_unique<GameObject>() };
+	gun->SetMesh(m_meshes.at("GUN"));
+	gun->SetShader(m_shaders.at("DEFAULT"));
+	gun->PlayAnimation("AIMING");
+	m_gameObjects.push_back(move(gun));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };

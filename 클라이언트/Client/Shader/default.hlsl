@@ -1,5 +1,5 @@
 #include "common.hlsl"
-//#define ANIMATION
+#define ANIMATION
 //#define LIGHTING
 
 PS_INPUT VS(VS_INPUT input)
@@ -11,7 +11,9 @@ PS_INPUT VS(VS_INPUT input)
 	for (int i = 0; i < 4; ++i)
 	{
 		posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
-	}
+        //int j = 2;
+        //posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[j]]);
+    }
 	output.positionW = mul(posL, g_worldMatrix);
 #else
 	output.positionW = mul(input.position, g_worldMatrix);

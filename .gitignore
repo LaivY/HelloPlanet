@@ -37,4 +37,6 @@
 x64/
 Debug/
 resource/
+target/
+result/
 .fbx

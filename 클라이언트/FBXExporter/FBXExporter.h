@@ -11,13 +11,65 @@
 using namespace DirectX;
 using namespace std;
 
+struct Vertex
+{
+	Vertex() : position{}, normal{}, uv{}, boneIndices{}, boneWeights{}, materialIndex{ -1 } { }
+
+	XMFLOAT3	position;
+	XMFLOAT3	normal;
+	XMFLOAT2	uv;
+	XMUINT4		boneIndices;
+	XMFLOAT4	boneWeights;
+	int			materialIndex;
+};
+
+struct Material
+{
+	Material() : name{}, baseColor{} { }
+
+	string		name;
+	XMFLOAT4	baseColor;
+};
+
+struct CtrlPoint
+{
+	CtrlPoint() : position{} { }
+
+	XMFLOAT3					position;
+	vector<pair<int, double>>	weights;
+};
+
+struct Keyframe
+{
+	Keyframe() : frameNum{}
+	{
+		aniTransMatrix.SetIdentity();
+	}
+
+	FbxLongLong frameNum;
+	FbxAMatrix	aniTransMatrix;
+};
+
+struct Joint
+{
+	Joint() : name{}, parentIndex{ -1 }
+	{
+		globalBindposeInverseMatrix.SetIdentity();
+	}
+
+	string				name;
+	int					parentIndex;
+	FbxAMatrix			globalBindposeInverseMatrix;
+	vector<Keyframe>	keyframes;
+};
+
 struct Mesh
 {
-	string				name;		// 이름
-	bool				isLinked;	// 링크 여부
-	string				parentName;	// 부모 이름
-	vector<CtrlPoint>	ctrlPoints;	// 제어점
-	vector<Vertex>		vertices;	// 정점
+	string				name;				// 이름
+	bool				isLinked;			// 링크 여부
+	int					parentJointIndex;	// 부모 인덱스
+	vector<CtrlPoint>	ctrlPoints;			// 제어점
+	vector<Vertex>		vertices;			// 정점
 };
 
 class FBXExporter
@@ -53,9 +105,6 @@ private:
 	vector<Material>		m_materials;		// 재질
 	vector<Joint>			m_joints;			// 뼈
 	vector<Mesh>			m_meshes;			// 메쉬
-
-	//vector<CtrlPoint>		ctrlPoints;			// 제어점
-	//vector<Vertex>			vertices;			// 정점
 
 	string					m_animationName;	// 애니메이션 이름
 	FbxLongLong				m_animationLength;	// 애니메이션 길이

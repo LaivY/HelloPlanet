@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <string>
-#include <vector>
 #include <DirectXMath.h>
 #include <fbxsdk.h>
 using namespace DirectX;
@@ -12,58 +10,6 @@ using namespace std;
 
 // 애니메이션 강의 유튜브
 // https://www.youtube.com/watch?v=RYW-ShkhY6Q
-
-struct Vertex
-{
-	Vertex() : position{}, normal{}, uv{}, boneIndices{}, boneWeights{}, materialIndex{ -1 } { }
-
-	XMFLOAT3	position;
-	XMFLOAT3	normal;
-	XMFLOAT2	uv;
-	XMUINT4		boneIndices;
-	XMFLOAT4	boneWeights;
-	int			materialIndex;
-};
-
-struct Material
-{
-	Material() : name{}, baseColor{} { }
-
-	string		name;
-	XMFLOAT4	baseColor;
-};
-
-struct CtrlPoint
-{
-	CtrlPoint() : position{} { }
-
-	XMFLOAT3					position;
-	vector<pair<int, double>>	weights;
-};
-
-struct Keyframe
-{
-	Keyframe() : frameNum{}
-	{
-		aniTransMatrix.SetIdentity(); 
-	}
-
-	FbxLongLong frameNum;
-	FbxAMatrix	aniTransMatrix;
-};
-
-struct Joint
-{
-	Joint() : name{}, parentIndex{ -1 }
-	{
-		globalBindposeInverseMatrix.SetIdentity();
-	}
-
-	string				name;
-	int					parentIndex;
-	FbxAMatrix			globalBindposeInverseMatrix;
-	vector<Keyframe>	keyframes;
-};
 
 namespace Utilities
 {
