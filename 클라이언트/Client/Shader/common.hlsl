@@ -1,6 +1,6 @@
 #include "lighting.hlsl"
-#define MAX_MATERIAL        5
-#define MAX_JOINT           96
+#define MAX_MATERIAL	99
+#define MAX_JOINT       96
 
 Texture2D g_texture                     : register(t0);
 Texture2D g_shadowMap                   : register(t1);

@@ -12,7 +12,10 @@ void GameObject::OnAnimation(const string& animationName, FLOAT currFrame, UINT 
 	{
 		if (currFrame >= endFrame)
 		{
-			PlayAnimation("AIMING", TRUE);
+			if (animationName == "RELOAD")
+				PlayAnimation("AIMING", TRUE);
+			else
+				PlayAnimation(animationName);
 		}
 	}
 	else // 애니메이션 블렌딩 진행 중

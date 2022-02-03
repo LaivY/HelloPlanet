@@ -127,15 +127,20 @@ void FBXExporter::LoadMesh(FbxNode* node)
 {
 	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
 	{
-		LoadCtrlPoints(node);
-		LoadAnimation(node);
-		LoadVertices(node);
+		m_meshes.push_back({});
+		m_meshes.back().name = node->GetName();
+		m_meshes.back().isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;		
+		if (m_meshes.back().isLinked)
+			m_meshes.back().parentName = node->GetParent()->GetName();
+		LoadCtrlPoints(node, m_meshes.size() - 1);
+		LoadAnimation(node, m_meshes.size() - 1);
+		LoadVertices(node, m_meshes.size() - 1);
 	}
 	for (int i = 0; i < node->GetChildCount(); ++i)
 		LoadMesh(node->GetChild(i));
 }
 
-void FBXExporter::LoadCtrlPoints(FbxNode* node)
+void FBXExporter::LoadCtrlPoints(FbxNode* node, int meshIndex)
 {
 	FbxMesh* mesh{ node->GetMesh() };
 	for (int i = 0; i < mesh->GetControlPointsCount(); ++i)
@@ -146,11 +151,11 @@ void FBXExporter::LoadCtrlPoints(FbxNode* node)
 			static_cast<float>(mesh->GetControlPointAt(i)[1]),
 			static_cast<float>(mesh->GetControlPointAt(i)[2])
 		};
-		m_ctrlPoints.push_back(ctrlPoint);
+		m_meshes[meshIndex].ctrlPoints.push_back(ctrlPoint);
 	}
 }
 
-void FBXExporter::LoadAnimation(FbxNode* node)
+void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 {
 	FbxMesh* mesh{ node->GetMesh() };
 	FbxAMatrix geometryTransform{ Utilities::GetGeometryTransformation(node) }; // 거의 항등행렬
@@ -171,7 +176,7 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 			{
 				int index{ cluster->GetControlPointIndices()[cpi] };
 				double weight{ cluster->GetControlPointWeights()[cpi] };
-				m_ctrlPoints[index].weights.push_back(make_pair(ji, weight));
+				m_meshes[meshIndex].ctrlPoints[index].weights.push_back(make_pair(ji, weight));
 			}
 
 			// 메쉬 변환 행렬
@@ -201,7 +206,7 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 				FbxTime curr;
 				curr.SetFrame(i, FbxTime::eFrames24);
 
-				// curr일 때의 T-pose -> 루트 좌표계 변환 행렬
+				// curr 시간 일 때의 T-pose -> 루트 좌표계 변환 행렬
 				FbxAMatrix toRoot{ (node->EvaluateGlobalTransform(curr) * geometryTransform).Inverse() };
 
 				Keyframe keyframe;
@@ -213,12 +218,12 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 	}
 
 	// 제어점 중 가충치를 4개 이하로 갖고있는 제어점들은 4개로 채워줌
-	for (CtrlPoint& ctrlPoint : m_ctrlPoints)
+	for (CtrlPoint& ctrlPoint : m_meshes[meshIndex].ctrlPoints)
 		for (int i = ctrlPoint.weights.size(); i < 4; ++i)
 			ctrlPoint.weights.push_back(make_pair(0, 0.0));
 
 	// 제어점이 갖고있는 가중치 정보를 가중치가 높은 순서로 정렬
-	for (CtrlPoint& ctrlPoint : m_ctrlPoints)
+	for (CtrlPoint& ctrlPoint : m_meshes[meshIndex].ctrlPoints)
 	{
 		partial_sort(ctrlPoint.weights.begin(), ctrlPoint.weights.begin() + 4, ctrlPoint.weights.end(),
 			[](const auto& a, const auto& b) {
@@ -227,7 +232,7 @@ void FBXExporter::LoadAnimation(FbxNode* node)
 	}
 }
 
-void FBXExporter::LoadVertices(FbxNode* node)
+void FBXExporter::LoadVertices(FbxNode* node, int meshIndex)
 {
 	FbxMesh* mesh{ node->GetMesh() };
 
@@ -238,7 +243,7 @@ void FBXExporter::LoadVertices(FbxNode* node)
 		{
 			// i번째 삼각형의 j번째 제어점
 			int ctrlPointIndex{ mesh->GetPolygonVertex(i, j) };
-			const CtrlPoint& ctrlPoint{ m_ctrlPoints[ctrlPointIndex] };
+			const CtrlPoint& ctrlPoint{ m_meshes[meshIndex].ctrlPoints[ctrlPointIndex] };
 
 			Vertex vertex;
 			vertex.position = ctrlPoint.position;
@@ -247,7 +252,7 @@ void FBXExporter::LoadVertices(FbxNode* node)
 			vertex.materialIndex = GetMaterial(mesh, i);
 			vertex.boneIndices = XMUINT4(ctrlPoint.weights[0].first, ctrlPoint.weights[1].first, ctrlPoint.weights[2].first, ctrlPoint.weights[3].first);
 			vertex.boneWeights = XMFLOAT4(ctrlPoint.weights[0].second, ctrlPoint.weights[1].second, ctrlPoint.weights[2].second, ctrlPoint.weights[3].second);
-			m_vertices.push_back(move(vertex));
+			m_meshes[meshIndex].vertices.push_back(move(vertex));
 
 			// 정점 개수 증가
 			++vertexCountIndex;
@@ -380,41 +385,80 @@ int FBXExporter::GetMaterial(FbxMesh* mesh, int polygonIndex)
 
 void FBXExporter::ExportMesh()
 {
-	// 아직 개발 단계이기 때문에 메모장으로 열어 확인할 수 있도록 저장한다.
-	ofstream file{ m_outputFileName + ".mesh" };
+#define SEPARATE
+#ifdef SEPARATE
+	ofstream file{ m_outputFileName + ".mesh.txt" };
 
-	// 정점, 재질 개수
-	file << "VERTEX_COUNT: " << m_vertices.size() << endl << endl;
-	for (const auto& v : m_vertices)
+	// 매쉬 개수
+	file << "MESH_COUNT: " << m_meshes.size() << endl << endl;
+	for (const Mesh& mesh : m_meshes)
 	{
-		// 위치, 노말, 텍스쳐 좌표
-		file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
-		file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
-		file << "T: " << v.uv.x << " " << v.uv.y << endl;
+		// 정점, 재질 개수
+		file << "MESH_NAME: " << mesh.name << endl;
+		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
+		for (const auto& v : mesh.vertices)
+		{
+			// 위치, 노말, 텍스쳐 좌표
+			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
+			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
+			file << "T: " << v.uv.x << " " << v.uv.y << endl;
 
-		// 재질 인덱스
-		file << "MI: " << v.materialIndex << endl;
+			// 재질 인덱스
+			file << "MI: " << v.materialIndex << endl;
 
-		// 뼈 인덱스
-		file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
+			// 뼈 인덱스
+			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
 
-		// 뼈 가중치
-		file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
-		file << endl;
+			// 뼈 가중치
+			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
+			file << endl;
+		}
 	}
-
-	file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
-	for (const auto& m : m_materials)
+#else
+	for (const Mesh& mesh : m_meshes)
 	{
-		file << "NAME: " << m.name << endl;
-		file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
-		file << endl;
+		ofstream file{ m_outputFileName + mesh.name + ".mesh.txt" };
+
+		// 정점 데이터
+		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
+		for (const auto& v : mesh.vertices)
+		{
+			// 위치, 노말, 텍스쳐 좌표
+			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
+			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
+			file << "T: " << v.uv.x << " " << v.uv.y << endl;
+
+			// 재질 인덱스
+			file << "MI: " << v.materialIndex << endl;
+
+			// 뼈 인덱스
+			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
+
+			// 뼈 가중치
+			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
+			file << endl;
+		}
+
+		// 재질 데이터
+		file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
+		for (const auto& m : m_materials)
+		{
+			file << "NAME: " << m.name << endl;
+			file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
+			file << endl;
+		}
 	}
+#endif
 }
 
 void FBXExporter::ExportAnimation()
 {
-	ofstream file{ m_outputFileName + ".ani" };
+	ofstream file{ m_outputFileName + "animation.ani.txt" };
+
+	// 애니메이션 데이터가 없는 조인트 삭제
+	m_joints.erase(remove_if(m_joints.begin(), m_joints.end(), [](const Joint& j) {
+		return j.keyframes.empty();
+		}), m_joints.end());
 
 	// 조인트 개수, 애니메이션 길이
 	file << "JOINT_COUNT: " << m_joints.size() << endl;

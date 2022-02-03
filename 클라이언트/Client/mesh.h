@@ -74,15 +74,22 @@ protected:
 
 	D3D_PRIMITIVE_TOPOLOGY				m_primitiveTopology;
 
-	vector<Material>					m_materials;
-	unordered_map<string, Animation>	m_animations;
 	ComPtr<ID3D12Resource>				m_cbMesh;
 	cbMesh*								m_pcbMesh;
+	vector<Material>					m_materials;
+	unordered_map<string, Animation>	m_animations;
+};
+
+class RectMesh : public Mesh
+{
+public:
+	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height);
+	~RectMesh() = default;
 };
 
 class BillboardMesh : public Mesh
 {
 public:
-	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT2& size);
+	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height);
 	~BillboardMesh() = default;
 };

@@ -1,4 +1,5 @@
 ﻿#include "scene.h"
+#define FREEVIEW
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT), 0.0f, 1.0f },
@@ -55,8 +56,11 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	int dy = newMousePosition.y - oldMousePosition.y;
 	float sensitive{ 2.5f };
 	
-	//if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+#ifdef FREEVIEW
+	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+#else
 	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+#endif
 
 	// 마우스를 화면 가운데로 이동
 	SetCursorPos(oldMousePosition.x, oldMousePosition.y);
@@ -81,29 +85,35 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
 {
-	//static const float speed{ 2.0f * deltaTime };
-	//if (GetAsyncKeyState('A') & 0x8000)
-	//{
-	//	XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
-	//	m_camera->Move(Vector3::Mul(right, -1.0f * speed));
-	//}
-	//if (GetAsyncKeyState('S') & 0x8000)
-	//{
-	//	m_camera->Move(Vector3::Mul(m_camera->GetAt(), -1.0f * speed));
-	//}
-	//if (GetAsyncKeyState('D') & 0x8000)
-	//{
-	//	XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
-	//	m_camera->Move(Vector3::Mul(right, speed));
-	//}
-	//if (GetAsyncKeyState(' ') & 0x8000)
-	//{
-	//	m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, speed));
-	//}
-	//if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-	//{
-	//	m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, -1.0f, 0.0f }, speed));
-	//}
+#ifdef FREEVIEW
+	static const float speed{ 10.0f * deltaTime };
+	if (GetAsyncKeyState('W') & 0x8000)
+	{
+		m_camera->Move(Vector3::Mul(m_camera->GetAt(), speed));
+	}
+	if (GetAsyncKeyState('A') & 0x8000)
+	{
+		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+		m_camera->Move(Vector3::Mul(right, -1.0f * speed));
+	}
+	if (GetAsyncKeyState('S') & 0x8000)
+	{
+		m_camera->Move(Vector3::Mul(m_camera->GetAt(), -1.0f * speed));
+	}
+	if (GetAsyncKeyState('D') & 0x8000)
+	{
+		XMFLOAT3 right{ Vector3::Cross(m_camera->GetUp(), m_camera->GetAt()) };
+		m_camera->Move(Vector3::Mul(right, speed));
+	}
+	if (GetAsyncKeyState(' ') & 0x8000)
+	{
+		m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, speed));
+	}
+	if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+	{
+		m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, -1.0f, 0.0f }, speed));
+	}
+#endif
 }
 
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -145,8 +155,10 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("player_aiming.txt"), "AIMING");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_reload.txt"), "RELOAD");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_run.txt"), "RUN");
+	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_reload.txt"), "RELOAD");
+	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_walk.txt"), "WALK");
+
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -167,7 +179,11 @@ void Scene::CreateLights()
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라 생성
+#ifdef FREEVIEW
+	auto camera{ make_shared<Camera>() };
+#else
 	auto camera{ make_shared<ThirdPersonCamera>() };
+#endif
 	camera->CreateShaderVariable(device, commandList);
 	SetCamera(camera);
 
@@ -186,6 +202,14 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 카메라, 플레이어 서로 설정
 	camera->SetPlayer(player);
 	player->SetCamera(camera);
+
+	// 바닥
+	auto floor{ make_unique<GameObject>() };
+	floor->Rotate(0.0f, 90.0f, 0.0f);
+	floor->SetPosition(XMFLOAT3{ 0.0f, -100.0f, 0.0f });
+	floor->SetMesh(m_meshes.at("FLOOR"));
+	floor->SetShader(m_shaders.at("DEFAULT"));
+	m_gameObjects.push_back(move(floor));
 }
 
 void Scene::ReleaseUploadBuffer()

@@ -11,6 +11,15 @@
 using namespace DirectX;
 using namespace std;
 
+struct Mesh
+{
+	string				name;		// 이름
+	bool				isLinked;	// 링크 여부
+	string				parentName;	// 부모 이름
+	vector<CtrlPoint>	ctrlPoints;	// 제어점
+	vector<Vertex>		vertices;	// 정점
+};
+
 class FBXExporter
 {
 public:
@@ -21,9 +30,9 @@ public:
 	void LoadMaterials();
 	void LoadSkeleton(FbxNode* node, int index, int parentIndex);
 	void LoadMesh(FbxNode* node);
-	void LoadCtrlPoints(FbxNode* node);
-	void LoadAnimation(FbxNode* node);
-	void LoadVertices(FbxNode* node);
+	void LoadCtrlPoints(FbxNode* node, int meshIndex);
+	void LoadAnimation(FbxNode* node, int meshIndex);
+	void LoadVertices(FbxNode* node, int meshIndex);
 
 	int GetJointIndexByName(const string& name);
 	XMFLOAT3 GetNormal(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
@@ -43,8 +52,11 @@ private:
 
 	vector<Material>		m_materials;		// 재질
 	vector<Joint>			m_joints;			// 뼈
-	vector<CtrlPoint>		m_ctrlPoints;		// 제어점
-	vector<Vertex>			m_vertices;			// 정점
+	vector<Mesh>			m_meshes;			// 메쉬
+
+	//vector<CtrlPoint>		ctrlPoints;			// 제어점
+	//vector<Vertex>			vertices;			// 정점
+
 	string					m_animationName;	// 애니메이션 이름
 	FbxLongLong				m_animationLength;	// 애니메이션 길이
 };

@@ -1,5 +1,5 @@
 #include "common.hlsl"
-#define ANIMATION
+//#define ANIMATION
 //#define LIGHTING
 
 PS_INPUT VS(VS_INPUT input)

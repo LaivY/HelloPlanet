@@ -119,8 +119,10 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 
 void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
 {
+	if (!m_cbMesh) return;
+
 	// 재질
-	for (int i = 0; i < MAX_MATERIAL; ++i)
+	for (int i = 0; i < m_materials.size(); ++i)
 		m_pcbMesh->materials[i] = m_materials[i];
 
 	// 애니메이션
@@ -195,12 +197,29 @@ void Mesh::ReleaseUploadBuffer()
 	if (m_indexUploadBuffer) m_indexUploadBuffer.Reset();
 }
 
-BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT2& size)
+RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height)
+{
+	vector<Vertex> vertices(6);
+	float hx{ width / 2.0f }, hy{ height / 2.0f };
+
+	Vertex v;
+	v.position = { -hx, +hy, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = { +hx, +hy, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
+	v.position = { +hx, -hy, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+
+	v.position = { -hx, +hy, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = { +hx, -hy, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = { -hx, -hy, 0.0f }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+}
+
+BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height)
 {
 	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 
 	Vertex v;
 	v.position = position;
-	v.uv = size;
+	v.uv = XMFLOAT2{ width, height };
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
 }
