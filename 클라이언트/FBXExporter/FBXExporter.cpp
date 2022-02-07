@@ -41,11 +41,12 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 	FbxGeometryConverter geometryConverter{ m_manager };
 	geometryConverter.Triangulate(m_scene, true);
 
-	// 루트 노드 선언
-	FbxNode* rootNode{ m_scene->GetRootNode() };
+	// DirectX 좌표계로 변경
+	//FbxAxisSystem directXAxisSys(FbxAxisSystem::EPreDefinedAxisSystem::eDirectX);
+	//directXAxisSys.ConvertScene(m_scene);
 
 	// 데이터 로딩
-	LoadMaterials();
+	FbxNode* rootNode{ m_scene->GetRootNode() };
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
 		LoadSkeleton(rootNode->GetChild(i), 0, -1);
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
@@ -56,11 +57,59 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 	ExportAnimation();
 }
 
-void FBXExporter::LoadMaterials()
+void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)
 {
-	for (int i = 0; i < m_scene->GetMaterialCount(); ++i)
+	// Joint는 뼈를 의미한다.
+	// 모든 뼈들을 순회하면서 이름과 부모-자식 관계를 불러온다.
+	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
 	{
-		FbxSurfaceMaterial* material{ m_scene->GetMaterial(i) };
+		Joint joint;
+		joint.name = node->GetName();
+		joint.parentIndex = parentIndex;
+		m_joints.push_back(joint);
+	}
+	for (int i = 0; i < node->GetChildCount(); ++i)
+		LoadSkeleton(node->GetChild(i), m_joints.size(), index);
+}
+
+void FBXExporter::LoadMesh(FbxNode* node)
+{
+	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
+	{
+		// 이름
+		Mesh mesh;
+		mesh.name = node->GetName();
+
+		// 변환 행렬
+		auto scale{ node->LclScaling.Get() };
+		auto rotat{ node->LclRotation.Get() };
+		auto trans{ node->LclTranslation.Get() };
+		FbxAMatrix s{ Utilities::toFbxAMatrix(XMMatrixScaling(scale[0], scale[1], scale[2])) };
+		FbxAMatrix r{ Utilities::toFbxAMatrix(XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat[2]), XMConvertToRadians(rotat[0]), XMConvertToRadians(rotat[1]))) };
+		FbxAMatrix t{ Utilities::toFbxAMatrix(XMMatrixTranslation(trans[2], trans[1], trans[0])) };
+		mesh.transformMatrix = Utilities::toXMFLOAT4X4((t * s * r).Transpose());
+
+		// 부모
+		mesh.isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;
+		if (mesh.isLinked)
+			mesh.parentJointName = node->GetParent()->GetName();
+		m_meshes.push_back(move(mesh));
+
+		// 데이터 로딩
+		LoadMaterials(node, m_meshes.size() - 1);
+		LoadCtrlPoints(node, m_meshes.size() - 1);
+		LoadAnimation(node, m_meshes.size() - 1);
+		LoadVertices(node, m_meshes.size() - 1);
+	}
+	for (int i = 0; i < node->GetChildCount(); ++i)
+		LoadMesh(node->GetChild(i));
+}
+
+void FBXExporter::LoadMaterials(FbxNode* node, int meshIndex)
+{
+	for (int i = 0; i < node->GetMaterialCount(); ++i)
+	{
+		FbxSurfaceMaterial* material{ node->GetMaterial(i) };
 
 		Material m;
 		m.name = material->GetName();
@@ -99,45 +148,8 @@ void FBXExporter::LoadMaterials()
 		//	FbxDouble transparencyFactor{ p.Get<FbxDouble>() };
 		//	cout << "TransparencyFactor : " << transparencyFactor << endl;
 		//}
-		m_materials.push_back(move(m));
+		m_meshes[meshIndex].materials.push_back(move(m));
 	}
-}
-
-void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)
-{
-	/*
-	Joint는 뼈를 의미한다.
-	모든 뼈들을 순회하면서 이름과 부모-자식 관계를 불러온다.
-	*/
-
-	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
-	{
-		Joint joint;
-		joint.name = node->GetName();
-		joint.parentIndex = parentIndex;
-		m_joints.push_back(joint);
-	}
-	for (int i = 0; i < node->GetChildCount(); ++i)
-	{
-		LoadSkeleton(node->GetChild(i), m_joints.size(), index);
-	}
-}
-
-void FBXExporter::LoadMesh(FbxNode* node)
-{
-	if (node->GetNodeAttribute() && node->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eMesh)
-	{
-		m_meshes.push_back({});
-		m_meshes.back().name = node->GetName();
-		m_meshes.back().isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;		
-		if (m_meshes.back().isLinked)
-			m_meshes.back().parentJointIndex = GetJointIndexByName(node->GetParent()->GetName());
-		LoadCtrlPoints(node, m_meshes.size() - 1);
-		LoadAnimation(node, m_meshes.size() - 1);
-		LoadVertices(node, m_meshes.size() - 1);
-	}
-	for (int i = 0; i < node->GetChildCount(); ++i)
-		LoadMesh(node->GetChild(i));
 }
 
 void FBXExporter::LoadCtrlPoints(FbxNode* node, int meshIndex)
@@ -147,11 +159,11 @@ void FBXExporter::LoadCtrlPoints(FbxNode* node, int meshIndex)
 	{
 		CtrlPoint ctrlPoint;
 		ctrlPoint.position = XMFLOAT3{ 
-			static_cast<float>(mesh->GetControlPointAt(i)[0]), 
+			static_cast<float>(mesh->GetControlPointAt(i)[0]),
 			static_cast<float>(mesh->GetControlPointAt(i)[1]),
 			static_cast<float>(mesh->GetControlPointAt(i)[2])
 		};
-		m_meshes[meshIndex].ctrlPoints.push_back(ctrlPoint);
+		m_meshes[meshIndex].ctrlPoints.push_back(move(ctrlPoint));
 	}
 }
 
@@ -181,7 +193,7 @@ void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 
 			// 메쉬 변환 행렬
 			FbxAMatrix transformMatrix; cluster->GetTransformMatrix(transformMatrix);
-
+			
 			// 뼈 좌표계 -> 루트 좌표계 변환 행렬
 			FbxAMatrix transformLinkMatrix; cluster->GetTransformLinkMatrix(transformLinkMatrix);
 
@@ -212,7 +224,7 @@ void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 				Keyframe keyframe;
 				keyframe.frameNum = i;
 				keyframe.aniTransMatrix = toRoot * bone->EvaluateGlobalTransform(curr);
-				m_joints[ji].keyframes.push_back(keyframe);
+				m_joints[ji].keyframes.push_back(move(keyframe));
 			}
 		}
 	}
@@ -235,7 +247,6 @@ void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 void FBXExporter::LoadVertices(FbxNode* node, int meshIndex)
 {
 	FbxMesh* mesh{ node->GetMesh() };
-
 	int vertexCountIndex{ 0 };
 	for (int i = 0; i < mesh->GetPolygonCount(); ++i)
 	{
@@ -246,7 +257,7 @@ void FBXExporter::LoadVertices(FbxNode* node, int meshIndex)
 			const CtrlPoint& ctrlPoint{ m_meshes[meshIndex].ctrlPoints[ctrlPointIndex] };
 
 			Vertex vertex;
-			vertex.position = ctrlPoint.position;
+			vertex.position = XMFLOAT3{ ctrlPoint.position.x, ctrlPoint.position.y, ctrlPoint.position.z };
 			vertex.normal = GetNormal(mesh, ctrlPointIndex, vertexCountIndex);
 			vertex.uv = GetUV(mesh, ctrlPointIndex, vertexCountIndex);
 			vertex.materialIndex = GetMaterial(mesh, i);
@@ -391,6 +402,13 @@ void FBXExporter::ExportMesh()
 	{
 		ofstream file{ m_outputFileName + mesh.name + ".mesh.txt" };
 
+		// 변환 행렬
+		file << "TRANSFORM_MATRIX: ";
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				file << mesh.transformMatrix.m[i][j] << " ";
+		file << endl;
+
 		// 정점 데이터
 		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
 		for (const auto& v : mesh.vertices)
@@ -406,7 +424,7 @@ void FBXExporter::ExportMesh()
 			// 링크되어 있다면 링크된 뼈의 가중치를 1로 설정
 			if (mesh.isLinked)
 			{
-				file << "BI: " << mesh.parentJointIndex << " " << 0 << " " << 0 << " " << 0 << endl;
+				file << "BI: " << GetJointIndexByName(mesh.parentJointName) << " " << 0 << " " << 0 << " " << 0 << endl;
 				file << "BW: " << 1.0f << " " << 0.0f << " " << 0.0f << " " << 0.0f << endl;
 				file << endl;
 				continue;
@@ -421,8 +439,8 @@ void FBXExporter::ExportMesh()
 		}
 
 		// 재질 데이터
-		file << "MATERIAL_COUNT: " << m_materials.size() << endl << endl;
-		for (const auto& m : m_materials)
+		file << "MATERIAL_COUNT: " << mesh.materials.size() << endl << endl;
+		for (const auto& m : mesh.materials)
 		{
 			file << "NAME: " << m.name << endl;
 			file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;

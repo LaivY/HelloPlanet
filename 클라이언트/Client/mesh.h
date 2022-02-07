@@ -42,6 +42,7 @@ struct Animation
 
 struct cbMesh
 {
+	XMFLOAT4X4						transformMatrix;
 	array<Material, MAX_MATERIAL>	materials;
 	array<XMFLOAT4X4, MAX_JOINT>	boneTransformMatrix;
 };
@@ -76,6 +77,7 @@ protected:
 
 	ComPtr<ID3D12Resource>				m_cbMesh;
 	cbMesh*								m_pcbMesh;
+	XMFLOAT4X4							m_transformMatrix;
 	vector<Material>					m_materials;
 	unordered_map<string, Animation>	m_animations;
 };

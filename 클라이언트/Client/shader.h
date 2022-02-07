@@ -18,6 +18,13 @@ protected:
 	vector<D3D12_INPUT_ELEMENT_DESC>	m_inputLayout;
 };
 
+class AnimationShader : public Shader
+{
+public:
+	AnimationShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~AnimationShader() = default;
+};
+
 class TextureShader : public Shader
 {
 public:

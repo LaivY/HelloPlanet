@@ -21,7 +21,29 @@ namespace Utilities
 			node->GetGeometricScaling(FbxNode::eSourcePivot)
 		);
 	}
-
+	inline FbxAMatrix toFbxAMatrix(const XMFLOAT4X4 m)
+	{
+		FbxAMatrix result;
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				result[i][j] = m.m[i][j];
+		return result;
+	}
+	inline FbxAMatrix toFbxAMatrix(const XMMATRIX& m)
+	{
+		FbxAMatrix result;
+		XMFLOAT4X4 matrix;
+		XMStoreFloat4x4(&matrix, m);
+		return toFbxAMatrix(matrix);
+	}
+	inline XMFLOAT4X4 toXMFLOAT4X4(const FbxAMatrix& m)
+	{
+		XMFLOAT4X4 result;
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				result.m[i][j] = m[i][j];
+		return result;
+	}
 	inline XMFLOAT4 FbxVector4ToXMFLOAT4(const FbxVector4& v)
 	{
 		return XMFLOAT4{ 
@@ -31,14 +53,12 @@ namespace Utilities
 			static_cast<float>(v.mData[3])
 		};
 	}
-
 	inline void WriteFbxAMatrixToStream(ostream& s, const FbxAMatrix& m)
 	{
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				s << static_cast<float>(m.Get(i, j)) << " ";
 	}
-
 	inline void PrintFbxAMatrix(const FbxAMatrix& m)
 	{
 		for (int i = 0; i < 4; ++i)

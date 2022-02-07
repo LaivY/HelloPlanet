@@ -14,8 +14,9 @@ cbuffer cbGameObject : register(b0)
 
 cbuffer cbMesh : register(b1)
 {
-	Material g_materials[MAX_MATERIAL];
-	matrix g_boneTransformMatrix[MAX_JOINT];
+    matrix g_meshTransformMatrix;
+    Material g_materials[MAX_MATERIAL];
+    matrix g_boneTransformMatrix[MAX_JOINT];
 };
 
 cbuffer cbCamera : register(b2)
@@ -28,9 +29,6 @@ cbuffer cbCamera : register(b2)
 cbuffer cbScene : register(b3)
 {
     Light g_lights[MAX_LIGHT];
-	matrix g_lightViewMatrix;
-	matrix g_lightProjMatrix;
-	matrix g_NDCToTextureMatrix;
 }
 
 cbuffer cbGameFramework : register(b4)

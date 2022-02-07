@@ -158,9 +158,9 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_reload.txt"), "RELOAD");
 	//m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("Player_walk.txt"), "WALK");
 
-	m_meshes["GUN"] = make_shared<Mesh>();
-	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
+	//m_meshes["GUN"] = make_shared<Mesh>();
+	//m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
+	//m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("gun_animation.txt"), "AIMING");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
@@ -168,6 +168,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature);
+	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature);
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -199,7 +200,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 플레이어 생성
 	auto player{ make_shared<Player>() };
 	player->SetMesh(m_meshes.at("PLAYER"));
-	player->SetShader(m_shaders.at("DEFAULT"));
+	player->SetShader(m_shaders.at("ANIMATION"));
 	player->PlayAnimation("AIMING");
 	SetPlayer(player);
 
@@ -208,16 +209,15 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	player->SetCamera(camera);
 
 	// 총
-	auto gun{ make_unique<GameObject>() };
-	gun->SetMesh(m_meshes.at("GUN"));
-	gun->SetShader(m_shaders.at("DEFAULT"));
-	gun->PlayAnimation("AIMING");
-	m_gameObjects.push_back(move(gun));
+	//auto gun{ make_unique<GameObject>() };
+	//gun->SetMesh(m_meshes.at("GUN"));
+	//gun->SetShader(m_shaders.at("DEFAULT"));
+	//gun->PlayAnimation("AIMING");
+	//m_gameObjects.push_back(move(gun));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
 	floor->Rotate(0.0f, 90.0f, 0.0f);
-	floor->SetPosition(XMFLOAT3{ 0.0f, -100.0f, 0.0f });
 	floor->SetMesh(m_meshes.at("FLOOR"));
 	floor->SetShader(m_shaders.at("DEFAULT"));
 	m_gameObjects.push_back(move(floor));

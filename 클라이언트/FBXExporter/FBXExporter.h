@@ -66,10 +66,16 @@ struct Joint
 struct Mesh
 {
 	string				name;				// 이름
-	bool				isLinked;			// 링크 여부
-	int					parentJointIndex;	// 부모 인덱스
+	vector<Material>	materials;			// 재질
 	vector<CtrlPoint>	ctrlPoints;			// 제어점
 	vector<Vertex>		vertices;			// 정점
+	XMFLOAT4X4			scaleMatrix;		// 크기 변환 행렬
+	XMFLOAT4X4			rotateMatrix;		// 회전 변환 행렬
+	XMFLOAT4X4			transMatrix;		// 이동 변환 행렬
+	XMFLOAT4X4			transformMatrix;	// 메쉬 변환 행렬
+
+	bool				isLinked;			// 링크 여부
+	string				parentJointName;	// 부모 이름
 };
 
 class FBXExporter
@@ -79,9 +85,9 @@ public:
 	~FBXExporter();
 
 	void Process(const string& inputFileName, const string& outputFileName);
-	void LoadMaterials();
 	void LoadSkeleton(FbxNode* node, int index, int parentIndex);
 	void LoadMesh(FbxNode* node);
+	void LoadMaterials(FbxNode* node, int meshIndex);
 	void LoadCtrlPoints(FbxNode* node, int meshIndex);
 	void LoadAnimation(FbxNode* node, int meshIndex);
 	void LoadVertices(FbxNode* node, int meshIndex);
@@ -102,10 +108,8 @@ private:
 	string					m_inputFileName;	// 변환할 FBX 파일 이름
 	string					m_outputFileName;	// 결과 파일 이름
 
-	vector<Material>		m_materials;		// 재질
-	vector<Joint>			m_joints;			// 뼈
 	vector<Mesh>			m_meshes;			// 메쉬
-
+	vector<Joint>			m_joints;			// 뼈
 	string					m_animationName;	// 애니메이션 이름
 	FbxLongLong				m_animationLength;	// 애니메이션 길이
 };

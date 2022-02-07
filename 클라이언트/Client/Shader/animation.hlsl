@@ -4,7 +4,16 @@
 PS_INPUT VS(VS_INPUT input)
 {
     PS_INPUT output;
-    output.positionW = mul(input.position, g_worldMatrix);
+	float4 posL = float4(0.0f, 0.0f, 0.0f, 1.0f);
+	for (int i = 0; i < 4; ++i)
+	{
+		posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
+    }
+    output.positionW = mul(posL, g_worldMatrix);
+    output.positionW = mul(output.positionW, g_meshTransformMatrix);
+    //output.positionW = mul(output.positionW, g_meshRotateMatrix);
+    //output.positionW = mul(output.positionW, g_meshTransMatrix);
+
     output.positionH = mul(mul(output.positionW, g_viewMatrix), g_projMatrix);
     //output.shadowPosH = mul(mul(mul(output.positionW, g_lightViewMatrix), g_lightProjMatrix), g_NDCToTextureMatrix);
     output.normalW = mul(input.normal, (float3x3) g_worldMatrix);
@@ -20,8 +29,6 @@ float4 PS(PS_INPUT input) : SV_TARGET
     float4 lightColor = Lighting(input.positionW, input.normalW);
     return g_materials[input.materialIndex].baseColor + lightColor;
 #else
-    if (input.materialIndex < 0)
-        return float4(1.0f, 1.0f, 1.0f, 1.0f);
     return g_materials[input.materialIndex].baseColor;
 #endif
 }
