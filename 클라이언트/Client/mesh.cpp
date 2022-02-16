@@ -21,7 +21,6 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 	for (int i = 0; i < 4; ++i)
 		for (int j = 0; j < 4; ++j)
 			file >> m_transformMatrix.m[i][j];
-	m_transformMatrix = m_transformMatrix;
 
 	int nVertices{ 0 };
 	file >> dumy >> nVertices;
@@ -128,7 +127,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 {
 	if (!m_cbMesh) return;
 
-	// 변환 행렬
+	// 변환 행렬(이미 전치되어 있음)
 	m_pcbMesh->transformMatrix = m_transformMatrix;
 
 	// 재질
@@ -183,7 +182,6 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			object->OnAnimation("BLENDING", aniInfo->blendingTimer / (1.0f / 24.0f), iFrame);
 		}
 	}
-
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 

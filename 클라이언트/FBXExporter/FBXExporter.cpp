@@ -18,11 +18,10 @@ FBXExporter::~FBXExporter()
 	if (m_manager) m_manager->Destroy();
 }
 
-void FBXExporter::Process(const string& inputFileName, const string& outputFileName)
+void FBXExporter::Process(const string& inputFileName)
 {
 	// 입력, 출력 파일 이름 저장
 	m_inputFileName = inputFileName;
-	m_outputFileName = outputFileName;
 
 	// 임포터 생성 및 초기화
 	FbxImporter* fbxImporter{ FbxImporter::Create(m_manager, "IMPORTER") };
@@ -41,16 +40,14 @@ void FBXExporter::Process(const string& inputFileName, const string& outputFileN
 	FbxGeometryConverter geometryConverter{ m_manager };
 	geometryConverter.Triangulate(m_scene, true);
 
-	// DirectX 좌표계로 변경
-	//FbxAxisSystem directXAxisSys(FbxAxisSystem::EPreDefinedAxisSystem::eDirectX);
-	//directXAxisSys.ConvertScene(m_scene);
-
 	// 데이터 로딩
 	FbxNode* rootNode{ m_scene->GetRootNode() };
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
 		LoadSkeleton(rootNode->GetChild(i), 0, -1);
 	for (int i = 0; i < rootNode->GetChildCount(); ++i)
 		LoadMesh(rootNode->GetChild(i));
+
+	ProcessLink();
 
 	// 출력
 	ExportMesh();
@@ -79,20 +76,25 @@ void FBXExporter::LoadMesh(FbxNode* node)
 		// 이름
 		Mesh mesh;
 		mesh.name = node->GetName();
-
-		// 변환 행렬
-		auto scale{ node->LclScaling.Get() };
-		auto rotat{ node->LclRotation.Get() };
-		auto trans{ node->LclTranslation.Get() };
-		FbxAMatrix s{ Utilities::toFbxAMatrix(XMMatrixScaling(scale[0], scale[1], scale[2])) };
-		FbxAMatrix r{ Utilities::toFbxAMatrix(XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat[2]), XMConvertToRadians(rotat[0]), XMConvertToRadians(rotat[1]))) };
-		FbxAMatrix t{ Utilities::toFbxAMatrix(XMMatrixTranslation(trans[2], trans[1], trans[0])) };
-		mesh.transformMatrix = Utilities::toXMFLOAT4X4((t * s * r).Transpose());
-
-		// 부모
 		mesh.isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;
 		if (mesh.isLinked)
-			mesh.parentJointName = node->GetParent()->GetName();
+		{
+			mesh.parentNode = node->GetParent();
+
+			// 크기, 회전 변환은 루트 좌표계 기준,
+			// 이동 변환은 루트 좌표계에서의 (자기 좌표 - 부모 좌표) 를 저장한다.
+			auto m1{ node->EvaluateGlobalTransform() };
+			auto m2{ node->GetParent()->EvaluateGlobalTransform() };
+			m1[3][0] -= m2[3][0];
+			m1[3][1] -= m2[3][1];
+			m1[3][2] -= m2[3][2];
+			mesh.transformMatrix = Utilities::Transpose(Utilities::toXMFLOAT4X4(m1));
+		}
+		else
+		{
+			// 로컬 == 글로벌
+			mesh.transformMatrix = Utilities::toXMFLOAT4X4(node->EvaluateGlobalTransform());
+		}
 		m_meshes.push_back(move(mesh));
 
 		// 데이터 로딩
@@ -191,9 +193,9 @@ void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 				m_meshes[meshIndex].ctrlPoints[index].weights.push_back(make_pair(ji, weight));
 			}
 
-			// 메쉬 변환 행렬
+			// 자기 자신의 변환 행렬
 			FbxAMatrix transformMatrix; cluster->GetTransformMatrix(transformMatrix);
-			
+
 			// 뼈 좌표계 -> 루트 좌표계 변환 행렬
 			FbxAMatrix transformLinkMatrix; cluster->GetTransformLinkMatrix(transformLinkMatrix);
 
@@ -236,12 +238,10 @@ void FBXExporter::LoadAnimation(FbxNode* node, int meshIndex)
 
 	// 제어점이 갖고있는 가중치 정보를 가중치가 높은 순서로 정렬
 	for (CtrlPoint& ctrlPoint : m_meshes[meshIndex].ctrlPoints)
-	{
 		partial_sort(ctrlPoint.weights.begin(), ctrlPoint.weights.begin() + 4, ctrlPoint.weights.end(),
 			[](const auto& a, const auto& b) {
 				return a.second > b.second;
 			});
-	}
 }
 
 void FBXExporter::LoadVertices(FbxNode* node, int meshIndex)
@@ -394,111 +394,119 @@ int FBXExporter::GetMaterial(FbxMesh* mesh, int polygonIndex)
 	return -1;
 }
 
+void FBXExporter::ProcessLink()
+{
+	FbxAnimStack* animStack{ m_scene->GetSrcObject<FbxAnimStack>(0) };
+	FbxString animStackName{ animStack->GetName() };
+	FbxTakeInfo* takeInfo{ m_scene->GetTakeInfo(animStackName)};
+	FbxTime start{ takeInfo->mLocalTimeSpan.GetStart() };
+	FbxTime end{ takeInfo->mLocalTimeSpan.GetStop() };
+	for (const Mesh& m : m_meshes)
+	{
+		if (!m.isLinked) continue;
+
+		FbxNode* node{ m.parentNode };
+		while (node->GetParent() != m_scene->GetRootNode())
+			node = node->GetParent();
+		auto scale = node->LclScaling.Get();
+
+		ofstream file{ Utilities::GetOnlyPath(m_inputFileName) + "link.txt" };
+		file << "JOINT_COUNT: " << 1 << endl;
+		file << "FRAME_LENGTH: " << m_animationLength << endl << endl;
+		file << "LINK" << endl;
+		for (FbxLongLong i = start.GetFrameCount(FbxTime::eFrames24); i <= end.GetFrameCount(FbxTime::eFrames24); ++i)
+		{
+			FbxTime curr;
+			curr.SetFrame(i, FbxTime::eFrames24);
+
+			auto transform{ m.parentNode->EvaluateGlobalTransform(curr) };
+			XMFLOAT4X4 temp;
+			XMStoreFloat4x4(&temp, XMMatrixTranslation(transform[3][0] * scale[0], transform[3][1] * scale[1], transform[3][2] * scale[2]));
+			Utilities::WriteToStream(file, temp);
+			file << endl;
+		}
+	}
+}
+
 void FBXExporter::ExportMesh()
 {
-#define SEPARATE
-#ifdef SEPARATE
 	for (const Mesh& mesh : m_meshes)
 	{
-		ofstream file{ m_outputFileName + mesh.name + ".mesh.txt" };
+		ofstream file{ Utilities::GetOnlyPath(m_inputFileName) + mesh.name + ".txt"};
 
 		// 변환 행렬
 		file << "TRANSFORM_MATRIX: ";
-		for (int i = 0; i < 4; ++i)
-			for (int j = 0; j < 4; ++j)
-				file << mesh.transformMatrix.m[i][j] << " ";
+		Utilities::WriteToStream(file, mesh.transformMatrix);
 		file << endl;
 
 		// 정점 데이터
 		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
-		for (const auto& v : mesh.vertices)
+		for (const Vertex& vertex : mesh.vertices)
 		{
-			// 위치, 노말, 텍스쳐 좌표
-			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
-			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
-			file << "T: " << v.uv.x << " " << v.uv.y << endl;
+			// 위치, 노말, 텍스쳐 좌표, 재질 인덱스
+			file << "P: " << vertex.position.x << " " << vertex.position.y << " " << vertex.position.z << endl;
+			file << "N: " << vertex.normal.x << " " << vertex.normal.y << " " << vertex.normal.z << endl;
+			file << "T: " << vertex.uv.x << " " << vertex.uv.y << endl;
+			file << "MI: " << vertex.materialIndex << endl;
 
-			// 재질 인덱스
-			file << "MI: " << v.materialIndex << endl;
-
+			// 뼈 인덱스, 가중치
 			// 링크되어 있다면 링크된 뼈의 가중치를 1로 설정
 			if (mesh.isLinked)
 			{
-				file << "BI: " << GetJointIndexByName(mesh.parentJointName) << " " << 0 << " " << 0 << " " << 0 << endl;
+				//file << "BI: " << GetJointIndexByName(m.parentNode->GetName()) << " " << 0 << " " << 0 << " " << 0 << endl;
+				file << "BI: " << 0 << " " << 0 << " " << 0 << " " << 0 << endl;
 				file << "BW: " << 1.0f << " " << 0.0f << " " << 0.0f << " " << 0.0f << endl;
-				file << endl;
-				continue;
 			}
-
-			// 뼈 인덱스
-			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
-
-			// 뼈 가중치
-			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
+			else
+			{
+				file << "BI: " << vertex.boneIndices.x << " " << vertex.boneIndices.y << " " << vertex.boneIndices.z << " " << vertex.boneIndices.w << endl;
+				file << "BW: " << vertex.boneWeights.x << " " << vertex.boneWeights.y << " " << vertex.boneWeights.z << " " << vertex.boneWeights.w << endl;
+			}
 			file << endl;
 		}
 
 		// 재질 데이터
 		file << "MATERIAL_COUNT: " << mesh.materials.size() << endl << endl;
-		for (const auto& m : mesh.materials)
+		for (const Material& material : mesh.materials)
 		{
-			file << "NAME: " << m.name << endl;
-			file << "COLOR: " << m.baseColor.x << " " << m.baseColor.y << " " << m.baseColor.z << " " << m.baseColor.w << endl;
+			file << "NAME: " << material.name << endl;
+			file << "COLOR: " << material.baseColor.x << " " << material.baseColor.y << " " << material.baseColor.z << " " << material.baseColor.w << endl;
 			file << endl;
 		}
 	}
-#else
-	ofstream file{ m_outputFileName + ".mesh.txt" };
-
-	// 매쉬 개수
-	file << "MESH_COUNT: " << m_meshes.size() << endl << endl;
-	for (const Mesh& mesh : m_meshes)
-	{
-		// 정점, 재질 개수
-		file << "MESH_NAME: " << mesh.name << endl;
-		file << "VERTEX_COUNT: " << mesh.vertices.size() << endl << endl;
-		for (const auto& v : mesh.vertices)
-		{
-			// 위치, 노말, 텍스쳐 좌표
-			file << "P: " << v.position.x << " " << v.position.y << " " << v.position.z << endl;
-			file << "N: " << v.normal.x << " " << v.normal.y << " " << v.normal.z << endl;
-			file << "T: " << v.uv.x << " " << v.uv.y << endl;
-
-			// 재질 인덱스
-			file << "MI: " << v.materialIndex << endl;
-
-			// 뼈 인덱스
-			file << "BI: " << v.boneIndices.x << " " << v.boneIndices.y << " " << v.boneIndices.z << " " << v.boneIndices.w << endl;
-
-			// 뼈 가중치
-			file << "BW: " << v.boneWeights.x << " " << v.boneWeights.y << " " << v.boneWeights.z << " " << v.boneWeights.w << endl;
-			file << endl;
-		}
-	}
-#endif
 }
 
 void FBXExporter::ExportAnimation()
 {
-	ofstream file{ m_outputFileName + "animation.ani.txt" };
-
-	// 애니메이션 데이터가 없는 조인트 삭제
-	m_joints.erase(remove_if(m_joints.begin(), m_joints.end(), 
-		[](const Joint& j) {
-			return j.keyframes.empty();
-		}), m_joints.end());
+	ofstream file{ Utilities::GetOnlyPath(m_inputFileName) + "animation.txt" };
 
 	// 조인트 개수, 애니메이션 길이
 	file << "JOINT_COUNT: " << m_joints.size() << endl;
 	file << "FRAME_LENGTH: " << m_animationLength << endl << endl;
 
 	// 애니메이션 변환 행렬
-	for (const Joint& j : m_joints)
+	for (const Joint& joint : m_joints)
 	{
-		file << j.name << endl;
-		for (const Keyframe& k : j.keyframes)
+		file << joint.name << endl;
+
+		// 애니메이션 데이터가 없으면 프레임 길이만큼 항등행렬을 저장
+		if (joint.keyframes.empty())
 		{
-			Utilities::WriteFbxAMatrixToStream(file, k.aniTransMatrix * j.globalBindposeInverseMatrix);
+			FbxAMatrix identity;
+			identity.SetIdentity();
+			for (int i = 0; i < m_animationLength; ++i)
+			{
+				Utilities::WriteToStream(file, identity);
+				file << endl;
+			}
+			file << endl;
+			continue;
+		}
+
+		// 애니메이션 데이터가 있으면 해당 데이터를 저장
+		for (const Keyframe& keyframe : joint.keyframes)
+		{
+			Utilities::WriteToStream(file, keyframe.aniTransMatrix * joint.globalBindposeInverseMatrix);
 			file << endl;
 		}
 		file << endl;

@@ -52,7 +52,7 @@ struct Keyframe
 
 struct Joint
 {
-	Joint() : name{}, parentIndex{ -1 }
+	Joint() : parentIndex{ -1 }
 	{
 		globalBindposeInverseMatrix.SetIdentity();
 	}
@@ -65,17 +65,19 @@ struct Joint
 
 struct Mesh
 {
+	Mesh() : transformMatrix{ Utilities::Identity() }, isLinked{ false }, parentNode{ nullptr }
+	{
+
+	}
+
 	string				name;				// 이름
 	vector<Material>	materials;			// 재질
 	vector<CtrlPoint>	ctrlPoints;			// 제어점
 	vector<Vertex>		vertices;			// 정점
-	XMFLOAT4X4			scaleMatrix;		// 크기 변환 행렬
-	XMFLOAT4X4			rotateMatrix;		// 회전 변환 행렬
-	XMFLOAT4X4			transMatrix;		// 이동 변환 행렬
 	XMFLOAT4X4			transformMatrix;	// 메쉬 변환 행렬
 
 	bool				isLinked;			// 링크 여부
-	string				parentJointName;	// 부모 이름
+	FbxNode*			parentNode;			// 부모 노드
 };
 
 class FBXExporter
@@ -84,7 +86,7 @@ public:
 	FBXExporter();
 	~FBXExporter();
 
-	void Process(const string& inputFileName, const string& outputFileName);
+	void Process(const string& inputFileName);
 	void LoadSkeleton(FbxNode* node, int index, int parentIndex);
 	void LoadMesh(FbxNode* node);
 	void LoadMaterials(FbxNode* node, int meshIndex);
@@ -98,6 +100,7 @@ public:
 	XMFLOAT4 GetColor(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
 	int GetMaterial(FbxMesh* mesh, int polygonIndex);
 
+	void ProcessLink();
 	void ExportMesh();
 	void ExportAnimation();
 
@@ -106,7 +109,6 @@ private:
 	FbxScene*				m_scene;			// FBX 씬
 
 	string					m_inputFileName;	// 변환할 FBX 파일 이름
-	string					m_outputFileName;	// 결과 파일 이름
 
 	vector<Mesh>			m_meshes;			// 메쉬
 	vector<Joint>			m_joints;			// 뼈

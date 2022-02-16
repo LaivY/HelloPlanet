@@ -13,6 +13,16 @@ using namespace std;
 
 namespace Utilities
 {
+	inline string GetOnlyPath(const string& path)
+	{
+		size_t p{ path.find_last_of('/') };
+		return path.substr(0, p + 1);
+	}
+	inline string GetOnlyFileName(const string& path)
+	{
+		size_t p{ path.find_last_of('/') };
+		return path.substr(p + 1);
+	}
 	inline FbxAMatrix GetGeometryTransformation(FbxNode* node)
 	{
 		return FbxAMatrix(
@@ -53,18 +63,45 @@ namespace Utilities
 			static_cast<float>(v.mData[3])
 		};
 	}
-	inline void WriteFbxAMatrixToStream(ostream& s, const FbxAMatrix& m)
+	inline XMFLOAT4X4 Identity()
+	{
+		XMFLOAT4X4 result;
+		XMStoreFloat4x4(&result, XMMatrixIdentity());
+		return result;
+	}
+	inline XMFLOAT4X4 Transpose(const XMFLOAT4X4& m)
+	{
+		XMFLOAT4X4 result;
+		XMStoreFloat4x4(&result, XMMatrixTranspose(XMLoadFloat4x4(&m)));
+		return result;
+	}
+	inline void WriteToStream(ostream& s, const FbxAMatrix& m)
 	{
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				s << static_cast<float>(m.Get(i, j)) << " ";
 	}
-	inline void PrintFbxAMatrix(const FbxAMatrix& m)
+	inline void WriteToStream(ostream& s, const XMFLOAT4X4& m)
+	{
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				s << m.m[i][j] << " ";
+	}
+	inline void Print(const FbxAMatrix& m)
 	{
 		for (int i = 0; i < 4; ++i)
 		{
 			for (int j = 0; j < 4; ++j)
 				cout << m.Get(i, j) << " ";
+			cout << endl;
+		}
+	}
+	inline void Print(const XMFLOAT4X4& m)
+	{
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = 0; j < 4; ++j)
+				cout << m.m[i][j] << " ";
 			cout << endl;
 		}
 	}

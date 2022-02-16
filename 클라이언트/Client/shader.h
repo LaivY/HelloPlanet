@@ -18,11 +18,25 @@ protected:
 	vector<D3D12_INPUT_ELEMENT_DESC>	m_inputLayout;
 };
 
+class ModelShader : public Shader
+{
+public:
+	ModelShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~ModelShader() = default;
+};
+
 class AnimationShader : public Shader
 {
 public:
 	AnimationShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~AnimationShader() = default;
+};
+
+class LinkShader : public Shader
+{
+public:
+	LinkShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
+	~LinkShader() = default;
 };
 
 class TextureShader : public Shader
@@ -93,13 +107,6 @@ class MirrorTextureShader : public Shader
 public:
 	MirrorTextureShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
 	~MirrorTextureShader() = default;
-};
-
-class ModelShader : public Shader
-{
-public:
-	ModelShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature);
-	~ModelShader() = default;
 };
 
 class ShadowShader : public Shader
