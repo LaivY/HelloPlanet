@@ -1,15 +1,17 @@
 ﻿#pragma once
 #include <algorithm>
-#include <DirectXMath.h>
-#include <fbxsdk.h>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
+#include <DirectXMath.h>
+#include <fbxsdk.h>
 #include "utilities.h"
-using namespace DirectX;
 using namespace std;
+using namespace DirectX;
+
+#define GUN_SCALE_FACTOR 0.5
 
 struct Vertex
 {

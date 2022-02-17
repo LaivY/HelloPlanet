@@ -88,6 +88,18 @@ void FBXExporter::LoadMesh(FbxNode* node)
 			m1[3][0] -= m2[3][0];
 			m1[3][1] -= m2[3][1];
 			m1[3][2] -= m2[3][2];
+
+			// 크기가 플레이어와 비교했을 때 3DMAX에서 봤을때와 달라서 임의로 맞춰줌
+			// 위치
+			m1[3][0] *= GUN_SCALE_FACTOR;
+			m1[3][1] *= GUN_SCALE_FACTOR;
+			m1[3][2] *= GUN_SCALE_FACTOR;
+
+			// 크기
+			m1[0][0] *= GUN_SCALE_FACTOR;
+			m1[1][1] *= GUN_SCALE_FACTOR;
+			m1[2][2] *= GUN_SCALE_FACTOR;
+
 			mesh.transformMatrix = Utilities::Transpose(Utilities::toXMFLOAT4X4(m1));
 		}
 		else
@@ -405,11 +417,6 @@ void FBXExporter::ProcessLink()
 	{
 		if (!m.isLinked) continue;
 
-		FbxNode* node{ m.parentNode };
-		while (node->GetParent() != m_scene->GetRootNode())
-			node = node->GetParent();
-		auto scale = node->LclScaling.Get();
-
 		ofstream file{ Utilities::GetOnlyPath(m_inputFileName) + "link.txt" };
 		file << "JOINT_COUNT: " << 1 << endl;
 		file << "FRAME_LENGTH: " << m_animationLength << endl << endl;
@@ -421,7 +428,9 @@ void FBXExporter::ProcessLink()
 
 			auto transform{ m.parentNode->EvaluateGlobalTransform(curr) };
 			XMFLOAT4X4 temp;
-			XMStoreFloat4x4(&temp, XMMatrixTranslation(transform[3][0] * scale[0], transform[3][1] * scale[1], transform[3][2] * scale[2]));
+			XMStoreFloat4x4(&temp, XMMatrixTranslation(transform[3][0] * GUN_SCALE_FACTOR, 
+													   transform[3][1] * GUN_SCALE_FACTOR,
+													   transform[3][2] * GUN_SCALE_FACTOR));
 			Utilities::WriteToStream(file, temp);
 			file << endl;
 		}
