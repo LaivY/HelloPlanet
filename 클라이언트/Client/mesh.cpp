@@ -127,7 +127,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 {
 	if (!m_cbMesh) return;
 
-	// 변환 행렬(이미 전치되어 있음)
+	// 변환 행렬
 	m_pcbMesh->transformMatrix = m_transformMatrix;
 
 	// 재질
@@ -135,22 +135,21 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		m_pcbMesh->materials[i] = m_materials[i];
 
 	// 애니메이션
-	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() }; aniInfo)
+	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() })
 	{
 		if (aniInfo->beforeAnimationName.empty()) // 프레임 진행
 		{
 			const Animation& ani{ m_animations.at(aniInfo->animationName) };
 			float frame{ aniInfo->timer / (1.0f / 24.0f) };
-			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), m_animations.at(aniInfo->animationName).length - 1) };
-			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), m_animations.at(aniInfo->animationName).length - 1) };
+			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), m_animations.at(aniInfo->animationName).length - 1)};
+			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), m_animations.at(aniInfo->animationName).length - 1)};
 			float t{ frame - static_cast<int>(frame) };
 
 			for (int i = 0; i < ani.joints.size(); ++i)
 			{
-				XMFLOAT4X4 m{ Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
-												  ani.joints[i].animationTransformMatrix[nextFrame],
-												  t) };
-				m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
+				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
+																		ani.joints[i].animationTransformMatrix[nextFrame],
+																		t);
 			}
 			object->OnAnimation(aniInfo->animationName, frame, m_animations.at(aniInfo->animationName).length);
 		}
@@ -172,12 +171,11 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 
 			for (int i = 0; i < beforeAni.joints.size(); ++i)
 			{
-				XMFLOAT4X4 before{ Matrix::Interpolate(beforeAni.joints[i].animationTransformMatrix.at(currFrame),
-													   beforeAni.joints[i].animationTransformMatrix.at(nextFrame),
+				XMFLOAT4X4 before{ Matrix::Interpolate(beforeAni.joints[i].animationTransformMatrix[currFrame],
+													   beforeAni.joints[i].animationTransformMatrix[nextFrame],
 													   t1) };
 				XMFLOAT4X4 after{ afterAni.joints[i].animationTransformMatrix[0] };
-				XMFLOAT4X4 m{ Matrix::Interpolate(before, after, t2) };
-				m_pcbMesh->boneTransformMatrix[i] = Matrix::Transpose(m);
+				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
 			object->OnAnimation("BLENDING", aniInfo->blendingTimer / (1.0f / 24.0f), iFrame);
 		}

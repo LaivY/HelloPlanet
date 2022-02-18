@@ -20,9 +20,9 @@ struct Vertex
 	XMFLOAT3	position;
 	XMFLOAT3	normal;
 	XMFLOAT2	uv;
+	int			materialIndex;
 	XMUINT4		boneIndices;
 	XMFLOAT4	boneWeights;
-	int			materialIndex;
 };
 
 struct Material
@@ -45,11 +45,11 @@ struct Keyframe
 {
 	Keyframe() : frameNum{}
 	{
-		aniTransMatrix.SetIdentity();
+		transformMatrix.SetIdentity();
 	}
 
 	FbxLongLong frameNum;
-	FbxAMatrix	aniTransMatrix;
+	FbxAMatrix	transformMatrix;
 };
 
 struct Joint
@@ -91,26 +91,25 @@ public:
 	void Process(const string& inputFileName);
 	void LoadSkeleton(FbxNode* node, int index, int parentIndex);
 	void LoadMesh(FbxNode* node);
-	void LoadMaterials(FbxNode* node, int meshIndex);
-	void LoadCtrlPoints(FbxNode* node, int meshIndex);
-	void LoadAnimation(FbxNode* node, int meshIndex);
-	void LoadVertices(FbxNode* node, int meshIndex);
-
-	int GetJointIndexByName(const string& name);
-	XMFLOAT3 GetNormal(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
-	XMFLOAT2 GetUV(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
-	XMFLOAT4 GetColor(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex);
-	int GetMaterial(FbxMesh* mesh, int polygonIndex);
-
+	void LoadInfo(FbxNode* node, Mesh& mesh);
+	void LoadMaterials(FbxNode* node, Mesh& mesh);
+	void LoadCtrlPoints(FbxNode* node, Mesh& mesh);
+	void LoadAnimation(FbxNode* node, Mesh& mesh);
+	void LoadVertices(FbxNode* node, Mesh& mesh);
 	void ProcessLink();
-	void ExportMesh();
-	void ExportAnimation();
+
+	int GetJointIndex(const string& name) const;
+	XMFLOAT3 GetNormal(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex) const;
+	XMFLOAT2 GetUV(FbxMesh* mesh, int controlPointIndex, int vertexCountIndex) const;
+	int GetMaterial(FbxMesh* mesh, int polygonIndex) const;
+
+	void ExportMesh() const;
+	void ExportAnimation() const;
 
 private:
+	string					m_inputFileName;	// 변환할 FBX 파일 이름
 	FbxManager*				m_manager;			// FBX 매니저
 	FbxScene*				m_scene;			// FBX 씬
-
-	string					m_inputFileName;	// 변환할 FBX 파일 이름
 
 	vector<Mesh>			m_meshes;			// 메쉬
 	vector<Joint>			m_joints;			// 뼈

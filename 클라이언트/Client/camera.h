@@ -16,7 +16,7 @@ class Camera
 {
 public:
 	Camera();
-	~Camera();
+	virtual ~Camera();
 
 	virtual void Update(FLOAT deltaTime);
 	void Move(const XMFLOAT3& shift);
@@ -60,7 +60,7 @@ class ThirdPersonCamera : public Camera
 {
 public:
 	ThirdPersonCamera();
-	~ThirdPersonCamera() = default;
+	virtual ~ThirdPersonCamera() = default;
 
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);

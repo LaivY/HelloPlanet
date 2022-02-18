@@ -11,7 +11,7 @@ class Player : public GameObject
 {
 public:
 	Player();
-	~Player() = default;
+	virtual ~Player() = default;
 
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);

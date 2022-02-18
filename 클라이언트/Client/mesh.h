@@ -51,7 +51,7 @@ class Mesh
 {
 public:
 	Mesh();
-	~Mesh();
+	virtual ~Mesh();
 
 	void LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
 	void LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
@@ -86,12 +86,12 @@ class RectMesh : public Mesh
 {
 public:
 	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height);
-	~RectMesh() = default;
+	virtual ~RectMesh() = default;
 };
 
 class BillboardMesh : public Mesh
 {
 public:
 	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height);
-	~BillboardMesh() = default;
+	virtual ~BillboardMesh() = default;
 };

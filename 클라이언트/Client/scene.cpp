@@ -158,7 +158,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	m_meshes["GUN"] = make_shared<Mesh>();
 	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("link.txt"), "AIMING");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }

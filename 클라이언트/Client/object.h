@@ -22,7 +22,6 @@ struct AnimationInfo
 
 	string	animationName;
 	FLOAT	timer;
-
 	string	beforeAnimationName;
 	FLOAT	blendingTimer;
 };
@@ -31,7 +30,7 @@ class GameObject
 {
 public:
 	GameObject();
-	~GameObject() = default;
+	virtual ~GameObject() = default;
 
 	virtual void OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame);
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader=nullptr);
