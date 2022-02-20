@@ -33,7 +33,7 @@ public:
 	virtual ~GameObject() = default;
 
 	virtual void OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame);
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader=nullptr);
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);

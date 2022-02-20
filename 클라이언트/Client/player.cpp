@@ -1,9 +1,19 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player() : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }
+Player::Player() : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
+}
+
+void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	GameObject::Render(commandList, shader);
+	
+	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+	else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+
+	if (m_gunMesh) m_gunMesh->Render(commandList, this);
 }
 
 void Player::Update(FLOAT deltaTime)

@@ -67,19 +67,19 @@ struct Joint
 
 struct Mesh
 {
-	Mesh() : transformMatrix{ Utilities::Identity() }, isLinked{ false }, parentNode{ nullptr }
+	Mesh() : isLinked{ false }, parentNode{ nullptr }, node{ nullptr }
 	{
-
+		transformMatrix.SetIdentity();
 	}
 
 	string				name;				// 이름
 	vector<Material>	materials;			// 재질
 	vector<CtrlPoint>	ctrlPoints;			// 제어점
 	vector<Vertex>		vertices;			// 정점
-	XMFLOAT4X4			transformMatrix;	// 메쉬 변환 행렬
-
 	bool				isLinked;			// 링크 여부
+	FbxNode*			node;				// 자신 노드
 	FbxNode*			parentNode;			// 부모 노드
+	FbxAMatrix			transformMatrix;	// 메쉬 변환 행렬
 };
 
 class FBXExporter

@@ -154,11 +154,19 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 {
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
 
 	m_meshes["GUN"] = make_shared<Mesh>();
 	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("animation.txt"), "AIMING");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
@@ -199,27 +207,22 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 플레이어 생성
 	auto player{ make_shared<Player>() };
-	player->SetMesh(m_meshes.at("PLAYER"));
-	player->SetShader(m_shaders.at("ANIMATION"));
-	player->PlayAnimation("AIMING");
+	player->SetMesh(m_meshes["PLAYER"]);
+	player->SetShader(m_shaders["ANIMATION"]);
+	player->SetGunMesh(m_meshes["GUN"]);
+	player->SetGunShader(m_shaders["LINK"]);
+	player->PlayAnimation("FIRINGAR");
 	SetPlayer(player);
 
 	// 카메라, 플레이어 서로 설정
 	camera->SetPlayer(player);
 	player->SetCamera(camera);
 
-	// 총
-	auto gun{ make_unique<GameObject>() };
-	gun->SetMesh(m_meshes.at("GUN"));
-	gun->SetShader(m_shaders.at("LINK"));
-	gun->PlayAnimation("AIMING");
-	m_gameObjects.push_back(move(gun));
-
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
 	floor->Rotate(0.0f, 90.0f, 0.0f);
-	floor->SetMesh(m_meshes.at("FLOOR"));
-	floor->SetShader(m_shaders.at("DEFAULT"));
+	floor->SetMesh(m_meshes["FLOOR"]);
+	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 }
 
@@ -257,6 +260,7 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	// 씬 셰이더 변수 최신화
+	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());
 
 	// 카메라 셰이더 변수 최신화
@@ -267,21 +271,18 @@ void Scene::UpdateLights(FLOAT deltaTime)
 {
 	// 0 ~ 2pi
 	static float t{ 0.0f };
+	const float radius{ 50.0f };
 
-	float radius{ 50.0f };
 	XMFLOAT3 position{ radius * cosf(t), 0.0f, radius * sinf(t) };
 	XMFLOAT3 direction{ Vector3::Normalize(Vector3::Mul(position, -1)) };
 
 	// 데이터 설정
 	m_cbSceneData->ligths[0].position = position;
 	m_cbSceneData->ligths[0].direction = direction;
-	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
 
 	t += 0.25f * deltaTime;
 	if (t >= 2.0f * 3.141592f)
-	{
 		t = 0.0f;
-	}
 }
 
 void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

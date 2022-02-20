@@ -165,7 +165,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			float t1{ frame - static_cast<int>(frame) };
 
 			// 애니메이션 블렌딩은 n프레임에 걸쳐되도록 설정
-			UINT iFrame{ 10 };
+			UINT iFrame{ 1 };
 			float blendingFrame{ iFrame * (1.0f / 24.0f) };
 			float t2{ clamp(aniInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
 

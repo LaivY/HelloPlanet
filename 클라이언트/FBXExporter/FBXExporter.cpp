@@ -88,39 +88,17 @@ void FBXExporter::LoadInfo(FbxNode* node, Mesh& mesh)
 {
 	/*
 	* 메쉬의 이름과 링크 여부를 불러온다.
-	* 링크되어 있다면 메쉬의 변환 행렬을 전역 좌표계 기준으로 부모와 자식 사이의 변환 행렬로 설정한다.
-	* 링크되어 있지 않다면 메쉬의 변환 행렬을 자신의 변환 행렬로 설정한다.
+	* 링크되어 있다면 메쉬의 변환 행렬은 항등 행렬이다.
+	* 링크되어 있지 않다면 전역 좌표계에서의 자신의 변환 행렬 그대로 사용한다. (이 경우 로컬 좌표계와 전역 좌표계에서의 변환 행렬은 같다.)
 	*/
 
 	mesh.name = node->GetName();
 	mesh.isLinked = node->GetParent() == m_scene->GetRootNode() ? false : true;
 	if (mesh.isLinked)
-	{
 		mesh.parentNode = node->GetParent();
-
-		// 크기, 회전 변환은 루트 좌표계 기준,
-		// 이동 변환은 루트 좌표계에서의 (자기 좌표 - 부모 좌표) 를 저장한다.
-		auto m1{ node->EvaluateGlobalTransform() };
-		auto m2{ node->GetParent()->EvaluateGlobalTransform() };
-		m1[3][0] -= m2[3][0];
-		m1[3][1] -= m2[3][1];
-		m1[3][2] -= m2[3][2];
-
-		// 크기가 플레이어와 비교했을 때 3DMAX에서 봤을때와 달라서 임의로 맞춰줌
-		// 위치
-		m1[3][0] *= GUN_SCALE_FACTOR;
-		m1[3][1] *= GUN_SCALE_FACTOR;
-		m1[3][2] *= GUN_SCALE_FACTOR;
-
-		// 크기
-		m1[0][0] *= GUN_SCALE_FACTOR;
-		m1[1][1] *= GUN_SCALE_FACTOR;
-		m1[2][2] *= GUN_SCALE_FACTOR;
-
-		mesh.transformMatrix = Utilities::toXMFLOAT4X4(m1);
-	}
 	else
-		mesh.transformMatrix = Utilities::toXMFLOAT4X4(node->EvaluateGlobalTransform());
+		mesh.transformMatrix = node->EvaluateGlobalTransform();
+	mesh.node = node;
 }
 
 void FBXExporter::LoadMaterials(FbxNode* node, Mesh& mesh)
@@ -352,14 +330,13 @@ void FBXExporter::ProcessLink()
 		{
 			FbxTime curr; curr.SetFrame(i, FbxTime::eFrames24);
 
-			FbxAMatrix temp{ mesh.parentNode->EvaluateGlobalTransform(curr) };
-			XMFLOAT4X4 transformMatrix;
-			XMStoreFloat4x4(&transformMatrix, XMMatrixTranslation(temp[3][0] * GUN_SCALE_FACTOR,
-																  temp[3][1] * GUN_SCALE_FACTOR,
-																  temp[3][2] * GUN_SCALE_FACTOR));
+			FbxAMatrix transformMatrix{ mesh.node->EvaluateGlobalTransform(curr) };
+			FbxAMatrix halfScaling{ Utilities::toFbxAMatrix(XMMatrixScaling(0.5f, 0.5f, 0.5f)) };
+			transformMatrix = halfScaling * transformMatrix;
+
 			Keyframe keyframe;
 			keyframe.frameNum = i;
-			keyframe.transformMatrix = Utilities::toFbxAMatrix(transformMatrix);
+			keyframe.transformMatrix = transformMatrix;
 			joint.keyframes.push_back(move(keyframe));
 		}
 		for (Vertex& vertex : mesh.vertices)
@@ -468,7 +445,7 @@ void FBXExporter::ExportMesh() const
 
 		// 변환 행렬
 		file << "TRANSFORM_MATRIX: ";
-		Utilities::WriteToStream(file, Utilities::Transpose(mesh.transformMatrix));
+		Utilities::WriteToStream(file, mesh.transformMatrix.Transpose());
 		file << endl;
 
 		// 정점 데이터

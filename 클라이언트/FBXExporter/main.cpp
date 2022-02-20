@@ -3,5 +3,5 @@
 int main()
 {
 	FBXExporter fbxExporter{};
-	fbxExporter.Process("target/target.fbx");
+	fbxExporter.Process("target/firing.fbx");
 }

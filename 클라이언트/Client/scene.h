@@ -51,7 +51,7 @@ public:
 	void Update(FLOAT deltaTime);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	
-	// 위의 함수를 구현하기 위한 함수
+	// 업데이트 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void UpdateLights(FLOAT deltaTime);
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
