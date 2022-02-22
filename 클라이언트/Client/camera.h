@@ -18,6 +18,7 @@ public:
 	Camera();
 	virtual ~Camera();
 
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void Update(FLOAT deltaTime);
 	void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
@@ -62,6 +63,7 @@ public:
 	ThirdPersonCamera();
 	virtual ~ThirdPersonCamera() = default;
 
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 

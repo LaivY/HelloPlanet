@@ -6,24 +6,6 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_tex
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
 
-void GameObject::OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame)
-{
-	if (m_animationInfo->beforeAnimationName.empty()) // 애니메이션 프레임 진행 중
-	{
-		if (currFrame >= endFrame)
-		{
-			PlayAnimation(animationName);
-		}
-	}
-	else // 애니메이션 블렌딩 진행 중
-	{
-		if (currFrame >= endFrame)
-		{
-			PlayAnimation(m_animationInfo->animationName);
-		}
-	}
-}
-
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	// 셰이더 변수 최신화
@@ -127,7 +109,9 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	if (!m_animationInfo) m_animationInfo = make_unique<AnimationInfo>();
-	if (doBlending)
+
+	// 블랜딩 중에는 다른 애니메이션으로 블랜딩을 하지 않고 바로 해당 애니메이션을 재생한다.
+	if (m_animationInfo->beforeAnimationName.empty() && doBlending)
 	{
 		m_animationInfo->beforeAnimationName = m_animationInfo->animationName;
 		m_animationInfo->blendingTimer = 0.0f;

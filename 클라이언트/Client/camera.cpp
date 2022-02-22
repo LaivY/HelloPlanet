@@ -12,6 +12,11 @@ Camera::~Camera()
 	if (m_cbCamera) m_cbCamera->Unmap(0, NULL);
 }
 
+void Camera::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+}
+
 void Camera::Update(FLOAT deltaTime)
 {
 	//if (m_player) SetEye(Vector3::Add(m_player->GetPosition(), m_offset));
@@ -94,8 +99,23 @@ void Camera::SetPlayer(const shared_ptr<Player>& player)
 
 ThirdPersonCamera::ThirdPersonCamera() : Camera{}, m_distance{ 70.0f }, m_delay{ 0.01f }
 {
-	m_focusOffset = XMFLOAT3{ 0.0f, 50.0f, 0.0f };
+	m_focusOffset = XMFLOAT3{ 0.0f, 30.0f, 0.0f };
 	m_offset = Vector3::Normalize(XMFLOAT3{ 0.0f, 1.0f, -2.0f });
+}
+
+void ThirdPersonCamera::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+		case WM_MOUSEWHEEL:
+		{
+			if ((SHORT)HIWORD(wParam) > 0)
+				SetDistance(m_distance - 1.0f);
+			else
+				SetDistance(m_distance + 1.0f);
+			break;
+		}
+	}
 }
 
 void ThirdPersonCamera::Update(FLOAT deltaTime)
@@ -120,9 +140,6 @@ void ThirdPersonCamera::Update(FLOAT deltaTime)
 
 	// 카메라 뷰 변환 행렬 최신화
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
-
-	//string str{ to_string(m_roll) + ", " + to_string(m_pitch) + ", " + to_string(m_yaw) + "\n" };
-	//OutputDebugStringA(str.c_str());
 }
 
 void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

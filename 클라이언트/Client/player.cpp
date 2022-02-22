@@ -6,6 +6,114 @@ Player::Player() : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 
 	
 }
 
+void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	switch (message)
+	{
+		case WM_LBUTTONDOWN:
+		{
+			PlayAnimation("FIRINGAR");
+			break;
+		}
+	}
+}
+
+void Player::OnKeyboardEvent(FLOAT deltaTime)
+{
+	if (GetAsyncKeyState('W') & 0x8000)
+	{
+		XMFLOAT3 look{ m_camera->GetAt() };
+		look.y = 0.0f;
+		look = Vector3::Normalize(look);
+		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+		{
+			if (m_animationInfo->animationName != "RUNNING")
+				PlayAnimation("RUNNING", TRUE);
+			Move(Vector3::Mul(look, 50.0f * deltaTime));
+		}
+		else
+		{
+			if (m_animationInfo->animationName != "WALKING")
+				PlayAnimation("WALKING", TRUE);
+			Move(Vector3::Mul(look, 10.0f * deltaTime));
+		}
+	}
+	else if (GetAsyncKeyState('A') & 0x8000)
+	{
+		XMFLOAT3 look{ m_camera->GetAt() };
+		look.y = 0.0f;
+		look = Vector3::Normalize(look);
+
+		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
+		XMFLOAT3 left{ Vector3::Mul(right, -1) };
+		if (m_animationInfo->animationName != "WALKLEFT")
+			PlayAnimation("WALKLEFT", TRUE);
+		Move(Vector3::Mul(left, 10.0f * deltaTime));
+	}
+	else if (GetAsyncKeyState('D') & 0x8000)
+	{
+		XMFLOAT3 look{ m_camera->GetAt() };
+		look.y = 0.0f;
+		look = Vector3::Normalize(look);
+
+		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
+		if (m_animationInfo->animationName != "WALKRIGHT")
+			PlayAnimation("WALKRIGHT", TRUE);
+		Move(Vector3::Mul(right, 10.0f * deltaTime));
+	}
+}
+
+void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (wParam == 'r' || wParam == 'R')
+	{
+		if (message == WM_KEYDOWN && m_animationInfo->animationName != "RELOAD")
+		{
+			PlayAnimation("RELOAD");
+		}
+	}
+	if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D')
+	{
+		if (message == WM_KEYUP)
+			PlayAnimation("IDLE", TRUE);
+	}
+	if (wParam == VK_SHIFT)
+	{
+		if (message == WM_KEYUP)
+		{
+			if (GetAsyncKeyState('W') & 0x8000)
+			{
+				PlayAnimation("WALKING", TRUE);
+			}
+		}
+	}
+}
+
+void Player::OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame)
+{
+	if (m_animationInfo->beforeAnimationName.empty()) // 애니메이션 프레임 진행 중
+	{
+		if (currFrame >= endFrame)
+		{
+			// w키가 눌려진 상태라면 걷기 애니메이션 재생
+			// w키와 쉬프트키가 눌려진 상태라면 뛰기 애니메이션 재생
+			if (((GetAsyncKeyState('W') & 0x8000) && animationName == "WALKING") ||
+				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && animationName == "RUNNING"))
+				PlayAnimation(animationName);
+
+			// 그 외에는 대기 애니메이션 재생
+			else PlayAnimation("IDLE", TRUE);
+		}
+	}
+	else // 애니메이션 블렌딩 진행 중
+	{
+		if (currFrame >= endFrame)
+		{
+			PlayAnimation(m_animationInfo->animationName);
+		}
+	}
+}
+
 void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	GameObject::Render(commandList, shader);

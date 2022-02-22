@@ -1,5 +1,5 @@
 ﻿#include "scene.h"
-#define FREEVIEW
+//#define FREEVIEW
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT), 0.0f, 1.0f },
@@ -68,19 +68,8 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 
 void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch (message)
-	{
-	case WM_MOUSEWHEEL:
-	{
-		if (!m_camera) break;
-		ThirdPersonCamera* camera{ reinterpret_cast<ThirdPersonCamera*>(m_camera.get()) };
-		if ((SHORT)HIWORD(wParam) > 0)
-			camera->SetDistance(camera->GetDistance() - 1.0f);
-		else
-			camera->SetDistance(camera->GetDistance() + 1.0f);
-		break;
-	}
-	}
+	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
+	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
@@ -113,18 +102,14 @@ void Scene::OnKeyboardEvent(FLOAT deltaTime)
 	{
 		m_camera->Move(Vector3::Mul(XMFLOAT3{ 0.0f, -1.0f, 0.0f }, speed));
 	}
+#else
+	if (m_player) m_player->OnKeyboardEvent(deltaTime);
 #endif
 }
 
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (wParam == 'r' || wParam == 'R')
-	{
-		if (message == WM_KEYDOWN && m_player->GetAnimationInfo()->animationName != "RELOAD")
-		{
-			m_player->PlayAnimation("RELOAD");
-		}
-	}
+	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	if (wParam == VK_ESCAPE)
 	{
 		exit(0);
@@ -156,6 +141,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
@@ -164,6 +151,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
