@@ -27,13 +27,15 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look = Vector3::Normalize(look);
 		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
 		{
-			if (m_animationInfo->animationName != "RUNNING")
+			if ((m_animationInfo->state == PLAY && m_animationInfo->currAnimationName != "RUNNING") ||
+				(m_animationInfo->state == BLENDING && m_animationInfo->afterAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
 			Move(Vector3::Mul(look, 50.0f * deltaTime));
 		}
 		else
 		{
-			if (m_animationInfo->animationName != "WALKING")
+			if ((m_animationInfo->state == PLAY && m_animationInfo->currAnimationName != "WALKING") ||
+				(m_animationInfo->state == BLENDING && m_animationInfo->afterAnimationName == "IDLE"))
 				PlayAnimation("WALKING", TRUE);
 			Move(Vector3::Mul(look, 10.0f * deltaTime));
 		}
@@ -46,7 +48,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 
 		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
 		XMFLOAT3 left{ Vector3::Mul(right, -1) };
-		if (m_animationInfo->animationName != "WALKLEFT")
+		if ((m_animationInfo->state == PLAY && m_animationInfo->currAnimationName != "WALKLEFT") ||
+			(m_animationInfo->state == BLENDING && m_animationInfo->afterAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
 		Move(Vector3::Mul(left, 10.0f * deltaTime));
 	}
@@ -57,9 +60,22 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look = Vector3::Normalize(look);
 
 		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
-		if (m_animationInfo->animationName != "WALKRIGHT")
+		if ((m_animationInfo->state == PLAY && m_animationInfo->currAnimationName != "WALKRIGHT") ||
+			(m_animationInfo->state == BLENDING && m_animationInfo->afterAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
 		Move(Vector3::Mul(right, 10.0f * deltaTime));
+	}
+	else if (GetAsyncKeyState('S') & 0x8000)
+	{
+		XMFLOAT3 look{ m_camera->GetAt() };
+		look.y = 0.0f;
+		look = Vector3::Normalize(look);
+		XMFLOAT3 back{ Vector3::Mul(look, -1) };
+
+		if ((m_animationInfo->state == PLAY && m_animationInfo->currAnimationName != "WALKBACK") ||
+			(m_animationInfo->state == BLENDING && m_animationInfo->afterAnimationName == "IDLE"))
+			PlayAnimation("WALKBACK", TRUE);
+		Move(Vector3::Mul(back, 10.0f * deltaTime));
 	}
 }
 
@@ -67,12 +83,12 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 {
 	if (wParam == 'r' || wParam == 'R')
 	{
-		if (message == WM_KEYDOWN && m_animationInfo->animationName != "RELOAD")
+		if (message == WM_KEYDOWN && m_animationInfo->currAnimationName != "RELOAD")
 		{
 			PlayAnimation("RELOAD");
 		}
 	}
-	if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D')
+	if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D' || wParam == 's' || wParam == 'S')
 	{
 		if (message == WM_KEYUP)
 			PlayAnimation("IDLE", TRUE);
@@ -91,25 +107,38 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 void Player::OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame)
 {
-	if (m_animationInfo->beforeAnimationName.empty()) // 애니메이션 프레임 진행 중
+	if (m_animationInfo->state == PLAY) // 애니메이션 프레임 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
-			// w키가 눌려진 상태라면 걷기 애니메이션 재생
-			// w키와 쉬프트키가 눌려진 상태라면 뛰기 애니메이션 재생
+			// 이동
 			if (((GetAsyncKeyState('W') & 0x8000) && animationName == "WALKING") ||
-				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && animationName == "RUNNING"))
+				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && animationName == "RUNNING") ||
+				((GetAsyncKeyState('A') & 0x8000) && animationName == "WALKLEFT") ||
+				((GetAsyncKeyState('D') & 0x8000) && animationName == "WALKRIGHT") || 
+				((GetAsyncKeyState('S') & 0x8000) && animationName == "WALKBACK"))
+			{
 				PlayAnimation(animationName);
+				return;
+			}
+
+			// 대기
+			if (animationName == "IDLE")
+			{
+				PlayAnimation("IDLE");
+				return;
+			}
 
 			// 그 외에는 대기 애니메이션 재생
-			else PlayAnimation("IDLE", TRUE);
+			PlayAnimation("IDLE", TRUE);
 		}
 	}
-	else // 애니메이션 블렌딩 진행 중
+	else if (m_animationInfo->state == BLENDING) // 애니메이션 블렌딩 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
-			PlayAnimation(m_animationInfo->animationName);
+			string afterAnimationName{ m_animationInfo->afterAnimationName };
+			PlayAnimation(afterAnimationName);
 		}
 	}
 }
@@ -132,6 +161,17 @@ void Player::Update(FLOAT deltaTime)
 
 	// 마찰력
 	m_velocity = Vector3::Mul(m_velocity, m_friction);
+
+	// 디버그
+	if (m_animationInfo)
+	{
+		string debug{ "" };
+		debug += "CURR : " + m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
+		debug += "AFTR : " + (m_animationInfo->afterAnimationName.empty() ? "NONE" : m_animationInfo->afterAnimationName) + "(" + to_string(m_animationInfo->afterTimer) + ")\n";
+		debug += "BLND : " + to_string(m_animationInfo->blendingTimer) + "\n";
+		debug += "--------------------------------------\n";
+		OutputDebugStringA(debug.c_str());
+	}
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

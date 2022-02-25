@@ -143,6 +143,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
+	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkBack.txt"), "WALKBACK");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
 	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
@@ -153,6 +154,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
+	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkBack.txt"), "WALKBACK");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
 	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");

@@ -49,8 +49,10 @@ void GameObject::Update(FLOAT deltaTime)
 	// 타이머 진행
 	if (m_animationInfo)
 	{
-		m_animationInfo->timer += deltaTime;
-		m_animationInfo->blendingTimer += deltaTime;
+		if (m_animationInfo->state == PLAY)
+			m_animationInfo->currTimer += deltaTime;
+		else if (m_animationInfo->state == BLENDING)
+			m_animationInfo->blendingTimer += deltaTime;
 	}
 }
 
@@ -109,17 +111,19 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	if (!m_animationInfo) m_animationInfo = make_unique<AnimationInfo>();
-
-	// 블랜딩 중에는 다른 애니메이션으로 블랜딩을 하지 않고 바로 해당 애니메이션을 재생한다.
-	if (m_animationInfo->beforeAnimationName.empty() && doBlending)
+	if (doBlending)
 	{
-		m_animationInfo->beforeAnimationName = m_animationInfo->animationName;
-		m_animationInfo->blendingTimer = 0.0f;
+		m_animationInfo->afterAnimationName = animationName;
+		m_animationInfo->afterTimer = 0.0f;
+		m_animationInfo->state = BLENDING;
 	}
 	else
 	{
-		m_animationInfo->beforeAnimationName.clear();
-		m_animationInfo->timer = 0.0f;
+		m_animationInfo->afterAnimationName.clear();
+		m_animationInfo->afterTimer = 0.0f;
+		m_animationInfo->currAnimationName = animationName;
+		m_animationInfo->currTimer = 0.0f;
+		m_animationInfo->state = PLAY;
 	}
-	m_animationInfo->animationName = animationName;
+	m_animationInfo->blendingTimer = 0.0f;
 }

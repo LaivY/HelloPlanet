@@ -4,6 +4,10 @@
 #include "shader.h"
 #include "texture.h"
 
+#define	NONE		1
+#define PLAY		2
+#define BLENDING	3
+
 class Camera;
 
 struct TextureInfo
@@ -18,12 +22,14 @@ struct TextureInfo
 
 struct AnimationInfo
 {
-	AnimationInfo() : animationName{}, timer{}, beforeAnimationName{}, blendingTimer{} { }
+	AnimationInfo() : currTimer{}, afterTimer{}, blendingTimer{}, state{ NONE } { }
 
-	string	animationName;
-	FLOAT	timer;
-	string	beforeAnimationName;
+	string	currAnimationName;
+	FLOAT	currTimer;
+	string	afterAnimationName;
+	FLOAT	afterTimer;
 	FLOAT	blendingTimer;
+	UINT	state;
 };
 
 class GameObject
