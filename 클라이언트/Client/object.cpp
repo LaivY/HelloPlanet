@@ -11,12 +11,16 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);
 
-	// PSO 설정
-	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
+	// 메쉬가 있다면
+	if (m_mesh)
+	{
+		// PSO 설정
+		if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+		else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
 
-	// 메쉬 렌더링
-	if (m_mesh) m_mesh->Render(commandList, this);
+		// 메쉬 렌더링
+		m_mesh->Render(commandList, this);
+	}
 }
 
 void GameObject::Update(FLOAT deltaTime)

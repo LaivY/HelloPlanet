@@ -18,7 +18,7 @@ FBXExporter::~FBXExporter()
 	if (m_manager) m_manager->Destroy();
 }
 
-void FBXExporter::Process(const string& inputFileName)
+void FBXExporter::Process(const string& inputFileName, bool doExportMesh, bool doExportAnimation)
 {
 	// 입력, 출력 파일 이름 저장
 	m_inputFileName = inputFileName;
@@ -51,8 +51,8 @@ void FBXExporter::Process(const string& inputFileName)
 	ProcessLink();
 
 	// 출력
-	ExportMesh();
-	ExportAnimation();
+	if (doExportMesh)ExportMesh();
+	if (doExportAnimation)ExportAnimation();
 }
 
 void FBXExporter::LoadSkeleton(FbxNode* node, int index, int parentIndex)

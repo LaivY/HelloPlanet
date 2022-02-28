@@ -123,10 +123,8 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
 {
-	if (!m_cbMesh) return;
-
 	// 변환 행렬
 	m_pcbMesh->transformMatrix = m_transformMatrix;
 
@@ -139,10 +137,14 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	{
 		if (aniInfo->state == PLAY) // 프레임 진행
 		{
-			const Animation& ani{ m_animations.at(aniInfo->currAnimationName) };
+			Animation ani{};
+			if (parentMesh)
+				ani = parentMesh->GetAnimations().at(aniInfo->currAnimationName);
+			else
+				ani = m_animations.at(aniInfo->currAnimationName);
 			const float frame{ aniInfo->currTimer / (1.0f / 24.0f) };
-			const UINT currFrame{ min(static_cast<UINT>(floorf(frame)), m_animations.at(aniInfo->currAnimationName).length - 1) };
-			const UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), m_animations.at(aniInfo->currAnimationName).length - 1) };
+			const UINT currFrame{ min(static_cast<UINT>(floorf(frame)), ani.length - 1) };
+			const UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), ani.length - 1) };
 			const float t{ frame - static_cast<int>(frame) };
 
 			for (int i = 0; i < ani.joints.size(); ++i)
@@ -151,22 +153,33 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 																		ani.joints[i].animationTransformMatrix[nextFrame],
 																		t);
 			}
-			object->OnAnimation(aniInfo->currAnimationName, frame, m_animations.at(aniInfo->currAnimationName).length);
+			object->OnAnimation(aniInfo->currAnimationName, frame, ani.length);
 		}
 		else if (aniInfo->state == BLENDING)// 애니메이션 블렌딩
 		{
 			// curr -> after로 애니메이션 블렌딩 진행
-			const Animation& currAni{ m_animations.at(aniInfo->currAnimationName) };
-			const Animation& afterAni{ m_animations.at(aniInfo->afterAnimationName) };
+			Animation currAni{};
+			Animation afterAni{};
+			if (parentMesh)
+			{
+				currAni = parentMesh->GetAnimations().at(aniInfo->currAnimationName);
+				afterAni = parentMesh->GetAnimations().at(aniInfo->afterAnimationName);
+			}
+			else
+			{
+				currAni = m_animations.at(aniInfo->currAnimationName);
+				afterAni = m_animations.at(aniInfo->afterAnimationName);
+			}
+
 			const float frame{ aniInfo->currTimer / (1.0f / 24.0f) };
 			const UINT currFrame{ min(static_cast<UINT>(floorf(frame)), currAni.length - 1) };
 			const UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), currAni.length - 1) };
 			const float t1{ frame - static_cast<int>(frame) };
 
-			// 애니메이션 블렌딩은 n프레임에 걸쳐되도록 설정
-			constexpr UINT iFrame{ 60 };
-			float blendingFrame{ iFrame * (1.0f / 24.0f) };
-			float t2{ clamp(aniInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
+			// 애니메이션 블렌딩은 iFrame에 걸쳐되도록 설정
+			constexpr UINT iFrame{ 5 };
+			constexpr float blendingFrame{ iFrame * (1.0f / 24.0f) };
+			const float t2{ clamp(aniInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
 
 			for (int i = 0; i < currAni.joints.size(); ++i)
 			{
@@ -182,10 +195,9 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
 {
-	// 애니메이션
-	UpdateShaderVariable(commandList, object);
+	if (m_cbMesh) UpdateShaderVariable(commandList, object, parentMesh);
 
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);

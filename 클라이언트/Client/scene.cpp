@@ -137,27 +137,23 @@ void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPt
 
 void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	vector<pair<string, string>> animations
+	{
+		{ "idle", "IDLE" }, { "walking", "WALKING" }, {"walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
+		{ "walkBack", "WALKBACK" }, {"running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
+	};
+
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("walkBack.txt"), "WALKBACK");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
-	m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
+	for (const string& weaponName : { "AR", "SG" })
+		for (const auto& [fileName, animationName] : animations)
+			m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH(weaponName + "/" + fileName + ".txt"), weaponName + "/" + animationName);
 
-	m_meshes["GUN"] = make_shared<Mesh>();
-	m_meshes["GUN"]->LoadMesh(device, commandList, PATH("gun.txt"));
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("idle.txt"), "IDLE");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walking.txt"), "WALKING");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkLeft.txt"), "WALKLEFT");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkRight.txt"), "WALKRIGHT");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("walkBack.txt"), "WALKBACK");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("running.txt"), "RUNNING");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("firingAR.txt"), "FIRINGAR");
-	m_meshes["GUN"]->LoadAnimation(device, commandList, PATH("reload.txt"), "RELOAD");
+	m_meshes["AR"] = make_shared<Mesh>();
+	m_meshes["AR"]->LoadMesh(device, commandList, PATH("AR/AR.txt"));
+
+	m_meshes["SG"] = make_shared<Mesh>();
+	m_meshes["SG"]->LoadMesh(device, commandList, PATH("SG/SG.txt"));
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
@@ -200,9 +196,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto player{ make_shared<Player>() };
 	player->SetMesh(m_meshes["PLAYER"]);
 	player->SetShader(m_shaders["ANIMATION"]);
-	player->SetGunMesh(m_meshes["GUN"]);
+	player->SetGunMesh(m_meshes["SG"]);
 	player->SetGunShader(m_shaders["LINK"]);
-	player->PlayAnimation("FIRINGAR");
+	player->SetWeaponType(SG);
+	player->PlayAnimation("IDLE");
 	SetPlayer(player);
 
 	// 카메라, 플레이어 서로 설정
