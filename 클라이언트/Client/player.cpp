@@ -12,6 +12,7 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_LBUTTONDOWN:
 		{
+			//PlayAnimation("FIRING");
 			PlayAnimation("FIRING");
 			break;
 		}
@@ -94,7 +95,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		if (message == WM_KEYDOWN && GetPureAnimationName(m_animationInfo->currAnimationName) != "RELOAD")
 		{
-			PlayAnimation("RELOAD");
+			PlayAnimation("RELOAD", TRUE);
 		}
 	}
 	if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D' || wParam == 's' || wParam == 'S')
@@ -114,14 +115,31 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	}
 }
 
-void Player::OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame)
+void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
+	if (isUpper)
+	{
+		if (currFrame >= endFrame)
+		{
+			if (m_upperAnimationInfo->state == PLAY)
+			{
+				m_upperAnimationInfo->state = SYNC;
+				m_upperAnimationInfo->blendingTimer = 0.0f;
+			}
+			else if (m_upperAnimationInfo->state == BLENDING)
+				PlayAnimation(GetPureAnimationName(m_upperAnimationInfo->afterAnimationName));
+			else if (m_upperAnimationInfo->state == SYNC)
+				m_upperAnimationInfo.reset();
+		}
+		return;
+	}
+
 	if (m_animationInfo->state == PLAY) // 애니메이션 프레임 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
 			// 이동
-			string currPureAnimationName{ GetPureAnimationName(animationName) };
+			string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
 			if (((GetAsyncKeyState('W') & 0x8000) && currPureAnimationName == "WALKING") ||
 				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && currPureAnimationName == "RUNNING") ||
 				((GetAsyncKeyState('A') & 0x8000) && currPureAnimationName == "WALKLEFT") ||
@@ -167,6 +185,15 @@ void Player::Update(FLOAT deltaTime)
 {
 	GameObject::Update(deltaTime);
 
+	// 상체 애니메이션 타이머 진행
+	if (m_upperAnimationInfo)
+	{
+		if (m_upperAnimationInfo->state == PLAY)
+			m_upperAnimationInfo->currTimer += deltaTime;
+		else if (m_upperAnimationInfo->state == BLENDING || m_upperAnimationInfo->state == SYNC)
+			m_upperAnimationInfo->blendingTimer += deltaTime;
+	}
+
 	Move(m_velocity);
 
 	// 마찰력
@@ -209,9 +236,42 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
 	string pureAnimationName{ GetPureAnimationName(animationName) };
+
+	// 아래의 애니메이션은 상체만 애니메이션함
+	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
+	{
+		if (m_weaponType == AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
+		else if (m_weaponType == SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
+		else if (m_weaponType == MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+		return;
+	}
+
+	// 그 외는 상하체 모두 애니메이션함
 	if (m_weaponType == AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
 	else if (m_weaponType == SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
 	else if (m_weaponType == MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+}
+
+void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
+{
+	if (!m_upperAnimationInfo) m_upperAnimationInfo = make_unique<AnimationInfo>();
+	if (doBlending)
+	{
+		m_upperAnimationInfo->currAnimationName = m_animationInfo->currAnimationName;
+		m_upperAnimationInfo->currTimer = m_animationInfo->currTimer;
+		m_upperAnimationInfo->afterAnimationName = animationName;
+		m_upperAnimationInfo->afterTimer = 0.0f;
+		m_upperAnimationInfo->state = BLENDING;
+	}
+	else
+	{
+		m_upperAnimationInfo->currAnimationName = animationName;
+		m_upperAnimationInfo->currTimer = 0.0f;
+		m_upperAnimationInfo->afterAnimationName.clear();
+		m_upperAnimationInfo->afterTimer = 0.0f;
+		m_upperAnimationInfo->state = PLAY;
+	}
+	m_upperAnimationInfo->blendingTimer = 0.0f;
 }
 
 void Player::AddVelocity(const XMFLOAT3& increase)

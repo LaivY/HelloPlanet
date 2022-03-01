@@ -20,7 +20,7 @@ public:
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnKeyboardEvent(FLOAT deltaTime);
 	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void OnAnimation(const string& animationName, FLOAT currFrame, UINT endFrame);
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper);
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
@@ -35,6 +35,9 @@ public:
 
 	XMFLOAT3 GetVelocity() const { return m_velocity; }
 	string GetPureAnimationName(const string& animationName) const;
+
+private:
+	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 private:
 	XMFLOAT3			m_velocity;		// 속도

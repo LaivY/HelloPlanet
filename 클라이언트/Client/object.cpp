@@ -50,7 +50,7 @@ void GameObject::Update(FLOAT deltaTime)
 		}
 	}
 
-	// 타이머 진행
+	// 애니메이션 타이머 진행
 	if (m_animationInfo)
 	{
 		if (m_animationInfo->state == PLAY)
