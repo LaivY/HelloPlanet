@@ -62,7 +62,7 @@ public:
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh = nullptr) const;
 	void ReleaseUploadBuffer();
 
-	const unordered_map<string, Animation>& GetAnimations() const { return m_animations; }
+	const Animation& GetAnimation(const string& animationName) const { return m_animations.at(animationName); }
 
 protected:
 	UINT								m_nVertices;

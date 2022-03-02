@@ -42,7 +42,7 @@ public:
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
 	virtual void OnKeyboardEvent(FLOAT deltaTime) { }
 	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper) { }
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE) { }
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Move(const XMFLOAT3& shift);

@@ -12,7 +12,6 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_LBUTTONDOWN:
 		{
-			//PlayAnimation("FIRING");
 			PlayAnimation("FIRING", TRUE);
 			break;
 		}
