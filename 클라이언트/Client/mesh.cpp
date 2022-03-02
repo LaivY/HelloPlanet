@@ -135,12 +135,13 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	// 애니메이션
 	if (AnimationInfo* animationInfo{ object->GetAnimationInfo() })
 	{
-		int start{ 0 };
+		int start{ 0 }, end{ 0 };
 
 		// 상체 애니메이션
 		if (AnimationInfo* upperAnimationInfo{ object->GetUpperAnimationInfo() })
 		{
 			start = 20;
+			end = -1;
 			if (upperAnimationInfo->state == PLAY)
 			{
 				Animation animation{};
@@ -159,6 +160,13 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 																			animation.joints[i].animationTransformMatrix[nextFrame],
 																			t);
 				}
+				// 총도 상체 애니메이션을 따라간다.(마지막 뼈는 총 애니메이션 변환 행렬이다.)
+				m_pcbMesh->boneTransformMatrix[animation.joints.size() - 1] = Matrix::Interpolate(
+					animation.joints.back().animationTransformMatrix[currFrame],
+					animation.joints.back().animationTransformMatrix[nextFrame],
+					t
+				);
+
 				object->OnAnimation(frame, animation.length, TRUE);
 			}
 			else if (upperAnimationInfo->state == BLENDING)
@@ -198,6 +206,12 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 					XMFLOAT4X4 after{ upperAfterAni.joints[i].animationTransformMatrix[0] };
 					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 				}
+				XMFLOAT4X4 before{ Matrix::Interpolate(currAni.joints.back().animationTransformMatrix[currFrame],
+													   currAni.joints.back().animationTransformMatrix[nextFrame],
+													   t1) };
+				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix[0]};
+				m_pcbMesh->boneTransformMatrix[upperCurrAni.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+
 				object->OnAnimation(upperAnimationInfo->blendingTimer / (1.0f / 24.0f), iFrame, TRUE);
 			}
 			else if (upperAnimationInfo->state == SYNC)
@@ -240,6 +254,15 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 														  _t1) };
 					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 				}
+
+				XMFLOAT4X4 before{ Matrix::Interpolate(upperCurrAni.joints.back().animationTransformMatrix[currFrame],
+													   upperCurrAni.joints.back().animationTransformMatrix[nextFrame],
+													   t1) };
+				XMFLOAT4X4 after{ Matrix::Interpolate(currAni.joints.back().animationTransformMatrix[_currFrame],
+													  currAni.joints.back().animationTransformMatrix[_nextFrame],
+													  _t1) };
+				m_pcbMesh->boneTransformMatrix[upperCurrAni.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+
 				object->OnAnimation(upperAnimationInfo->blendingTimer / (1.0f / 24.0f), iFrame, TRUE);
 			}
 		}
@@ -256,11 +279,11 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			const UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), ani.length - 1) };
 			const float t{ frame - static_cast<int>(frame) };
 
-			for (int i = start; i < ani.joints.size(); ++i)
+			for (int i = start; i < ani.joints.size() + end; ++i)
 			{
 				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
-					ani.joints[i].animationTransformMatrix[nextFrame],
-					t);
+																		ani.joints[i].animationTransformMatrix[nextFrame],
+																		t);
 			}
 			object->OnAnimation(frame, ani.length, FALSE);
 		}
@@ -290,7 +313,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			constexpr float blendingFrame{ iFrame * (1.0f / 24.0f) };
 			const float t2{ clamp(animationInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
 
-			for (int i = start; i < currAni.joints.size(); ++i)
+			for (int i = start; i < currAni.joints.size() + end; ++i)
 			{
 				XMFLOAT4X4 before{ Matrix::Interpolate(currAni.joints[i].animationTransformMatrix[currFrame],
 													   currAni.joints[i].animationTransformMatrix[nextFrame],
