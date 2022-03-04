@@ -1,6 +1,5 @@
 #include "common.hlsl"
 //#define LIGHTING
-#define APPLY_MESH_TRANSFORM
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -10,11 +9,7 @@ PS_INPUT VS(VS_INPUT input)
     {
         posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
     }
-#ifdef APPLY_MESH_TRANSFORM
     output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
-#else
-    output.positionW = mul(posL, g_worldMatrix);
-#endif
     output.positionH = mul(mul(output.positionW, g_viewMatrix), g_projMatrix);
     //output.shadowPosH = mul(mul(mul(output.positionW, g_lightViewMatrix), g_lightProjMatrix), g_NDCToTextureMatrix);
     output.normalW = mul(input.normal, (float3x3) g_worldMatrix);

@@ -116,6 +116,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
+	// 상체 애니메이션 콜백 처리
 	if (isUpper)
 	{
 		if (currFrame >= endFrame)
@@ -133,7 +134,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		return;
 	}
 
-	if (m_animationInfo->state == PLAY) // 애니메이션 프레임 진행 중
+	if (m_animationInfo->state == PLAY) // 프레임 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
@@ -160,7 +161,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			PlayAnimation("IDLE", TRUE);
 		}
 	}
-	else if (m_animationInfo->state == BLENDING) // 애니메이션 블렌딩 진행 중
+	else if (m_animationInfo->state == BLENDING) // 블렌딩 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
@@ -193,22 +194,11 @@ void Player::Update(FLOAT deltaTime)
 			m_upperAnimationInfo->blendingTimer += deltaTime;
 	}
 
+	// 이동
 	Move(m_velocity);
 
 	// 마찰력
 	m_velocity = Vector3::Mul(m_velocity, m_friction);
-
-#ifdef _DEBUG
-	if (m_animationInfo)
-	{
-		string debug{ "" };
-		debug += "CURR : " + m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
-		debug += "AFTR : " + (m_animationInfo->afterAnimationName.empty() ? "NONE" : m_animationInfo->afterAnimationName) + "(" + to_string(m_animationInfo->afterTimer) + ")\n";
-		debug += "BLND : " + to_string(m_animationInfo->blendingTimer) + "\n";
-		debug += "--------------------------------------\n";
-		OutputDebugStringA(debug.c_str());
-	}
-#endif
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

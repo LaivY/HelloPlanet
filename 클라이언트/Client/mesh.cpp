@@ -138,7 +138,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		// 이 블럭 안에서 선언할 수 있는 변수는 모두 선언한다.
 		
 		// 현재 애니메이션 구조체
-		const Animation& currAnimation{
+		const Animation& currAnimation{ 
 			parentMesh
 			? parentMesh->GetAnimation(animationInfo->currAnimationName)
 			: m_animations.at(animationInfo->currAnimationName)

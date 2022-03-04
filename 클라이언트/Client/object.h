@@ -68,20 +68,18 @@ public:
 	BOOL isDeleted() const { return m_isDeleted; }
 
 protected:
-	XMFLOAT4X4					m_worldMatrix;		// 월드 변환 행렬
-	FLOAT						m_roll;				// z축 회전각
-	FLOAT						m_pitch;			// x축 회전각
-	FLOAT						m_yaw;				// y축 회전각
+	XMFLOAT4X4					m_worldMatrix;			// 월드 변환 행렬
+	FLOAT						m_roll;					// z축 회전각
+	FLOAT						m_pitch;				// x축 회전각
+	FLOAT						m_yaw;					// y축 회전각
 
-	shared_ptr<Mesh>			m_mesh;				// 메쉬
-	shared_ptr<Shader>			m_shader;			// 셰이더
-	shared_ptr<Texture>			m_texture;			// 텍스쳐
+	shared_ptr<Mesh>			m_mesh;					// 메쉬
+	shared_ptr<Shader>			m_shader;				// 셰이더
+	shared_ptr<Texture>			m_texture;				// 텍스쳐
 
-	unique_ptr<TextureInfo>		m_textureInfo;		// 텍스쳐 정보 구조체
-	unique_ptr<AnimationInfo>	m_animationInfo;	// 애니메이션 정보 구조체
-	unique_ptr<AnimationInfo>	m_upperAnimationInfo; // 상체 애니메이션 정보 구조체
+	unique_ptr<TextureInfo>		m_textureInfo;			// 텍스쳐 정보 구조체
+	unique_ptr<AnimationInfo>	m_animationInfo;		// 애니메이션 정보 구조체
+	unique_ptr<AnimationInfo>	m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
 
-	string						m_state;			// 상태(=애니메이션)
-
-	BOOL						m_isDeleted;		// 삭제 여부
+	BOOL						m_isDeleted;			// 삭제 여부
 };
