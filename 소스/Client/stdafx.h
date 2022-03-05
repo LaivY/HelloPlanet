@@ -34,6 +34,13 @@ using Microsoft::WRL::ComPtr;
 #include "d3dx12.h"
 using namespace DirectX;
 
+// Network
+#pragma comment (lib, "WS2_32.LIB")
+#pragma comment (lib, "MSWSock.LIB")
+#include <WS2tcpip.h>
+#include <MSWSock.h>
+#include "protocol.h"
+
 // --------------------------------------
 
 #define SCREEN_WIDTH        1280
