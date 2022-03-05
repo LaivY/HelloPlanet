@@ -90,7 +90,7 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	ComPtr<ID3D12Resource> dummy;
-	UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
+	constexpr UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
 	m_cbMesh = CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
 	m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
 }

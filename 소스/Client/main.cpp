@@ -113,6 +113,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// 프레임워크 초기화
 	g_GameFramework.OnInit(hInst, hWnd);
 
+#ifdef NETWORK
+	// 서버와 연결
+	ConnectServer();
+#endif
+
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
@@ -125,7 +130,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_ACTIVATE:
 		g_GameFramework.SetIsActive((BOOL)wParam);
-		ConnectServer();
 		break;
 	case WM_MOUSEWHEEL:
 	case WM_LBUTTONDOWN:

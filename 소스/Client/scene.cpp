@@ -1,5 +1,4 @@
 ﻿#include "scene.h"
-//#define FREEVIEW
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT), 0.0f, 1.0f },

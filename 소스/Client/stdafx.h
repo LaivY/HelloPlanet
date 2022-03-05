@@ -1,4 +1,7 @@
 ﻿#pragma once
+//#define FREEVIEW
+//#define NETWORK
+
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
 
