@@ -11,12 +11,16 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);
 
-	// PSO 설정
-	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
+	// 메쉬가 있다면
+	if (m_mesh)
+	{
+		// PSO 설정
+		if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+		else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
 
-	// 메쉬 렌더링
-	if (m_mesh) m_mesh->Render(commandList, this);
+		// 메쉬 렌더링
+		m_mesh->Render(commandList, this);
+	}
 }
 
 void GameObject::Update(FLOAT deltaTime)
@@ -46,11 +50,13 @@ void GameObject::Update(FLOAT deltaTime)
 		}
 	}
 
-	// 타이머 진행
+	// 애니메이션 타이머 진행
 	if (m_animationInfo)
 	{
-		m_animationInfo->timer += deltaTime;
-		m_animationInfo->blendingTimer += deltaTime;
+		if (m_animationInfo->state == PLAY)
+			m_animationInfo->currTimer += deltaTime;
+		else if (m_animationInfo->state == BLENDING)
+			m_animationInfo->blendingTimer += deltaTime;
 	}
 }
 
@@ -109,17 +115,19 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	if (!m_animationInfo) m_animationInfo = make_unique<AnimationInfo>();
-
-	// 블랜딩 중에는 다른 애니메이션으로 블랜딩을 하지 않고 바로 해당 애니메이션을 재생한다.
-	if (m_animationInfo->beforeAnimationName.empty() && doBlending)
+	if (doBlending)
 	{
-		m_animationInfo->beforeAnimationName = m_animationInfo->animationName;
-		m_animationInfo->blendingTimer = 0.0f;
+		m_animationInfo->afterAnimationName = animationName;
+		m_animationInfo->afterTimer = 0.0f;
+		m_animationInfo->state = BLENDING;
 	}
 	else
 	{
-		m_animationInfo->beforeAnimationName.clear();
-		m_animationInfo->timer = 0.0f;
+		m_animationInfo->afterAnimationName.clear();
+		m_animationInfo->afterTimer = 0.0f;
+		m_animationInfo->currAnimationName = animationName;
+		m_animationInfo->currTimer = 0.0f;
+		m_animationInfo->state = PLAY;
 	}
-	m_animationInfo->animationName = animationName;
+	m_animationInfo->blendingTimer = 0.0f;
 }

@@ -88,7 +88,7 @@ public:
 	FBXExporter();
 	~FBXExporter();
 
-	void Process(const string& inputFileName);
+	void Process(const string& inputFileName, bool doExportMesh = true, bool doExportAnimation = true);
 	void LoadSkeleton(FbxNode* node, int index, int parentIndex);
 	void LoadMesh(FbxNode* node);
 	void LoadInfo(FbxNode* node, Mesh& mesh);

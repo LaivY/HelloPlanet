@@ -58,9 +58,11 @@ public:
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
-	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const;
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const;
+	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh = nullptr) const;
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh = nullptr) const;
 	void ReleaseUploadBuffer();
+
+	const Animation& GetAnimation(const string& animationName) const { return m_animations.at(animationName); }
 
 protected:
 	UINT								m_nVertices;

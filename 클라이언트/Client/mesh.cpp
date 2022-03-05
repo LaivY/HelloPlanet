@@ -123,10 +123,8 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
 {
-	if (!m_cbMesh) return;
-
 	// 변환 행렬
 	m_pcbMesh->transformMatrix = m_transformMatrix;
 
@@ -135,58 +133,163 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		m_pcbMesh->materials[i] = m_materials[i];
 
 	// 애니메이션
-	if (AnimationInfo* aniInfo{ object->GetAnimationInfo() })
+	if (AnimationInfo* animationInfo{ object->GetAnimationInfo() })
 	{
-		if (aniInfo->beforeAnimationName.empty()) // 프레임 진행
-		{
-			const Animation& ani{ m_animations.at(aniInfo->animationName) };
-			float frame{ aniInfo->timer / (1.0f / 24.0f) };
-			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), m_animations.at(aniInfo->animationName).length - 1)};
-			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), m_animations.at(aniInfo->animationName).length - 1)};
-			float t{ frame - static_cast<int>(frame) };
+		// 이 블럭 안에서 선언할 수 있는 변수는 모두 선언한다.
+		
+		// 현재 애니메이션 구조체
+		const Animation& currAnimation{
+			parentMesh
+			? parentMesh->GetAnimation(animationInfo->currAnimationName)
+			: m_animations.at(animationInfo->currAnimationName)
+		};
 
-			for (int i = 0; i < ani.joints.size(); ++i)
+		// 현재 진행중인 애니메이션을 처리할 때 필요한 변수들
+		const float currFrame{ animationInfo->currTimer / (1.0f / 24.0f) };								// 프레임(실수)
+		const UINT nCurrFrame{ min(static_cast<int>(floorf(currFrame)), currAnimation.length - 1) };	// 프레임(정수)
+		const UINT nNextFrame{ min(static_cast<int>(ceilf(currFrame)), currAnimation.length - 1) };		// 다음 프레임(정수)
+		const float t{ currFrame - static_cast<int>(currFrame) };										// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
+
+		// 블렌딩과 관련된 변수들
+		constexpr UINT blendingFrame{ 5 };										// 블렌딩에 걸리는 프레임
+		constexpr float totalBlendingTime{ blendingFrame * (1.0f / 24.0f) };	// 블렌딩에 걸리는 시간
+
+		UINT start{ 0 }, end{ static_cast<UINT>(currAnimation.joints.size()) }; // 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
+
+		// 상체 애니메이션
+		if (AnimationInfo* upperAnimationInfo{ object->GetUpperAnimationInfo() })
+		{
+			// 이 블럭 안에서 상체 애니메이션과 관련된 선언할 수 있는 변수는 모두 선언한다.
+
+			// 현재 상체 애니메이션 구조체
+			const Animation& currUpperAnimation{
+				parentMesh
+				? parentMesh->GetAnimation(upperAnimationInfo->currAnimationName)
+				: m_animations.at(upperAnimationInfo->currAnimationName)
+			};
+
+			// 현재 진행중인 상체 애니메이션을 처리할 때 필요한 변수들
+			const float upperCurrFrame{ upperAnimationInfo->currTimer / (1.0f / 24.0f) };
+			const UINT nUpperCurrFrame{ min(static_cast<UINT>(floorf(upperCurrFrame)), currUpperAnimation.length - 1) };
+			const UINT nUpperNextFrame{ min(static_cast<UINT>(ceilf(upperCurrFrame)), currUpperAnimation.length - 1) };
+			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
+
+			// 상체 애니메이션이 있으면 기존 애니메이션은 하체만 애니메이션한다.
+			start = 20; --end;
+
+			if (upperAnimationInfo->state == PLAY)
 			{
-				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(ani.joints[i].animationTransformMatrix[currFrame],
-																		ani.joints[i].animationTransformMatrix[nextFrame],
+				for (int i = 0; i < start; ++i)
+				{
+					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currUpperAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
+																			currUpperAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
+																			upperT);
+				}
+
+				// 총도 상체 애니메이션을 따라간다.(마지막 뼈는 총 애니메이션 변환 행렬이다.)
+				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
+																										   currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
+																										   upperT);
+				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
+			}
+			else if (upperAnimationInfo->state == BLENDING)
+			{
+				// 상체 애니메이션은 블렌딩할 때 하체 애니메이션의 타이밍과 맞춘다.
+				const Animation& upperAfterAni{
+					parentMesh
+					? parentMesh->GetAnimation(upperAnimationInfo->afterAnimationName)
+					: m_animations.at(upperAnimationInfo->afterAnimationName)
+				};
+
+				// 블렌딩 매개변수
+				const float t2{ clamp(upperAnimationInfo->blendingTimer / totalBlendingTime, 0.0f, 1.0f) };
+
+				for (int i = 0; i < start; ++i)
+				{
+					XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
+														   currAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
+														   upperT) };
+					XMFLOAT4X4 after{ upperAfterAni.joints[i].animationTransformMatrix.front() };
+					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
+				}
+
+				// 총 애니메이션
+				XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
+													   currAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
+													   upperT) };
+				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
+				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+
+				object->OnAnimation(upperAnimationInfo->blendingTimer / (1.0f / 24.0f), blendingFrame, TRUE);
+			}
+			else if (upperAnimationInfo->state == SYNC)
+			{
+				// 블렌딩 매개변수
+				const float t2{ clamp(upperAnimationInfo->blendingTimer / totalBlendingTime, 0.0f, 1.0f) };
+
+				for (int i = 0; i < start; ++i)
+				{
+					XMFLOAT4X4 before{ Matrix::Interpolate(currUpperAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
+														   currUpperAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
+														   upperT) };
+					XMFLOAT4X4 after{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
+														  currAnimation.joints[i].animationTransformMatrix[nNextFrame],
+														  t) };
+					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
+				}
+
+				// 총 애니메이션
+				XMFLOAT4X4 before{ Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
+													   currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
+													   upperT) };
+				XMFLOAT4X4 after{ Matrix::Interpolate(currAnimation.joints.back().animationTransformMatrix[nCurrFrame],
+													  currAnimation.joints.back().animationTransformMatrix[nNextFrame],
+													  t) };
+				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+
+				object->OnAnimation(upperAnimationInfo->blendingTimer / (1.0f / 24.0f), blendingFrame, TRUE);
+			}
+		}
+
+		if (animationInfo->state == PLAY) // 프레임 진행
+		{
+			for (int i = start; i < end; ++i)
+			{
+				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
+																		currAnimation.joints[i].animationTransformMatrix[nNextFrame],
 																		t);
 			}
-			object->OnAnimation(aniInfo->animationName, frame, m_animations.at(aniInfo->animationName).length);
+			object->OnAnimation(currFrame, currAnimation.length);
 		}
-		else // 애니메이션 블렌딩
+		else if (animationInfo->state == BLENDING) // 애니메이션 블렌딩
 		{
-			// before -> after로 애니메이션 블렌딩 진행
-			const Animation& beforeAni{ m_animations.at(aniInfo->beforeAnimationName) };
-			const Animation& afterAni{ m_animations.at(aniInfo->animationName) };
+			// curr -> after로 애니메이션 블렌딩 진행
+			const Animation& afterAnimation{
+				parentMesh
+				? parentMesh->GetAnimation(animationInfo->afterAnimationName)
+				: m_animations.at(animationInfo->afterAnimationName)
+			};
 
-			float frame{ aniInfo->timer / (1.0f / 24.0f) };
-			UINT currFrame{ min(static_cast<UINT>(floorf(frame)), beforeAni.length - 1) };
-			UINT nextFrame{ min(static_cast<UINT>(ceilf(frame)), beforeAni.length - 1) };
-			float t1{ frame - static_cast<int>(frame) };
+			// 블렌딩 매개변수
+			const float t2{ clamp(animationInfo->blendingTimer / totalBlendingTime, 0.0f, 1.0f) };
 
-			// 애니메이션 블렌딩은 n프레임에 걸쳐되도록 설정
-			UINT iFrame{ 10 };
-			float blendingFrame{ iFrame * (1.0f / 24.0f) };
-			float t2{ clamp(aniInfo->blendingTimer / blendingFrame, 0.0f, 1.0f) };
-
-			for (int i = 0; i < beforeAni.joints.size(); ++i)
+			for (int i = start; i < end; ++i)
 			{
-				XMFLOAT4X4 before{ Matrix::Interpolate(beforeAni.joints[i].animationTransformMatrix[currFrame],
-													   beforeAni.joints[i].animationTransformMatrix[nextFrame],
-													   t1) };
-				XMFLOAT4X4 after{ afterAni.joints[i].animationTransformMatrix[0] };
+				const XMFLOAT4X4& before{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
+															  currAnimation.joints[i].animationTransformMatrix[nNextFrame],
+															  t) };
+				const XMFLOAT4X4& after{ afterAnimation.joints[i].animationTransformMatrix.front() };
 				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
-			object->OnAnimation("BLENDING", aniInfo->blendingTimer / (1.0f / 24.0f), iFrame);
+			object->OnAnimation(animationInfo->blendingTimer / (1.0f / 24.0f), blendingFrame);
 		}
 	}
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
 }
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object) const
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
 {
-	// 애니메이션
-	UpdateShaderVariable(commandList, object);
+	if (m_cbMesh) UpdateShaderVariable(commandList, object, parentMesh);
 
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
