@@ -40,7 +40,7 @@ using namespace DirectX;
 #define SCREEN_HEIGHT       720
 #define MAX_LIGHT           1
 #define MAX_MATERIAL        10
-#define MAX_JOINT           96
+#define MAX_JOINT           50
 #define DIRECTIONAL_LIGHT   0
 #define POINT_LIGHT         1
 
