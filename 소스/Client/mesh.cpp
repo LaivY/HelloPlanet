@@ -8,7 +8,7 @@ Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexB
 
 Mesh::~Mesh()
 {
-	if (m_cbMesh) m_cbMesh->Unmap(0, NULL);
+	
 }
 
 void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
@@ -47,11 +47,7 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 		file >> dumy >> m.color.x >> m.color.y >> m.color.z >> m.color.w;
 		m_materials.push_back(move(m));
 	}
-
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-
-	// 상수 버퍼가 없다면 생성
-	if (!m_cbMesh) CreateShaderVariable(device, commandList);
 }
 
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
@@ -82,17 +78,14 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 		animation.joints.push_back(move(joint));
 	}
 	m_animations[animationName] = move(animation);
-
-	// 상수 버퍼가 없다면 생성
-	if (!m_cbMesh) CreateShaderVariable(device, commandList);
 }
 
 void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	ComPtr<ID3D12Resource> dummy;
-	constexpr UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
-	m_cbMesh = CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
-	m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
+	//ComPtr<ID3D12Resource> dummy;
+	//constexpr UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
+	//m_cbMesh = CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+	//m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
 }
 
 void Mesh::CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount)
@@ -123,13 +116,42 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_indexBufferView.SizeInBytes = sizeof(UINT) * dataCount;
 }
 
-void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
+void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object)
 {
-	// 변환 행렬
-	m_pcbMesh->transformMatrix = m_transformMatrix;
+	// 재질이나 애니메이션 데이터가 없는 메쉬는 셰이더 변수를 최신화해줄 필요없다.
+	if (m_materials.empty() && m_animations.empty())
+		return;
 
+	static int i{ 1 }, j{ 1 };
+
+	// 해당 게임오브젝트가 사용할 상수 버퍼가 없다면 생성
+	if (!m_cbMesh[object])
+	{
+		ComPtr<ID3D12Resource> dummy;
+		UINT cbMeshByteSize{ 0 };
+		if (m_animations.empty())
+		{
+			cbMeshByteSize = (sizeof(cbMesh2) + 255) & ~255;
+			OutputDebugStringA((to_string(i++) + "\n").c_str());
+		}
+		else
+		{
+			cbMeshByteSize = (sizeof(cbMesh) + 255) & ~255;
+			OutputDebugStringA((to_string(j++) + "\n").c_str());
+		}
+		m_cbMesh[object] = CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+	}
+
+	// 상수 버퍼의 가상 메모리 주소를 받음
+	cbMesh* pcbMesh{ nullptr };
+	m_cbMesh[object]->Map(0, NULL, reinterpret_cast<void**>(&pcbMesh));
+
+	// 변환 행렬
+	pcbMesh->transformMatrix = m_transformMatrix;
+
+	// 재질
 	for (int i = 0; i < m_materials.size(); ++i)
-		m_pcbMesh->materials[i] = m_materials[i];
+		pcbMesh->materials[i] = m_materials[i];
 
 	// 애니메이션
 	if (AnimationInfo* animationInfo{ object->GetAnimationInfo() })
@@ -138,8 +160,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		
 		// 현재 애니메이션 구조체
 		const Animation& currAnimation{ 
-			parentMesh
-			? parentMesh->GetAnimation(animationInfo->currAnimationName)
+			m_linkMesh
+			? m_linkMesh->GetAnimation(animationInfo->currAnimationName)
 			: m_animations.at(animationInfo->currAnimationName)
 		};
 
@@ -163,8 +185,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 
 			// 현재 상체 애니메이션 구조체
 			const Animation& currUpperAnimation{
-				parentMesh
-				? parentMesh->GetAnimation(upperAnimationInfo->currAnimationName)
+				m_linkMesh
+				? m_linkMesh->GetAnimation(upperAnimationInfo->currAnimationName)
 				: m_animations.at(upperAnimationInfo->currAnimationName)
 			};
 
@@ -181,13 +203,13 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			{
 				for (int i = 0; i < start; ++i)
 				{
-					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currUpperAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
+					pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currUpperAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
 																			currUpperAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
 																			upperT);
 				}
 
 				// 총도 상체 애니메이션을 따라간다.(마지막 뼈는 총 애니메이션 변환 행렬이다.)
-				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
+				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
 																										   currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
 																										   upperT);
 				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
@@ -196,8 +218,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			{
 				// 상체 애니메이션은 블렌딩할 때 하체 애니메이션의 타이밍과 맞춘다.
 				const Animation& upperAfterAni{
-					parentMesh
-					? parentMesh->GetAnimation(upperAnimationInfo->afterAnimationName)
+					m_linkMesh
+					? m_linkMesh->GetAnimation(upperAnimationInfo->afterAnimationName)
 					: m_animations.at(upperAnimationInfo->afterAnimationName)
 				};
 
@@ -210,7 +232,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 														   currAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
 														   upperT) };
 					XMFLOAT4X4 after{ upperAfterAni.joints[i].animationTransformMatrix.front() };
-					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
+					pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 				}
 
 				// 총 애니메이션
@@ -218,7 +240,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													   currAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
 													   upperT) };
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
-				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
 				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, blendingFrame, TRUE);
 			}
@@ -235,7 +257,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 					XMFLOAT4X4 after{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
 														  currAnimation.joints[i].animationTransformMatrix[nNextFrame],
 														  t) };
-					m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
+					pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 				}
 
 				// 총 애니메이션
@@ -245,7 +267,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ Matrix::Interpolate(currAnimation.joints.back().animationTransformMatrix[nCurrFrame],
 													  currAnimation.joints.back().animationTransformMatrix[nNextFrame],
 													  t) };
-				m_pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
+				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
 				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, blendingFrame, TRUE);
 			}
@@ -255,7 +277,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		{
 			for (int i = start; i < end; ++i)
 			{
-				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
+				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
 																		currAnimation.joints[i].animationTransformMatrix[nNextFrame],
 																		t);
 			}
@@ -265,8 +287,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		{
 			// curr -> after로 애니메이션 블렌딩 진행
 			const Animation& afterAnimation{
-				parentMesh
-				? parentMesh->GetAnimation(animationInfo->afterAnimationName)
+				m_linkMesh
+				? m_linkMesh->GetAnimation(animationInfo->afterAnimationName)
 				: m_animations.at(animationInfo->afterAnimationName)
 			};
 
@@ -279,18 +301,17 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 															  currAnimation.joints[i].animationTransformMatrix[nNextFrame],
 															  t) };
 				const XMFLOAT4X4& after{ afterAnimation.joints[i].animationTransformMatrix.front() };
-				m_pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
+				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
 			object->OnAnimation(animationInfo->blendingTimer / fps, blendingFrame);
 		}
 	}
-	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh->GetGPUVirtualAddress());
+	m_cbMesh[object]->Unmap(0, NULL);
+	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh[object]->GetGPUVirtualAddress());
 }
 
-void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh) const
+void Mesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	if (m_cbMesh) UpdateShaderVariable(commandList, object, parentMesh);
-
 	commandList->IASetPrimitiveTopology(m_primitiveTopology);
 	commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	if (m_nIndices)

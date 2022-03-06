@@ -47,6 +47,12 @@ struct cbMesh
 	array<XMFLOAT4X4, MAX_JOINT>	boneTransformMatrix;
 };
 
+struct cbMesh2
+{
+	XMFLOAT4X4						transformMatrix;
+	array<Material, MAX_MATERIAL>	materials;
+};
+
 class Mesh
 {
 public:
@@ -58,30 +64,33 @@ public:
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
-	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh = nullptr) const;
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object, const shared_ptr<Mesh>& parentMesh = nullptr) const;
+	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object);
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void ReleaseUploadBuffer();
+
+	void Link(const shared_ptr<Mesh>& mesh) { m_linkMesh = mesh; }
 
 	const Animation& GetAnimation(const string& animationName) const { return m_animations.at(animationName); }
 
 protected:
-	UINT								m_nVertices;
-	ComPtr<ID3D12Resource>				m_vertexBuffer;
-	ComPtr<ID3D12Resource>				m_vertexUploadBuffer;
-	D3D12_VERTEX_BUFFER_VIEW			m_vertexBufferView;
+	UINT												m_nVertices;
+	ComPtr<ID3D12Resource>								m_vertexBuffer;
+	ComPtr<ID3D12Resource>								m_vertexUploadBuffer;
+	D3D12_VERTEX_BUFFER_VIEW							m_vertexBufferView;
 
-	UINT								m_nIndices;
-	ComPtr<ID3D12Resource>				m_indexBuffer;
-	ComPtr<ID3D12Resource>				m_indexUploadBuffer;
-	D3D12_INDEX_BUFFER_VIEW				m_indexBufferView;
+	UINT												m_nIndices;
+	ComPtr<ID3D12Resource>								m_indexBuffer;
+	ComPtr<ID3D12Resource>								m_indexUploadBuffer;
+	D3D12_INDEX_BUFFER_VIEW								m_indexBufferView;
 
-	D3D_PRIMITIVE_TOPOLOGY				m_primitiveTopology;
+	D3D_PRIMITIVE_TOPOLOGY								m_primitiveTopology;
 
-	ComPtr<ID3D12Resource>				m_cbMesh;
-	cbMesh*								m_pcbMesh;
-	XMFLOAT4X4							m_transformMatrix;
-	vector<Material>					m_materials;
-	unordered_map<string, Animation>	m_animations;
+	shared_ptr<Mesh>									m_linkMesh;			// 부모 메쉬
+
+	XMFLOAT4X4											m_transformMatrix;	// 메쉬 변환 행렬
+	vector<Material>									m_materials;		// 재질
+	unordered_map<string, Animation>					m_animations;		// 애니메이션
+	unordered_map<GameObject*, ComPtr<ID3D12Resource>>	m_cbMesh;			// 상수버퍼들
 };
 
 class RectMesh : public Mesh

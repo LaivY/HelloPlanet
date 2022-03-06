@@ -8,19 +8,17 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_tex
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
+	if (m_mesh) return;
+
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);
 
-	// 메쉬가 있다면
-	if (m_mesh)
-	{
-		// PSO 설정
-		if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-		else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
+	// PSO 설정
+	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
 
-		// 메쉬 렌더링
-		m_mesh->Render(commandList, this);
-	}
+	// 메쉬 렌더링
+	m_mesh->Render(commandList);
 }
 
 void GameObject::Update(FLOAT deltaTime)
@@ -73,12 +71,15 @@ void GameObject::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 }
 
-void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// 게임오브젝트의 월드 변환 행렬 최신화
+	// 게임오브젝트 월드 변환 행렬 최신화
 	commandList->SetGraphicsRoot32BitConstants(0, 16, &Matrix::Transpose(m_worldMatrix), 0);
 
-	// 텍스쳐 최신화
+	// 메쉬 셰이더 변수 최신화
+	if (m_mesh) m_mesh->UpdateShaderVariable(commandList, this);
+
+	// 텍스쳐 셰이더 변수 최신화
 	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureInfo ? m_textureInfo->frame : 0);
 }
 

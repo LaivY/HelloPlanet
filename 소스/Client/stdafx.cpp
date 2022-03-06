@@ -2,6 +2,8 @@
 
 UINT g_cbvSrvDescriptorIncrementSize{ 0 };
 
+ComPtr<ID3D12Device> g_device{ nullptr };
+
 ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const void* data, UINT sizePerData, UINT dataCount,
 	D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ComPtr<ID3D12Resource>& uploadBuffer)
 {

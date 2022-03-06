@@ -150,9 +150,11 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	m_meshes["AR"] = make_shared<Mesh>();
 	m_meshes["AR"]->LoadMesh(device, commandList, PATH("AR/AR.txt"));
+	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["SG"] = make_shared<Mesh>();
 	m_meshes["SG"]->LoadMesh(device, commandList, PATH("SG/SG.txt"));
+	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }

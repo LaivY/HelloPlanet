@@ -97,6 +97,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 
 	// 서술자힙 크기
 	g_cbvSrvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_device = m_device;
 }
 
 void GameFramework::CreateCommandQueue()

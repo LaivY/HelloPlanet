@@ -185,6 +185,7 @@ namespace Matrix
 // --------------------------------------
 
 extern UINT g_cbvSrvDescriptorIncrementSize; // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
+extern ComPtr<ID3D12Device> g_device;
 
 ComPtr<ID3D12Resource> CreateBufferResource(
     const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
