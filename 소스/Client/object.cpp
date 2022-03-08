@@ -8,7 +8,7 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_tex
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	if (m_mesh) return;
+	if (!m_mesh) return;
 
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);

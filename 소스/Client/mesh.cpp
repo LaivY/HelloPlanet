@@ -122,23 +122,15 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	if (m_materials.empty() && m_animations.empty())
 		return;
 
-	static int i{ 1 }, j{ 1 };
-
 	// 해당 게임오브젝트가 사용할 상수 버퍼가 없다면 생성
 	if (!m_cbMesh[object])
 	{
 		ComPtr<ID3D12Resource> dummy;
 		UINT cbMeshByteSize{ 0 };
 		if (m_animations.empty())
-		{
 			cbMeshByteSize = (sizeof(cbMesh2) + 255) & ~255;
-			OutputDebugStringA((to_string(i++) + "\n").c_str());
-		}
 		else
-		{
 			cbMeshByteSize = (sizeof(cbMesh) + 255) & ~255;
-			OutputDebugStringA((to_string(j++) + "\n").c_str());
-		}
 		m_cbMesh[object] = CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
 	}
 

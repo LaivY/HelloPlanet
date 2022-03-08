@@ -16,8 +16,9 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
-#include <string>
 #include <map>
+#include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 using namespace std;
@@ -184,13 +185,14 @@ namespace Matrix
 
 // --------------------------------------
 
-extern UINT g_cbvSrvDescriptorIncrementSize; // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
-extern ComPtr<ID3D12Device> g_device;
+extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
+extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
+extern SOCKET               g_c_socket;                         // 소켓
+extern BOOL                 g_isConnected;                      // 서버 연결 상태
 
-ComPtr<ID3D12Resource> CreateBufferResource(
-    const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-    const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ComPtr<ID3D12Resource>& uploadBuffer
-);
-
+ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+                                            const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ComPtr<ID3D12Resource>& uploadBuffer);
+void error_quit(const char* msg);
+void error_display(const char* msg);
 string PATH(const string& fileName);
 wstring PATH(const wstring& fileName);
