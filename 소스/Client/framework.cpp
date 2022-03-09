@@ -8,7 +8,12 @@ GameFramework::GameFramework(UINT width, UINT height) :
 
 GameFramework::~GameFramework()
 {
-
+#ifdef NETWORK
+	g_isConnected = FALSE;
+	m_networkThread.join();
+	closesocket(g_c_socket);
+	WSACleanup();
+#endif
 }
 
 void GameFramework::GameLoop()
@@ -30,6 +35,11 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 	LoadPipeline();
 	LoadAssets();
+
+#ifdef NETWORK
+	ConnectServer();
+	m_networkThread = thread{ &Scene::ProcessClient, m_scene.get(), reinterpret_cast<LPVOID>(g_c_socket) };
+#endif
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -97,6 +107,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 
 	// 서술자힙 크기
 	g_cbvSrvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_device = m_device;
 }
 
 void GameFramework::CreateCommandQueue()
@@ -403,6 +414,35 @@ void GameFramework::WaitForPreviousFrame()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+}
+
+void GameFramework::ConnectServer()
+{
+	WSADATA wsa;
+	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+		return;
+
+	// socket 생성
+	g_c_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (g_c_socket == INVALID_SOCKET) error_quit("socket()");
+
+	// connect
+	SOCKADDR_IN server_address;
+	ZeroMemory(&server_address, sizeof(server_address));
+	server_address.sin_family = AF_INET;
+	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
+	//server_address.sin_addr.s_addr = inet_addr(SERVER_IP);
+	server_address.sin_port = htons(SERVER_PORT);
+	const int return_value = connect(g_c_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
+	if (return_value == SOCKET_ERROR) error_quit("connect()");
+	g_isConnected = TRUE;
+	//const HANDLE h_thread = CreateThread(nullptr, 0, ProcessClient, reinterpret_cast<LPVOID>(g_c_socket), 0, nullptr);
+	//if (h_thread == nullptr) closesocket(g_c_socket);
+}
+
+void GameFramework::ProcessClient(LPVOID arg)
+{
+	if (m_scene) m_scene->ProcessClient(arg);
 }
 
 void GameFramework::SetIsActive(BOOL isActive)

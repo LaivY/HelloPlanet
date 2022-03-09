@@ -1,5 +1,4 @@
 ﻿#include "scene.h"
-//#define FREEVIEW
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT), 0.0f, 1.0f },
@@ -151,9 +150,11 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	m_meshes["AR"] = make_shared<Mesh>();
 	m_meshes["AR"]->LoadMesh(device, commandList, PATH("AR/AR.txt"));
+	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["SG"] = make_shared<Mesh>();
 	m_meshes["SG"]->LoadMesh(device, commandList, PATH("SG/SG.txt"));
+	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 100.0f);
 }
@@ -311,6 +312,68 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void Scene::ProcessClient(LPVOID arg)
+{
+	while (g_isConnected)
+	{
+		RecvPacket();
+	}
+}
+
+void Scene::RecvPacket()
+{
+	constexpr int head_size = 2;
+	char head_buf[head_size];
+	char net_buf[BUF_SIZE];
+
+	int recv_result = recv(g_c_socket, head_buf, head_size, MSG_WAITALL);
+	//if (recv_result == SOCKET_ERROR) { error_display("recv()"); return; }
+
+	int packet_size = head_buf[0];
+	int packet_type = head_buf[1];
+	cout << "[패킷테스트]: " << packet_size << ", " << packet_type << endl;
+	switch (packet_type)
+	{
+	case SC_PACKET_LOGIN_OK: {
+		sc_packet_login_ok recv_packet;
+		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
+		cout << "[SC_PACKET_LOGIN_OK] received" << endl;
+		break;
+	}
+	case SC_PACKET_MOVE_OBJECT: {
+		sc_packet_move_object recv_packet;
+		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
+		cout << "[SC_PACKET_MOVE_OBJECT] received" << endl;
+		break;
+	}
+	case SC_PACKET_PUT_OBJECT: {
+		sc_packet_put_object recv_packet;
+		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
+		cout << "[SC_PACKET_PUT_OBJECT] received" << endl;
+		break;
+	}
+	case SC_PACKET_REMOVE_OBJECT: {
+		sc_packet_remove_object recv_packet;
+		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
+		cout << "[SC_PACKET_REMOVE_OBJECT] received" << endl;
+		break;
+	}
+	default: {
+		char garbage[20];
+		recv_result += recv(g_c_socket, garbage, packet_size - 2, MSG_WAITALL);
+		cout << "[Unknown_Packet] received" << endl;
+		break;
+	}
+	}
+}
+
+void Scene::SendPacket(LPVOID lp_packet)
+{
+	const auto send_packet = static_cast<char*>(lp_packet);
+	int send_result = send(g_c_socket, send_packet, *send_packet, 0);
+	cout << "[Send_Packet] Type: " << *(send_packet + 1) << " , Byte: " << *send_packet << endl;
 }
 
 void Scene::SetSkybox(unique_ptr<Skybox>& skybox)

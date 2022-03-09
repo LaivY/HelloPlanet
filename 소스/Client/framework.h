@@ -43,13 +43,16 @@ public:
 	void PopulateCommandList() const;
 	void WaitForPreviousFrame();
 
+	void ConnectServer();
+	void ProcessClient(LPVOID arg);
+
 	void SetIsActive(BOOL isActive);
 
 	UINT GetWindowWidth() const { return m_width; }
 	UINT GetWindowHeight() const { return m_height; }
-	
+
 private:
-	static const UINT					FrameCount = 2;
+	static constexpr UINT				FrameCount = 2;
 
 	// Window
 	HINSTANCE							m_hInstance;
@@ -90,4 +93,7 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
+
+	// 서버 통신 쓰레드
+	thread								m_networkThread;
 };

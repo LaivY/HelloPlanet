@@ -56,6 +56,11 @@ public:
 	void UpdateLights(FLOAT deltaTime);
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
+	// 서버 통신 함수
+	/*virtual*/ void ProcessClient(LPVOID arg);
+	/*virtual*/ void RecvPacket();
+	/*virtual*/ void SendPacket(LPVOID lp_packet);
+
 	// 세터
 	void SetSkybox(unique_ptr<Skybox>& skybox);
 	void SetPlayer(const shared_ptr<Player>& player);
