@@ -96,7 +96,7 @@ protected:
 class RectMesh : public Mesh
 {
 public:
-	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height);
+	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, XMFLOAT3 position = { 0.0f, 0.0f, 0.0f });
 	virtual ~RectMesh() = default;
 };
 

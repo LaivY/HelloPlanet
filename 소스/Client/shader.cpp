@@ -281,8 +281,8 @@ SkyboxShader::SkyboxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSTextureMain", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
-	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("shaders.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSTextureMain", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("default.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VS", "vs_5_1", compileFlags, 0, &vertexShader, NULL));
+	DX::ThrowIfFailed(D3DCompileFromFile(PATH(TEXT("default.hlsl")).c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PS", "ps_5_1", compileFlags, 0, &pixelShader, NULL));
 
 	// 깊이 검사 OFF
 	// 깊이 쓰기 OFF
