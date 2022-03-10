@@ -67,9 +67,6 @@
     <ClInclude Include="shadow.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="skybox.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -115,9 +112,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="shadow.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="skybox.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp">

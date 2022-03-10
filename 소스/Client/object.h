@@ -83,3 +83,16 @@ protected:
 
 	BOOL						m_isDeleted;			// 삭제 여부
 };
+
+class Skybox : public GameObject
+{
+public:
+	Skybox() = default;
+	~Skybox() = default;
+
+	void Update(FLOAT deltaTime);
+	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
+
+private:
+	shared_ptr<Camera> m_camera;
+};

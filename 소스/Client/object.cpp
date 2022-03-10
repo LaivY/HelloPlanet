@@ -132,3 +132,9 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	}
 	m_animationInfo->blendingTimer = 0.0f;
 }
+
+void Skybox::Update(FLOAT deltaTime)
+{
+	if (!m_camera) return;
+	SetPosition(m_camera->GetEye());
+}

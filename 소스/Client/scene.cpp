@@ -120,7 +120,7 @@ void Scene::OnUpdate(FLOAT deltaTime)
 	Update(deltaTime);
 	if (m_player) m_player->Update(deltaTime);
 	if (m_camera) m_camera->Update(deltaTime);
-	if (m_skybox) m_skybox->Update();
+	if (m_skybox) m_skybox->Update(deltaTime);
 	for (auto& object : m_gameObjects)
 		object->Update(deltaTime);
 }
@@ -143,7 +143,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	};
 
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
+	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
 	for (const string& weaponName : { "AR", "SG" })
 		for (const auto& [fileName, animationName] : animations)
 			m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH(weaponName + "/" + fileName + ".txt"), weaponName + "/" + animationName);
@@ -158,13 +158,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 0.0f, 100.0f);
 
-	constexpr float skyboxSize{ 100.0f };
-	m_meshes["SKYBOX_FRONT"] = make_shared<RectMesh>(device, commandList, skyboxSize, skyboxSize, 0.0f, XMFLOAT3{ 0.0f, 0.0f, skyboxSize / 2.0f });
-	m_meshes["SKYBOX_LEFT"] = make_shared<RectMesh>(device, commandList, 0.0f, skyboxSize, skyboxSize, XMFLOAT3{ -skyboxSize / 2.0f, 0.0f, 0.0f });
-	m_meshes["SKYBOX_RIGHT"] = make_shared<RectMesh>(device, commandList, 0.0f, skyboxSize, skyboxSize, XMFLOAT3{ skyboxSize / 2.0f, 0.0f, 0.0f });
-	m_meshes["SKYBOX_BACK"] = make_shared<RectMesh>(device, commandList, skyboxSize, skyboxSize, 0.0f, XMFLOAT3{ 0.0f, 0.0f, -skyboxSize / 2.0f });
-	m_meshes["SKYBOX_TOP"] = make_shared<RectMesh>(device, commandList, skyboxSize, 0.0f, skyboxSize, XMFLOAT3{ 0.0f, skyboxSize / 2.0f, 0.0f });
-	m_meshes["SKYBOX_BOT"] = make_shared<RectMesh>(device, commandList, skyboxSize, 0.0f, skyboxSize, XMFLOAT3{ 0.0f, -skyboxSize / 2.0f, 0.0f });
+	m_meshes["SKYBOX"] = make_shared<Mesh>();
+	m_meshes["SKYBOX"]->LoadMesh(device, commandList, PATH("Skybox/Skybox.txt"));
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -178,29 +173,9 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	m_textures["SKYBOX_FRONT"] = make_shared<Texture>();
-	m_textures["SKYBOX_FRONT"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Front.dds")));
-	m_textures["SKYBOX_FRONT"]->CreateTexture(device);
-
-	m_textures["SKYBOX_LEFT"] = make_shared<Texture>();
-	m_textures["SKYBOX_LEFT"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Left.dds")));
-	m_textures["SKYBOX_LEFT"]->CreateTexture(device);
-
-	m_textures["SKYBOX_RIGHT"] = make_shared<Texture>();
-	m_textures["SKYBOX_RIGHT"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Right.dds")));
-	m_textures["SKYBOX_RIGHT"]->CreateTexture(device);
-
-	m_textures["SKYBOX_BACK"] = make_shared<Texture>();
-	m_textures["SKYBOX_BACK"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Back.dds")));
-	m_textures["SKYBOX_BACK"]->CreateTexture(device);
-
-	m_textures["SKYBOX_TOP"] = make_shared<Texture>();
-	m_textures["SKYBOX_TOP"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Top.dds")));
-	m_textures["SKYBOX_TOP"]->CreateTexture(device);
-
-	m_textures["SKYBOX_BOT"] = make_shared<Texture>();
-	m_textures["SKYBOX_BOT"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Bot.dds")));
-	m_textures["SKYBOX_BOT"]->CreateTexture(device);
+	m_textures["SKYBOX"] = make_shared<Texture>();
+	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Skybox.dds")));
+	m_textures["SKYBOX"]->CreateTexture(device);
 }
 
 void Scene::CreateLights()
@@ -253,12 +228,12 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 
-	// 스카이박스
-	m_skybox = make_unique<Skybox>(
-		array{ m_meshes.at("SKYBOX_FRONT"), m_meshes.at("SKYBOX_LEFT"), m_meshes.at("SKYBOX_RIGHT"),m_meshes.at("SKYBOX_BACK"), m_meshes.at("SKYBOX_TOP"), m_meshes.at("SKYBOX_BOT") }, 
-		m_shaders.at("SKYBOX"),
-		array{ m_textures.at("SKYBOX_FRONT"), m_textures.at("SKYBOX_LEFT"), m_textures.at("SKYBOX_RIGHT"), m_textures.at("SKYBOX_BACK"), m_textures.at("SKYBOX_TOP"), m_textures.at("SKYBOX_BOT") });
-	m_skybox->SetCamera(m_camera);
+	auto skybox{ make_unique<Skybox>() };
+	skybox->SetMesh(m_meshes["SKYBOX"]);
+	skybox->SetShader(m_shaders["SKYBOX"]);
+	skybox->SetTexture(m_textures["SKYBOX"]);
+	skybox->SetCamera(m_camera);
+	m_skybox = move(skybox);
 }
 
 void Scene::ReleaseUploadBuffer()

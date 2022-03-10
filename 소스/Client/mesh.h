@@ -97,12 +97,12 @@ class RectMesh : public Mesh
 {
 public:
 	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, XMFLOAT3 position = { 0.0f, 0.0f, 0.0f });
-	virtual ~RectMesh() = default;
+	~RectMesh() = default;
 };
 
 class BillboardMesh : public Mesh
 {
 public:
 	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height);
-	virtual ~BillboardMesh() = default;
+	~BillboardMesh() = default;
 };

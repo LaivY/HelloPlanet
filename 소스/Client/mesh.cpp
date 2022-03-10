@@ -322,10 +322,9 @@ void Mesh::ReleaseUploadBuffer()
 
 RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, XMFLOAT3 position)
 {
-	vector<Vertex> vertices(6);
+	vector<Vertex> vertices;
+	Vertex v; v.materialIndex = 0;
 	FLOAT hx{ position.x + width / 2.0f }, hy{ position.y + height / 2.0f }, hz{ position.z + length / 2.0f };
-
-	Vertex v;
 	if (width == 0.0f) // YZ평면
 	{
 		if (position.x > 0.0f)
@@ -395,6 +394,11 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 		}
 	}
+
+	// 흰색 재질
+	Material material;
+	material.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	m_materials.push_back(move(material));
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
 }
