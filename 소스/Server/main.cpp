@@ -1,26 +1,22 @@
-#include <iostream>
-#include <WS2tcpip.h>
-#include <MSWSock.h>
-#include <array>
-
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include "stdfx.h"
 #include "protocol.h"
 using namespace std;
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
 
 
-
 bool g_shutdown = false;
 
-void error_display(int err_no)
+void error_display(int err_num)
 {
 	WCHAR* lpMsgBuf;
 	FormatMessage(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		NULL, err_no,
+		nullptr, err_num,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		(LPTSTR)&lpMsgBuf, 0, 0);
-	wcout << lpMsgBuf << endl;
+		reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, 0);
+	wcout << "[Error] " << lpMsgBuf << endl;
 	while (true);
 	LocalFree(lpMsgBuf);
 }
@@ -235,115 +231,42 @@ void process_packet(int client_id, unsigned char* p)
 	}
 }
 
+void Update(float elapsed);
+
 int main()
 {
 	wcout.imbue(locale("korean"));
+
 	WSADATA WSAData;
 	WSAStartup(MAKEWORD(2, 2), &WSAData);
-	SOCKET s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+
+	SOCKET s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+
+	//bind
 	SOCKADDR_IN server_addr;
 	ZeroMemory(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(SERVER_PORT);
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	bind(s_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+
+	//listen
 	listen(s_socket, SOMAXCONN);
 
-	HANDLE h_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(s_socket), h_iocp, 0, 0);
+	INT addr_size = sizeof(server_addr);
+	SOCKET c_socket = WSAAccept(s_socket, reinterpret_cast<sockaddr*>(&server_addr), &addr_size, 0, 0);
 
-	SOCKET c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
-	char	accept_buf[sizeof(SOCKADDR_IN) * 2 + 32 + 100];
-	EXP_OVER	accept_ex;
-	ZeroMemory(&accept_ex._wsa_over, sizeof(accept_ex._wsa_over));
-	accept_ex._comp_op = OP_ACCEPT;
+	cout << "\n[Server] Client connect: IP Address = " << inet_ntoa(server_addr.sin_addr) << " , Port Number = " << ntohs(server_addr.sin_port) << endl;
 
-	AcceptEx(s_socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16,
-		sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
-	cout << "Accept Called\n";
-
-	cout << "Entering Main Loop\n";
+	auto pre_t = chrono::system_clock::now();
 	for (;;) {
-		DWORD num_byte;
+		auto cur_t = chrono::system_clock::now();
+		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
+		Update(elapsed);
 
-		LONG64 iocp_key;
-		WSAOVERLAPPED* p_over;
-
-		BOOL ret = GetQueuedCompletionStatus(h_iocp, &num_byte, (PULONG_PTR)&iocp_key, &p_over, INFINITE);
-		cout << "GQCS returned\n";
-		cout << "Entering Main Loop\n";
-
-		int client_id = static_cast<int>(iocp_key);
-
-		EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(p_over);
-
-		if (FALSE == ret) {
-			Disconnect(client_id);
-			if (exp_over->_comp_op == OP_SEND)
-				delete exp_over;
-			continue;
-		}
-		switch (exp_over->_comp_op)
-		{
-		case OP_RECV:
-		{
-			CLIENT& cl = clients[client_id];
-			int remain_data = num_byte + cl._prev_size;
-			unsigned char* packet_start = exp_over->_net_buf;
-			int packet_size = packet_start[0];
-
-			while (packet_size <= remain_data) {
-				process_packet(client_id, packet_start);
-				remain_data -= packet_size;
-				packet_start += packet_size;
-				if (remain_data > 0) packet_size = packet_start[0];
-				else break;
-			}
-
-			if (0 < remain_data) {
-				cl._prev_size = remain_data;
-				memcpy(&exp_over->_net_buf, packet_start, remain_data);
-			}
-			cl.do_recv();
-
-		}
-		break;
-		case OP_SEND:
-		{
-			if (num_byte != exp_over->_wsa_buf.len) {
-				// DISCONNECT();
-			}
-			delete exp_over;
-
-		}
-		break;
-		case OP_ACCEPT:
-		{
-			cout << "Accept Completed.\n";
-			int new_id = get_new_id();
-			CLIENT& cl = clients[new_id];
-
-			cl.x = 0;
-			cl.y = 0;
-			cl._id = new_id;
-			cl._prev_size = 0;
-			cl._recv_over._comp_op = OP_RECV;
-			cl._recv_over._wsa_buf.buf = reinterpret_cast<char*>(cl._recv_over._net_buf);
-			cl._recv_over._wsa_buf.len = sizeof(cl._recv_over._net_buf);
-			ZeroMemory(&cl._recv_over._wsa_over, sizeof(cl._recv_over._wsa_over));
-
-			cl._socket = c_socket;
-
-			CreateIoCompletionPort(reinterpret_cast<HANDLE>(c_socket), h_iocp, new_id, 0);
-			cl.do_recv();
-
-			ZeroMemory(&accept_ex._wsa_over, sizeof(accept_ex._wsa_over));
-			c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
-
-			AcceptEx(s_socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16,
-				sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
-		}
-		break;
+		pre_t = cur_t;
+		if (chrono::system_clock::now() - pre_t < 32ms) {//30프레임
+			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
 		}
 	}
 	for (auto& cl : clients) {
@@ -354,4 +277,8 @@ int main()
 	WSACleanup();
 }
 
+void Update(float elapsed)
+{
+	cout << "초속 30회 sex" << endl;
+}
 
