@@ -24,7 +24,8 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 
 	int nVertices{ 0 };
 	file >> dumy >> nVertices;
-	vector<Vertex> vertices(nVertices);
+	vector<Vertex> vertices;
+	vertices.reserve(nVertices);
 	for (int i = 0; i < nVertices; ++i)
 	{
 		Vertex v;
@@ -39,7 +40,8 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 
 	int nMaterial{ 0 };
 	file >> dumy >> nMaterial;
-	vector<Material> materials(nMaterial);
+	vector<Material> materials;
+	materials.reserve(nMaterial);
 	for (int i = 0; i < nMaterial; ++i)
 	{
 		Material m;
@@ -53,6 +55,7 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
 {
 	ifstream file{ fileName };
+	if (!file) return;
 
 	string dumy{};
 	int nJoints{}, nFrame{};

@@ -74,7 +74,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
 {
 #ifdef FREEVIEW
-	static const float speed{ 10.0f * deltaTime };
+	const float speed{ 10.0f * deltaTime };
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
 		m_camera->Move(Vector3::Mul(m_camera->GetAt(), speed));
@@ -143,8 +143,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	};
 
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("Player.txt"));
-	for (const string& weaponName : { "AR", "SG" })
+	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
+	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
 			m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH(weaponName + "/" + fileName + ".txt"), weaponName + "/" + animationName);
 
@@ -155,6 +155,10 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["SG"] = make_shared<Mesh>();
 	m_meshes["SG"]->LoadMesh(device, commandList, PATH("SG/SG.txt"));
 	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
+
+	m_meshes["MG"] = make_shared<Mesh>();
+	m_meshes["MG"]->LoadMesh(device, commandList, PATH("MG/MG.txt"));
+	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 0.0f, 100.0f);
 
@@ -201,9 +205,9 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto player{ make_shared<Player>() };
 	player->SetMesh(m_meshes["PLAYER"]);
 	player->SetShader(m_shaders["ANIMATION"]);
-	player->SetGunMesh(m_meshes["AR"]);
+	player->SetGunMesh(m_meshes["MG"]);
 	player->SetGunShader(m_shaders["LINK"]);
-	player->SetWeaponType(AR);
+	player->SetWeaponType(MG);
 	player->PlayAnimation("IDLE");
 	SetPlayer(player);
 
@@ -211,29 +215,29 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	camera->SetPlayer(player);
 	player->SetCamera(camera);
 
+	// 스카이박스
+	m_skybox = make_unique<Skybox>();
+	m_skybox->SetMesh(m_meshes["SKYBOX"]);
+	m_skybox->SetShader(m_shaders["SKYBOX"]);
+	m_skybox->SetTexture(m_textures["SKYBOX"]);
+	m_skybox->SetCamera(m_camera);
+
 	// 더미 플레이어
-	auto dumy{ make_unique<Player>() };
-	dumy->SetMesh(m_meshes["PLAYER"]);
-	dumy->SetShader(m_shaders["ANIMATION"]);
-	dumy->SetGunMesh(m_meshes["AR"]);
-	dumy->SetGunShader(m_shaders["LINK"]);
-	dumy->SetWeaponType(AR);
-	dumy->PlayAnimation("WALKING");
-	dumy->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
-	m_gameObjects.push_back(move(dumy));
+	//auto dumy{ make_unique<Player>() };
+	//dumy->SetMesh(m_meshes["PLAYER"]);
+	//dumy->SetShader(m_shaders["ANIMATION"]);
+	//dumy->SetGunMesh(m_meshes["AR"]);
+	//dumy->SetGunShader(m_shaders["LINK"]);
+	//dumy->SetWeaponType(AR);
+	//dumy->PlayAnimation("WALKING");
+	//dumy->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
+	//m_gameObjects.push_back(move(dumy));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
 	floor->SetMesh(m_meshes["FLOOR"]);
 	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
-
-	auto skybox{ make_unique<Skybox>() };
-	skybox->SetMesh(m_meshes["SKYBOX"]);
-	skybox->SetShader(m_shaders["SKYBOX"]);
-	skybox->SetTexture(m_textures["SKYBOX"]);
-	skybox->SetCamera(m_camera);
-	m_skybox = move(skybox);
 }
 
 void Scene::ReleaseUploadBuffer()

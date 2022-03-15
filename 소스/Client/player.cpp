@@ -28,7 +28,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
 
-		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_weaponType != MG)
 		{
 			if ((m_animationInfo->state == PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))

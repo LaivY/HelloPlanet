@@ -57,8 +57,8 @@ public:
 
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);
-	/*virtual*/ void RecvPacket();
-	/*virtual*/ void SendPacket(LPVOID lp_packet);
+	void RecvPacket();
+	void SendPacket(LPVOID lp_packet);
 
 	// 세터
 	void SetSkybox(unique_ptr<Skybox>& skybox);
@@ -66,7 +66,7 @@ public:
 	void SetCamera(const shared_ptr<Camera>& camera);
 
 	// 게터
-	Skybox* GetSkybox() const { return m_skybox.get(); }
+	//Skybox* GetSkybox() const { return m_skybox.get(); }
 	shared_ptr<Player> GetPlayer() const { return m_player; }
 	shared_ptr<Camera> GetCamera() const { return m_camera; }
 	
@@ -82,8 +82,9 @@ private:
 	unordered_map<string, shared_ptr<Shader>>	m_shaders;		// 셰이더
 	unordered_map<string, shared_ptr<Texture>>	m_textures;		// 텍스쳐
 	unique_ptr<ShadowMap>						m_shadowMap;	// 그림자맵
-	unique_ptr<Skybox>							m_skybox;		// 스카이박스
+
 	shared_ptr<Camera>							m_camera;		// 카메라
 	shared_ptr<Player>							m_player;		// 플레이어
+	unique_ptr<Skybox>							m_skybox;		// 스카이박스
 	vector<unique_ptr<GameObject>>				m_gameObjects;	// 게임오브젝트들
 };
