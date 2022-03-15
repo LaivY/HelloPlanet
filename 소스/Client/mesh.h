@@ -87,7 +87,7 @@ protected:
 
 	shared_ptr<Mesh>									m_linkMesh;			// 부모 메쉬
 
-	XMFLOAT4X4											m_transformMatrix;	// 메쉬 변환 행렬
+	unique_ptr<XMFLOAT4X4>								m_transformMatrix;	// 메쉬 변환 행렬
 	vector<Material>									m_materials;		// 재질
 	unordered_map<string, Animation>					m_animations;		// 애니메이션
 	unordered_map<GameObject*, ComPtr<ID3D12Resource>>	m_cbMesh;			// 상수버퍼들
@@ -96,7 +96,7 @@ protected:
 class RectMesh : public Mesh
 {
 public:
-	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, XMFLOAT3 position = { 0.0f, 0.0f, 0.0f });
+	RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position = { 0.0f, 0.0f, 0.0f });
 	~RectMesh() = default;
 };
 

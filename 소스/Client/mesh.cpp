@@ -18,9 +18,11 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 
 	// 변환 행렬
 	file >> dumy;
+
+	m_transformMatrix = make_unique<XMFLOAT4X4>();
 	for (int i = 0; i < 4; ++i)
 		for (int j = 0; j < 4; ++j)
-			file >> m_transformMatrix.m[i][j];
+			file >> m_transformMatrix->m[i][j];
 
 	int nVertices{ 0 };
 	file >> dumy >> nVertices;
@@ -121,8 +123,8 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 
 void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object)
 {
-	// 재질이나 애니메이션 데이터가 없는 메쉬는 셰이더 변수를 최신화해줄 필요없다.
-	if (m_materials.empty() && m_animations.empty())
+	// 변환 행렬, 재질, 애니메이션 데이터가 없는 메쉬는 셰이더 변수를 최신화해줄 필요없다.
+	if (!m_transformMatrix && m_materials.empty() && m_animations.empty())
 		return;
 
 	// 해당 게임오브젝트가 사용할 상수 버퍼가 없다면 생성
@@ -142,7 +144,12 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	m_cbMesh[object]->Map(0, NULL, reinterpret_cast<void**>(&pcbMesh));
 
 	// 변환 행렬
-	pcbMesh->transformMatrix = m_transformMatrix;
+	if (m_transformMatrix)
+	{
+		for (int i = 0; i < 4; ++i)
+			for (int j = 0; j < 4; ++j)
+				pcbMesh->transformMatrix.m[i][j] = m_transformMatrix->m[i][j];
+	}
 
 	// 재질
 	for (int i = 0; i < m_materials.size(); ++i)
@@ -323,7 +330,7 @@ void Mesh::ReleaseUploadBuffer()
 	if (m_indexUploadBuffer) m_indexUploadBuffer.Reset();
 }
 
-RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, XMFLOAT3 position)
+RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position)
 {
 	vector<Vertex> vertices;
 	Vertex v; v.materialIndex = 0;

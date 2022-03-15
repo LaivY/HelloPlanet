@@ -59,16 +59,6 @@ public:
 	/*virtual*/ void ProcessClient(LPVOID arg);
 	void RecvPacket();
 	void SendPacket(LPVOID lp_packet);
-
-	// 세터
-	void SetSkybox(unique_ptr<Skybox>& skybox);
-	void SetPlayer(const shared_ptr<Player>& player);
-	void SetCamera(const shared_ptr<Camera>& camera);
-
-	// 게터
-	//Skybox* GetSkybox() const { return m_skybox.get(); }
-	shared_ptr<Player> GetPlayer() const { return m_player; }
-	shared_ptr<Camera> GetCamera() const { return m_camera; }
 	
 private:
 	D3D12_VIEWPORT								m_viewport;		// 뷰포트

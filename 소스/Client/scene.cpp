@@ -193,27 +193,25 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 #ifdef FREEVIEW
 	auto camera{ make_shared<Camera>() };
 #else
-	auto camera{ make_shared<ThirdPersonCamera>() };
+	m_camera = make_shared<ThirdPersonCamera>();
 #endif
-	camera->CreateShaderVariable(device, commandList);
+	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(SCREEN_WIDTH) / static_cast<float>(SCREEN_HEIGHT), 1.0f, 5000.0f));
-	camera->SetProjMatrix(projMatrix);
-	SetCamera(camera);
+	m_camera->SetProjMatrix(projMatrix);
 
 	// 플레이어 생성
-	auto player{ make_shared<Player>() };
-	player->SetMesh(m_meshes["PLAYER"]);
-	player->SetShader(m_shaders["ANIMATION"]);
-	player->SetGunMesh(m_meshes["MG"]);
-	player->SetGunShader(m_shaders["LINK"]);
-	player->SetWeaponType(MG);
-	player->PlayAnimation("IDLE");
-	SetPlayer(player);
+	m_player = make_shared<Player>();
+	m_player->SetMesh(m_meshes["PLAYER"]);
+	m_player->SetShader(m_shaders["ANIMATION"]);
+	m_player->SetGunMesh(m_meshes["SG"]);
+	m_player->SetGunShader(m_shaders["LINK"]);
+	m_player->SetWeaponType(SG);
+	m_player->PlayAnimation("IDLE");
 
 	// 카메라, 플레이어 서로 설정
-	camera->SetPlayer(player);
-	player->SetCamera(camera);
+	m_camera->SetPlayer(m_player);
+	m_player->SetCamera(m_camera);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -221,17 +219,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_skybox->SetShader(m_shaders["SKYBOX"]);
 	m_skybox->SetTexture(m_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
-
-	// 더미 플레이어
-	//auto dumy{ make_unique<Player>() };
-	//dumy->SetMesh(m_meshes["PLAYER"]);
-	//dumy->SetShader(m_shaders["ANIMATION"]);
-	//dumy->SetGunMesh(m_meshes["AR"]);
-	//dumy->SetGunShader(m_shaders["LINK"]);
-	//dumy->SetWeaponType(AR);
-	//dumy->PlayAnimation("WALKING");
-	//dumy->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
-	//m_gameObjects.push_back(move(dumy));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
@@ -390,22 +377,4 @@ void Scene::SendPacket(LPVOID lp_packet)
 	const auto send_packet = static_cast<char*>(lp_packet);
 	int send_result = send(g_c_socket, send_packet, *send_packet, 0);
 	cout << "[Send_Packet] Type: " << *(send_packet + 1) << " , Byte: " << *send_packet << endl;
-}
-
-void Scene::SetSkybox(unique_ptr<Skybox>& skybox)
-{
-	if (m_skybox) m_skybox.reset();
-	m_skybox = move(skybox);
-}
-
-void Scene::SetPlayer(const shared_ptr<Player>& player)
-{
-	if (m_player) m_player.reset();
-	m_player = player;
-}
-
-void Scene::SetCamera(const shared_ptr<Camera>& camera)
-{
-	if (m_camera) m_camera.reset();
-	m_camera = camera;
 }
