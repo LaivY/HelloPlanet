@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
 
@@ -16,10 +14,17 @@ constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_MOVE = 2;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
-constexpr char SC_PACKET_MOVE_OBJECT = 2;
-constexpr char SC_PACKET_PUT_OBJECT = 3;
-constexpr char SC_PACKET_REMOVE_OBJECT = 4;
+constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 
+enum class legs_state : char
+{
+	IDLE,
+	RUNNING,
+	WALKING,
+	WALKLEFT,
+	WALKRIGHT,
+	WALKBACK
+};
 
 #pragma pack (push, 1)
 struct cs_packet_login {
@@ -31,35 +36,19 @@ struct cs_packet_login {
 struct cs_packet_move {
 	unsigned char	size;
 	char			type;
-	char			direction;			// 0:up, 1:down, 2:left, 3:right
+	legs_state		state;
 };
 
-struct sc_packet_login_ok {
+struct sc_packet_login_ok
+{
 	unsigned char	size;
 	char			type;
-	int				id;
-	short			x, y;
 };
 
-struct sc_packet_move_object {
+struct sc_packet_update_client
+{
 	unsigned char	size;
 	char			type;
-	int				id;
-	short			x, y;
-};
-
-struct sc_packet_put_object {
-	unsigned char	size;
-	char			type;
-	int				id;
-	short			x, y;
-	char			object_type;
-	char			name[MAX_NAME_SIZE];
-};
-
-struct sc_packet_remove_object {
-	unsigned char	size;
-	char			type;
-	int				id;
+	legs_state	state;
 };
 #pragma pack(pop)
