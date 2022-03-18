@@ -57,7 +57,11 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	
 #ifdef FREEVIEW
 	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
-#else
+#endif
+#ifdef FIRSTVIEW
+	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+#endif
+#ifdef THIRDVIEW
 	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 #endif
 
@@ -127,9 +131,7 @@ void Scene::OnUpdate(FLOAT deltaTime)
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	ComPtr<ID3D12Resource> dummy;
-	UINT cbSceneByteSize{ (sizeof(cbScene) + 255) & ~255 };
-	m_cbScene = CreateBufferResource(device, commandList, NULL, cbSceneByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+	m_cbScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbScene));
 	m_cbSceneData = make_unique<cbScene>();
 }
@@ -143,42 +145,42 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	};
 
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMesh(device, commandList, PATH("player.txt"));
+	m_meshes["PLAYER"]->LoadMesh(device, commandList, Utile::PATH("player.txt", Utile::RESOURCE));
 	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
-			m_meshes["PLAYER"]->LoadAnimation(device, commandList, PATH(weaponName + "/" + fileName + ".txt"), weaponName + "/" + animationName);
+			m_meshes["PLAYER"]->LoadAnimation(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".txt", Utile::RESOURCE), weaponName + "/" + animationName);
 
 	m_meshes["AR"] = make_shared<Mesh>();
-	m_meshes["AR"]->LoadMesh(device, commandList, PATH("AR/AR.txt"));
+	m_meshes["AR"]->LoadMesh(device, commandList, Utile::PATH("AR/AR.txt", Utile::RESOURCE));
 	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["SG"] = make_shared<Mesh>();
-	m_meshes["SG"]->LoadMesh(device, commandList, PATH("SG/SG.txt"));
+	m_meshes["SG"]->LoadMesh(device, commandList, Utile::PATH("SG/SG.txt", Utile::RESOURCE));
 	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["MG"] = make_shared<Mesh>();
-	m_meshes["MG"]->LoadMesh(device, commandList, PATH("MG/MG.txt"));
+	m_meshes["MG"]->LoadMesh(device, commandList, Utile::PATH("MG/MG.txt", Utile::RESOURCE));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1000.0f, 0.0f, 1000.0f);
 
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
-	m_meshes["SKYBOX"]->LoadMesh(device, commandList, PATH("Skybox/Skybox.txt"));
+	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
-	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature);
-	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature);
-	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature);
-	m_shaders["LINK"] = make_shared<LinkShader>(device, rootSignature);
-	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature);
+	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["LINK"] = make_shared<LinkShader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	m_textures["SKYBOX"] = make_shared<Texture>();
-	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, PATH(TEXT("Skybox/Skybox.dds")));
+	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/Skybox.dds"), Utile::RESOURCE));
 	m_textures["SKYBOX"]->CreateTexture(device);
 }
 
@@ -206,10 +208,8 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
-	m_player->SetMesh(m_meshes["PLAYER"]);
-	m_player->SetShader(m_shaders["ANIMATION"]);
-	m_player->SetGunMesh(m_meshes["SG"]);
-	m_player->SetGunShader(m_shaders["LINK"]);
+	m_player->SetMesh(m_meshes["SG"]);
+	m_player->SetShader(m_shaders["LINK"]);
 	m_player->SetWeaponType(SG);
 	m_player->PlayAnimation("IDLE");
 
@@ -231,14 +231,14 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_gameObjects.push_back(move(floor));
 
 	// 더미 플레이어
-	//auto dumyPlayer{ make_unique<Player>(TRUE) };
-	//dumyPlayer->SetMesh(m_meshes["PLAYER"]);
-	//dumyPlayer->SetShader(m_shaders["ANIMATION"]);
-	//dumyPlayer->SetGunMesh(m_meshes["AR"]);
-	//dumyPlayer->SetGunShader(m_shaders["LINK"]);
-	//dumyPlayer->SetWeaponType(AR);
-	//dumyPlayer->PlayAnimation("IDLE");
-	//m_gameObjects.push_back(move(dumyPlayer));
+	auto dumyPlayer{ make_unique<Player>(TRUE) };
+	dumyPlayer->SetMesh(m_meshes["PLAYER"]);
+	dumyPlayer->SetShader(m_shaders["ANIMATION"]);
+	dumyPlayer->SetGunMesh(m_meshes["AR"]);
+	dumyPlayer->SetGunShader(m_shaders["LINK"]);
+	dumyPlayer->SetWeaponType(AR);
+	dumyPlayer->PlayAnimation("IDLE");
+	m_gameObjects.push_back(move(dumyPlayer));
 }
 
 void Scene::ReleaseUploadBuffer()
@@ -264,12 +264,12 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 플레이어 렌더링
-	if (m_player) m_player->Render(commandList);
-
 	// 게임오브젝트 렌더링
 	for (const auto& gameObject : m_gameObjects)
 		gameObject->Render(commandList);
+
+	// 플레이어 렌더링
+	if (m_player) m_player->Render(commandList);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

@@ -1,5 +1,5 @@
 ﻿#pragma once
-#define THIRDVIEW
+#define FIRSTVIEW
 //#define NETWORK
 
 #include "targetver.h"
@@ -45,8 +45,6 @@ using namespace DirectX;
 #include <MSWSock.h>
 #include "protocol.h"
 
-// --------------------------------------
-
 #define SCREEN_WIDTH        1280
 #define SCREEN_HEIGHT       720
 #define MAX_LIGHT           1
@@ -55,7 +53,10 @@ using namespace DirectX;
 #define DIRECTIONAL_LIGHT   0
 #define POINT_LIGHT         1
 
-// --------------------------------------
+extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
+extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
+extern SOCKET               g_c_socket;                         // 소켓
+extern BOOL                 g_isConnected;                      // 서버 연결 상태
 
 namespace DX
 {
@@ -183,16 +184,23 @@ namespace Matrix
     }
 }
 
-// --------------------------------------
+namespace Utile
+{
+    constexpr auto RESOURCE = 1;
+    constexpr auto SHADER   = 2;
 
-extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
-extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
-extern SOCKET               g_c_socket;                         // 소켓
-extern BOOL                 g_isConnected;                      // 서버 연결 상태
+    ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+                                                const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
 
-ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                            const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ComPtr<ID3D12Resource>& uploadBuffer);
+    string PATH(const string& file, int type);
+    wstring PATH(const wstring& file, int type);
+
+    template <typename T>
+    UINT GetConstantBufferSize()
+    { 
+        return (sizeof(T) + 255) & ~255; 
+    }
+}
+
 void error_quit(const char* msg);
 void error_display(const char* msg);
-string PATH(const string& fileName);
-wstring PATH(const wstring& fileName);

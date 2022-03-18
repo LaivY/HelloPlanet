@@ -1,6 +1,5 @@
 #include "common.hlsl"
 //#define LIGHTING
-//#define DEBUG
 
 PS_INPUT VS(VS_INPUT input)
 {

@@ -272,8 +272,7 @@ void GameFramework::CreateRootSignature()
 void GameFramework::CreateShaderVariable()
 {
 	ComPtr<ID3D12Resource> dummy;
-	UINT cbByteSize{ (sizeof(cbGameFramework) + 255) & ~255 };
-	m_cbGameFramework = CreateBufferResource(m_device, m_commandList, NULL, cbByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+	m_cbGameFramework = Utile::CreateBufferResource(m_device, m_commandList, NULL, Utile::GetConstantBufferSize<cbGameFramework>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbGameFramework->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameFramework));
 	m_cbGameFrameworkData = make_unique<cbGameFramework>();
 }

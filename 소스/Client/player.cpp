@@ -21,6 +21,7 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Player::OnKeyboardEvent(FLOAT deltaTime)
 {
+#ifndef FREEVIEW
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
 		string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
@@ -87,10 +88,12 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			PlayAnimation("WALKBACK", TRUE);
 		Move(Vector3::Mul(back, 10.0f * deltaTime));
 	}
+#endif
 }
 
 void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+#ifndef FREEVIEW
 	if (wParam == 'r' || wParam == 'R')
 	{
 		if (message == WM_KEYDOWN && GetPureAnimationName(m_animationInfo->currAnimationName) != "RELOAD")
@@ -113,12 +116,11 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			}
 		}
 	}
+#endif
 }
 
 void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
-	//if (m_isMultiPlayer) return;
-
 	// 상체 애니메이션 콜백 처리
 	if (isUpper)
 	{
@@ -175,20 +177,35 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-#ifdef FIRSTVIEW
 	if (m_isMultiPlayer)
-		GameObject::Render(commandList, shader);
-	else
-		GameObject::UpdateShaderVariable(commandList);
-#else
-	GameObject::Render(commandList, shader);
-#endif
-	if (m_gunMesh)
 	{
-		m_gunMesh->UpdateShaderVariable(commandList, this);
-		if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-		else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
-		m_gunMesh->Render(commandList);
+		GameObject::Render(commandList, shader);
+		if (m_gunMesh)
+		{
+			m_gunMesh->UpdateShaderVariable(commandList, this);
+			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			m_gunMesh->Render(commandList);
+		}
+	}
+	else
+	{
+		if (!m_camera) return;
+		XMFLOAT3 eye{ m_camera->GetEye() }, at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
+
+		m_camera->SetEye(GetPosition());
+		m_camera->SetAt(GetLook());
+		m_camera->SetUp(GetUp());
+		m_camera->Update(0.0f);
+		m_camera->UpdateShaderVariable2(commandList);
+
+		GameObject::Render(commandList, shader);
+
+		m_camera->SetEye(eye);
+		m_camera->SetAt(at);
+		m_camera->SetUp(up);
+		m_camera->Update(0.0f);
+		m_camera->UpdateShaderVariable(commandList);
 	}
 }
 

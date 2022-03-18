@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include "stdafx.h"
 
-#define PLAYER_UPPER_JOINT_START 24
-
 class GameObject;
 
 struct Vertex

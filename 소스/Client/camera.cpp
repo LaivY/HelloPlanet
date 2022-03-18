@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 30.0f, 0.0f }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 30.0f, -2.0f }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -22,11 +22,15 @@ void Camera::Update(FLOAT deltaTime)
 #ifdef FIRSTVIEW
 	if (m_player)
 	{
-		XMFLOAT3 offset{ 0.0f, m_offset.y, 0.0f };
+		XMFLOAT3 offset{};
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetRight(), m_offset.x));
+		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), m_offset.y));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), m_offset.z));
-
 		SetEye(Vector3::Add(m_player->GetPosition(), offset));
+
+		string debug{};
+		debug += "EYE : " + to_string(m_eye.x) + ", " + to_string(m_eye.y) + ", " + to_string(m_eye.z) + "\n";
+		OutputDebugStringA(debug.c_str());
 	}
 #endif
 	// 카메라 뷰 변환 행렬 최신화
@@ -36,9 +40,11 @@ void Camera::Update(FLOAT deltaTime)
 void Camera::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	ComPtr<ID3D12Resource> dummy;
-	UINT cbCameraByteSize{ ((sizeof(cbCamera) + 255) & ~255) };
-	m_cbCamera = CreateBufferResource(device, commandList, NULL, cbCameraByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+	m_cbCamera = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbCamera>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbCamera->Map(0, NULL, reinterpret_cast<void**>(&m_pcbCamera));
+
+	m_cbCamera2 = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbCamera>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbCamera2->Map(0, NULL, reinterpret_cast<void**>(&m_pcbCamera2));
 }
 
 void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -50,6 +56,14 @@ void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comma
 	m_pcbCamera->projMatrix = Matrix::Transpose(m_projMatrix);
 	m_pcbCamera->eye = GetEye();
 	commandList->SetGraphicsRootConstantBufferView(2, m_cbCamera->GetGPUVirtualAddress());
+}
+
+void Camera::UpdateShaderVariable2(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_pcbCamera2->viewMatrix = Matrix::Transpose(m_viewMatrix);
+	m_pcbCamera2->projMatrix = Matrix::Transpose(m_projMatrix);
+	m_pcbCamera2->eye = GetEye();
+	commandList->SetGraphicsRootConstantBufferView(2, m_cbCamera2->GetGPUVirtualAddress());
 }
 
 void Camera::Move(const XMFLOAT3& shift)

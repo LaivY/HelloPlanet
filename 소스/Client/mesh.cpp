@@ -1,5 +1,6 @@
 ﻿#include "mesh.h"
 #include "object.h"
+#define PLAYER_UPPER_JOINT_START 23
 
 Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }
 {
@@ -99,7 +100,7 @@ void Mesh::CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_nVertices = dataCount;
 
 	// 정점 버퍼 생성
-	m_vertexBuffer = CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_vertexUploadBuffer);
+	m_vertexBuffer = Utile::CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_vertexUploadBuffer.Get());
 
 	// 정점 버퍼 뷰 설정
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
@@ -113,7 +114,7 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_nIndices = dataCount;
 
 	// 인덱스 버퍼 생성
-	m_indexBuffer = CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_indexUploadBuffer);
+	m_indexBuffer = Utile::CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_indexUploadBuffer.Get());
 
 	// 인덱스 버퍼 뷰 설정
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
@@ -130,13 +131,12 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	// 해당 게임오브젝트가 사용할 상수 버퍼가 없다면 생성
 	if (!m_cbMesh[object])
 	{
-		ComPtr<ID3D12Resource> dummy;
 		UINT cbMeshByteSize{ 0 };
 		if (m_animations.empty())
-			cbMeshByteSize = (sizeof(cbMesh2) + 255) & ~255;
+			cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
 		else
-			cbMeshByteSize = (sizeof(cbMesh) + 255) & ~255;
-		m_cbMesh[object] = CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
+			cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh>();
+		m_cbMesh[object] = Utile::CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	}
 
 	// 상수 버퍼의 가상 메모리 주소를 받음
@@ -308,6 +308,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			object->OnAnimation(animationInfo->blendingTimer / fps, blendingFrame);
 		}
 	}
+
 	m_cbMesh[object]->Unmap(0, NULL);
 	commandList->SetGraphicsRootConstantBufferView(1, m_cbMesh[object]->GetGPUVirtualAddress());
 }
