@@ -1,7 +1,8 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player() : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }, m_weaponType{ }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
+Player::Player(BOOL isMultiPlayer) : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }, m_weaponType{ }, m_isMultiPlayer{ isMultiPlayer },
+									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
 }
@@ -116,6 +117,8 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
+	//if (m_isMultiPlayer) return;
+
 	// 상체 애니메이션 콜백 처리
 	if (isUpper)
 	{
@@ -172,7 +175,14 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
+#ifdef FIRSTVIEW
+	if (m_isMultiPlayer)
+		GameObject::Render(commandList, shader);
+	else
+		GameObject::UpdateShaderVariable(commandList);
+#else
 	GameObject::Render(commandList, shader);
+#endif
 	if (m_gunMesh)
 	{
 		m_gunMesh->UpdateShaderVariable(commandList, this);
@@ -199,7 +209,7 @@ void Player::Update(FLOAT deltaTime)
 	Move(m_velocity);
 
 	// 마찰력
-	m_velocity = Vector3::Mul(m_velocity, m_friction);
+	m_velocity = Vector3::Mul(m_velocity, m_friction * deltaTime);
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

@@ -30,7 +30,7 @@ public:
 	void SetEye(const XMFLOAT3& eye) { m_eye = eye; }
 	void SetAt(const XMFLOAT3& at) { m_at = at; }
 	void SetUp(const XMFLOAT3& up) { m_up = up; }
-	void SetPlayer(const shared_ptr<Player>& player);
+	void SetPlayer(const shared_ptr<Player>& player) { m_player = player; }
 
 	XMFLOAT4X4 GetViewMatrix() const { return m_viewMatrix; }
 	XMFLOAT4X4 GetProjMatrix() const { return m_projMatrix; }

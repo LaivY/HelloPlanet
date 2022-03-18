@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 0.0f, 0.0f }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 30.0f, 0.0f }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -19,8 +19,16 @@ void Camera::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Camera::Update(FLOAT deltaTime)
 {
-	//if (m_player) SetEye(Vector3::Add(m_player->GetPosition(), m_offset));
+#ifdef FIRSTVIEW
+	if (m_player)
+	{
+		XMFLOAT3 offset{ 0.0f, m_offset.y, 0.0f };
+		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetRight(), m_offset.x));
+		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), m_offset.z));
 
+		SetEye(Vector3::Add(m_player->GetPosition(), offset));
+	}
+#endif
 	// 카메라 뷰 변환 행렬 최신화
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
 }
@@ -87,12 +95,6 @@ void Camera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 		m_yaw += yaw;
 	}
 	XMStoreFloat3(&m_at, XMVector3TransformNormal(XMLoadFloat3(&m_at), rotate));
-}
-
-void Camera::SetPlayer(const shared_ptr<Player>& player)
-{
-	if (m_player) m_player.reset();
-	m_player = player;
 }
 
 // --------------------------------------

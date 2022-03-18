@@ -38,7 +38,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 #ifdef NETWORK
 	ConnectServer();
-	m_networkThread = thread{ &Scene::ProcessClient, m_scene.get(), reinterpret_cast<LPVOID>(g_c_socket) };
+	m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
 #endif
 }
 

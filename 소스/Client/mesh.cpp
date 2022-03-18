@@ -199,21 +199,21 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
 
 			// 상체 애니메이션이 있으면 기존 애니메이션은 하체만 애니메이션한다.
-			start = 20; --end;
+			// 상체 애니메이션은 0 ~ PLAYER_UPPER_JOINT_START 뼈만 애니메이션하는 것이다.
+			// 총도 상체 애니메이션을 따라간다. (마지막 뼈는 총의 애니메이션 변환 행렬이다.)
+			start = PLAYER_UPPER_JOINT_START; --end;
 
 			if (upperAnimationInfo->state == PLAY)
 			{
 				for (int i = 0; i < start; ++i)
 				{
 					pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currUpperAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
-																			currUpperAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
-																			upperT);
+																		  currUpperAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
+																		  upperT);
 				}
-
-				// 총도 상체 애니메이션을 따라간다.(마지막 뼈는 총 애니메이션 변환 행렬이다.)
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
-																										   currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
-																										   upperT);
+																										 currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
+																										 upperT);
 				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
 			}
 			else if (upperAnimationInfo->state == BLENDING)
@@ -280,8 +280,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			for (int i = start; i < end; ++i)
 			{
 				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
-																		currAnimation.joints[i].animationTransformMatrix[nNextFrame],
-																		t);
+																	  currAnimation.joints[i].animationTransformMatrix[nNextFrame],
+																	  t);
 			}
 			object->OnAnimation(currFrame, currAnimation.length);
 		}

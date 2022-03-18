@@ -160,7 +160,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MG"]->LoadMesh(device, commandList, PATH("MG/MG.txt"));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 100.0f, 0.0f, 100.0f);
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1000.0f, 0.0f, 1000.0f);
 
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
 	m_meshes["SKYBOX"]->LoadMesh(device, commandList, PATH("Skybox/Skybox.txt"));
@@ -191,8 +191,12 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 {
 	// 카메라 생성
 #ifdef FREEVIEW
-	auto camera{ make_shared<Camera>() };
-#else
+	m_camera = make_shared<Camera>();
+#endif
+#ifdef FIRSTVIEW
+	m_camera = make_shared<Camera>();
+#endif
+#ifdef THIRDVIEW
 	m_camera = make_shared<ThirdPersonCamera>();
 #endif
 	m_camera->CreateShaderVariable(device, commandList);
@@ -225,6 +229,16 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetMesh(m_meshes["FLOOR"]);
 	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
+
+	// 더미 플레이어
+	//auto dumyPlayer{ make_unique<Player>(TRUE) };
+	//dumyPlayer->SetMesh(m_meshes["PLAYER"]);
+	//dumyPlayer->SetShader(m_shaders["ANIMATION"]);
+	//dumyPlayer->SetGunMesh(m_meshes["AR"]);
+	//dumyPlayer->SetGunShader(m_shaders["LINK"]);
+	//dumyPlayer->SetWeaponType(AR);
+	//dumyPlayer->PlayAnimation("IDLE");
+	//m_gameObjects.push_back(move(dumyPlayer));
 }
 
 void Scene::ReleaseUploadBuffer()
@@ -319,9 +333,11 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 void Scene::ProcessClient(LPVOID arg)
 {
+	static int i = 0;
 	while (g_isConnected)
 	{
-		RecvPacket();
+		OutputDebugStringA((to_string(i++) + "\n").c_str());
+		//RecvPacket();
 	}
 }
 

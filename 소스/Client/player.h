@@ -14,7 +14,7 @@ class Camera;
 class Player : public GameObject
 {
 public:
-	Player();
+	Player(BOOL isMultiPlayer = FALSE);
 	virtual ~Player() = default;
 
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -40,12 +40,13 @@ private:
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 private:
-	XMFLOAT3			m_velocity;		// 속도
-	FLOAT				m_maxVelocity;	// 최대속도
-	FLOAT				m_friction;		// 마찰력
-	UINT				m_weaponType;	// 총 타입
+	XMFLOAT3			m_velocity;			// 속도
+	FLOAT				m_maxVelocity;		// 최대속도
+	FLOAT				m_friction;			// 마찰력
+	UINT				m_weaponType;		// 총 타입
+	BOOL				m_isMultiPlayer;	// 멀티플레이어인지 여부
 
-	shared_ptr<Camera>	m_camera;		// 카메라
-	shared_ptr<Mesh>	m_gunMesh;		// 총 메쉬
-	shared_ptr<Shader>	m_gunShader;	// 총 셰이더
+	shared_ptr<Camera>	m_camera;			// 카메라
+	shared_ptr<Mesh>	m_gunMesh;			// 총 메쉬
+	shared_ptr<Shader>	m_gunShader;		// 총 셰이더
 };
