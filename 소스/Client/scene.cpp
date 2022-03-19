@@ -333,59 +333,73 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 void Scene::ProcessClient(LPVOID arg)
 {
-	static int i = 0;
+	auto pre_t = chrono::system_clock::now();
 	while (g_isConnected)
 	{
-		OutputDebugStringA((to_string(i++) + "\n").c_str());
-		//RecvPacket();
+		auto cur_t = chrono::system_clock::now();
+		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
+		RecvPacket();
+		pre_t = cur_t;
+		if (chrono::system_clock::now() - pre_t < 32ms)
+			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
 	}
 }
 
 void Scene::RecvPacket()
 {
-	constexpr int head_size = 2;
+	char buf[BUF_SIZE];
+	WSABUF recv_buf;
+	recv_buf.buf = buf;
+	recv_buf.len = BUF_SIZE;
+	DWORD recvd_byte;
+	DWORD flag = 0;
+	int error_code = WSARecv(g_c_socket, &recv_buf, 1, &recvd_byte, &flag, nullptr, nullptr);
+	if (error_code == SOCKET_ERROR)
+	{
+		error_display("Recv");
+	}
+	cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
+
+
+	/*constexpr int head_size = 2;
 	char head_buf[head_size];
 	char net_buf[BUF_SIZE];
-
+	
 	int recv_result = recv(g_c_socket, head_buf, head_size, MSG_WAITALL);
-	//if (recv_result == SOCKET_ERROR) { error_display("recv()"); return; }
-
+	if (recv_result == SOCKET_ERROR)
+	{
+		error_display("recv()");
+		while (1);
+	}
 	int packet_size = head_buf[0];
 	int packet_type = head_buf[1];
-	cout << "[패킷테스트]: " << packet_size << ", " << packet_type << endl;
+	cout << "[packet]: " << packet_size << ", " << packet_type << endl;
+
 	switch (packet_type)
 	{
-	case SC_PACKET_LOGIN_OK: {
+	case SC_PACKET_LOGIN_OK: 
+	{
 		sc_packet_login_ok recv_packet;
 		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
 		cout << "[SC_PACKET_LOGIN_OK] received" << endl;
 		break;
 	}
-	case SC_PACKET_MOVE_OBJECT: {
-		sc_packet_move_object recv_packet;
+	case SC_PACKET_UPDATE_CLIENT: 
+	{
+		sc_packet_update_client recv_packet;
 		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
-		cout << "[SC_PACKET_MOVE_OBJECT] received" << endl;
+		cout << "[SC_PACKET_UPDATE_CLIENT] received" << endl;
 		break;
 	}
-	case SC_PACKET_PUT_OBJECT: {
-		sc_packet_put_object recv_packet;
-		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
-		cout << "[SC_PACKET_PUT_OBJECT] received" << endl;
-		break;
-	}
-	case SC_PACKET_REMOVE_OBJECT: {
-		sc_packet_remove_object recv_packet;
-		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
-		cout << "[SC_PACKET_REMOVE_OBJECT] received" << endl;
-		break;
-	}
-	default: {
+	default: 
+	{
 		char garbage[20];
 		recv_result += recv(g_c_socket, garbage, packet_size - 2, MSG_WAITALL);
 		cout << "[Unknown_Packet] received" << endl;
 		break;
 	}
-	}
+	}*/
+	
 }
 
 void Scene::SendPacket(LPVOID lp_packet)

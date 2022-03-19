@@ -1,12 +1,12 @@
 ﻿#include "main.h"
 #define MAX_LOADSTRING 100
 
-// 콘솔
-//#ifdef UNICODE
-//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
-//#else
-//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
-//#endif
+//콘솔
+#ifdef UNICODE
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
+#else
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
+#endif
 
 // 전역 변수:
 HINSTANCE           hInst;                                          // 현재 인스턴스입니다.
@@ -122,8 +122,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		if (wParam == 'w' || wParam == 'W')
 		{
-			const char test[] = "[KeyUP] : W";
-			int send_result = send(g_c_socket, test, sizeof(test), 0);
+			//const char test[] = "[KeyUP] : W";
+			cs_packet_move packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_MOVE;
+			packet.state = legs_state::WALKING;
+			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
 		}
 		if (wParam == 'a' || wParam == 'A')
 		{

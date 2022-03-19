@@ -430,13 +430,17 @@ void GameFramework::ConnectServer()
 	ZeroMemory(&server_address, sizeof(server_address));
 	server_address.sin_family = AF_INET;
 	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
-	//server_address.sin_addr.s_addr = inet_addr(SERVER_IP);
 	server_address.sin_port = htons(SERVER_PORT);
 	const int return_value = connect(g_c_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
 	if (return_value == SOCKET_ERROR) error_quit("connect()");
+
+	// non blocking socket setting (test)
+	//unsigned long noblock = 1;
+	//int retval = ioctlsocket(g_c_socket, FIONBIO, &noblock);
+	//if (retval == SOCKET_ERROR) { error_display("ioctlsocket"); }
+	//cout << "non blocking socket is ok" << endl;
+
 	g_isConnected = TRUE;
-	//const HANDLE h_thread = CreateThread(nullptr, 0, ProcessClient, reinterpret_cast<LPVOID>(g_c_socket), 0, nullptr);
-	//if (h_thread == nullptr) closesocket(g_c_socket);
 }
 
 void GameFramework::ProcessClient(LPVOID arg)

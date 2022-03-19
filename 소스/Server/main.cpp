@@ -5,21 +5,7 @@ using namespace std;
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
 
-
 bool g_shutdown = false;
-
-void error_display(int err_num)
-{
-	WCHAR* lpMsgBuf;
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		nullptr, err_num,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, 0);
-	wcout << "[Error] " << lpMsgBuf << endl;
-	while (true);
-	LocalFree(lpMsgBuf);
-}
 
 enum COMP_OP { OP_RECV, OP_SEND, OP_ACCEPT };
 
@@ -84,8 +70,8 @@ public:
 		int ret = WSARecv(_socket, &_recv_over._wsa_buf, 1, 0, &recv_flag, &_recv_over._wsa_over, NULL);
 		if (SOCKET_ERROR == ret) {
 			int error_num = WSAGetLastError();
-			if (ERROR_IO_PENDING != error_num)
-				error_display(error_num);
+			//if (ERROR_IO_PENDING != error_num)
+				//error_display(error_num);
 		}
 	}
 
@@ -110,7 +96,7 @@ int get_new_id()
 	cout << "Maximum Number of Clients Overflow!!\n";
 	return -1;
 }
-
+/*
 void send_login_ok_packet(int c_id)
 {
 	sc_packet_login_ok packet;
@@ -230,13 +216,15 @@ void process_packet(int client_id, unsigned char* p)
 		break;
 	}
 }
+*/
 
 void Update(float elapsed);
+void error_display(const int err_num, const char* msg);
 
 int main()
 {
 	wcout.imbue(locale("korean"));
-
+	cout << sizeof(legs_state) << endl;
 	WSADATA WSAData;
 	WSAStartup(MAKEWORD(2, 2), &WSAData);
 
@@ -257,28 +245,65 @@ int main()
 	SOCKET c_socket = WSAAccept(s_socket, reinterpret_cast<sockaddr*>(&server_addr), &addr_size, 0, 0);
 
 	cout << "\n[Server] Client connect: IP Address = " << inet_ntoa(server_addr.sin_addr) << " , Port Number = " << ntohs(server_addr.sin_port) << endl;
-
+	
 	auto pre_t = chrono::system_clock::now();
 	for (;;) {
 		auto cur_t = chrono::system_clock::now();
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
-		Update(elapsed);
+
+		// recv
+		char buf[BUF_SIZE];
+		WSABUF recv_buf;
+		recv_buf.buf = buf;
+		recv_buf.len = BUF_SIZE;
+		DWORD recvd_byte;
+		DWORD flag = 0;
+		int error_code = WSARecv(c_socket, &recv_buf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		if (error_code == SOCKET_ERROR)
+		{
+			const int error_num = WSAGetLastError();
+			error_display(error_num, "Recv");
+		}
+		cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
+
+		// process packet
+		// send
+		error_code = WSASend(c_socket, &recv_buf, 1, &recvd_byte, flag, nullptr, nullptr);
+		if(error_code == SOCKET_ERROR)
+		{
+			const int error_num = WSAGetLastError();
+			error_display(error_num, "Send");
+		}
+
 
 		pre_t = cur_t;
-		if (chrono::system_clock::now() - pre_t < 32ms) {//30프레임
+		if (chrono::system_clock::now() - pre_t < 32ms) {
 			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
 		}
 	}
-	for (auto& cl : clients) {
-		if (true == cl.in_use)
-			Disconnect(cl._id);
-	}
+	//for (auto& cl : clients) {
+	//	if (true == cl.in_use)
+	//		//Disconnect(cl._id)
+	//}
+
+	closesocket(c_socket);
 	closesocket(s_socket);
 	WSACleanup();
 }
 
 void Update(float elapsed)
 {
-	cout << "초속 30회 sex" << endl;
 }
 
+void error_display(const int err_num, const char* msg)
+{
+	WCHAR* lpMsgBuf;
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+		nullptr, err_num,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, nullptr);
+	wcout << "[" << msg << " Error] " << lpMsgBuf << endl;
+	while (true);
+	LocalFree(lpMsgBuf);
+}
