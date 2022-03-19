@@ -162,10 +162,14 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MG"]->LoadMesh(device, commandList, Utile::PATH("MG/MG.txt", Utile::RESOURCE));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1000.0f, 0.0f, 1000.0f);
-
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
 	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
+
+	m_meshes["MOB"] = make_shared<Mesh>();
+	m_meshes["MOB"]->LoadMesh(device, commandList, Utile::PATH("Mob/Garoo.txt", Utile::RESOURCE));
+	m_meshes["MOB"]->LoadAnimation(device, commandList, Utile::PATH("Mob/idle.txt", Utile::RESOURCE), "IDLE");
+
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1000.0f, 0.0f, 1000.0f);
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -182,6 +186,10 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["SKYBOX"] = make_shared<Texture>();
 	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/Skybox.dds"), Utile::RESOURCE));
 	m_textures["SKYBOX"]->CreateTexture(device);
+
+	m_textures["MOB"] = make_shared<Texture>();
+	m_textures["MOB"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/texture.dds"), Utile::RESOURCE));
+	m_textures["MOB"]->CreateTexture(device);
 }
 
 void Scene::CreateLights()
@@ -225,10 +233,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
-	auto floor{ make_unique<GameObject>() };
-	floor->SetMesh(m_meshes["FLOOR"]);
-	floor->SetShader(m_shaders["DEFAULT"]);
-	m_gameObjects.push_back(move(floor));
+	//auto floor{ make_unique<GameObject>() };
+	//floor->SetMesh(m_meshes["FLOOR"]);
+	//floor->SetShader(m_shaders["DEFAULT"]);
+	//m_gameObjects.push_back(move(floor));
 
 	// 더미 플레이어
 	auto dumyPlayer{ make_unique<Player>(TRUE) };
@@ -238,7 +246,17 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	dumyPlayer->SetGunShader(m_shaders["LINK"]);
 	dumyPlayer->SetWeaponType(AR);
 	dumyPlayer->PlayAnimation("IDLE");
+	dumyPlayer->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
 	m_gameObjects.push_back(move(dumyPlayer));
+
+	// 몬스터
+	auto mob{ make_unique<GameObject>() };
+	mob->SetMesh(m_meshes["MOB"]);
+	mob->SetShader(m_shaders["ANIMATION"]);
+	mob->SetTexture(m_textures["MOB"]);
+	mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
+	mob->PlayAnimation("IDLE");
+	m_gameObjects.push_back(move(mob));
 }
 
 void Scene::ReleaseUploadBuffer()

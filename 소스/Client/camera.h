@@ -31,6 +31,7 @@ public:
 	void SetEye(const XMFLOAT3& eye) { m_eye = eye; }
 	void SetAt(const XMFLOAT3& at) { m_at = at; }
 	void SetUp(const XMFLOAT3& up) { m_up = up; }
+	void SetOffset(const XMFLOAT3& offset) { m_offset = offset; }
 	void SetPlayer(const shared_ptr<Player>& player) { m_player = player; }
 
 	XMFLOAT4X4 GetViewMatrix() const { return m_viewMatrix; }
@@ -38,6 +39,7 @@ public:
 	XMFLOAT3 GetEye() const { return m_eye; }
 	XMFLOAT3 GetAt() const { return m_at; }
 	XMFLOAT3 GetUp() const { return m_up; }
+	XMFLOAT3 GetOffset() const { return m_offset; }
 
 protected:
 	XMFLOAT4X4				m_viewMatrix;	// 뷰변환 행렬

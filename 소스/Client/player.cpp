@@ -191,9 +191,11 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	else
 	{
 		if (!m_camera) return;
-		XMFLOAT3 eye{ m_camera->GetEye() }, at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
+		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 
-		m_camera->SetEye(GetPosition());
+		XMFLOAT3 look{ GetLook() };
+		look = Vector3::Normalize(look);
+
 		m_camera->SetAt(GetLook());
 		m_camera->SetUp(GetUp());
 		m_camera->Update(0.0f);
@@ -201,7 +203,6 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 
 		GameObject::Render(commandList, shader);
 
-		m_camera->SetEye(eye);
 		m_camera->SetAt(at);
 		m_camera->SetUp(up);
 		m_camera->Update(0.0f);
