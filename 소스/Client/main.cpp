@@ -1,12 +1,12 @@
 ﻿#include "main.h"
 #define MAX_LOADSTRING 100
 
-//콘솔
-#ifdef UNICODE
-#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
-#else
-#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
-#endif
+// 콘솔
+//#ifdef UNICODE
+//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
+//#else
+//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
+//#endif
 
 // 전역 변수:
 HINSTANCE           hInst;                                          // 현재 인스턴스입니다.

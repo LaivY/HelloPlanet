@@ -34,10 +34,14 @@ public:
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 
 	XMFLOAT3 GetVelocity() const { return m_velocity; }
-	string GetPureAnimationName(const string& animationName) const;
 
 private:
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
+	string GetPureAnimationName(const string& animationName) const;
+	string GetCurrAnimationName() const;
+	string GetAfterAnimationName() const;
+	string GetUpperCurrAnimationName() const;
+	string GetUpperAfterAnimationName() const;
 
 private:
 	XMFLOAT3			m_velocity;			// 속도

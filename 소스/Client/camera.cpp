@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_pcbCamera2{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 30.0f, -1.0f }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 29.5f, -2.0f }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -17,7 +17,7 @@ void Camera::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 }
 
-void Camera::Update(FLOAT deltaTime)
+void Camera::Update(FLOAT /*deltaTime*/)
 {
 #ifdef FIRSTVIEW
 	if (m_player)
@@ -27,10 +27,6 @@ void Camera::Update(FLOAT deltaTime)
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), m_offset.y));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), m_offset.z));
 		SetEye(Vector3::Add(m_player->GetPosition(), offset));
-
-		string debug{};
-		debug += "EYE : " + to_string(m_eye.x) + ", " + to_string(m_eye.y) + ", " + to_string(m_eye.z) + "\n";
-		OutputDebugStringA(debug.c_str());
 	}
 #endif
 	// 카메라 뷰 변환 행렬 최신화
@@ -39,7 +35,6 @@ void Camera::Update(FLOAT deltaTime)
 
 void Camera::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	ComPtr<ID3D12Resource> dummy;
 	m_cbCamera = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbCamera>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbCamera->Map(0, NULL, reinterpret_cast<void**>(&m_pcbCamera));
 
@@ -58,11 +53,19 @@ void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comma
 	commandList->SetGraphicsRootConstantBufferView(2, m_cbCamera->GetGPUVirtualAddress());
 }
 
-void Camera::UpdateShaderVariable2(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Camera::UpdateShaderVariableByPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	if (!m_player) return;
+	
+	// 이 함수는 1인칭 플레이어를 렌더링할 때만 호출된다.
+	// 1인칭 렌더링할 경우 eye는 항상 맞춰져있으므로 여기선 at, up만 플레이어 것으로 바꿔주면된다.
+	m_at = m_player->GetLook();
+	m_up = m_player->GetUp();
+	Update(0.0f);
+
 	m_pcbCamera2->viewMatrix = Matrix::Transpose(m_viewMatrix);
 	m_pcbCamera2->projMatrix = Matrix::Transpose(m_projMatrix);
-	m_pcbCamera2->eye = GetEye();
+	m_pcbCamera2->eye = m_eye;
 	commandList->SetGraphicsRootConstantBufferView(2, m_cbCamera2->GetGPUVirtualAddress());
 }
 

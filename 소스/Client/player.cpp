@@ -9,6 +9,7 @@ Player::Player(BOOL isMultiPlayer) : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f 
 
 void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+#ifndef FREEVIEW
 	switch (message)
 	{
 		case WM_LBUTTONDOWN:
@@ -17,6 +18,7 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 	}
+#endif
 }
 
 void Player::OnKeyboardEvent(FLOAT deltaTime)
@@ -24,8 +26,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 #ifndef FREEVIEW
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
-		string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
-		string afterPureAnimationName{ GetPureAnimationName(m_animationInfo->afterAnimationName) };
+		string currPureAnimationName{ GetCurrAnimationName() };
+		string afterPureAnimationName{ GetAfterAnimationName() };
 		XMFLOAT3 look{ m_camera->GetAt() };
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
@@ -47,8 +49,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('A') & 0x8000)
 	{
-		string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
-		string afterPureAnimationName{ GetPureAnimationName(m_animationInfo->afterAnimationName) };
+		string currPureAnimationName{ GetCurrAnimationName() };
+		string afterPureAnimationName{ GetAfterAnimationName() };
 		XMFLOAT3 look{ m_camera->GetAt() };
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
@@ -62,8 +64,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('D') & 0x8000)
 	{
-		string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
-		string afterPureAnimationName{ GetPureAnimationName(m_animationInfo->afterAnimationName) };
+		string currPureAnimationName{ GetCurrAnimationName() };
+		string afterPureAnimationName{ GetAfterAnimationName() };
 		XMFLOAT3 look{ m_camera->GetAt() };
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
@@ -76,8 +78,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('S') & 0x8000)
 	{
-		string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
-		string afterPureAnimationName{ GetPureAnimationName(m_animationInfo->afterAnimationName) };
+		string currPureAnimationName{ GetCurrAnimationName() };
+		string afterPureAnimationName{ GetAfterAnimationName() };
 		XMFLOAT3 look{ m_camera->GetAt() };
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
@@ -96,7 +98,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 #ifndef FREEVIEW
 	if (wParam == 'r' || wParam == 'R')
 	{
-		if (message == WM_KEYDOWN && GetPureAnimationName(m_animationInfo->currAnimationName) != "RELOAD")
+		if (message == WM_KEYDOWN && GetCurrAnimationName() != "RELOAD")
 		{
 			PlayAnimation("RELOAD", TRUE);
 		}
@@ -111,9 +113,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		if (message == WM_KEYUP)
 		{
 			if (GetAsyncKeyState('W') & 0x8000)
-			{
 				PlayAnimation("WALKING", TRUE);
-			}
 		}
 	}
 #endif
@@ -132,7 +132,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 				m_upperAnimationInfo->blendingTimer = 0.0f;
 			}
 			else if (m_upperAnimationInfo->state == BLENDING)
-				PlayAnimation(GetPureAnimationName(m_upperAnimationInfo->afterAnimationName));
+				PlayAnimation(GetUpperAfterAnimationName());
 			else if (m_upperAnimationInfo->state == SYNC)
 				m_upperAnimationInfo.reset();
 		}
@@ -144,7 +144,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		if (currFrame >= endFrame)
 		{
 			// 이동
-			string currPureAnimationName{ GetPureAnimationName(m_animationInfo->currAnimationName) };
+			string currPureAnimationName{ GetCurrAnimationName() };
 			if (((GetAsyncKeyState('W') & 0x8000) && currPureAnimationName == "WALKING") ||
 				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && currPureAnimationName == "RUNNING") ||
 				((GetAsyncKeyState('A') & 0x8000) && currPureAnimationName == "WALKLEFT") ||
@@ -170,7 +170,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	{
 		if (currFrame >= endFrame)
 		{
-			PlayAnimation(GetPureAnimationName(m_animationInfo->afterAnimationName));
+			PlayAnimation(GetAfterAnimationName());
 		}
 	}
 }
@@ -193,16 +193,10 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		if (!m_camera) return;
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 
-		XMFLOAT3 look{ GetLook() };
-		look = Vector3::Normalize(look);
+		m_camera->UpdateShaderVariableByPlayer(commandList);	// 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
+		GameObject::Render(commandList, shader);				// 플레이어를 렌더링한다.
 
-		m_camera->SetAt(GetLook());
-		m_camera->SetUp(GetUp());
-		m_camera->Update(0.0f);
-		m_camera->UpdateShaderVariable2(commandList);
-
-		GameObject::Render(commandList, shader);
-
+		// 이후 렌더링할 객체들을 위해 카메라 파라미터를 이전 것으로 되돌린다.
 		m_camera->SetAt(at);
 		m_camera->SetUp(up);
 		m_camera->Update(0.0f);
@@ -270,6 +264,19 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	else if (m_weaponType == MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
 }
 
+void Player::AddVelocity(const XMFLOAT3& increase)
+{
+	m_velocity = Vector3::Add(m_velocity, increase);
+
+	// 최대 속도에 걸린다면 해당 비율로 축소시킴
+	FLOAT length{ Vector3::Length(m_velocity) };
+	if (length > m_maxVelocity)
+	{
+		FLOAT ratio{ m_maxVelocity / length };
+		m_velocity = Vector3::Mul(m_velocity, ratio);
+	}
+}
+
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 {
 	if (!m_upperAnimationInfo) m_upperAnimationInfo = make_unique<AnimationInfo>();
@@ -292,22 +299,29 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	m_upperAnimationInfo->blendingTimer = 0.0f;
 }
 
-void Player::AddVelocity(const XMFLOAT3& increase)
-{
-	m_velocity = Vector3::Add(m_velocity, increase);
-
-	// 최대 속도에 걸린다면 해당 비율로 축소시킴
-	FLOAT length{ Vector3::Length(m_velocity) };
-	if (length > m_maxVelocity)
-	{
-		FLOAT ratio{ m_maxVelocity / length };
-		m_velocity = Vector3::Mul(m_velocity, ratio);
-	}
-}
-
 string Player::GetPureAnimationName(const string& animationName) const
 {
 	if (auto p{ animationName.find_last_of('/') }; p != string::npos)
 		return animationName.substr(p + 1);
 	return animationName;
+}
+
+string Player::GetCurrAnimationName() const
+{
+	return GetPureAnimationName(m_animationInfo->currAnimationName);
+}
+
+string Player::GetAfterAnimationName() const
+{
+	return GetPureAnimationName(m_animationInfo->afterAnimationName);
+}
+
+string Player::GetUpperCurrAnimationName() const
+{
+	return GetPureAnimationName(m_upperAnimationInfo->currAnimationName);
+}
+
+string Player::GetUpperAfterAnimationName() const
+{
+	return GetPureAnimationName(m_upperAnimationInfo->afterAnimationName);
 }

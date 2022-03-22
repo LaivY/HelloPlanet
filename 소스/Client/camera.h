@@ -19,12 +19,12 @@ public:
 	virtual ~Camera();
 
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void Update(FLOAT deltaTime);
+	virtual void Update(FLOAT /*deltaTime*/);
 	void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void UpdateShaderVariable2(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void UpdateShaderVariableByPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 	void SetViewMatrix(const XMFLOAT4X4& viewMatrix) { m_viewMatrix = viewMatrix; }
 	void SetProjMatrix(const XMFLOAT4X4& projMatrix) { m_projMatrix = projMatrix; }
@@ -48,8 +48,8 @@ protected:
 	ComPtr<ID3D12Resource>	m_cbCamera;		// 상수 버퍼
 	cbCamera*				m_pcbCamera;	// 상수 버퍼 포인터
 
-	ComPtr<ID3D12Resource>	m_cbCamera2;	// 테스트용
-	cbCamera*				m_pcbCamera2;	// 테스트용
+	ComPtr<ID3D12Resource>	m_cbCamera2;	// 1인칭 플레이어를 렌더링할 때 사용할 상수 버퍼
+	cbCamera*				m_pcbCamera2;	// 상수 버퍼 포인터
 
 	XMFLOAT3				m_eye;			// 카메라 위치
 	XMFLOAT3				m_at;			// 카메라가 바라보는 방향

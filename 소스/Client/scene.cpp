@@ -233,10 +233,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
-	//auto floor{ make_unique<GameObject>() };
-	//floor->SetMesh(m_meshes["FLOOR"]);
-	//floor->SetShader(m_shaders["DEFAULT"]);
-	//m_gameObjects.push_back(move(floor));
+	auto floor{ make_unique<GameObject>() };
+	floor->SetMesh(m_meshes["FLOOR"]);
+	floor->SetShader(m_shaders["DEFAULT"]);
+	m_gameObjects.push_back(move(floor));
 
 	// 더미 플레이어
 	auto dumyPlayer{ make_unique<Player>(TRUE) };
@@ -282,12 +282,12 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
+	// 플레이어 렌더링
+	if (m_player) m_player->Render(commandList);
+
 	// 게임오브젝트 렌더링
 	for (const auto& gameObject : m_gameObjects)
 		gameObject->Render(commandList);
-
-	// 플레이어 렌더링
-	if (m_player) m_player->Render(commandList);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
