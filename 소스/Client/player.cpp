@@ -114,6 +114,8 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		{
 			if (GetAsyncKeyState('W') & 0x8000)
 				PlayAnimation("WALKING", TRUE);
+			else
+				PlayAnimation("IDLE", TRUE);
 		}
 	}
 #endif
@@ -190,6 +192,7 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	}
 	else
 	{
+#ifdef FIRSTVIEW
 		if (!m_camera) return;
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 
@@ -201,6 +204,19 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		m_camera->SetUp(up);
 		m_camera->Update(0.0f);
 		m_camera->UpdateShaderVariable(commandList);
+#else
+		GameObject::Render(commandList, shader);
+		if (m_gunMesh)
+		{
+			m_gunMesh->UpdateShaderVariable(commandList, this);
+			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			m_gunMesh->Render(commandList);
+		}
+
+		string debug{};
+		debug = "";
+#endif
 	}
 }
 
@@ -248,6 +264,13 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
 	string pureAnimationName{ GetPureAnimationName(animationName) };
+
+	if (m_animationInfo && m_animationInfo->state == BLENDING && GetCurrAnimationName() == animationName)
+	{
+		m_animationInfo->currAnimationName.swap(m_animationInfo->afterAnimationName);
+		swap(m_animationInfo->currTimer, m_animationInfo->afterTimer);
+		return;
+	}
 
 	// 아래의 애니메이션은 상체만 애니메이션함
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")

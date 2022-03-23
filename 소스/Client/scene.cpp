@@ -216,8 +216,15 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
+#ifdef FIRSTVIEW
 	m_player->SetMesh(m_meshes["SG"]);
 	m_player->SetShader(m_shaders["LINK"]);
+#else
+	m_player->SetMesh(m_meshes["PLAYER"]);
+	m_player->SetShader(m_shaders["ANIMATION"]);
+	m_player->SetGunMesh(m_meshes["SG"]);
+	m_player->SetGunShader(m_shaders["LINK"]);
+#endif
 	m_player->SetWeaponType(SG);
 	m_player->PlayAnimation("IDLE");
 
