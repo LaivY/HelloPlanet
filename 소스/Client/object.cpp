@@ -6,6 +6,12 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_tex
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
 
+void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
+{
+	if (currFrame >= endFrame)
+		PlayAnimation(m_animationInfo->currAnimationName);
+}
+
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	if (!m_mesh) return;
@@ -51,9 +57,9 @@ void GameObject::Update(FLOAT deltaTime)
 	// 애니메이션 타이머 진행
 	if (m_animationInfo)
 	{
-		if (m_animationInfo->state == PLAY)
+		if (m_animationInfo->state == eAnimationState::PLAY)
 			m_animationInfo->currTimer += deltaTime;
-		else if (m_animationInfo->state == BLENDING)
+		else if (m_animationInfo->state == eAnimationState::BLENDING)
 			m_animationInfo->blendingTimer += deltaTime;
 	}
 }
@@ -120,7 +126,7 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	{
 		m_animationInfo->afterAnimationName = animationName;
 		m_animationInfo->afterTimer = 0.0f;
-		m_animationInfo->state = BLENDING;
+		m_animationInfo->state = eAnimationState::BLENDING;
 	}
 	else
 	{
@@ -128,7 +134,7 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->currAnimationName = animationName;
 		m_animationInfo->currTimer = 0.0f;
-		m_animationInfo->state = PLAY;
+		m_animationInfo->state = eAnimationState::PLAY;
 	}
 	m_animationInfo->blendingTimer = 0.0f;
 }

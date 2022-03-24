@@ -17,7 +17,7 @@ struct Light
 
 struct cbScene
 {
-	Light		ligths[MAX_LIGHT];
+	Light		ligths[MAX_LIGHTS];
 };
 
 class Scene

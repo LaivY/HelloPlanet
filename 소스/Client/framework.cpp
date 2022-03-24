@@ -1,7 +1,7 @@
 ﻿#include "framework.h"
 
 GameFramework::GameFramework(UINT width, UINT height) :
-	m_width{ width }, m_height{ height }, m_frameIndex{ 0 }, m_rtvDescriptorSize{ 0 }
+	m_width{ width }, m_height{ height }, m_isActive{ TRUE }, m_frameIndex{ 0 }, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
 }
@@ -187,8 +187,8 @@ void GameFramework::CreateDepthStencilView()
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	resourceDesc.Alignment = 0;
-	resourceDesc.Width = SCREEN_WIDTH;
-	resourceDesc.Height = SCREEN_HEIGHT;
+	resourceDesc.Width = Setting::SCREEN_WIDTH;
+	resourceDesc.Height = Setting::SCREEN_HEIGHT;
 	resourceDesc.DepthOrArraySize = 1;
 	resourceDesc.MipLevels = 1;
 	resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;

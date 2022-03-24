@@ -2,9 +2,6 @@
 #include "stdafx.h"
 #include "player.h"
 
-#define MAX_PITCH +60
-#define MIN_PITCH -60
-
 struct cbCamera
 {
 	XMFLOAT4X4	viewMatrix;

@@ -45,14 +45,6 @@ using namespace DirectX;
 #include <MSWSock.h>
 #include "protocol.h"
 
-#define SCREEN_WIDTH        1280
-#define SCREEN_HEIGHT       720
-#define MAX_LIGHT           1
-#define MAX_MATERIAL        10
-#define MAX_JOINT           50
-#define DIRECTIONAL_LIGHT   0
-#define POINT_LIGHT         1
-
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
 extern SOCKET               g_c_socket;                         // 소켓
@@ -191,7 +183,6 @@ namespace Utile
 
     ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
                                                 const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
-
     string PATH(const string& file, int type);
     wstring PATH(const wstring& file, int type);
 
@@ -200,6 +191,18 @@ namespace Utile
     { 
         return (sizeof(T) + 255) & ~255; 
     }
+}
+
+namespace Setting
+{
+    constexpr auto SCREEN_WIDTH     = 1280; // 화면 가로 길이
+    constexpr auto SCREEN_HEIGHT    = 720;  // 화면 세로 길이
+    constexpr auto MAX_LIGHTS       = 1;    // 씬 조명 최대 개수
+    constexpr auto MAX_MATERIALS    = 10;   // 메쉬 재질 최대 개수
+    constexpr auto MAX_JOINTS       = 50;   // 메쉬 뼈 최대 개수
+    constexpr auto BLENDING_FRAMES  = 5;    // 메쉬 애니메이션 블렌딩에 걸리는 프레임
+    constexpr auto CAMERA_MIN_PITCH = -60;  // 카메라 위아래 최소 각도
+    constexpr auto CAMERA_MAX_PITCH = 60;   // 카메라 위아래 최대 각도
 }
 
 void error_quit(const char* msg);

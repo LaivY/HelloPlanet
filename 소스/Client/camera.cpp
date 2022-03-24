@@ -1,4 +1,5 @@
 ﻿#include "camera.h"
+using namespace Setting;
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_pcbCamera2{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
 				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 29.5f, -2.0f }
@@ -89,15 +90,15 @@ void Camera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	{
 		// x축 회전각 제한
 		axis = XMLoadFloat3(&Vector3::Cross(m_up, m_at));
-		if (m_pitch + pitch > MAX_PITCH)
+		if (m_pitch + pitch > CAMERA_MAX_PITCH)
 		{
-			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MAX_PITCH - m_pitch));
-			m_pitch = MAX_PITCH;
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(CAMERA_MAX_PITCH - m_pitch));
+			m_pitch = CAMERA_MAX_PITCH;
 		}
-		else if (m_pitch + pitch < MIN_PITCH)
+		else if (m_pitch + pitch < CAMERA_MIN_PITCH)
 		{
-			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MIN_PITCH - m_pitch));
-			m_pitch = MIN_PITCH;
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(CAMERA_MIN_PITCH - m_pitch));
+			m_pitch = CAMERA_MIN_PITCH;
 		}
 		else
 		{
@@ -183,15 +184,15 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 		axis = XMLoadFloat3(&look);
 
 		// x축 회전각 제한
-		if (m_pitch + pitch > MAX_PITCH)
+		if (m_pitch + pitch > CAMERA_MAX_PITCH)
 		{
-			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MAX_PITCH - m_pitch));
-			m_pitch = MAX_PITCH;
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(CAMERA_MAX_PITCH - m_pitch));
+			m_pitch = CAMERA_MAX_PITCH;
 		}
-		else if (m_pitch + pitch < MIN_PITCH)
+		else if (m_pitch + pitch < CAMERA_MIN_PITCH)
 		{
-			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(MIN_PITCH - m_pitch));
-			m_pitch = MIN_PITCH;
+			rotate *= XMMatrixRotationAxis(axis, XMConvertToRadians(CAMERA_MIN_PITCH - m_pitch));
+			m_pitch = CAMERA_MIN_PITCH;
 		}
 		else
 		{

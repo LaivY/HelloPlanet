@@ -169,7 +169,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MOB"]->LoadMesh(device, commandList, Utile::PATH("Mob/Garoo.txt", Utile::RESOURCE));
 	m_meshes["MOB"]->LoadAnimation(device, commandList, Utile::PATH("Mob/idle.txt", Utile::RESOURCE), "IDLE");
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1000.0f, 0.0f, 1000.0f);
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1500.0f, 0.0f, 1500.0f);
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -225,7 +225,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetGunMesh(m_meshes["SG"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 #endif
-	m_player->SetWeaponType(SG);
+	m_player->SetWeaponType(ePlayerGunType::SG);
 	m_player->PlayAnimation("IDLE");
 
 	// 카메라, 플레이어 서로 설정
@@ -249,9 +249,9 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto dumyPlayer{ make_unique<Player>(TRUE) };
 	dumyPlayer->SetMesh(m_meshes["PLAYER"]);
 	dumyPlayer->SetShader(m_shaders["ANIMATION"]);
-	dumyPlayer->SetGunMesh(m_meshes["AR"]);
+	dumyPlayer->SetGunMesh(m_meshes["SG"]);
 	dumyPlayer->SetGunShader(m_shaders["LINK"]);
-	dumyPlayer->SetWeaponType(AR);
+	dumyPlayer->SetWeaponType(ePlayerGunType::SG);
 	dumyPlayer->PlayAnimation("IDLE");
 	dumyPlayer->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
 	m_gameObjects.push_back(move(dumyPlayer));
@@ -385,7 +385,6 @@ void Scene::RecvPacket()
 	}
 	cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
 
-
 	/*constexpr int head_size = 2;
 	char head_buf[head_size];
 	char net_buf[BUF_SIZE];
@@ -424,7 +423,6 @@ void Scene::RecvPacket()
 		break;
 	}
 	}*/
-	
 }
 
 void Scene::SendPacket(LPVOID lp_packet)

@@ -2,14 +2,12 @@
 #include "stdafx.h"
 #include "object.h"
 
-#define ROLL_MAX +20
-#define ROLL_MIN -10
-
-#define AR 1
-#define SG 2
-#define MG 3
-
 class Camera;
+
+enum class ePlayerGunType
+{
+	AR, SG, MG
+};
 
 class Player : public GameObject
 {
@@ -28,7 +26,7 @@ public:
 
 	void AddVelocity(const XMFLOAT3& increase);
 	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
-	void SetWeaponType(UINT weaponType) { m_weaponType = weaponType; }
+	void SetWeaponType(ePlayerGunType weaponType) { m_weaponType = weaponType; }
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
@@ -47,7 +45,7 @@ private:
 	XMFLOAT3			m_velocity;			// 속도
 	FLOAT				m_maxVelocity;		// 최대속도
 	FLOAT				m_friction;			// 마찰력
-	UINT				m_weaponType;		// 총 타입
+	ePlayerGunType		m_weaponType;		// 총 타입
 	BOOL				m_isMultiPlayer;	// 멀티플레이어인지 여부
 
 	shared_ptr<Camera>	m_camera;			// 카메라

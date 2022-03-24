@@ -174,9 +174,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		const UINT nNextFrame{ min(static_cast<int>(ceilf(currFrame)), currAnimation.length - 1) };		// 다음 프레임(정수)
 		const float t{ currFrame - static_cast<int>(currFrame) };										// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
 
-		// 블렌딩과 관련된 변수들
-		constexpr UINT blendingFrame{ 5 };							// 블렌딩에 걸리는 프레임
-		constexpr float totalBlendingTime{ blendingFrame * fps };	// 블렌딩에 걸리는 시간
+		// 블렌딩에 걸리는 시간
+		constexpr float totalBlendingTime{ BLENDING_FRAMES * fps };	
 
 		UINT start{ 0 }, end{ static_cast<UINT>(currAnimation.joints.size()) }; // 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
 
@@ -203,7 +202,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			// 총도 상체 애니메이션을 따라간다. (마지막 뼈는 총의 애니메이션 변환 행렬이다.)
 			start = PLAYER_UPPER_JOINT_START; --end;
 
-			if (upperAnimationInfo->state == PLAY)
+			if (upperAnimationInfo->state == eAnimationState::PLAY)
 			{
 				for (int i = 0; i < start; ++i)
 				{
@@ -216,7 +215,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 																										 upperT);
 				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
 			}
-			else if (upperAnimationInfo->state == BLENDING)
+			else if (upperAnimationInfo->state == eAnimationState::BLENDING)
 			{
 				// 상체 애니메이션은 블렌딩할 때 하체 애니메이션의 타이밍과 맞춘다.
 				const Animation& upperAfterAni{
@@ -244,9 +243,9 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, blendingFrame, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, BLENDING_FRAMES, TRUE);
 			}
-			else if (upperAnimationInfo->state == SYNC)
+			else if (upperAnimationInfo->state == eAnimationState::SYNC)
 			{
 				// 블렌딩 매개변수
 				const float t2{ clamp(upperAnimationInfo->blendingTimer / totalBlendingTime, 0.0f, 1.0f) };
@@ -271,11 +270,11 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													  t) };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, blendingFrame, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, BLENDING_FRAMES, TRUE);
 			}
 		}
 
-		if (animationInfo->state == PLAY) // 프레임 진행
+		if (animationInfo->state == eAnimationState::PLAY) // 프레임 진행
 		{
 			for (int i = start; i < end; ++i)
 			{
@@ -285,7 +284,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			}
 			object->OnAnimation(currFrame, currAnimation.length);
 		}
-		else if (animationInfo->state == BLENDING) // 애니메이션 블렌딩
+		else if (animationInfo->state == eAnimationState::BLENDING) // 애니메이션 블렌딩
 		{
 			// curr -> after로 애니메이션 블렌딩 진행
 			const Animation& afterAnimation{
@@ -305,7 +304,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				const XMFLOAT4X4& after{ afterAnimation.joints[i].animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
-			object->OnAnimation(animationInfo->blendingTimer / fps, blendingFrame);
+			object->OnAnimation(animationInfo->blendingTimer / fps, BLENDING_FRAMES);
 		}
 	}
 

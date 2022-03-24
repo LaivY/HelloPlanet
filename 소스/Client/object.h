@@ -4,12 +4,12 @@
 #include "shader.h"
 #include "texture.h"
 
-#define	NONE		1
-#define PLAY		2
-#define BLENDING	3
-#define SYNC		4
-
 class Camera;
+
+enum class eAnimationState
+{
+	NONE, PLAY, BLENDING, SYNC
+};
 
 struct TextureInfo
 {
@@ -23,14 +23,14 @@ struct TextureInfo
 
 struct AnimationInfo
 {
-	AnimationInfo() : currTimer{}, afterTimer{}, blendingTimer{}, state{ NONE } { }
+	AnimationInfo() : currTimer{}, afterTimer{}, blendingTimer{}, state{ eAnimationState::NONE } { }
 
-	string	currAnimationName;
-	FLOAT	currTimer;
-	string	afterAnimationName;
-	FLOAT	afterTimer;
-	FLOAT	blendingTimer;
-	UINT	state;
+	eAnimationState	state;
+	string			currAnimationName;
+	FLOAT			currTimer;
+	string			afterAnimationName;
+	FLOAT			afterTimer;
+	FLOAT			blendingTimer;
 };
 
 class GameObject
@@ -42,7 +42,7 @@ public:
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
 	virtual void OnKeyboardEvent(FLOAT deltaTime) { }
 	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE) { }
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Move(const XMFLOAT3& shift);

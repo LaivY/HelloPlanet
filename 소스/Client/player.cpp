@@ -1,6 +1,9 @@
 ﻿#include "player.h"
 #include "camera.h"
 
+using enum eAnimationState;
+using enum ePlayerGunType;
+
 Player::Player(BOOL isMultiPlayer) : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }, m_weaponType{ }, m_isMultiPlayer{ isMultiPlayer },
 									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
@@ -37,14 +40,14 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			if ((m_animationInfo->state == PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
-			Move(Vector3::Mul(look, 50.0f * deltaTime));
+			Move(Vector3::Mul(look, 150.0f * deltaTime));
 		}
 		else
 		{
 			if ((m_animationInfo->state == PLAY && currPureAnimationName != "WALKING") ||
 				(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("WALKING", TRUE);
-			Move(Vector3::Mul(look, 10.0f * deltaTime));
+			Move(Vector3::Mul(look, 50.0f * deltaTime));
 		}
 	}
 	else if (GetAsyncKeyState('A') & 0x8000)
@@ -215,7 +218,12 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		}
 
 		string debug{};
-		debug = "";
+		debug += m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
+		if (m_animationInfo->afterAnimationName.empty())
+			debug += "NONE\n\n";
+		else
+			debug += m_animationInfo->afterAnimationName + "(" + to_string(m_animationInfo->afterTimer) + ")\n\n";
+		OutputDebugStringA(debug.c_str());
 #endif
 	}
 }
@@ -243,10 +251,10 @@ void Player::Update(FLOAT deltaTime)
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 {
 	// 회전각 제한
-	if (m_pitch + pitch > MAX_PITCH)
-		pitch = MAX_PITCH - m_pitch;
-	else if (m_pitch + pitch < MIN_PITCH)
-		pitch = MIN_PITCH - m_pitch;
+	if (m_pitch + pitch > CAMERA_MAX_PITCH)
+		pitch = CAMERA_MAX_PITCH - m_pitch;
+	else if (m_pitch + pitch < CAMERA_MIN_PITCH)
+		pitch = CAMERA_MIN_PITCH - m_pitch;
 
 	// 회전각 합산
 	m_roll += roll; m_pitch += pitch; m_yaw += yaw;
@@ -267,8 +275,12 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 
 	if (m_animationInfo && m_animationInfo->state == BLENDING && GetCurrAnimationName() == animationName)
 	{
-		m_animationInfo->currAnimationName.swap(m_animationInfo->afterAnimationName);
-		swap(m_animationInfo->currTimer, m_animationInfo->afterTimer);
+		m_animationInfo->state = PLAY;
+		m_animationInfo->afterAnimationName.clear();
+		m_animationInfo->afterTimer = 0.0f;
+		m_animationInfo->blendingTimer = 0.0f;
+		//m_animationInfo->currAnimationName.swap(m_animationInfo->afterAnimationName);
+		//swap(m_animationInfo->currTimer, m_animationInfo->afterTimer);
 		return;
 	}
 
@@ -305,19 +317,19 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	if (!m_upperAnimationInfo) m_upperAnimationInfo = make_unique<AnimationInfo>();
 	if (doBlending)
 	{
+		m_upperAnimationInfo->state = BLENDING;
 		m_upperAnimationInfo->currAnimationName = m_animationInfo->currAnimationName;
 		m_upperAnimationInfo->currTimer = m_animationInfo->currTimer;
 		m_upperAnimationInfo->afterAnimationName = animationName;
 		m_upperAnimationInfo->afterTimer = 0.0f;
-		m_upperAnimationInfo->state = BLENDING;
 	}
 	else
 	{
+		m_upperAnimationInfo->state = PLAY;
 		m_upperAnimationInfo->currAnimationName = animationName;
 		m_upperAnimationInfo->currTimer = 0.0f;
 		m_upperAnimationInfo->afterAnimationName.clear();
 		m_upperAnimationInfo->afterTimer = 0.0f;
-		m_upperAnimationInfo->state = PLAY;
 	}
 	m_upperAnimationInfo->blendingTimer = 0.0f;
 }
