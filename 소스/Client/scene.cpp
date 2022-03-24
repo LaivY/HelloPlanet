@@ -125,8 +125,10 @@ void Scene::OnUpdate(FLOAT deltaTime)
 	if (m_player) m_player->Update(deltaTime);
 	if (m_camera) m_camera->Update(deltaTime);
 	if (m_skybox) m_skybox->Update(deltaTime);
-	for (auto& object : m_gameObjects)
-		object->Update(deltaTime);
+	for (auto& p : m_multiPlayers)
+		if (p) p->Update(deltaTime);
+	for (auto& o : m_gameObjects)
+		o->Update(deltaTime);
 }
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -231,12 +233,27 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetGunMesh(m_meshes["SG"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 #endif
-	m_player->SetWeaponType(ePlayerGunType::SG);
+	m_player->SetGunType(ePlayerGunType::SG);
 	m_player->PlayAnimation("IDLE");
 
 	// 카메라, 플레이어 서로 설정
 	m_camera->SetPlayer(m_player);
 	m_player->SetCamera(m_camera);
+
+	// 멀티플레이어
+	float pos{ 20.0f };
+	for (unique_ptr<Player>& p : m_multiPlayers)
+	{
+		p = make_unique<Player>(TRUE);
+		p->SetMesh(m_meshes["PLAYER"]);
+		p->SetShader(m_shaders["ANIMATION"]);
+		p->SetGunMesh(m_meshes["AR"]);
+		p->SetGunShader(m_shaders["LINK"]);
+		p->SetGunType(ePlayerGunType::AR);
+		p->PlayAnimation("IDLE");
+		p->SetPosition(XMFLOAT3{ 0.0f, 0.0f, pos });
+		pos += 20.0f;
+	}
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -257,7 +274,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	dumyPlayer->SetShader(m_shaders["ANIMATION"]);
 	dumyPlayer->SetGunMesh(m_meshes["SG"]);
 	dumyPlayer->SetGunShader(m_shaders["LINK"]);
-	dumyPlayer->SetWeaponType(ePlayerGunType::SG);
+	dumyPlayer->SetGunType(ePlayerGunType::SG);
 	dumyPlayer->PlayAnimation("IDLE");
 	dumyPlayer->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
 	m_gameObjects.push_back(move(dumyPlayer));
@@ -298,9 +315,13 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 플레이어 렌더링
 	if (m_player) m_player->Render(commandList);
 
+	// 멀티플레이어 렌더링
+	for (const auto& p : m_multiPlayers)
+		if (p) p->Render(commandList);
+
 	// 게임오브젝트 렌더링
-	for (const auto& gameObject : m_gameObjects)
-		gameObject->Render(commandList);
+	for (const auto& o : m_gameObjects)
+		o->Render(commandList);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

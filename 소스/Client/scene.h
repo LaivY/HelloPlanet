@@ -57,7 +57,7 @@ public:
 
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);
-	static void RecvPacket();
+	void RecvPacket();
 	void SendPacket(LPVOID lp_packet);
 	
 private:

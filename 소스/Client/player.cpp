@@ -1,10 +1,8 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-using enum eAnimationState;
-using enum ePlayerGunType;
-
-Player::Player(BOOL isMultiPlayer) : GameObject{}, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 10.0f }, m_friction{ 0.96f }, m_weaponType{ }, m_isMultiPlayer{ isMultiPlayer },
+Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ ePlayerGunType::NONE },
+									 m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f },
 									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
@@ -35,18 +33,21 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look.y = 0.0f;
 		look = Vector3::Normalize(look);
 
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_weaponType != MG)
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_gunType != ePlayerGunType::MG)
 		{
-			if ((m_animationInfo->state == PLAY && currPureAnimationName != "RUNNING") ||
-				(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
+			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
+				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
 			Move(Vector3::Mul(look, 150.0f * deltaTime));
 		}
 		else
 		{
-			if ((m_animationInfo->state == PLAY && currPureAnimationName != "WALKING") ||
-				(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
+			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKING") ||
+				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
+			{
 				PlayAnimation("WALKING", TRUE);
+				SendAnimationState();
+			}
 			Move(Vector3::Mul(look, 50.0f * deltaTime));
 		}
 	}
@@ -60,8 +61,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
 		XMFLOAT3 left{ Vector3::Mul(right, -1) };
 
-		if ((m_animationInfo->state == PLAY && currPureAnimationName != "WALKLEFT") ||
-			(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
 		Move(Vector3::Mul(left, 10.0f * deltaTime));
 	}
@@ -74,8 +75,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look = Vector3::Normalize(look);
 
 		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
-		if ((m_animationInfo->state == PLAY && currPureAnimationName != "WALKRIGHT") ||
-			(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
 		Move(Vector3::Mul(right, 10.0f * deltaTime));
 	}
@@ -88,8 +89,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		look = Vector3::Normalize(look);
 		XMFLOAT3 back{ Vector3::Mul(look, -1) };
 
-		if ((m_animationInfo->state == PLAY && currPureAnimationName != "WALKBACK") ||
-			(m_animationInfo->state == BLENDING && afterPureAnimationName == "IDLE"))
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKBACK") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKBACK", TRUE);
 		Move(Vector3::Mul(back, 10.0f * deltaTime));
 	}
@@ -131,20 +132,20 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	{
 		if (currFrame >= endFrame)
 		{
-			if (m_upperAnimationInfo->state == PLAY)
+			if (m_upperAnimationInfo->state == eAnimationState::PLAY)
 			{
-				m_upperAnimationInfo->state = SYNC;
+				m_upperAnimationInfo->state = eAnimationState::SYNC;
 				m_upperAnimationInfo->blendingTimer = 0.0f;
 			}
-			else if (m_upperAnimationInfo->state == BLENDING)
+			else if (m_upperAnimationInfo->state == eAnimationState::BLENDING)
 				PlayAnimation(GetUpperAfterAnimationName());
-			else if (m_upperAnimationInfo->state == SYNC)
+			else if (m_upperAnimationInfo->state == eAnimationState::SYNC)
 				m_upperAnimationInfo.reset();
 		}
 		return;
 	}
 
-	if (m_animationInfo->state == PLAY) // 프레임 진행 중
+	if (m_animationInfo->state == eAnimationState::PLAY) // 프레임 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
@@ -171,7 +172,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			PlayAnimation("IDLE", TRUE);
 		}
 	}
-	else if (m_animationInfo->state == BLENDING) // 블렌딩 진행 중
+	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
 	{
 		if (currFrame >= endFrame)
 		{
@@ -217,13 +218,13 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 			m_gunMesh->Render(commandList);
 		}
 
-		string debug{};
-		debug += m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
-		if (m_animationInfo->afterAnimationName.empty())
-			debug += "NONE\n\n";
-		else
-			debug += m_animationInfo->afterAnimationName + "(" + to_string(m_animationInfo->afterTimer) + ")\n\n";
-		OutputDebugStringA(debug.c_str());
+		//string debug{};
+		//debug += m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
+		//if (m_animationInfo->afterAnimationName.empty())
+		//	debug += "NONE\n\n";
+		//else
+		//	debug += m_animationInfo->afterAnimationName + "(" + to_string(m_animationInfo->afterTimer) + ")\n\n";
+		//OutputDebugStringA(debug.c_str());
 #endif
 	}
 }
@@ -235,9 +236,9 @@ void Player::Update(FLOAT deltaTime)
 	// 상체 애니메이션 타이머 진행
 	if (m_upperAnimationInfo)
 	{
-		if (m_upperAnimationInfo->state == PLAY)
+		if (m_upperAnimationInfo->state == eAnimationState::PLAY)
 			m_upperAnimationInfo->currTimer += deltaTime;
-		else if (m_upperAnimationInfo->state == BLENDING || m_upperAnimationInfo->state == SYNC)
+		else if (m_upperAnimationInfo->state == eAnimationState::BLENDING || m_upperAnimationInfo->state == eAnimationState::SYNC)
 			m_upperAnimationInfo->blendingTimer += deltaTime;
 	}
 
@@ -273,9 +274,9 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
 	string pureAnimationName{ GetPureAnimationName(animationName) };
 
-	if (m_animationInfo && m_animationInfo->state == BLENDING && GetCurrAnimationName() == animationName)
+	if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
 	{
-		m_animationInfo->state = PLAY;
+		m_animationInfo->state = eAnimationState::PLAY;
 		m_animationInfo->afterAnimationName.clear();
 		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->blendingTimer = 0.0f;
@@ -283,20 +284,43 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 		//swap(m_animationInfo->currTimer, m_animationInfo->afterTimer);
 		return;
 	}
-
+	
 	// 아래의 애니메이션은 상체만 애니메이션함
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
 	{
-		if (m_weaponType == AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
-		else if (m_weaponType == SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
-		else if (m_weaponType == MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+		if (m_gunType == ePlayerGunType::AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
+		else if (m_gunType == ePlayerGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
+		else if (m_gunType == ePlayerGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 		return;
 	}
 
 	// 그 외는 상하체 모두 애니메이션함
-	if (m_weaponType == AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
-	else if (m_weaponType == SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
-	else if (m_weaponType == MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+	if (m_gunType == ePlayerGunType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
+	else if (m_gunType == ePlayerGunType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
+	else if (m_gunType == ePlayerGunType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+}
+
+void Player::SendAnimationState() const
+{
+	cs_packet_update_legs packet;
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_UPDATE_LEGS;
+
+	string currAnimationName{ GetCurrAnimationName() };
+	if (currAnimationName == "IDLE")
+		packet.state = legs_state::IDLE;
+	else if (currAnimationName == "WALKING")
+		packet.state = legs_state::WALKING;
+	else if (currAnimationName == "WALKLEFT")
+		packet.state = legs_state::WALKLEFT;
+	else if (currAnimationName == "WALKRIGHT")
+		packet.state = legs_state::WALKRIGHT;
+	else if (currAnimationName == "WALKBACK")
+		packet.state = legs_state::WALKBACK;
+	else if (currAnimationName == "RUNNING")
+		packet.state = legs_state::RUNNING;
+
+	int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Player::AddVelocity(const XMFLOAT3& increase)
@@ -317,7 +341,7 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	if (!m_upperAnimationInfo) m_upperAnimationInfo = make_unique<AnimationInfo>();
 	if (doBlending)
 	{
-		m_upperAnimationInfo->state = BLENDING;
+		m_upperAnimationInfo->state = eAnimationState::BLENDING;
 		m_upperAnimationInfo->currAnimationName = m_animationInfo->currAnimationName;
 		m_upperAnimationInfo->currTimer = m_animationInfo->currTimer;
 		m_upperAnimationInfo->afterAnimationName = animationName;
@@ -325,7 +349,7 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	}
 	else
 	{
-		m_upperAnimationInfo->state = PLAY;
+		m_upperAnimationInfo->state = eAnimationState::PLAY;
 		m_upperAnimationInfo->currAnimationName = animationName;
 		m_upperAnimationInfo->currTimer = 0.0f;
 		m_upperAnimationInfo->afterAnimationName.clear();

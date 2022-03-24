@@ -1,5 +1,5 @@
 ﻿#pragma once
-#define THIRDVIEW
+#define FIRSTVIEW
 //#define NETWORK
 
 #include "targetver.h"

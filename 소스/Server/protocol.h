@@ -22,7 +22,6 @@ enum class legs_state : char
 	WALKBACK
 };
 
-
 #pragma pack (push, 1)
 struct c_data
 {

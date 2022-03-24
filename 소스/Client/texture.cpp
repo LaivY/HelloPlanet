@@ -38,7 +38,7 @@ void Texture::CreateTexture(const ComPtr<ID3D12Device>& device)
 	// 셰이더 리소스 뷰 서술자 생성
 	if (m_srvHeap) m_srvHeap.Reset();
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-	srvHeapDesc.NumDescriptors = m_textures.size(); // SRV 개수
+	srvHeapDesc.NumDescriptors = static_cast<UINT>(m_textures.size()); // SRV 개수
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap));

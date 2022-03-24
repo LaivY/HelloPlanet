@@ -2,11 +2,11 @@
 #define MAX_LOADSTRING 100
 
 // 콘솔
-#ifdef UNICODE
-#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
-#else
-#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
-#endif
+//#ifdef UNICODE
+//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
+//#else
+//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
+//#endif
 
 // 전역 변수:
 HINSTANCE           hInst;
@@ -134,7 +134,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			packet.type = CS_PACKET_UPDATE_LEGS;
 			packet.state = legs_state::WALKLEFT;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-
 		}
 		if (wParam == 'd' || wParam == 'D')
 		{
@@ -143,7 +142,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			packet.type = CS_PACKET_UPDATE_LEGS;
 			packet.state = legs_state::WALKRIGHT;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-
 		}
 		if (wParam == 's' || wParam == 'S')
 		{
