@@ -52,7 +52,7 @@
     <ClInclude Include="object.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="player.h">
+    <ClInclude Include="Player.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
@@ -105,7 +105,7 @@
     <ClCompile Include="object.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="player.cpp">
+    <ClCompile Include="Player.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="scene.cpp">

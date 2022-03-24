@@ -122,27 +122,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		if (wParam == 'w' || wParam == 'W')
 		{
-			//const char test[] = "[KeyUP] : W";
-			cs_packet_move packet;
+			const char test[] = "[KeyUP] : W";
+			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_MOVE;
+			packet.type = CS_PACKET_UPDATE_LEGS;
 			packet.state = legs_state::WALKING;
 			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
 		}
 		if (wParam == 'a' || wParam == 'A')
 		{
-			const char test[] = "[KeyUP] : A";
-			int send_result = send(g_c_socket, test, sizeof(test), 0);
+			cs_packet_update_legs packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_UPDATE_LEGS;
+			packet.state = legs_state::WALKLEFT;
+			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
 		}
 		if (wParam == 'd' || wParam == 'D')
 		{
-			const char test[] = "[KeyUP] : D";
-			int send_result = send(g_c_socket, test, sizeof(test), 0);
+			cs_packet_update_legs packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_UPDATE_LEGS;
+			packet.state = legs_state::WALKRIGHT;
+			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
 		}
 		if (wParam == 's' || wParam == 'S')
 		{
-			const char test[] = "[KeyUP] : S";
-			int send_result = send(g_c_socket, test, sizeof(test), 0);
+			cs_packet_update_legs packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_UPDATE_LEGS;
+			packet.state = legs_state::WALKBACK;
+			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 		break;
 	case WM_DESTROY:
