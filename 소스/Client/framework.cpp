@@ -417,6 +417,7 @@ void GameFramework::WaitForPreviousFrame()
 
 void GameFramework::ConnectServer()
 {
+	wcout.imbue(locale("korean"));
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return;

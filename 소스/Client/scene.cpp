@@ -364,38 +364,56 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 void Scene::ProcessClient(LPVOID arg)
 {
-	auto pre_t = chrono::system_clock::now();
+	//auto pre_t = chrono::system_clock::now();
 	while (g_isConnected)
 	{
-		auto cur_t = chrono::system_clock::now();
-		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
+		/*auto cur_t = chrono::system_clock::now();
+		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);*/
 		RecvPacket();
-		pre_t = cur_t;
+		/*pre_t = cur_t;
 		if (chrono::system_clock::now() - pre_t < 32ms)
-			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
+			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));*/
 	}
 }
 
 void Scene::RecvPacket()
 {
-	char recv_buf[BUF_SIZE];
-	int error_code = recv(g_c_socket, recv_buf, BUF_SIZE, MSG_WAITALL);
-	if (error_code == SOCKET_ERROR) error_display("Recv");
-	cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
+	char recv_buf[5];
+	WSABUF wsabuf;
+	wsabuf.buf = recv_buf;
+	wsabuf.len = sizeof(recv_buf);
+	DWORD recv_byte;
+	DWORD recv_flag = 0;
+	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
+	//cout << "[Packet recv] size: " << static_cast<int>(recv_buf[0]) << ", " << "type: " << static_cast<int>(recv_buf[1]) << endl;
 
-	switch (static_cast<legs_state>(buf[2]))
+	switch (recv_buf[1])
 	{
-		using enum legs_state;
-	case WALKING:
-		cout << "ㅊㅊㅊ" << endl;
+	case SC_PACKET_LOGIN_OK: {
+		sc_packet_login_ok packet;
+		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
+		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
+		if (error_code == SOCKET_ERROR) error_display("RecvLOGIN");*/
+		cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
+		cout << "Your ID is " << static_cast<int>(packet.data._id) << endl;
 		break;
-	case WALKBACK:
+	}
+	case SC_PACKET_UPDATE_CLIENT: {
+		sc_packet_update_client packet;
+		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
+		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
+		if (error_code == SOCKET_ERROR) error_display("RecvUPDATE");*/
+		cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
+
+		cout << "Your Legs State " << static_cast<int>(packet.data._state) << endl;
 		break;
-	case WALKLEFT:
-		break;
-	case WALKRIGHT:
-		break;
+	}
 	default:
+		//char garbage[BUF_SIZE];
+		//int error_code = recv(g_c_socket, garbage, recv_size - 2, MSG_WAITALL);
+		//if (error_code == SOCKET_ERROR) error_display("RecvData");
+		//cout << "Wrong Packet" << endl;
 		break;
 	}
 

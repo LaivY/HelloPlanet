@@ -2,11 +2,11 @@
 #define MAX_LOADSTRING 100
 
 // 콘솔
-//#ifdef UNICODE
-//#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
-//#else
-//#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
-//#endif
+#ifdef UNICODE
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console")
+#else
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console")
+#endif
 
 // 전역 변수:
 HINSTANCE           hInst;
@@ -118,16 +118,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_gameFramework.OnMouseEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_KEYDOWN:
-	case WM_KEYUP:
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		if (wParam == 'w' || wParam == 'W')
 		{
-			const char test[] = "[KeyUP] : W";
 			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_UPDATE_LEGS;
 			packet.state = legs_state::WALKING;
-			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
+			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 		if (wParam == 'a' || wParam == 'A')
 		{
@@ -154,6 +152,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			packet.type = CS_PACKET_UPDATE_LEGS;
 			packet.state = legs_state::WALKBACK;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		}
+		break;
+	case WM_KEYUP:
+		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
+		if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D' || wParam == 's' || wParam == 'S')
+		{
+			cs_packet_update_legs packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_UPDATE_LEGS;
+			packet.state = legs_state::IDLE;
+			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
 		}
 		break;
 	case WM_DESTROY:

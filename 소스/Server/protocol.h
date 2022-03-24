@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
@@ -26,17 +26,19 @@ enum class legs_state : char
 #pragma pack (push, 1)
 struct c_data
 {
-	int			_id;
+	char		_id;
 	bool		_in_use;
 	legs_state	_state;
 };
 
-struct cs_packet_login {
+struct cs_packet_login
+{
 	unsigned char	size;
 	char			type;
 };
 
-struct cs_packet_update_legs {
+struct cs_packet_update_legs
+{
 	unsigned char	size;
 	char			type;
 	legs_state		state;

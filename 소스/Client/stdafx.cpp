@@ -148,6 +148,6 @@ void error_display(const char* msg)
 		nullptr, WSAGetLastError(),
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		reinterpret_cast<LPTSTR>(&lp_msg_buf), 0, nullptr);
-	wcout << "[" << msg << "]" << lp_msg_buf << endl;
+	wcout << "[" << msg << "] " << lp_msg_buf << endl;
 	LocalFree(lp_msg_buf);
 }

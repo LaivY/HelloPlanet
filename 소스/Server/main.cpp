@@ -1,16 +1,15 @@
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
+﻿#define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-#include "stdfx.h"
+#include "stdafx.h"
 #include "protocol.h"
 using namespace std;
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
 
-bool g_shutdown = false;
+//bool g_shutdown = false;
 
-void Update(float elapsed);
 void error_display(const int err_num, const char* msg);
-void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DWORD flags);
+//void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DWORD flags);
 
 class CLIENT {
 public:
@@ -22,6 +21,7 @@ public:
 public:
 	CLIENT()
 	{
+		_data._state = legs_state::IDLE;
 		_data._in_use = false;
 	}
 
@@ -87,6 +87,7 @@ void send_login_ok_packet(int id)
 	wsabuf.buf = buf;
 	wsabuf.len = sizeof(buf);
 	DWORD sent_byte;
+	cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
 	int error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 	if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Recv");
 }
@@ -113,15 +114,16 @@ void send_login_ok_packet(int id)
 //	clients[c_id].do_send(sizeof(packet), &packet);
 //}
 
-//void Disconnect(int c_id)
-//{
-//	clients[c_id].in_use = false;
-//	for (auto& cl : clients) {
-//		if (false == cl.in_use) continue;
-//		send_remove_object(cl._id, c_id);
-//	}
-//	closesocket(clients[c_id]._socket);
-//}
+void Disconnect(int c_id)
+{
+	clients[c_id]._data._in_use = false;
+	for (auto& cl : clients)
+	{
+		if (false == cl._data._in_use) continue;
+		//send_log_out(cl._data,_id, id);
+	}
+	closesocket(clients[c_id]._socket);
+}
 
 //void process_packet(int client_id, unsigned char* p)
 //{
@@ -253,14 +255,15 @@ int main()
 		cl._data._id = new_id;
 		cl._data._state = legs_state::IDLE;
 		send_login_ok_packet(new_id);
-		cout << "\n[" << cl._data._id << " Client connect] IP: " << inet_ntoa(server_addr.sin_addr) << endl;
+		cout << "\n[" << static_cast<int>(cl._data._id) << " Client connect] IP: " << inet_ntoa(server_addr.sin_addr) << endl;
 		threads.emplace_back(recv_process, new_id);
 	}
 
 	cout << "process start" << endl;
 
 	auto pre_t = chrono::system_clock::now();
-	for (;;) {
+	for (;;) 
+	{
 		auto cur_t = chrono::system_clock::now();
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
 
@@ -277,29 +280,26 @@ int main()
 			wsabuf.buf = buf;
 			wsabuf.len = sizeof(buf);
 			DWORD sent_byte;
+			cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : "
+			<< static_cast<int>(buf[2]) << " : " << static_cast<int>(buf[3]) << " : " << static_cast<int>(buf[4]) << endl;
 			int error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Send");
-
 		}
 
 		pre_t = cur_t;
-		if (chrono::system_clock::now() - pre_t < 32ms) {
+		if (chrono::system_clock::now() - pre_t < 32ms)
+		{
 			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
 		}
 	}
 	
-	//for (auto& cl : clients) {
-	//	if (true == cl.in_use)
-	//		//Disconnect(cl._id)
-	//}
-
-	//closesocket(c_socket);
+	for (auto& cl : clients) {
+		if (true == cl._data._in_use)
+			Disconnect(cl._data._id);
+	}
+	
 	closesocket(s_socket);
 	WSACleanup();
-}
-
-void Update(float elapsed)
-{
 }
 
 void error_display(const int err_num, const char* msg)
