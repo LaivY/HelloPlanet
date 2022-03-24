@@ -1,4 +1,5 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+
 #include "stdfx.h"
 #include "protocol.h"
 using namespace std;
@@ -7,53 +8,21 @@ using namespace std;
 
 bool g_shutdown = false;
 
-enum COMP_OP { OP_RECV, OP_SEND, OP_ACCEPT };
-
-class EXP_OVER {
-public:
-	WSAOVERLAPPED	_wsa_over;
-	COMP_OP			_comp_op;
-	WSABUF			_wsa_buf;
-	unsigned char	_net_buf[BUF_SIZE];
-public:
-	EXP_OVER(COMP_OP comp_op, char num_bytes, void* mess) : _comp_op(comp_op)
-	{
-		ZeroMemory(&_wsa_over, sizeof(_wsa_over));
-		_wsa_buf.buf = reinterpret_cast<char*>(_net_buf);
-		_wsa_buf.len = num_bytes;
-		memcpy(_net_buf, mess, num_bytes);
-	}
-
-	EXP_OVER(COMP_OP comp_op) : _comp_op(comp_op) {}
-
-	EXP_OVER()
-	{
-		_comp_op = OP_RECV;
-	}
-
-	~EXP_OVER()
-	{
-	}
-};
+void Update(float elapsed);
+void error_display(const int err_num, const char* msg);
+void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DWORD flags);
 
 class CLIENT {
 public:
-	char name[MAX_NAME_SIZE];
-	int	   _id;
-	short  x, y;
-
-	bool in_use;
-
-	EXP_OVER _recv_over;
-	SOCKET _socket;
-	int		_prev_size;
+	Player			_data;
+	SOCKET			_socket;
+	char			_client_buf[BUF_SIZE];
+	//WSABUF			_wsabuf;
+	//WSAOVERLAPPED	_recv_over;
 public:
 	CLIENT()
 	{
-		in_use = false;
-		x = 0;
-		y = 0;
-		_prev_size = 0;
+		_data._in_use = false;
 	}
 
 	~CLIENT()
@@ -61,85 +30,91 @@ public:
 		closesocket(_socket);
 	}
 
-	void do_recv()
-	{
-		DWORD recv_flag = 0;
-		ZeroMemory(&_recv_over._wsa_over, sizeof(_recv_over._wsa_over));
-		_recv_over._wsa_buf.buf = reinterpret_cast<char*>(_recv_over._net_buf + _prev_size);
-		_recv_over._wsa_buf.len = sizeof(_recv_over._net_buf) - _prev_size;
-		int ret = WSARecv(_socket, &_recv_over._wsa_buf, 1, 0, &recv_flag, &_recv_over._wsa_over, NULL);
-		if (SOCKET_ERROR == ret) {
-			int error_num = WSAGetLastError();
-			//if (ERROR_IO_PENDING != error_num)
-				//error_display(error_num);
-		}
-	}
+	//void do_recv()
+	//{
+	//	DWORD recv_flag = 0;
+	//	ZeroMemory(&_recv_over, sizeof(_recv_over));
+	//	int ret = WSARecv(_socket, &_wsabuf, 1, 0, &recv_flag, &_recv_over, recv_callback);
+	//	if (SOCKET_ERROR == ret) {
+	//		int error_num = WSAGetLastError();
+	//		if (ERROR_IO_PENDING != error_num)
+	//			error_display(WSAGetLastError(), "Recv");
+	//	}
+	//}
 
-	void do_send(int num_bytes, void* mess)
-	{
-		EXP_OVER* ex_over = new EXP_OVER(OP_SEND, num_bytes, mess);
-		WSASend(_socket, &ex_over->_wsa_buf, 1, 0, 0, &ex_over->_wsa_over, NULL);
-	}
+	//void do_send(int num_bytes, void* mess)
+	//{
+	//	EXP_OVER* ex_over = new EXP_OVER(OP_SEND, num_bytes, mess);
+	//	WSASend(_socket, &ex_over->_wsa_buf, 1, 0, 0, &ex_over->_wsa_over, NULL);
+	//}
 };
 
+//void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DWORD flags)
+//{
+//	if (0 == num_bytes) return;
+//	cout << "Client sent: " << c_mess << endl;
+//	c_wsabuf[0].len = num_bytes;
+//	memset(&c_over, 0, sizeof(c_over));
+//	WSASend(c_socket, c_wsabuf, 1, 0, 0, &c_over, send_callback);
+//}
+
 array <CLIENT, MAX_USER> clients;
+vector<std::thread> threads;
 
 int get_new_id()
 {
-	static int g_id = 0;
-
 	for (int i = 0; i < MAX_USER; ++i)
-		if (false == clients[i].in_use) {
-			clients[i].in_use = true;
+		if (false == clients[i]._data._in_use) {
+			clients[i]._data._in_use = true;
 			return i;
 		}
 	cout << "Maximum Number of Clients Overflow!!\n";
 	return -1;
 }
-/*
-void send_login_ok_packet(int c_id)
+
+void send_login_ok_packet(int id)
 {
 	sc_packet_login_ok packet;
-	packet.id = c_id;
+	packet.data._id = id;
+	packet.data._in_use = true;
+	packet.data._state = legs_state::IDLE;
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
-	packet.x = clients[c_id].x;
-	packet.y = clients[c_id].y;
 
-	clients[c_id].do_send(sizeof(packet), &packet);
+	WSASend(clients[id]._socket, &packet, sizeof(packet), 0);
 }
 
-void send_move_packet(int c_id, int mover)
-{
-	sc_packet_move_object packet;
-	packet.id = mover;
-	packet.size = sizeof(packet);
-	packet.type = SC_PACKET_MOVE_OBJECT;
-	packet.x = clients[mover].x;
-	packet.y = clients[mover].y;
+//void send_move_packet(int c_id, int mover)
+//{
+//	sc_packet_move_object packet;
+//	packet.id = mover;
+//	packet.size = sizeof(packet);
+//	packet.type = SC_PACKET_MOVE_OBJECT;
+//	packet.x = clients[mover].x;
+//	packet.y = clients[mover].y;
+//
+//	clients[c_id].do_send(sizeof(packet), &packet);
+//}
+//
+//void send_remove_object(int c_id, int victim)
+//{
+//	sc_packet_remove_object packet;
+//	packet.id = victim;
+//	packet.size = sizeof(packet);
+//	packet.type = SC_PACKET_REMOVE_OBJECT;
+//
+//	clients[c_id].do_send(sizeof(packet), &packet);
+//}
 
-	clients[c_id].do_send(sizeof(packet), &packet);
-}
-
-void send_remove_object(int c_id, int victim)
-{
-	sc_packet_remove_object packet;
-	packet.id = victim;
-	packet.size = sizeof(packet);
-	packet.type = SC_PACKET_REMOVE_OBJECT;
-
-	clients[c_id].do_send(sizeof(packet), &packet);
-}
-
-void Disconnect(int c_id)
-{
-	clients[c_id].in_use = false;
-	for (auto& cl : clients) {
-		if (false == cl.in_use) continue;
-		send_remove_object(cl._id, c_id);
-	}
-	closesocket(clients[c_id]._socket);
-}
+//void Disconnect(int c_id)
+//{
+//	clients[c_id].in_use = false;
+//	for (auto& cl : clients) {
+//		if (false == cl.in_use) continue;
+//		send_remove_object(cl._id, c_id);
+//	}
+//	closesocket(clients[c_id]._socket);
+//}
 
 void process_packet(int client_id, unsigned char* p)
 {
@@ -216,10 +191,31 @@ void process_packet(int client_id, unsigned char* p)
 		break;
 	}
 }
-*/
 
-void Update(float elapsed);
-void error_display(const int err_num, const char* msg);
+void recv_process(int id)
+{
+	CLIENT& cl = clients[id];
+	for (;;)
+	{
+		char buf[BUF_SIZE];
+		WSABUF recv_buf;
+		recv_buf.buf = buf;
+		recv_buf.len = BUF_SIZE;
+		DWORD recvd_byte;
+		DWORD flag = 0;
+		int error_code = WSARecv(cl._socket, &recv_buf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Recv");
+		switch (static_cast<int>(buf[1]))
+		{
+		case CS_PACKET_UPDATE_LEGS:
+			cl._data._state = static_cast<legs_state>(buf[2]);
+			break;
+		default:
+			cout << "Server Received Unknown Packet" << endl;
+			break;
+		}
+	}
+}
 
 int main()
 {
@@ -228,7 +224,7 @@ int main()
 	WSADATA WSAData;
 	WSAStartup(MAKEWORD(2, 2), &WSAData);
 
-	SOCKET s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, 0);
+	SOCKET s_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 
 	//bind
 	SOCKADDR_IN server_addr;
@@ -240,53 +236,56 @@ int main()
 
 	//listen
 	listen(s_socket, SOMAXCONN);
-
 	INT addr_size = sizeof(server_addr);
-	SOCKET c_socket = WSAAccept(s_socket, reinterpret_cast<sockaddr*>(&server_addr), &addr_size, 0, 0);
+	for (int i = 0; i<MAX_USER; ++i)
+	{
+		int new_id = get_new_id();
+		CLIENT& cl = clients[new_id];
+		cl._socket = WSAAccept(s_socket, reinterpret_cast<sockaddr*>(&server_addr), &addr_size, 0, 0);
+		cl._data._id = new_id;
+		cl._data._state = legs_state::IDLE;
+		send_login_ok_packet(new_id);
+		cout << "\n[" << cl._data._id << " Client connect] IP: " << inet_ntoa(server_addr.sin_addr) << endl;
+		threads.emplace_back(recv_process, new_id);
+	}
 
-	cout << "\n[Server] Client connect: IP Address = " << inet_ntoa(server_addr.sin_addr) << " , Port Number = " << ntohs(server_addr.sin_port) << endl;
-	
+	cout << "process start" << endl;
+
 	auto pre_t = chrono::system_clock::now();
 	for (;;) {
 		auto cur_t = chrono::system_clock::now();
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);
 
-		// recv
-		char buf[BUF_SIZE];
-		WSABUF recv_buf;
-		recv_buf.buf = buf;
-		recv_buf.len = BUF_SIZE;
-		DWORD recvd_byte;
-		DWORD flag = 0;
-		int error_code = WSARecv(c_socket, &recv_buf, 1, &recvd_byte, &flag, nullptr, nullptr);
-		if (error_code == SOCKET_ERROR)
+		// process update packet
+		for (auto& cl : clients)
 		{
-			const int error_num = WSAGetLastError();
-			error_display(error_num, "Recv");
-		}
-		cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
+			sc_packet_update_client packet;
+			packet.data = cl._data;
+			packet.size = sizeof(packet);
+			packet.type = SC_PACKET_UPDATE_CLIENT;
+			char buf[BUF_SIZE];
+			memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+			WSABUF wsabuf;
+			wsabuf.buf = buf;
+			wsabuf.len = sizeof(buf);
+			DWORD sent_byte;
+			error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Send");
 
-		// process packet
-		// send
-		error_code = WSASend(c_socket, &recv_buf, 1, &recvd_byte, flag, nullptr, nullptr);
-		if(error_code == SOCKET_ERROR)
-		{
-			const int error_num = WSAGetLastError();
-			error_display(error_num, "Send");
 		}
-
 
 		pre_t = cur_t;
 		if (chrono::system_clock::now() - pre_t < 32ms) {
 			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));
 		}
 	}
+	
 	//for (auto& cl : clients) {
 	//	if (true == cl.in_use)
 	//		//Disconnect(cl._id)
 	//}
 
-	closesocket(c_socket);
+	//closesocket(c_socket);
 	closesocket(s_socket);
 	WSACleanup();
 }
