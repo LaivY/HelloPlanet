@@ -14,10 +14,10 @@ void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DW
 
 class CLIENT {
 public:
-	Player			_data;
+	c_data			_data;
 	SOCKET			_socket;
 	char			_client_buf[BUF_SIZE];
-	//WSABUF			_wsabuf;
+	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
 	CLIENT()
@@ -74,14 +74,21 @@ int get_new_id()
 
 void send_login_ok_packet(int id)
 {
+	CLIENT& cl = clients[id];
 	sc_packet_login_ok packet;
 	packet.data._id = id;
 	packet.data._in_use = true;
 	packet.data._state = legs_state::IDLE;
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
-
-	WSASend(clients[id]._socket, &packet, sizeof(packet), 0);
+	char buf[BUF_SIZE];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf;
+	wsabuf.buf = buf;
+	wsabuf.len = sizeof(buf);
+	DWORD sent_byte;
+	int error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+	if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Recv");
 }
 
 //void send_move_packet(int c_id, int mover)
@@ -116,81 +123,81 @@ void send_login_ok_packet(int id)
 //	closesocket(clients[c_id]._socket);
 //}
 
-void process_packet(int client_id, unsigned char* p)
-{
-	unsigned char packet_type = p[1];
-	CLIENT& cl = clients[client_id];
-
-	switch (packet_type)
-	{
-	case CS_PACKET_LOGIN:
-	{
-		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
-		strcpy_s(cl.name, packet->name);
-
-		send_login_ok_packet(client_id);
-
-		for (auto& other : clients) {
-			if (other._id == client_id) continue;
-			if (false == other.in_use) continue;
-
-			sc_packet_put_object packet;
-			packet.id = client_id;
-			strcpy_s(packet.name, cl.name);
-			packet.object_type = 0;
-			packet.size = sizeof(packet);
-			packet.type = SC_PACKET_PUT_OBJECT;
-			packet.x = cl.x;
-			packet.y = cl.y;
-
-			other.do_send(sizeof(packet), &packet);
-		}
-
-		for (auto& other : clients) {
-			if (other._id == client_id) continue;
-			if (false == other.in_use) continue;
-
-			sc_packet_put_object packet;
-			packet.id = other._id;
-			strcpy_s(packet.name, other.name);
-			packet.object_type = 0;
-			packet.size = sizeof(packet);
-			packet.type = SC_PACKET_PUT_OBJECT;
-			packet.x = other.x;
-			packet.y = other.y;
-
-			cl.do_send(sizeof(packet), &packet);
-		}
-	}
-	break;
-	case CS_PACKET_MOVE:
-	{
-		cs_packet_move* packet = reinterpret_cast<cs_packet_move*>(p);
-		short& x = cl.x;
-		short& y = cl.y;
-		switch (packet->direction)
-		{
-		case 0: if (y > 0) y--; break;
-		case 1: if (y < (WORLD_HEIGHT - 1)) y++; break;
-		case 2: if (x > 0) x--; break;
-		case 3: if (x < (WORLD_WIDTH - 1)) x++; break;
-		default:
-			cout << "Invalid move in client " << client_id << endl;
-			exit(-1);
-			break;
-		}
-		//cl.x = x;
-		//cl.y = y;
-		for (auto& cl : clients) {
-			if (true == cl.in_use)
-				send_move_packet(cl._id, client_id);
-		}
-	}
-	break;
-	default:
-		break;
-	}
-}
+//void process_packet(int client_id, unsigned char* p)
+//{
+//	unsigned char packet_type = p[1];
+//	CLIENT& cl = clients[client_id];
+//
+//	switch (packet_type)
+//	{
+//	case CS_PACKET_LOGIN:
+//	{
+//		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
+//		strcpy_s(cl.name, packet->name);
+//
+//		send_login_ok_packet(client_id);
+//
+//		for (auto& other : clients) {
+//			if (other._id == client_id) continue;
+//			if (false == other.in_use) continue;
+//
+//			sc_packet_put_object packet;
+//			packet.id = client_id;
+//			strcpy_s(packet.name, cl.name);
+//			packet.object_type = 0;
+//			packet.size = sizeof(packet);
+//			packet.type = SC_PACKET_PUT_OBJECT;
+//			packet.x = cl.x;
+//			packet.y = cl.y;
+//
+//			other.do_send(sizeof(packet), &packet);
+//		}
+//
+//		for (auto& other : clients) {
+//			if (other._id == client_id) continue;
+//			if (false == other.in_use) continue;
+//
+//			sc_packet_put_object packet;
+//			packet.id = other._id;
+//			strcpy_s(packet.name, other.name);
+//			packet.object_type = 0;
+//			packet.size = sizeof(packet);
+//			packet.type = SC_PACKET_PUT_OBJECT;
+//			packet.x = other.x;
+//			packet.y = other.y;
+//
+//			cl.do_send(sizeof(packet), &packet);
+//		}
+//	}
+//	break;
+//	case CS_PACKET_MOVE:
+//	{
+//		cs_packet_move* packet = reinterpret_cast<cs_packet_move*>(p);
+//		short& x = cl.x;
+//		short& y = cl.y;
+//		switch (packet->direction)
+//		{
+//		case 0: if (y > 0) y--; break;
+//		case 1: if (y < (WORLD_HEIGHT - 1)) y++; break;
+//		case 2: if (x > 0) x--; break;
+//		case 3: if (x < (WORLD_WIDTH - 1)) x++; break;
+//		default:
+//			cout << "Invalid move in c_data " << client_id << endl;
+//			exit(-1);
+//			break;
+//		}
+//		//cl.x = x;
+//		//cl.y = y;
+//		for (auto& cl : clients) {
+//			if (true == cl.in_use)
+//				send_move_packet(cl._id, client_id);
+//		}
+//	}
+//	break;
+//	default:
+//		break;
+//	}
+//}
 
 void recv_process(int id)
 {
@@ -209,8 +216,9 @@ void recv_process(int id)
 		{
 		case CS_PACKET_UPDATE_LEGS:
 			cl._data._state = static_cast<legs_state>(buf[2]);
+			cout << (int)cl._data._state << endl;
 			break;
-		default:
+ 		default:
 			cout << "Server Received Unknown Packet" << endl;
 			break;
 		}
@@ -237,7 +245,7 @@ int main()
 	//listen
 	listen(s_socket, SOMAXCONN);
 	INT addr_size = sizeof(server_addr);
-	for (int i = 0; i<MAX_USER; ++i)
+	for (int i = 0; i < MAX_USER; ++i)
 	{
 		int new_id = get_new_id();
 		CLIENT& cl = clients[new_id];
@@ -269,7 +277,7 @@ int main()
 			wsabuf.buf = buf;
 			wsabuf.len = sizeof(buf);
 			DWORD sent_byte;
-			error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			int error_code = WSASend(cl._socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			if (error_code == SOCKET_ERROR) error_display(WSAGetLastError(), "Send");
 
 		}
