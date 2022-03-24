@@ -378,18 +378,26 @@ void Scene::ProcessClient(LPVOID arg)
 
 void Scene::RecvPacket()
 {
-	char buf[BUF_SIZE];
-	WSABUF recv_buf;
-	recv_buf.buf = buf;
-	recv_buf.len = BUF_SIZE;
-	DWORD recvd_byte;
-	DWORD flag = 0;
-	int error_code = WSARecv(g_c_socket, &recv_buf, 1, &recvd_byte, &flag, nullptr, nullptr);
-	if (error_code == SOCKET_ERROR)
-	{
-		error_display("Recv");
-	}
+	char recv_buf[BUF_SIZE];
+	int error_code = recv(g_c_socket, recv_buf, BUF_SIZE, MSG_WAITALL);
+	if (error_code == SOCKET_ERROR) error_display("Recv");
 	cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << endl;
+
+	switch (static_cast<legs_state>(buf[2]))
+	{
+		using enum legs_state;
+	case WALKING:
+		cout << "ㅊㅊㅊ" << endl;
+		break;
+	case WALKBACK:
+		break;
+	case WALKLEFT:
+		break;
+	case WALKRIGHT:
+		break;
+	default:
+		break;
+	}
 
 	/*constexpr int head_size = 2;
 	char head_buf[head_size];
