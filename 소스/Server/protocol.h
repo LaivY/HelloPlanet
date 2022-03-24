@@ -4,7 +4,7 @@ constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 2;
+constexpr int  MAX_USER = 1;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;
@@ -24,7 +24,7 @@ enum class legs_state : char
 
 
 #pragma pack (push, 1)
-struct Player
+struct c_data
 {
 	int			_id;
 	bool		_in_use;
@@ -46,13 +46,13 @@ struct sc_packet_login_ok
 {
 	unsigned char	size;
 	char			type;
-	Player			data;
+	c_data			data;
 };
 
 struct sc_packet_update_client
 {
 	unsigned char	size;
 	char			type;
-	Player			data;
+	c_data			data;
 };
 #pragma pack(pop)
