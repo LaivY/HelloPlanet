@@ -165,9 +165,15 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
 	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
 
-	m_meshes["MOB"] = make_shared<Mesh>();
-	m_meshes["MOB"]->LoadMesh(device, commandList, Utile::PATH("Mob/Garoo.txt", Utile::RESOURCE));
-	m_meshes["MOB"]->LoadAnimation(device, commandList, Utile::PATH("Mob/idle.txt", Utile::RESOURCE), "IDLE");
+	m_meshes["GAROO"] = make_shared<Mesh>();
+	m_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt", Utile::RESOURCE));
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt", Utile::RESOURCE), "ATTACK");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt", Utile::RESOURCE), "DIE");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt", Utile::RESOURCE), "HIT");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt", Utile::RESOURCE), "IDLE");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/run.txt", Utile::RESOURCE), "RUNNING");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1500.0f, 0.0f, 1500.0f);
 }
@@ -187,9 +193,9 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/Skybox.dds"), Utile::RESOURCE));
 	m_textures["SKYBOX"]->CreateTexture(device);
 
-	m_textures["MOB"] = make_shared<Texture>();
-	m_textures["MOB"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/texture.dds"), Utile::RESOURCE));
-	m_textures["MOB"]->CreateTexture(device);
+	m_textures["GAROO"] = make_shared<Texture>();
+	m_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds"), Utile::RESOURCE));
+	m_textures["GAROO"]->CreateTexture(device);
 }
 
 void Scene::CreateLights()
@@ -258,11 +264,11 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 몬스터
 	auto mob{ make_unique<GameObject>() };
-	mob->SetMesh(m_meshes["MOB"]);
+	mob->SetMesh(m_meshes["GAROO"]);
 	mob->SetShader(m_shaders["ANIMATION"]);
-	mob->SetTexture(m_textures["MOB"]);
+	mob->SetTexture(m_textures["GAROO"]);
 	mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
-	mob->PlayAnimation("IDLE");
+	mob->PlayAnimation("ATTACK");
 	m_gameObjects.push_back(move(mob));
 }
 
