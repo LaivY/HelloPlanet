@@ -251,10 +251,10 @@ void Player::Update(FLOAT deltaTime)
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 {
 	// 회전각 제한
-	if (m_pitch + pitch > CAMERA_MAX_PITCH)
-		pitch = CAMERA_MAX_PITCH - m_pitch;
-	else if (m_pitch + pitch < CAMERA_MIN_PITCH)
-		pitch = CAMERA_MIN_PITCH - m_pitch;
+	if (m_pitch + pitch > Setting::CAMERA_MAX_PITCH)
+		pitch = Setting::CAMERA_MAX_PITCH - m_pitch;
+	else if (m_pitch + pitch < Setting::CAMERA_MIN_PITCH)
+		pitch = Setting::CAMERA_MIN_PITCH - m_pitch;
 
 	// 회전각 합산
 	m_roll += roll; m_pitch += pitch; m_yaw += yaw;

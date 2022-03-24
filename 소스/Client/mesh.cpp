@@ -168,16 +168,16 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		};
 
 		// 현재 진행중인 애니메이션을 처리할 때 필요한 변수들
-		constexpr float fps{ 1.0f / 24.0f };															// 애니메이션 1프레임 당 시간
-		const float currFrame{ animationInfo->currTimer / fps };										// 프레임(실수)
-		const UINT nCurrFrame{ min(static_cast<int>(floorf(currFrame)), currAnimation.length - 1) };	// 프레임(정수)
-		const UINT nNextFrame{ min(static_cast<int>(ceilf(currFrame)), currAnimation.length - 1) };		// 다음 프레임(정수)
-		const float t{ currFrame - static_cast<int>(currFrame) };										// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
+		constexpr float fps{ 1.0f / 24.0f };																			// 애니메이션 1프레임 당 시간
+		const float currFrame{ animationInfo->currTimer / fps };														// 프레임(실수)
+		const int nCurrFrame{ min(static_cast<int>(floorf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 프레임(정수)
+		const int nNextFrame{ min(static_cast<int>(ceilf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 다음 프레임(정수)
+		const float t{ currFrame - static_cast<int>(currFrame) };														// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
 
 		// 블렌딩에 걸리는 시간
-		constexpr float totalBlendingTime{ BLENDING_FRAMES * fps };	
+		constexpr float totalBlendingTime{ Setting::BLENDING_FRAMES * fps };
 
-		UINT start{ 0 }, end{ static_cast<UINT>(currAnimation.joints.size()) }; // 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
+		int start{ 0 }, end{ static_cast<int>(currAnimation.joints.size()) }; // 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
 
 		// 상체 애니메이션
 		if (AnimationInfo* upperAnimationInfo{ object->GetUpperAnimationInfo() })
@@ -193,8 +193,8 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 
 			// 현재 진행중인 상체 애니메이션을 처리할 때 필요한 변수들
 			const float upperCurrFrame{ upperAnimationInfo->currTimer / fps };
-			const UINT nUpperCurrFrame{ min(static_cast<UINT>(floorf(upperCurrFrame)), currUpperAnimation.length - 1) };
-			const UINT nUpperNextFrame{ min(static_cast<UINT>(ceilf(upperCurrFrame)), currUpperAnimation.length - 1) };
+			const int nUpperCurrFrame{ min(static_cast<int>(floorf(upperCurrFrame)), static_cast<int>(currUpperAnimation.length - 1)) };
+			const int nUpperNextFrame{ min(static_cast<int>(ceilf(upperCurrFrame)), static_cast<int>(currUpperAnimation.length - 1)) };
 			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
 
 			// 상체 애니메이션이 있으면 기존 애니메이션은 하체만 애니메이션한다.
@@ -243,7 +243,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, BLENDING_FRAMES, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, Setting::BLENDING_FRAMES, TRUE);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::SYNC)
 			{
@@ -270,7 +270,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													  t) };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, BLENDING_FRAMES, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, Setting::BLENDING_FRAMES, TRUE);
 			}
 		}
 
@@ -304,7 +304,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				const XMFLOAT4X4& after{ afterAnimation.joints[i].animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
-			object->OnAnimation(animationInfo->blendingTimer / fps, BLENDING_FRAMES);
+			object->OnAnimation(animationInfo->blendingTimer / fps, Setting::BLENDING_FRAMES);
 		}
 	}
 

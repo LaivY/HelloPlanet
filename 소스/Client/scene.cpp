@@ -1,8 +1,8 @@
 ﻿#include "scene.h"
 
 Scene::Scene()
-	: m_viewport{ 0.0f, 0.0f, static_cast<float>(SCREEN_WIDTH), static_cast<float>(SCREEN_HEIGHT), 0.0f, 1.0f },
-	  m_scissorRect{ 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT },
+	: m_viewport{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f },
+	  m_scissorRect{ 0, 0, Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT },
 	  m_pcbScene{ nullptr }
 {
 
@@ -217,7 +217,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 #endif
 	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(SCREEN_WIDTH) / static_cast<float>(SCREEN_HEIGHT), 1.0f, 5000.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 5000.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 플레이어 생성
@@ -404,9 +404,8 @@ void Scene::RecvPacket()
 		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
 		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
 		if (error_code == SOCKET_ERROR) error_display("RecvUPDATE");*/
-		cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
-
-		cout << "Your Legs State " << static_cast<int>(packet.data._state) << endl;
+		//cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
+		cout << "\rYour Legs State " << static_cast<int>(packet.data._state);
 		break;
 	}
 	default:

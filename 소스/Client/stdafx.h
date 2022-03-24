@@ -1,6 +1,6 @@
 ﻿#pragma once
 #define THIRDVIEW
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -197,6 +197,7 @@ namespace Setting
 {
     constexpr auto SCREEN_WIDTH     = 1280; // 화면 가로 길이
     constexpr auto SCREEN_HEIGHT    = 720;  // 화면 세로 길이
+    constexpr auto MAX_PLAYERS      = 2;    // 최대 플레이어 수(본인 제외)
     constexpr auto MAX_LIGHTS       = 1;    // 씬 조명 최대 개수
     constexpr auto MAX_MATERIALS    = 10;   // 메쉬 재질 최대 개수
     constexpr auto MAX_JOINTS       = 50;   // 메쉬 뼈 최대 개수

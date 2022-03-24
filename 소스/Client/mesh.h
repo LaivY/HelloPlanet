@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include "stdafx.h"
-using namespace Setting;
 
 class GameObject;
 
@@ -43,15 +42,15 @@ struct Animation
 
 struct cbMesh
 {
-	XMFLOAT4X4						transformMatrix;
-	array<Material, MAX_MATERIALS>	materials;
-	array<XMFLOAT4X4, MAX_JOINTS>	boneTransformMatrix;
+	XMFLOAT4X4								transformMatrix;
+	array<Material, Setting::MAX_MATERIALS>	materials;
+	array<XMFLOAT4X4, Setting::MAX_JOINTS>	boneTransformMatrix;
 };
 
 struct cbMesh2
 {
-	XMFLOAT4X4						transformMatrix;
-	array<Material, MAX_MATERIALS>	materials;
+	XMFLOAT4X4								transformMatrix;
+	array<Material, Setting::MAX_MATERIALS>	materials;
 };
 
 class Mesh

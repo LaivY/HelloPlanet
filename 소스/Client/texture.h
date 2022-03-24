@@ -13,7 +13,7 @@ public:
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, int index = 0);
 	void ReleaseUploadBuffer();
 
-	UINT GetTextureCount() const { return m_textures.size(); }
+	size_t GetTextureCount() const { return m_textures.size(); }
 
 protected:
 	ComPtr<ID3D12DescriptorHeap>				m_srvHeap;

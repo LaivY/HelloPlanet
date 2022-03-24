@@ -17,7 +17,7 @@ struct Light
 
 struct cbScene
 {
-	Light		ligths[MAX_LIGHTS];
+	Light		ligths[Setting::MAX_LIGHTS];
 };
 
 class Scene
@@ -61,20 +61,21 @@ public:
 	void SendPacket(LPVOID lp_packet);
 	
 private:
-	D3D12_VIEWPORT								m_viewport;		// 뷰포트
-	D3D12_RECT									m_scissorRect;	// 가위사각형
+	D3D12_VIEWPORT										m_viewport;		// 뷰포트
+	D3D12_RECT											m_scissorRect;	// 가위사각형
 
-	ComPtr<ID3D12Resource>						m_cbScene;		// 씬 상수 버퍼
-	cbScene*									m_pcbScene;		// 씬 상수 버퍼 포인터
-	unique_ptr<cbScene>							m_cbSceneData;	// 씬 상수 버퍼 데이터
+	ComPtr<ID3D12Resource>								m_cbScene;		// 씬 상수 버퍼
+	cbScene*											m_pcbScene;		// 씬 상수 버퍼 포인터
+	unique_ptr<cbScene>									m_cbSceneData;	// 씬 상수 버퍼 데이터
 
-	unordered_map<string, shared_ptr<Mesh>>		m_meshes;		// 메쉬
-	unordered_map<string, shared_ptr<Shader>>	m_shaders;		// 셰이더
-	unordered_map<string, shared_ptr<Texture>>	m_textures;		// 텍스쳐
-	unique_ptr<ShadowMap>						m_shadowMap;	// 그림자맵
+	unordered_map<string, shared_ptr<Mesh>>				m_meshes;		// 메쉬
+	unordered_map<string, shared_ptr<Shader>>			m_shaders;		// 셰이더
+	unordered_map<string, shared_ptr<Texture>>			m_textures;		// 텍스쳐
+	unique_ptr<ShadowMap>								m_shadowMap;	// 그림자맵
 
-	shared_ptr<Camera>							m_camera;		// 카메라
-	shared_ptr<Player>							m_player;		// 플레이어
-	unique_ptr<Skybox>							m_skybox;		// 스카이박스
-	vector<unique_ptr<GameObject>>				m_gameObjects;	// 게임오브젝트들
+	shared_ptr<Camera>									m_camera;		// 카메라
+	shared_ptr<Player>									m_player;		// 플레이어
+	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;	// 멀티플레이어
+	unique_ptr<Skybox>									m_skybox;		// 스카이박스
+	vector<unique_ptr<GameObject>>						m_gameObjects;	// 게임오브젝트들
 };
