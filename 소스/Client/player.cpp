@@ -308,17 +308,17 @@ void Player::SendAnimationState() const
 
 	string currAnimationName{ GetCurrAnimationName() };
 	if (currAnimationName == "IDLE")
-		packet.state = legs_state::IDLE;
+		packet.state = legState::IDLE;
 	else if (currAnimationName == "WALKING")
-		packet.state = legs_state::WALKING;
+		packet.state = legState::WALKING;
 	else if (currAnimationName == "WALKLEFT")
-		packet.state = legs_state::WALKLEFT;
+		packet.state = legState::WALKLEFT;
 	else if (currAnimationName == "WALKRIGHT")
-		packet.state = legs_state::WALKRIGHT;
+		packet.state = legState::WALKRIGHT;
 	else if (currAnimationName == "WALKBACK")
-		packet.state = legs_state::WALKBACK;
+		packet.state = legState::WALKBACK;
 	else if (currAnimationName == "RUNNING")
-		packet.state = legs_state::RUNNING;
+		packet.state = legState::RUNNING;
 
 	int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }

@@ -12,7 +12,7 @@ constexpr char CS_PACKET_UPDATE_LEGS = 2;
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 
-enum class legs_state : char
+enum class legState : char
 {
 	IDLE,
 	RUNNING,
@@ -23,37 +23,37 @@ enum class legs_state : char
 };
 
 #pragma pack (push, 1)
-struct c_data
+struct playerData
 {
-	char		_id;
-	bool		_in_use;
-	legs_state	_state;
+	CHAR			id;
+	bool			isActive;
+	legState		state;
 };
 
 struct cs_packet_login
 {
-	unsigned char	size;
-	char			type;
+	UCHAR			size;
+	UCHAR			type;
 };
 
 struct cs_packet_update_legs
 {
-	unsigned char	size;
-	char			type;
-	legs_state		state;
+	UCHAR			size;
+	UCHAR			type;
+	legState		state;
 };
 
 struct sc_packet_login_ok
 {
-	unsigned char	size;
-	char			type;
-	c_data			data;
+	UCHAR			size;
+	UCHAR			type;
+	playerData		data;
 };
 
 struct sc_packet_update_client
 {
-	unsigned char	size;
-	char			type;
-	c_data			data;
+	UCHAR			size;
+	UCHAR			type;
+	playerData		data;
 };
 #pragma pack(pop)

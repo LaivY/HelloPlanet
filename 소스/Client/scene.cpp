@@ -417,7 +417,7 @@ void Scene::RecvPacket()
 		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
 		if (error_code == SOCKET_ERROR) error_display("RecvLOGIN");*/
 		cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
-		cout << "Your ID is " << static_cast<int>(packet.data._id) << endl;
+		cout << "Your ID is " << static_cast<int>(packet.data.id) << endl;
 		break;
 	}
 	case SC_PACKET_UPDATE_CLIENT: {
@@ -426,7 +426,7 @@ void Scene::RecvPacket()
 		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
 		if (error_code == SOCKET_ERROR) error_display("RecvUPDATE");*/
 		//cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
-		cout << "\rYour Legs State " << static_cast<int>(packet.data._state);
+		cout << "\rYour Legs State " << static_cast<int>(packet.data.state);
 		break;
 	}
 	default:
