@@ -188,9 +188,9 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		GameObject::Render(commandList, shader);
 		if (m_gunMesh)
 		{
-			m_gunMesh->UpdateShaderVariable(commandList, this);
 			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
 			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			m_gunMesh->UpdateShaderVariable(commandList, this);
 			m_gunMesh->Render(commandList);
 		}
 	}

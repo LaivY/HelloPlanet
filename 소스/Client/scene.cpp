@@ -178,6 +178,9 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1500.0f, 0.0f, 1500.0f);
+
+	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
+	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -187,6 +190,7 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<LinkShader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["BOUNDINGBOX"] = make_shared<BoundingBoxShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -222,6 +226,15 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 5000.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
+	// 바운딩박스
+	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
+	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
+	bbPlayer->SetShader(m_shaders["BOUNDINGBOX"]);
+
+	shared_ptr<DebugBoundingBox> bbMob{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
+	bbMob->SetMesh(m_meshes["BB_MOB"]);
+	bbMob->SetShader(m_shaders["BOUNDINGBOX"]);
+
 	// 플레이어 생성
 	m_player = make_shared<Player>();
 #ifdef FIRSTVIEW
@@ -235,6 +248,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 #endif
 	m_player->SetGunType(ePlayerGunType::SG);
 	m_player->PlayAnimation("IDLE");
+	m_player->SetBoundingBox(bbPlayer);
 
 	// 카메라, 플레이어 서로 설정
 	m_camera->SetPlayer(m_player);
@@ -252,6 +266,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		p->SetGunType(ePlayerGunType::AR);
 		p->PlayAnimation("IDLE");
 		p->SetPosition(XMFLOAT3{ 0.0f, 0.0f, pos });
+		p->SetBoundingBox(bbPlayer);
 		pos += 20.0f;
 	}
 
@@ -268,17 +283,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 
-	// 더미 플레이어
-	auto dumyPlayer{ make_unique<Player>(TRUE) };
-	dumyPlayer->SetMesh(m_meshes["PLAYER"]);
-	dumyPlayer->SetShader(m_shaders["ANIMATION"]);
-	dumyPlayer->SetGunMesh(m_meshes["SG"]);
-	dumyPlayer->SetGunShader(m_shaders["LINK"]);
-	dumyPlayer->SetGunType(ePlayerGunType::SG);
-	dumyPlayer->PlayAnimation("IDLE");
-	dumyPlayer->Move(XMFLOAT3{ 0.0f, 0.0f, 15.0f });
-	m_gameObjects.push_back(move(dumyPlayer));
-
 	// 몬스터
 	auto mob{ make_unique<GameObject>() };
 	mob->SetMesh(m_meshes["GAROO"]);
@@ -286,6 +290,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	mob->SetTexture(m_textures["GAROO"]);
 	mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
 	mob->PlayAnimation("ATTACK");
+	mob->SetBoundingBox(bbMob);
 	m_gameObjects.push_back(move(mob));
 }
 

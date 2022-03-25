@@ -7,11 +7,6 @@ Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexB
 
 }
 
-Mesh::~Mesh()
-{
-	
-}
-
 void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
 {
 	ifstream file{ fileName };
@@ -156,7 +151,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		pcbMesh->materials[i] = m_materials[i];
 
 	// 애니메이션
-	if (AnimationInfo* animationInfo{ object->GetAnimationInfo() })
+	if (AnimationInfo* animationInfo{ object ? object->GetAnimationInfo() : nullptr })
 	{
 		// 이 블럭 안에서 선언할 수 있는 변수는 모두 선언한다.
 		
@@ -421,4 +416,81 @@ BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	v.position = position;
 	v.uv = XMFLOAT2{ width, height };
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
+}
+
+CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
+{
+	// 큐브 가로, 세로, 높이
+	FLOAT sx{ width / 2.0f }, sy{ height }, sz{ length / 2.0f };
+
+	vector<Vertex> vertices;
+	vertices.reserve(36);
+
+	Vertex v;
+	v.materialIndex = 0;
+
+	// 앞면
+	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z - sz };	vertices.push_back(v);
+
+	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z - sz };	vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z - sz };	vertices.push_back(v);
+
+	// 오른쪽면
+	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
+
+	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z - sz }; vertices.push_back(v);
+
+	// 왼쪽면
+	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z - sz }; vertices.push_back(v);
+
+	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
+
+	// 뒷면
+	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
+
+	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
+
+	// 윗면
+	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+
+	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+
+	// 밑면
+	v.position = { position.x + sx, position.y, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y, position.z - sz }; vertices.push_back(v);
+
+	v.position = { position.x + sx, position.y, position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - sx, position.y, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + sx, position.y, position.z - sz }; vertices.push_back(v);
+
+	// 회색 재질
+	Material material;
+	material.color = color;
+	m_materials.push_back(move(material));
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+
+	UINT cbMeshByteSize{ 0 };
+	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
+	m_cbMesh[nullptr] = Utile::CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
 }

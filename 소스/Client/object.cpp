@@ -1,6 +1,29 @@
 ﻿#include "object.h"
 #include "camera.h"
 
+DebugBoundingBox::DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation) : BoundingOrientedBox{ center, extents, orientation }, m_mesh{ nullptr }, m_shader{ nullptr }
+{
+
+}
+
+void DebugBoundingBox::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	if (!m_mesh || !m_shader) return;
+	commandList->SetPipelineState(m_shader->GetPipelineState().Get());
+	m_mesh->UpdateShaderVariable(commandList, nullptr);
+	m_mesh->Render(commandList);
+}
+
+void DebugBoundingBox::SetMesh(const shared_ptr<Mesh>& mesh)
+{
+	m_mesh = mesh;
+}
+
+void DebugBoundingBox::SetShader(const shared_ptr<Shader>& shader)
+{
+	m_shader = shader;
+}
+
 GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
@@ -25,10 +48,15 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 
 	// 메쉬 렌더링
 	m_mesh->Render(commandList);
+
+#ifdef BOUNDINGBOX
+	if (m_boundingBox) m_boundingBox->Render(commandList);
+#endif
 }
 
 void GameObject::Update(FLOAT deltaTime)
 {
+	// 텍스쳐 타이머 진행
 	if (m_texture && m_textureInfo)
 	{
 		// 타이머 진행
@@ -62,6 +90,9 @@ void GameObject::Update(FLOAT deltaTime)
 		else if (m_animationInfo->state == eAnimationState::BLENDING)
 			m_animationInfo->blendingTimer += deltaTime;
 	}
+
+	// 바운딩 박스 정렬
+	//if (m_boundingBox) m_boundingBox->Center = GetPosition();
 }
 
 void GameObject::Move(const XMFLOAT3& shift)
@@ -98,25 +129,27 @@ void GameObject::SetPosition(const XMFLOAT3& position)
 
 void GameObject::SetMesh(const shared_ptr<Mesh>& mesh)
 {
-	if (m_mesh) m_mesh.reset();
 	m_mesh = mesh;
 }
 
 void GameObject::SetShader(const shared_ptr<Shader>& shader)
 {
-	if (m_shader) m_shader.reset();
 	m_shader = shader;
 }
 
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 {
-	if (m_texture) m_texture.reset();
 	m_texture = texture;
 }
 
 void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 {
 	m_textureInfo = move(textureInfo);
+}
+
+void GameObject::SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox)
+{
+	m_boundingBox = move(boundingBox);
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)

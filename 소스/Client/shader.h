@@ -21,26 +21,33 @@ class ModelShader : public Shader
 {
 public:
 	ModelShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	virtual ~ModelShader() = default;
+	~ModelShader() = default;
 };
 
 class AnimationShader : public Shader
 {
 public:
 	AnimationShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	virtual ~AnimationShader() = default;
+	~AnimationShader() = default;
 };
 
 class LinkShader : public Shader
 {
 public:
 	LinkShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	virtual ~LinkShader() = default;
+	~LinkShader() = default;
 };
 
 class SkyboxShader : public Shader
 {
 public:
 	SkyboxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	virtual ~SkyboxShader() = default;
+	~SkyboxShader() = default;
+};
+
+class BoundingBoxShader : public Shader
+{
+public:
+	BoundingBoxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
+	~BoundingBoxShader() = default;
 };

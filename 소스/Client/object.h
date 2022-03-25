@@ -6,6 +6,21 @@
 
 class Camera;
 
+class DebugBoundingBox : public BoundingOrientedBox
+{
+public:
+	DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation);
+	~DebugBoundingBox() = default;
+
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void SetMesh(const shared_ptr<Mesh>& mesh);
+	void SetShader(const shared_ptr<Shader>& shader);
+
+private:
+	shared_ptr<Mesh>	m_mesh;
+	shared_ptr<Shader>	m_shader;
+};
+
 enum class eAnimationState
 {
 	NONE, PLAY, BLENDING, SYNC
@@ -56,6 +71,7 @@ public:
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
+	void SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox);
 
 	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
 	XMFLOAT3 GetRight() const { return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 }; }
@@ -66,22 +82,23 @@ public:
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
 	BOOL isDeleted() const { return m_isDeleted; }
+	shared_ptr<DebugBoundingBox> GetBoundingBox() const { return m_boundingBox; }
 
 protected:
-	XMFLOAT4X4					m_worldMatrix;			// 월드 변환 행렬
-	FLOAT						m_roll;					// z축 회전각
-	FLOAT						m_pitch;				// x축 회전각
-	FLOAT						m_yaw;					// y축 회전각
+	XMFLOAT4X4						m_worldMatrix;			// 월드 변환 행렬
+	FLOAT							m_roll;					// z축 회전각
+	FLOAT							m_pitch;				// x축 회전각
+	FLOAT							m_yaw;					// y축 회전각
 
-	shared_ptr<Mesh>			m_mesh;					// 메쉬
-	shared_ptr<Shader>			m_shader;				// 셰이더
-	shared_ptr<Texture>			m_texture;				// 텍스쳐
+	shared_ptr<Mesh>				m_mesh;					// 메쉬
+	shared_ptr<Shader>				m_shader;				// 셰이더
+	shared_ptr<Texture>				m_texture;				// 텍스쳐
+	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
+	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체
+	unique_ptr<AnimationInfo>		m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
 
-	unique_ptr<TextureInfo>		m_textureInfo;			// 텍스쳐 정보 구조체
-	unique_ptr<AnimationInfo>	m_animationInfo;		// 애니메이션 정보 구조체
-	unique_ptr<AnimationInfo>	m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
-
-	BOOL						m_isDeleted;			// 삭제 여부
+	BOOL							m_isDeleted;			// 삭제 여부
+	shared_ptr<DebugBoundingBox>	m_boundingBox;			// 바운딩박스
 };
 
 class Skybox : public GameObject
