@@ -215,7 +215,9 @@ void ProcessRecvPacket(int id)
 		{
 		case CS_PACKET_UPDATE_LEGS:
 			cl.m_data.state = static_cast<legState>(buf[2]);
+			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
 			std::cout << static_cast<int>(cl.m_data.state) << std::endl;
+			std::cout << cl.m_data.pos.x << ", " << cl.m_data.pos.y << ", " << cl.m_data.pos.z << ", " << std::endl;
 			break;
  		default:
 	        std::cout << "Server Received Unknown Packet" << std::endl;
@@ -233,6 +235,7 @@ int main()
 
 	const SOCKET socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
 	if (socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "socket");
+
 	//bind
 	SOCKADDR_IN serverAddr;
 	ZeroMemory(&serverAddr, sizeof(serverAddr));
@@ -270,7 +273,7 @@ int main()
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(point - time_point).count() / static_cast<float>(1000);
 
 		// process update packet
-		for (auto& cl : clients)
+		for (const auto& cl : clients)
 		{
 			sc_packet_update_client packet;
 			packet.data = cl.m_data;
@@ -284,7 +287,7 @@ int main()
 			DWORD sent_byte;
 			cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : "
 			<< static_cast<int>(buf[2]) << " : " << static_cast<int>(buf[3]) << " : " << static_cast<int>(buf[4]) << endl;
-			for (const auto& other:clients)
+			for (const auto& other : clients)
 			{
 				retVal = WSASend(other.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send");
