@@ -119,14 +119,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_KEYDOWN:
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
-		if (wParam == 'w' || wParam == 'W')
-		{
-			cs_packet_update_legs packet;
-			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = legState::WALKING;
-			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-		}
+		//if (wParam == 'w' || wParam == 'W')
+		//{
+		//	cs_packet_update_legs packet;
+		//	packet.size = sizeof(packet);
+		//	packet.type = CS_PACKET_UPDATE_LEGS;
+		//	packet.state = legState::WALKING;
+		//	int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		//}
 		if (wParam == 'a' || wParam == 'A')
 		{
 			cs_packet_update_legs packet;

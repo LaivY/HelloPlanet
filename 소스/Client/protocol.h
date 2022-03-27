@@ -28,6 +28,7 @@ struct playerData
 	CHAR			id;
 	bool			isActive;
 	legState		state;
+	XMFLOAT3		pos;
 };
 
 struct cs_packet_login
@@ -41,6 +42,7 @@ struct cs_packet_update_legs
 	UCHAR			size;
 	UCHAR			type;
 	legState		state;
+	XMFLOAT3		pos;
 };
 
 struct sc_packet_login_ok

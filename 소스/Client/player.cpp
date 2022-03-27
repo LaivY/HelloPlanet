@@ -108,6 +108,15 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		if (message == WM_KEYUP)
 			PlayAnimation("IDLE", TRUE);
+		else if (message == WM_KEYDOWN && (wParam == 'w' || wParam == 'W'))
+		{
+			cs_packet_update_legs packet;
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_UPDATE_LEGS;
+			packet.state = legState::WALKING;
+			packet.pos = GetPosition();
+			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		}
 	}
 	if (wParam == VK_SHIFT)
 	{

@@ -387,21 +387,13 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 void Scene::ProcessClient(LPVOID arg)
 {
-	//auto pre_t = chrono::system_clock::now();
 	while (g_isConnected)
-	{
-		/*auto cur_t = chrono::system_clock::now();
-		float elapsed = chrono::duration_cast<chrono::milliseconds>(cur_t - pre_t).count() / float(1000);*/
 		RecvPacket();
-		/*pre_t = cur_t;
-		if (chrono::system_clock::now() - pre_t < 32ms)
-			this_thread::sleep_for(32ms - (chrono::system_clock::now() - cur_t));*/
-	}
 }
 
 void Scene::RecvPacket()
 {
-	char recv_buf[5];
+	char recv_buf[17];
 	WSABUF wsabuf;
 	wsabuf.buf = recv_buf;
 	wsabuf.len = sizeof(recv_buf);
@@ -462,6 +454,12 @@ void Scene::RecvPacket()
 					break;
 				}
 			}
+			
+			string debug{};
+			debug += to_string(packet.data.pos.x) + ", " + to_string(packet.data.pos.y) + ", " + to_string(packet.data.pos.z) + "\n";
+			OutputDebugStringA(debug.c_str());
+
+			p->SetPosition(packet.data.pos);
 		}
 		break;
 	}
