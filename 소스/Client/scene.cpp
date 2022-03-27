@@ -467,7 +467,7 @@ void Scene::RecvPacket()
 		//char garbage[BUF_SIZE];
 		//int error_code = recv(g_c_socket, garbage, recv_size - 2, MSG_WAITALL);
 		//if (error_code == SOCKET_ERROR) error_display("RecvData");
-		//cout << "Wrong Packet" << endl;
+		cout << "Wrong Packet" << endl;
 		break;
 	}
 
