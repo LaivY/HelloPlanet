@@ -1,4 +1,5 @@
 ﻿#pragma once
+//#include <DirectXMath.h>
 
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
@@ -25,9 +26,10 @@ enum class legState : char
 #pragma pack (push, 1)
 struct playerData
 {
-	CHAR			id;
-	bool			isActive;
-	legState		state;
+	CHAR				id;
+	bool				isActive;
+	legState			state;
+	DirectX::XMFLOAT3	pos;
 };
 
 struct cs_packet_login
