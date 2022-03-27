@@ -5,7 +5,7 @@ constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 1;
+constexpr int  MAX_USER = 2;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;
@@ -43,6 +43,7 @@ struct cs_packet_update_legs
 	UCHAR			size;
 	UCHAR			type;
 	legState		state;
+	DirectX::XMFLOAT3 pos;
 };
 
 struct sc_packet_login_ok
