@@ -255,7 +255,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetCamera(m_camera);
 
 	// 멀티플레이어
-	float pos{ 20.0f };
 	for (unique_ptr<Player>& p : m_multiPlayers)
 	{
 		p = make_unique<Player>(TRUE);
@@ -265,9 +264,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		p->SetGunShader(m_shaders["LINK"]);
 		p->SetGunType(ePlayerGunType::AR);
 		p->PlayAnimation("IDLE");
-		p->SetPosition(XMFLOAT3{ 0.0f, 0.0f, pos });
 		p->SetBoundingBox(bbPlayer);
-		pos += 20.0f;
 	}
 
 	// 스카이박스
@@ -412,26 +409,60 @@ void Scene::RecvPacket()
 	DWORD recv_flag = 0;
 	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
 	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
-	//cout << "[Packet recv] size: " << static_cast<int>(recv_buf[0]) << ", " << "type: " << static_cast<int>(recv_buf[1]) << endl;
 
 	switch (recv_buf[1])
 	{
-	case SC_PACKET_LOGIN_OK: {
+	case SC_PACKET_LOGIN_OK:
+	{
 		sc_packet_login_ok packet;
 		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
-		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
-		if (error_code == SOCKET_ERROR) error_display("RecvLOGIN");*/
-		cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
-		cout << "Your ID is " << static_cast<int>(packet.data.id) << endl;
+		if (m_player) m_player->SetId(static_cast<int>(packet.data.id));
 		break;
 	}
-	case SC_PACKET_UPDATE_CLIENT: {
+	case SC_PACKET_UPDATE_CLIENT:
+	{
 		sc_packet_update_client packet;
 		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
-		/*int error_code = recv(g_c_socket, reinterpret_cast<char*>((&packet)) + 2, recv_size - 2, MSG_WAITALL);
-		if (error_code == SOCKET_ERROR) error_display("RecvUPDATE");*/
-		//cout << "[Packet recv] size: " << static_cast<int>(packet.size) << ", " << "type: " << static_cast<int>(packet.type) << endl;
-		cout << "\rYour Legs State " << static_cast<int>(packet.data.state);
+
+		// 나에 대한 정보는 무시
+		if (m_player->GetId() == packet.data.id)
+			break;
+
+		for (auto& p : m_multiPlayers)
+		{
+			if (!p) continue;
+			//if (p->GetId() != packet.data.id) continue;
+			if (AnimationInfo* aniInfo{ p->GetAnimationInfo() })
+			{
+				switch (packet.data.state)
+				{
+				case legState::IDLE:
+					if (p->GetCurrAnimationName() != "IDLE" && p->GetAfterAnimationName() != "IDLE")
+						p->PlayAnimation("IDLE", TRUE);
+					break;
+				case legState::WALKING:
+					if (p->GetCurrAnimationName() != "WALKING" && p->GetAfterAnimationName() != "WALKING")
+						p->PlayAnimation("WALKING", TRUE);
+					break;
+				case legState::WALKLEFT:
+					if (p->GetCurrAnimationName() != "WALKLEFT" && p->GetAfterAnimationName() != "WALKLEFT")
+						p->PlayAnimation("WALKLEFT", TRUE);
+					break;
+				case legState::WALKRIGHT:
+					if (p->GetCurrAnimationName() != "WALKRIGHT" && p->GetAfterAnimationName() != "WALKRIGHT")
+						p->PlayAnimation("WALKRIGHT", TRUE);
+					break;
+				case legState::WALKBACK:
+					if (p->GetCurrAnimationName() != "WALKBACK" && p->GetAfterAnimationName() != "WALKBACK")
+						p->PlayAnimation("WALKBACK", TRUE);
+					break;
+				case legState::RUNNING:
+					if (p->GetCurrAnimationName() != "RUNNING" && p->GetAfterAnimationName() != "RUNNING")
+						p->PlayAnimation("RUNNING", TRUE);
+					break;
+				}
+			}
+		}
 		break;
 	}
 	default:

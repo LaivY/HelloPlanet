@@ -23,20 +23,18 @@ public:
 	virtual void Update(FLOAT deltaTime);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
-	void SendAnimationState() const;
-
+	void SetId(INT id) { m_id = id; }
+	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }
 	void AddVelocity(const XMFLOAT3& increase);
 	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
-	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 
+	INT GetId() const { return m_id; }
 	XMFLOAT3 GetVelocity() const { return m_velocity; }
-
-private:
-	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 	string GetPureAnimationName(const string& animationName) const;
 	string GetCurrAnimationName() const;
 	string GetAfterAnimationName() const;

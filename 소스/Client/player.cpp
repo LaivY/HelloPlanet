@@ -44,10 +44,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
-			{
 				PlayAnimation("WALKING", TRUE);
-				SendAnimationState();
-			}
 			Move(Vector3::Mul(look, 50.0f * deltaTime));
 		}
 	}
@@ -217,14 +214,6 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
 			m_gunMesh->Render(commandList);
 		}
-
-		//string debug{};
-		//debug += m_animationInfo->currAnimationName + "(" + to_string(m_animationInfo->currTimer) + ")\n";
-		//if (m_animationInfo->afterAnimationName.empty())
-		//	debug += "NONE\n\n";
-		//else
-		//	debug += m_animationInfo->afterAnimationName + "(" + to_string(m_animationInfo->afterTimer) + ")\n\n";
-		//OutputDebugStringA(debug.c_str());
 #endif
 	}
 }
@@ -280,8 +269,6 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 		m_animationInfo->afterAnimationName.clear();
 		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->blendingTimer = 0.0f;
-		//m_animationInfo->currAnimationName.swap(m_animationInfo->afterAnimationName);
-		//swap(m_animationInfo->currTimer, m_animationInfo->afterTimer);
 		return;
 	}
 	
@@ -298,29 +285,6 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	if (m_gunType == ePlayerGunType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
 	else if (m_gunType == ePlayerGunType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
 	else if (m_gunType == ePlayerGunType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
-}
-
-void Player::SendAnimationState() const
-{
-	cs_packet_update_legs packet;
-	packet.size = sizeof(packet);
-	packet.type = CS_PACKET_UPDATE_LEGS;
-
-	string currAnimationName{ GetCurrAnimationName() };
-	if (currAnimationName == "IDLE")
-		packet.state = legState::IDLE;
-	else if (currAnimationName == "WALKING")
-		packet.state = legState::WALKING;
-	else if (currAnimationName == "WALKLEFT")
-		packet.state = legState::WALKLEFT;
-	else if (currAnimationName == "WALKRIGHT")
-		packet.state = legState::WALKRIGHT;
-	else if (currAnimationName == "WALKBACK")
-		packet.state = legState::WALKBACK;
-	else if (currAnimationName == "RUNNING")
-		packet.state = legState::RUNNING;
-
-	int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Player::AddVelocity(const XMFLOAT3& increase)
