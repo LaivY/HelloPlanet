@@ -13,7 +13,7 @@ constexpr char CS_PACKET_UPDATE_LEGS = 2;
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 
-enum class legState : char
+enum class eLegState : char
 {
 	IDLE,
 	RUNNING,
@@ -28,7 +28,7 @@ struct playerData
 {
 	CHAR				id;
 	bool				isActive;
-	legState			state;
+	eLegState			state;
 	DirectX::XMFLOAT3	pos;
 };
 
@@ -42,7 +42,7 @@ struct cs_packet_update_legs
 {
 	UCHAR			size;
 	UCHAR			type;
-	legState		state;
+	eLegState		state;
 	DirectX::XMFLOAT3 pos;
 };
 

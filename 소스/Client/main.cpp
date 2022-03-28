@@ -132,7 +132,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = legState::WALKLEFT;
+			packet.state = eLegState::WALKLEFT;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 		if (wParam == 'd' || wParam == 'D')
@@ -140,7 +140,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = legState::WALKRIGHT;
+			packet.state = eLegState::WALKRIGHT;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 		if (wParam == 's' || wParam == 'S')
@@ -148,7 +148,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = legState::WALKBACK;
+			packet.state = eLegState::WALKBACK;
 			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 		break;
@@ -159,7 +159,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			cs_packet_update_legs packet;
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = legState::IDLE;
+			packet.state = eLegState::IDLE;
 			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
 		}
 		break;

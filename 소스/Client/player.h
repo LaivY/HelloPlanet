@@ -25,6 +25,8 @@ public:
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
+	void SendPlayerAnimation(eLegState letState) const;
+
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }
 	void AddVelocity(const XMFLOAT3& increase);
@@ -46,7 +48,8 @@ private:
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
 	ePlayerGunType		m_gunType;			// 총 타입
 
-	XMFLOAT3			m_velocity;			// 속도
+	FLOAT				m_speed;			// 속도(실수)
+	XMFLOAT3			m_velocity;			// 속도(벡터)
 	FLOAT				m_maxVelocity;		// 최대속도
 	FLOAT				m_friction;			// 마찰력
 

@@ -17,7 +17,7 @@ public:
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
-	client() :m_data{ 0, false, legState::IDLE }, m_socket{}, m_clientBuf{}
+	client() :m_data{ 0, false, eLegState::IDLE }, m_socket{}, m_clientBuf{}
 	{
 	}
 
@@ -75,7 +75,7 @@ void SendLoginOkPacket(int id)
 	sc_packet_login_ok packet;
 	packet.data.id = id;
 	packet.data.isActive = true;
-	packet.data.state = legState::IDLE;
+	packet.data.state = eLegState::IDLE;
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
 	char buf[sizeof(packet)];
@@ -214,7 +214,7 @@ void ProcessRecvPacket(int id)
 		switch (static_cast<int>(buf[1]))
 		{
 		case CS_PACKET_UPDATE_LEGS:
-			cl.m_data.state = static_cast<legState>(buf[2]);
+			cl.m_data.state = static_cast<eLegState>(buf[2]);
 			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
 			std::cout << cl.m_data.pos.x << ", " << cl.m_data.pos.y << ", " << cl.m_data.pos.z << ", " << std::endl;
 			break;
@@ -256,7 +256,7 @@ int main()
 		cl.m_socket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
 		if (cl.m_socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
 		cl.m_data.id = id;
-		cl.m_data.state = legState::IDLE;
+		cl.m_data.state = eLegState::IDLE;
 		SendLoginOkPacket(id);
 		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
 		threads.emplace_back(ProcessRecvPacket, id);
