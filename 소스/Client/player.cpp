@@ -2,7 +2,7 @@
 #include "camera.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ ePlayerGunType::NONE },
-									 m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f },
+									 m_speed{ 20.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f },
 									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
@@ -15,6 +15,10 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		case WM_LBUTTONDOWN:
 		{
+			if (GetCurrAnimationName() == "RUNNING")
+				break;
+			if (m_upperAnimationInfo && GetUpperCurrAnimationName() == "RELOAD")
+				break;
 			PlayAnimation("FIRING", TRUE);
 			break;
 		}
@@ -25,71 +29,78 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 void Player::OnKeyboardEvent(FLOAT deltaTime)
 {
 #ifndef FREEVIEW
-	if (GetAsyncKeyState('W') & 0x8000)
-	{
-		string currPureAnimationName{ GetCurrAnimationName() };
-		string afterPureAnimationName{ GetAfterAnimationName() };
-		XMFLOAT3 look{ m_camera->GetAt() };
-		look.y = 0.0f;
-		look = Vector3::Normalize(look);
+	string currPureAnimationName{ GetCurrAnimationName() };
+	string afterPureAnimationName{ GetAfterAnimationName() };
 
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && m_gunType != ePlayerGunType::MG)
+	if (GetAsyncKeyState('W') && GetAsyncKeyState('A') & 0x8000)
+	{
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
+			PlayAnimation("WALKLEFT", TRUE);
+		m_velocity.x = -m_speed / 2.0f;
+		m_velocity.z = m_speed / 2.0f;
+	}
+	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
+	{
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
+			PlayAnimation("WALKRIGHT", TRUE);
+		m_velocity.x = m_speed / 2.0f;
+		m_velocity.z = m_speed / 2.0f;
+	}
+	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
+	{
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
+			PlayAnimation("WALKLEFT", TRUE);
+		m_velocity.x = -m_speed / 2.0f;
+		m_velocity.z = -m_speed / 2.0f;
+	}
+	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
+	{
+		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
+			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
+			PlayAnimation("WALKRIGHT", TRUE);
+		m_velocity.x = m_speed / 2.0f;
+		m_velocity.z = -m_speed / 2.0f;
+	}
+	else if (GetAsyncKeyState('W') & 0x8000)
+	{
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && GetUpperCurrAnimationName() != "RELOAD" && m_gunType != ePlayerGunType::MG)
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
-			Move(Vector3::Mul(look, 150.0f * deltaTime));
+			m_velocity.z = m_speed * 5.0f;
 		}
 		else
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("WALKING", TRUE);
-			Move(Vector3::Mul(look, 50.0f * deltaTime));
+			m_velocity.z = m_speed;
 		}
 	}
 	else if (GetAsyncKeyState('A') & 0x8000)
 	{
-		string currPureAnimationName{ GetCurrAnimationName() };
-		string afterPureAnimationName{ GetAfterAnimationName() };
-		XMFLOAT3 look{ m_camera->GetAt() };
-		look.y = 0.0f;
-		look = Vector3::Normalize(look);
-		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
-		XMFLOAT3 left{ Vector3::Mul(right, -1) };
-
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
-		Move(Vector3::Mul(left, 10.0f * deltaTime));
+		m_velocity.x = -m_speed;
 	}
 	else if (GetAsyncKeyState('D') & 0x8000)
 	{
-		string currPureAnimationName{ GetCurrAnimationName() };
-		string afterPureAnimationName{ GetAfterAnimationName() };
-		XMFLOAT3 look{ m_camera->GetAt() };
-		look.y = 0.0f;
-		look = Vector3::Normalize(look);
-
-		XMFLOAT3 right{ Vector3::Cross(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, look) };
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
-		Move(Vector3::Mul(right, 10.0f * deltaTime));
+		m_velocity.x = m_speed;
 	}
 	else if (GetAsyncKeyState('S') & 0x8000)
 	{
-		string currPureAnimationName{ GetCurrAnimationName() };
-		string afterPureAnimationName{ GetAfterAnimationName() };
-		XMFLOAT3 look{ m_camera->GetAt() };
-		look.y = 0.0f;
-		look = Vector3::Normalize(look);
-		XMFLOAT3 back{ Vector3::Mul(look, -1) };
-
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKBACK") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKBACK", TRUE);
-		Move(Vector3::Mul(back, 10.0f * deltaTime));
+		m_velocity.z = -m_speed;
 	}
 #endif
 }
@@ -97,27 +108,54 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 #ifndef FREEVIEW
-	if (wParam == 'r' || wParam == 'R')
+	switch (message)
 	{
-		if (message == WM_KEYDOWN && GetCurrAnimationName() != "RELOAD")
+	case WM_KEYUP:
+	{
+		switch (wParam)
 		{
-			PlayAnimation("RELOAD", TRUE);
-		}
-	}
-	if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D' || wParam == 's' || wParam == 'S')
-	{
-		if (message == WM_KEYUP)
+		case 'w': case 'W':
+		case 'a': case 'A':
+		case 'd': case 'D':
+		case 's': case 'S':
 			PlayAnimation("IDLE", TRUE);
-	}
-	if (wParam == VK_SHIFT)
-	{
-		if (message == WM_KEYUP)
-		{
+			m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+			break;
+		case VK_SHIFT:
 			if (GetAsyncKeyState('W') & 0x8000)
-				PlayAnimation("WALKING", TRUE);
-			else
-				PlayAnimation("IDLE", TRUE);
+			{
+				if (GetUpperCurrAnimationName() != "RELOAD")
+					PlayAnimation("WALKING", TRUE);
+				m_velocity.z = m_speed;
+			}
+			else PlayAnimation("IDLE", TRUE);
+			break;
 		}
+		break;
+	}
+	case WM_KEYDOWN:
+	{
+		switch (wParam)
+		{
+		case 'r': case 'R':
+			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD"))
+				PlayAnimation("RELOAD", TRUE);
+			break;
+		case 'w': case 'W':
+			SendPlayerAnimation(eLegState::WALKING);
+			break;
+		case 'a': case 'A':
+			SendPlayerAnimation(eLegState::WALKLEFT);
+			break;
+		case 's': case 'S':
+			SendPlayerAnimation(eLegState::WALKBACK);
+			break;
+		case 'd': case 'D':
+			SendPlayerAnimation(eLegState::WALKRIGHT);
+			break;
+		}
+		break;
+	}
 	}
 #endif
 }
@@ -224,18 +262,30 @@ void Player::Update(FLOAT deltaTime)
 
 	// 상체 애니메이션 타이머 진행
 	if (m_upperAnimationInfo)
-	{
-		if (m_upperAnimationInfo->state == eAnimationState::PLAY)
+		switch (m_upperAnimationInfo->state)
+		{
+		case eAnimationState::PLAY:
 			m_upperAnimationInfo->currTimer += deltaTime;
-		else if (m_upperAnimationInfo->state == eAnimationState::BLENDING || m_upperAnimationInfo->state == eAnimationState::SYNC)
+			break;
+		case eAnimationState::BLENDING:
+		case eAnimationState::SYNC:
 			m_upperAnimationInfo->blendingTimer += deltaTime;
-	}
+			break;
+		}
 
 	// 이동
-	Move(m_velocity);
+	Move(Vector3::Mul(GetRight(), m_velocity.x * deltaTime));
+	Move(Vector3::Mul(GetLook(), m_velocity.z * deltaTime));
 
 	// 마찰력
-	m_velocity = Vector3::Mul(m_velocity, m_friction * deltaTime);
+	//m_velocity = Vector3::Mul(m_velocity, m_friction * deltaTime);
+
+	//if (m_upperAnimationInfo)
+	//{
+	//	string debug{};
+	//	debug = GetUpperCurrAnimationName() + "\n";
+	//	OutputDebugStringA(debug.c_str());
+	//}
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -322,6 +372,16 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	m_upperAnimationInfo->blendingTimer = 0.0f;
 }
 
+void Player::SendPlayerAnimation(eLegState eLegState) const
+{
+	cs_packet_update_legs packet;
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_UPDATE_LEGS;
+	packet.state = eLegState;
+	packet.pos = GetPosition();
+	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+}
+
 string Player::GetPureAnimationName(const string& animationName) const
 {
 	if (auto p{ animationName.find_last_of('/') }; p != string::npos)
@@ -341,10 +401,12 @@ string Player::GetAfterAnimationName() const
 
 string Player::GetUpperCurrAnimationName() const
 {
+	if (!m_upperAnimationInfo) return "";
 	return GetPureAnimationName(m_upperAnimationInfo->currAnimationName);
 }
 
 string Player::GetUpperAfterAnimationName() const
 {
+	if (!m_upperAnimationInfo) return "";
 	return GetPureAnimationName(m_upperAnimationInfo->afterAnimationName);
 }

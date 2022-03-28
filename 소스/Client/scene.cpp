@@ -428,37 +428,35 @@ void Scene::RecvPacket()
 			{
 				switch (packet.data.state)
 				{
-				case legState::IDLE:
+				case eLegState::IDLE:
 					if (p->GetCurrAnimationName() != "IDLE" && p->GetAfterAnimationName() != "IDLE")
 						p->PlayAnimation("IDLE", TRUE);
 					break;
-				case legState::WALKING:
+				case eLegState::WALKING:
+				{
 					if (p->GetCurrAnimationName() != "WALKING" && p->GetAfterAnimationName() != "WALKING")
 						p->PlayAnimation("WALKING", TRUE);
+					p->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 20.0f });
 					break;
-				case legState::WALKLEFT:
+				}
+				case eLegState::WALKLEFT:
 					if (p->GetCurrAnimationName() != "WALKLEFT" && p->GetAfterAnimationName() != "WALKLEFT")
 						p->PlayAnimation("WALKLEFT", TRUE);
 					break;
-				case legState::WALKRIGHT:
+				case eLegState::WALKRIGHT:
 					if (p->GetCurrAnimationName() != "WALKRIGHT" && p->GetAfterAnimationName() != "WALKRIGHT")
 						p->PlayAnimation("WALKRIGHT", TRUE);
 					break;
-				case legState::WALKBACK:
+				case eLegState::WALKBACK:
 					if (p->GetCurrAnimationName() != "WALKBACK" && p->GetAfterAnimationName() != "WALKBACK")
 						p->PlayAnimation("WALKBACK", TRUE);
 					break;
-				case legState::RUNNING:
+				case eLegState::RUNNING:
 					if (p->GetCurrAnimationName() != "RUNNING" && p->GetAfterAnimationName() != "RUNNING")
 						p->PlayAnimation("RUNNING", TRUE);
 					break;
 				}
 			}
-			
-			string debug{};
-			debug += to_string(packet.data.pos.x) + ", " + to_string(packet.data.pos.y) + ", " + to_string(packet.data.pos.z) + "\n";
-			OutputDebugStringA(debug.c_str());
-
 			p->SetPosition(packet.data.pos);
 		}
 		break;
@@ -467,7 +465,7 @@ void Scene::RecvPacket()
 		//char garbage[BUF_SIZE];
 		//int error_code = recv(g_c_socket, garbage, recv_size - 2, MSG_WAITALL);
 		//if (error_code == SOCKET_ERROR) error_display("RecvData");
-		//cout << "Wrong Packet" << endl;
+		cout << "Wrong Packet" << endl;
 		break;
 	}
 

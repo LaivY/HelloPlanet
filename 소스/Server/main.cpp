@@ -17,7 +17,7 @@ public:
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
-	client() :m_data{ 0, false, legState::IDLE }, m_socket{}, m_clientBuf{}
+	client() :m_data{ 0, false, eLegState::IDLE }, m_socket{}, m_clientBuf{}
 	{
 	}
 
@@ -75,10 +75,10 @@ void SendLoginOkPacket(int id)
 	sc_packet_login_ok packet;
 	packet.data.id = id;
 	packet.data.isActive = true;
-	packet.data.state = legState::IDLE;
+	packet.data.state = eLegState::IDLE;
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
-	char buf[BUF_SIZE];
+	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	WSABUF wsabuf;
 	wsabuf.buf = buf;
@@ -203,10 +203,10 @@ void ProcessRecvPacket(int id)
 	client& cl = clients[id];
 	for (;;)
 	{
-		char buf[BUF_SIZE]{};
+		char buf[15]{};
 		WSABUF wsabuf;
 		wsabuf.buf = buf;
-		wsabuf.len = BUF_SIZE;
+		wsabuf.len = sizeof(buf);
 		DWORD recvd_byte;
 		DWORD flag{ 0 };
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
@@ -214,9 +214,8 @@ void ProcessRecvPacket(int id)
 		switch (static_cast<int>(buf[1]))
 		{
 		case CS_PACKET_UPDATE_LEGS:
-			cl.m_data.state = static_cast<legState>(buf[2]);
+			cl.m_data.state = static_cast<eLegState>(buf[2]);
 			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
-			std::cout << static_cast<int>(cl.m_data.state) << std::endl;
 			std::cout << cl.m_data.pos.x << ", " << cl.m_data.pos.y << ", " << cl.m_data.pos.z << ", " << std::endl;
 			break;
  		default:
@@ -257,7 +256,7 @@ int main()
 		cl.m_socket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
 		if (cl.m_socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
 		cl.m_data.id = id;
-		cl.m_data.state = legState::IDLE;
+		cl.m_data.state = eLegState::IDLE;
 		SendLoginOkPacket(id);
 		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
 		threads.emplace_back(ProcessRecvPacket, id);
@@ -279,14 +278,12 @@ int main()
 			packet.data = cl.m_data;
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_UPDATE_CLIENT;
-			char buf[BUF_SIZE];
+			char buf[sizeof(packet)];
 			memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 			WSABUF wsabuf;
 			wsabuf.buf = buf;
 			wsabuf.len = sizeof(buf);
 			DWORD sent_byte;
-			cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : "
-			<< static_cast<int>(buf[2]) << " : " << static_cast<int>(buf[3]) << " : " << static_cast<int>(buf[4]) << endl;
 			for (const auto& other : clients)
 			{
 				retVal = WSASend(other.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
@@ -295,9 +292,9 @@ int main()
 		}
 
 		time_point = point;
-		if (chrono::system_clock::now() - time_point < 32ms)
+		if (chrono::system_clock::now() - time_point < 16ms)
 		{
-			this_thread::sleep_for(32ms - (chrono::system_clock::now() - point));
+			this_thread::sleep_for(16ms - (chrono::system_clock::now() - point));
 		}
 	}
 	
