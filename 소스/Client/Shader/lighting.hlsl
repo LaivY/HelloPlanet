@@ -23,4 +23,6 @@ struct Light
 struct Material
 {
 	float4 baseColor;
+	float3 reflection;
+	float roughness;
 };

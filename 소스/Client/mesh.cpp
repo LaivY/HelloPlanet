@@ -44,7 +44,9 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 	{
 		Material m;
 		file >> dumy >> dumy;
-		file >> dumy >> m.color.x >> m.color.y >> m.color.z >> m.color.w;
+		file >> dumy >> m.baseColor.x >> m.baseColor.y >> m.baseColor.z >> m.baseColor.w;
+		file >> dumy >> m.reflection.x >> m.reflection.y >> m.reflection.z;
+		file >> dumy >> m.roughness;
 		m_materials.push_back(move(m));
 	}
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
@@ -402,7 +404,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 흰색 재질
 	Material material;
-	material.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	material.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 	m_materials.push_back(move(material));
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
@@ -485,7 +487,7 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 회색 재질
 	Material material;
-	material.color = color;
+	material.baseColor = color;
 	m_materials.push_back(move(material));
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());

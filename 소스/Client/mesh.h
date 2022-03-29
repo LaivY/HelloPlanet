@@ -18,9 +18,11 @@ struct Vertex
 
 struct Material
 {
-	Material() : color{} { }
+	Material() : baseColor{}, reflection{}, roughness{} { }
 
-	XMFLOAT4 color;
+	XMFLOAT4	baseColor;
+	XMFLOAT3	reflection;
+	FLOAT		roughness;
 };
 
 struct Joint
