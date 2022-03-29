@@ -58,12 +58,25 @@ struct PS_INPUT
 	int materialIndex   : MATERIAL;
 };
 
-float4 Lighting(Material material, float3 position, float3 normal)
+float4 Lighting(float3 position, float3 normal, int materialIndex)
 {
-    float3 lightColor = float3(0.1f, 0.0f, 0.0f);
+    float3 lightColor = float3(0.0f, 0.0f, 0.0f);
 
 	normal = normalize(normal);
 	float3 toEye = normalize(g_eye - position);
+
+	Material material;
+	if (materialIndex < 0)
+	{
+		// 재질이 없다면 기본 재질로 설정
+		material.baseColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+		material.reflection = float3(0.1f, 0.1f, 0.1f);
+		material.roughness = 0.95f;
+	}
+	else
+	{
+		material = g_materials[materialIndex];
+	}
 
     for (int i = 0; i < MAX_LIGHT; ++i)
     {

@@ -21,14 +21,15 @@ PS_INPUT VS(VS_INPUT input)
 
 float4 PS(PS_INPUT input) : SV_TARGET
 {
-#ifdef LIGHTING
-    float4 lightColor = Lighting(g_materials[input.materialIndex], input.positionW.xyz, input.normalW);
-    return g_materials[input.materialIndex].baseColor + lightColor;
-#else
+    float4 output = float4(0.0f, 0.0f, 0.0f, 0.0f);
     if (input.materialIndex < 0)
     {
-        return g_texture.Sample(g_sampler, input.uv);
+        output = g_texture.Sample(g_sampler, input.uv);
     }
-    return g_materials[input.materialIndex].baseColor;
-#endif
+    else
+    {
+        output = g_materials[input.materialIndex].baseColor;
+    }
+    float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
+    return output + lightColor;
 }

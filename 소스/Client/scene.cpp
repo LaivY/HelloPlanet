@@ -39,6 +39,9 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
+
+	// 맵 로딩
+	LoadMapObjects(device, commandList, Utile::PATH("objects.txt", Utile::RESOURCE));
 }
 
 void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
@@ -78,7 +81,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
 {
 #ifdef FREEVIEW
-	const float speed{ 10.0f * deltaTime };
+	const float speed{ 100.0f * deltaTime };
 	if (GetAsyncKeyState('W') & 0x8000)
 	{
 		m_camera->Move(Vector3::Mul(m_camera->GetAt(), speed));
@@ -177,18 +180,19 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 1500.0f, 0.0f, 1500.0f);
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f);
 
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
 	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 
-	m_meshes["LIGHTCUBE"] = make_shared<CubeMesh>(device, commandList, 5.0f, 5.0f, 5.0f);
+	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
+	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
 	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<LinkShader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
@@ -290,16 +294,40 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	mob->SetShader(m_shaders["ANIMATION"]);
 	mob->SetTexture(m_textures["GAROO"]);
 	mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
-	mob->PlayAnimation("ATTACK");
+	mob->PlayAnimation("IDLE");
 	mob->SetBoundingBox(bbMob);
 	m_gameObjects.push_back(move(mob));
+}
 
-	// 조명
-	auto light{ make_unique<GameObject>() };
-	light->SetMesh(m_meshes["LIGHTCUBE"]);
-	light->SetShader(m_shaders["DEFAULT"]);
-	light->SetPosition(XMFLOAT3{ 500.0f, 120.0f, -60.0f });
-	m_gameObjects.push_back(move(light));
+void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
+{
+	ifstream map{ mapFile };
+
+	// 오브젝트 개수
+	int count{ 0 }; map >> count;
+
+	for (int i = 0; i < count; ++i)
+	{
+		// 타입, 스케일, 회전, 이동
+		int type{}; map >> type;
+		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
+		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
+		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
+
+		XMMATRIX worldMatrix{ XMMatrixIdentity() };
+		XMMATRIX scaleMatrix{ XMMatrixScaling(scale.x, scale.y, scale.z) };
+		XMMATRIX rotateMatrix{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat.x), XMConvertToRadians(rotat.y), XMConvertToRadians(rotat.z)) };
+		XMMATRIX transMatrix{ XMMatrixTranslation(trans.x, trans.y, trans.z) };
+		worldMatrix = worldMatrix * scaleMatrix * rotateMatrix * transMatrix;
+
+		XMFLOAT4X4 world; XMStoreFloat4x4(&world, worldMatrix);
+
+		unique_ptr<GameObject> object{ make_unique<GameObject>() };
+		object->SetMesh(m_meshes["MOUNTAIN"]);
+		object->SetShader(m_shaders["MODEL"]);
+		object->SetWorldMatrix(world);
+		m_gameObjects.push_back(move(object));
+	}
 }
 
 void Scene::ReleaseUploadBuffer()
