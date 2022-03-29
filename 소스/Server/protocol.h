@@ -30,6 +30,7 @@ struct playerData
 	bool				isActive;
 	eLegState			state;
 	DirectX::XMFLOAT3	pos;
+	DirectX::XMFLOAT3	velocity;
 };
 
 struct cs_packet_login
@@ -40,10 +41,11 @@ struct cs_packet_login
 
 struct cs_packet_update_legs
 {
-	UCHAR			size;
-	UCHAR			type;
-	eLegState		state;
-	DirectX::XMFLOAT3 pos;
+	UCHAR				size;
+	UCHAR				type;
+	eLegState			state;
+	DirectX::XMFLOAT3	pos;
+	DirectX::XMFLOAT3	velocity;
 };
 
 struct sc_packet_login_ok

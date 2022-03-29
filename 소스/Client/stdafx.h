@@ -44,7 +44,7 @@ using namespace DirectX;
 #pragma comment (lib, "MSWSock.LIB")
 #include <WS2tcpip.h>
 #include <MSWSock.h>
-#include "protocol.h"
+#include "../Server/protocol.h"
 
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기

@@ -206,7 +206,10 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 void Scene::CreateLights()
 {
+	Light light;
+	light.direction = XMFLOAT3{  };
 
+	m_cbSceneData->ligths[0] = light;
 }
 
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -393,7 +396,8 @@ void Scene::ProcessClient(LPVOID arg)
 
 void Scene::RecvPacket()
 {
-	char recv_buf[17];
+	// size, type, PlayerData
+	char recv_buf[sizeof(UCHAR) + sizeof(UCHAR) + sizeof(playerData)];
 	WSABUF wsabuf;
 	wsabuf.buf = recv_buf;
 	wsabuf.len = sizeof(recv_buf);
@@ -409,6 +413,13 @@ void Scene::RecvPacket()
 		sc_packet_login_ok packet;
 		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
 		if (m_player) m_player->SetId(static_cast<int>(packet.data.id));
+
+		int id{ 0 };
+		for (auto& p : m_multiPlayers)
+		{
+			if (id == m_player->GetId()) ++id;
+			p->SetId(id++);
+		}
 		break;
 	}
 	case SC_PACKET_UPDATE_CLIENT:
@@ -433,12 +444,9 @@ void Scene::RecvPacket()
 						p->PlayAnimation("IDLE", TRUE);
 					break;
 				case eLegState::WALKING:
-				{
 					if (p->GetCurrAnimationName() != "WALKING" && p->GetAfterAnimationName() != "WALKING")
 						p->PlayAnimation("WALKING", TRUE);
-					p->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 20.0f });
 					break;
-				}
 				case eLegState::WALKLEFT:
 					if (p->GetCurrAnimationName() != "WALKLEFT" && p->GetAfterAnimationName() != "WALKLEFT")
 						p->PlayAnimation("WALKLEFT", TRUE);
@@ -458,6 +466,7 @@ void Scene::RecvPacket()
 				}
 			}
 			p->SetPosition(packet.data.pos);
+			p->SetVelocity(packet.data.velocity);
 		}
 		break;
 	}

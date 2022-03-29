@@ -25,7 +25,7 @@ public:
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
-	void SendPlayerAnimation(eLegState letState) const;
+	void SendPlayerData(eLegState letState) const;
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }

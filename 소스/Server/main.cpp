@@ -203,7 +203,8 @@ void ProcessRecvPacket(int id)
 	client& cl = clients[id];
 	for (;;)
 	{
-		char buf[15]{};
+		// size, type, state, pos, velocity
+		char buf[1 + 1 + 1 + 12 + 12]{};
 		WSABUF wsabuf;
 		wsabuf.buf = buf;
 		wsabuf.len = sizeof(buf);
@@ -216,7 +217,9 @@ void ProcessRecvPacket(int id)
 		case CS_PACKET_UPDATE_LEGS:
 			cl.m_data.state = static_cast<eLegState>(buf[2]);
 			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
-			std::cout << cl.m_data.pos.x << ", " << cl.m_data.pos.y << ", " << cl.m_data.pos.z << ", " << std::endl;
+			memcpy(&cl.m_data.velocity, &buf[15], sizeof(cl.m_data.velocity));
+			std::cout << cl.m_data.pos.x		<< ", " << cl.m_data.pos.y		<< ", " << cl.m_data.pos.z		<< ", " << std::endl;
+			std::cout << cl.m_data.velocity.x	<< ", " << cl.m_data.velocity.y << ", " << cl.m_data.velocity.z << ", " << std::endl << std::endl;
 			break;
  		default:
 	        std::cout << "Server Received Unknown Packet" << std::endl;
@@ -265,7 +268,7 @@ int main()
 	std::cout << "process start" << std::endl;
 
 	auto time_point = std::chrono::system_clock::now();
-	for (;;) 
+	for (;;)
 	{
 		using namespace std;
 		auto point = chrono::system_clock::now();

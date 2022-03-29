@@ -117,51 +117,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		g_gameFramework.OnMouseEvent(hWnd, message, wParam, lParam);
 		break;
+	case WM_KEYUP:
 	case WM_KEYDOWN:
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
-		//if (wParam == 'w' || wParam == 'W')
-		//{
-		//	cs_packet_update_legs packet;
-		//	packet.size = sizeof(packet);
-		//	packet.type = CS_PACKET_UPDATE_LEGS;
-		//	packet.state = legState::WALKING;
-		//	int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-		//}
-		if (wParam == 'a' || wParam == 'A')
-		{
-			cs_packet_update_legs packet;
-			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = eLegState::WALKLEFT;
-			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-		}
-		if (wParam == 'd' || wParam == 'D')
-		{
-			cs_packet_update_legs packet;
-			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = eLegState::WALKRIGHT;
-			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-		}
-		if (wParam == 's' || wParam == 'S')
-		{
-			cs_packet_update_legs packet;
-			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = eLegState::WALKBACK;
-			int send_result = send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-		}
-		break;
-	case WM_KEYUP:
-		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
-		if (wParam == 'w' || wParam == 'W' || wParam == 'a' || wParam == 'A' || wParam == 'd' || wParam == 'D' || wParam == 's' || wParam == 'S')
-		{
-			cs_packet_update_legs packet;
-			packet.size = sizeof(packet);
-			packet.type = CS_PACKET_UPDATE_LEGS;
-			packet.state = eLegState::IDLE;
-			int send_result = send(g_c_socket, reinterpret_cast<char *>(&packet), sizeof(packet), 0);
-		}
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
