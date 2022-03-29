@@ -58,14 +58,16 @@ struct PS_INPUT
 	int materialIndex   : MATERIAL;
 };
 
-float4 Lighting(float4 position, float3 normal)
+float4 Lighting(Material material, float3 position, float3 normal)
 {
-    float4 lightColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float3 lightColor = float3(0.1f, 0.0f, 0.0f);
+
+	normal = normalize(normal);
+	float3 toEye = normalize(g_eye - position);
+
     for (int i = 0; i < MAX_LIGHT; ++i)
     {
-        float4 diffuse = dot(-g_lights[i].direction, normal);
-        diffuse = ceil(diffuse * 5) / 5.0f;
-        lightColor += diffuse;
+		lightColor += ComputeDirectionalLight(g_lights[i], material, normal, toEye);
     }
-    return saturate(lightColor);
+    return float4(lightColor, material.baseColor.a);
 }

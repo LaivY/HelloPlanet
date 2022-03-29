@@ -181,6 +181,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
 	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
+
+	m_meshes["LIGHTCUBE"] = make_shared<CubeMesh>(device, commandList, 5.0f, 5.0f, 5.0f);
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -206,9 +208,8 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 void Scene::CreateLights()
 {
-	Light light;
-	light.direction = XMFLOAT3{  };
-
+	Light light{};
+	light.direction = XMFLOAT3{ -25.0f, -6.0f, 3.0f };
 	m_cbSceneData->ligths[0] = light;
 }
 
@@ -292,6 +293,13 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	mob->PlayAnimation("ATTACK");
 	mob->SetBoundingBox(bbMob);
 	m_gameObjects.push_back(move(mob));
+
+	// 조명
+	auto light{ make_unique<GameObject>() };
+	light->SetMesh(m_meshes["LIGHTCUBE"]);
+	light->SetShader(m_shaders["DEFAULT"]);
+	light->SetPosition(XMFLOAT3{ 500.0f, 120.0f, -60.0f });
+	m_gameObjects.push_back(move(light));
 }
 
 void Scene::ReleaseUploadBuffer()
@@ -304,7 +312,7 @@ void Scene::ReleaseUploadBuffer()
 
 void Scene::Update(FLOAT deltaTime)
 {
-	UpdateLights(deltaTime);
+	//UpdateLights(deltaTime);
 }
 
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const

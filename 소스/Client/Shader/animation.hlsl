@@ -1,5 +1,5 @@
 #include "common.hlsl"
-//#define LIGHTING
+#define LIGHTING
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -22,7 +22,7 @@ PS_INPUT VS(VS_INPUT input)
 float4 PS(PS_INPUT input) : SV_TARGET
 {
 #ifdef LIGHTING
-    float4 lightColor = Lighting(input.positionW, input.normalW);
+    float4 lightColor = Lighting(g_materials[input.materialIndex], input.positionW.xyz, input.normalW);
     return g_materials[input.materialIndex].baseColor + lightColor;
 #else
     if (input.materialIndex < 0)
