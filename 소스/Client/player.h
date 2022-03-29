@@ -15,17 +15,18 @@ public:
 	Player(BOOL isMultiPlayer = FALSE);
 	virtual ~Player() = default;
 
-	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void OnKeyboardEvent(FLOAT deltaTime);
-	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	virtual void Update(FLOAT deltaTime);
-	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
-	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	void OnKeyboardEvent(FLOAT deltaTime);
+	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	void Update(FLOAT deltaTime);
+	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
-	void SendPlayerData(eLegState letState) const;
+	void SendPlayerData() const;
+	//void SendPlayerData(eLegState letState) const;
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }

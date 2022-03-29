@@ -17,7 +17,7 @@ public:
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
-	client() :m_data{ 0, false, eLegState::IDLE }, m_socket{}, m_clientBuf{}
+	client() : m_data{ 0, false, eLegState::IDLE }, m_socket{}, m_clientBuf{}
 	{
 	}
 
@@ -203,8 +203,9 @@ void ProcessRecvPacket(int id)
 	client& cl = clients[id];
 	for (;;)
 	{
-		// size, type, state, pos, velocity
-		char buf[1 + 1 + 1 + 12 + 12]{};
+		// cs_packet_update_legs
+		// size, type, state, pos, velocity, pitch
+		char buf[1 + 1 + 1 + 12 + 12 + 4]{};
 		WSABUF wsabuf;
 		wsabuf.buf = buf;
 		wsabuf.len = sizeof(buf);
@@ -218,6 +219,7 @@ void ProcessRecvPacket(int id)
 			cl.m_data.state = static_cast<eLegState>(buf[2]);
 			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
 			memcpy(&cl.m_data.velocity, &buf[15], sizeof(cl.m_data.velocity));
+			memcpy(&cl.m_data.yaw, &buf[27], sizeof(cl.m_data.yaw));
 			std::cout << cl.m_data.pos.x		<< ", " << cl.m_data.pos.y		<< ", " << cl.m_data.pos.z		<< ", " << std::endl;
 			std::cout << cl.m_data.velocity.x	<< ", " << cl.m_data.velocity.y << ", " << cl.m_data.velocity.z << ", " << std::endl << std::endl;
 			break;

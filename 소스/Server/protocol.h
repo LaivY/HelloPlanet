@@ -29,8 +29,10 @@ struct playerData
 	CHAR				id;
 	bool				isActive;
 	eLegState			state;
-	DirectX::XMFLOAT3	pos;
-	DirectX::XMFLOAT3	velocity;
+	DirectX::XMFLOAT3	pos;		// 위치
+	DirectX::XMFLOAT3	velocity;	// 속도
+	FLOAT				yaw;		// 회전각
+	//FLOAT				deltaYaw;	// 기존 각도에서 회전한 각
 };
 
 struct cs_packet_login
@@ -46,6 +48,7 @@ struct cs_packet_update_legs
 	eLegState			state;
 	DirectX::XMFLOAT3	pos;
 	DirectX::XMFLOAT3	velocity;
+	FLOAT				yaw;
 };
 
 struct sc_packet_login_ok

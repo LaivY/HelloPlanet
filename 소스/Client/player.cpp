@@ -22,6 +22,9 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			PlayAnimation("FIRING", TRUE);
 			break;
 		}
+		case WM_MOUSEMOVE:
+			SendPlayerData();
+			break;
 	}
 #endif
 }
@@ -39,7 +42,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			PlayAnimation("WALKLEFT", TRUE);
 		m_velocity.x = -m_speed / 2.0f;
 		m_velocity.z = m_speed / 2.0f;
-		SendPlayerData(eLegState::WALKLEFT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
 	{
@@ -48,7 +51,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			PlayAnimation("WALKRIGHT", TRUE);
 		m_velocity.x = m_speed / 2.0f;
 		m_velocity.z = m_speed / 2.0f;
-		SendPlayerData(eLegState::WALKRIGHT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
 	{
@@ -57,7 +60,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			PlayAnimation("WALKLEFT", TRUE);
 		m_velocity.x = -m_speed / 2.0f;
 		m_velocity.z = -m_speed / 2.0f;
-		SendPlayerData(eLegState::WALKLEFT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
 	{
@@ -66,7 +69,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			PlayAnimation("WALKRIGHT", TRUE);
 		m_velocity.x = m_speed / 2.0f;
 		m_velocity.z = -m_speed / 2.0f;
-		SendPlayerData(eLegState::WALKRIGHT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
 	{
@@ -76,7 +79,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
 			m_velocity.z = m_speed * 5.0f;
-			SendPlayerData(eLegState::RUNNING);
+			SendPlayerData();
 		}
 		else
 		{
@@ -84,7 +87,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("WALKING", TRUE);
 			m_velocity.z = m_speed;
-			SendPlayerData(eLegState::WALKING);
+			SendPlayerData();
 		}
 	}
 	else if (GetAsyncKeyState('A') & 0x8000)
@@ -93,7 +96,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
 		m_velocity.x = -m_speed;
-		SendPlayerData(eLegState::WALKLEFT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('D') & 0x8000)
 	{
@@ -101,7 +104,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
 		m_velocity.x = m_speed;
-		SendPlayerData(eLegState::WALKRIGHT);
+		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') & 0x8000)
 	{
@@ -109,7 +112,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKBACK", TRUE);
 		m_velocity.z = -m_speed;
-		SendPlayerData(eLegState::WALKBACK);
+		SendPlayerData();
 	}
 	//else SendPlayerData(eLegState::IDLE);
 #endif
@@ -130,7 +133,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		case 's': case 'S':
 			PlayAnimation("IDLE", TRUE);
 			m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
-			SendPlayerData(eLegState::IDLE);
+			SendPlayerData();
 			break;
 		case VK_SHIFT:
 			if (GetAsyncKeyState('W') & 0x8000)
@@ -293,7 +296,7 @@ void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 
 	// 카메라는 x,y축으로 회전할 수 있다.
 	// GameObject::Rotate에서 플레이어의 로컬 x,y,z축을 변경하므로 먼저 호출해야한다.
-	m_camera->Rotate(0.0f, pitch, yaw);
+	if (m_camera) m_camera->Rotate(0.0f, pitch, yaw);
 
 	// 플레이어는 y축으로만 회전할 수 있다.
 	GameObject::Rotate(0.0f, 0.0f, yaw);
@@ -364,16 +367,53 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 	m_upperAnimationInfo->blendingTimer = 0.0f;
 }
 
-void Player::SendPlayerData(eLegState legState) const
+void Player::SendPlayerData() const
 {
+#ifdef NETWORK
 	cs_packet_update_legs packet;
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_UPDATE_LEGS;
-	packet.state = legState;
+	
+	if (GetAsyncKeyState('W') && GetAsyncKeyState('A') & 0x8000)
+		packet.state = eLegState::WALKLEFT;
+	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
+		packet.state = eLegState::WALKRIGHT;
+	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
+		packet.state = eLegState::WALKLEFT;
+	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
+		packet.state = eLegState::WALKRIGHT;
+	else if (GetAsyncKeyState('W') & 0x8000)
+		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+			packet.state = eLegState::RUNNING;
+		else
+			packet.state = eLegState::WALKING;
+	else if (GetAsyncKeyState('A') & 0x8000)
+		packet.state = eLegState::WALKLEFT;
+	else if (GetAsyncKeyState('S') & 0x8000)
+		packet.state = eLegState::WALKBACK;
+	else if (GetAsyncKeyState('D') & 0x8000)
+		packet.state = eLegState::WALKRIGHT;
+	else
+		packet.state = eLegState::IDLE;
+
 	packet.pos = GetPosition();
 	packet.velocity = GetVelocity();
+	packet.yaw = m_yaw;
 	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+#endif
 }
+
+//void Player::SendPlayerData(eLegState legState) const
+//{
+//	cs_packet_update_legs packet;
+//	packet.size = sizeof(packet);
+//	packet.type = CS_PACKET_UPDATE_LEGS;
+//	packet.state = legState;
+//	packet.pos = GetPosition();
+//	packet.velocity = GetVelocity();
+//	packet.yaw = m_yaw;
+//	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+//}
 
 string Player::GetPureAnimationName(const string& animationName) const
 {

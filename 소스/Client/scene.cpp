@@ -41,7 +41,7 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateGameObjects(device, commandList);
 
 	// 맵 로딩
-	LoadMapObjects(device, commandList, Utile::PATH("objects.txt", Utile::RESOURCE));
+	LoadMapObjects(device, commandList, Utile::PATH("map.txt", Utile::RESOURCE));
 }
 
 void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
@@ -62,7 +62,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 #endif
 #ifdef FIRSTVIEW
-	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 #endif
 #ifdef THIRDVIEW
 	if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
@@ -503,6 +503,8 @@ void Scene::RecvPacket()
 			}
 			p->SetPosition(packet.data.pos);
 			p->SetVelocity(packet.data.velocity);
+			FLOAT yaw{ p->GetRollPitchYaw().z };
+			p->Rotate(0.0f, 0.0f, packet.data.yaw - yaw);
 		}
 		break;
 	}
