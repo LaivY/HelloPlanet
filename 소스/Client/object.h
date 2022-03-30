@@ -113,3 +113,18 @@ public:
 private:
 	shared_ptr<Camera> m_camera;
 };
+
+class Bullet : public GameObject
+{
+public:
+	Bullet(const XMFLOAT3& direction, FLOAT speed = 500.0f, FLOAT lifeTime = 2.0f);
+	~Bullet() = default;
+
+	void Update(FLOAT deltaTime);
+
+private:
+	XMFLOAT3	m_direction;
+	FLOAT		m_speed;
+	FLOAT		m_lifeTime;
+	FLOAT		m_lifeTimer;
+};

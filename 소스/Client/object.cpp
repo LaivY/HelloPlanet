@@ -177,3 +177,23 @@ void Skybox::Update(FLOAT deltaTime)
 	if (!m_camera) return;
 	SetPosition(m_camera->GetEye());
 }
+
+Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direction{ Vector3::Normalize(direction) }, m_speed{ speed }, m_lifeTime{ lifeTime }, m_lifeTimer{}
+{
+	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
+	XMFLOAT3 right{ Vector3::Normalize(Vector3::Cross(up, direction)) };
+	up = Vector3::Normalize(Vector3::Cross(direction, right));
+	
+	m_worldMatrix._11 = right.x;		m_worldMatrix._12 = right.y;		m_worldMatrix._13 = right.z;
+	m_worldMatrix._21 = up.x;			m_worldMatrix._22 = up.y;			m_worldMatrix._23 = up.z;
+	m_worldMatrix._31 = direction.x;	m_worldMatrix._32 = direction.y;	m_worldMatrix._33 = direction.z;
+}
+
+void Bullet::Update(FLOAT deltaTime)
+{
+	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
+	
+	m_lifeTimer += deltaTime;
+	if (m_lifeTimer > m_lifeTime)
+		m_isDeleted = TRUE;
+}

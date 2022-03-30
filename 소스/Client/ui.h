@@ -5,29 +5,11 @@
 #include "shader.h"
 #include "texture.h"
 
-class UI
-{
-public:
-	UI() = default;
-	~UI() = default;
-
-	void Update(FLOAT deltaTime);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-
-	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
-	void SetShader(const shared_ptr<Shader>& shader) { m_shader = shader; }
-
-private:
-	vector<unique_ptr<UIObject>>	m_uiObjects;
-	shared_ptr<Camera>				m_camera;
-	shared_ptr<Shader>				m_shader;
-};
-
 enum class eUIPivot
-{ 
-	LEFTTOP,	CENTERTOP,	RIGHTTOP,
-	LEFTCENTER, CENTER,		RIGHTCENTER,
-	LEFTBOT,	CENTERBOT,	RIGHTBOT
+{
+	LEFTTOP, CENTERTOP, RIGHTTOP,
+	LEFTCENTER, CENTER, RIGHTCENTER,
+	LEFTBOT, CENTERBOT, RIGHTBOT
 };
 
 class UIObject
@@ -52,4 +34,22 @@ private:
 	XMFLOAT2			m_size;
 	unique_ptr<Mesh>	m_mesh;
 	shared_ptr<Texture> m_texture;
+};
+
+class UI
+{
+public:
+	UI() = default;
+	~UI() = default;
+
+	void Update(FLOAT deltaTime);
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+
+	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
+	void SetShader(const shared_ptr<Shader>& shader) { m_shader = shader; }
+
+private:
+	vector<unique_ptr<UIObject>>	m_uiObjects;
+	shared_ptr<Camera>				m_camera;
+	shared_ptr<Shader>				m_shader;
 };

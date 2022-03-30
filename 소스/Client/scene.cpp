@@ -76,6 +76,36 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
+
+	// 총알 발사 테스트
+	switch (message)
+	{
+	case WM_LBUTTONDOWN:
+	{
+		// 총알 시작 좌표
+		XMFLOAT3 start{ m_camera->GetEye() };
+		start = Vector3::Add(start, m_player->GetRight());
+		start = Vector3::Add(start, Vector3::Mul(m_player->GetUp(), -0.5f));
+
+		// 화면 정중앙 엄청 멀리
+		XMFLOAT3 _far{ m_camera->GetEye() };
+		_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+
+		// 총 -> 화면 정중앙 멀리
+		XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
+		target = Vector3::Normalize(target);
+
+		// 총구에서 나오도록
+		start = Vector3::Add(start, Vector3::Mul(target, 10.0f));
+
+		unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
+		bullet->SetMesh(m_meshes["BULLET"]);
+		bullet->SetShader(m_shaders["DEFAULT"]);
+		bullet->SetPosition(start);
+		m_gameObjects.push_back(move(bullet));
+		break;
+	}
+	}
 }
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
@@ -168,6 +198,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MG"]->LoadMesh(device, commandList, Utile::PATH("MG/MG.txt", Utile::RESOURCE));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
+	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
 	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
 
@@ -194,10 +226,10 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
-	m_shaders["MODEL"] = make_shared<ModelShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["ANIMATION"] = make_shared<AnimationShader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["LINK"] = make_shared<LinkShader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["BOUNDINGBOX"] = make_shared<BoundingBoxShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["BOUNDINGBOX"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -290,14 +322,14 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_gameObjects.push_back(move(floor));
 
 	// 몬스터
-	auto mob{ make_unique<GameObject>() };
-	mob->SetMesh(m_meshes["GAROO"]);
-	mob->SetShader(m_shaders["ANIMATION"]);
-	mob->SetTexture(m_textures["GAROO"]);
-	mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
-	mob->PlayAnimation("IDLE");
-	mob->SetBoundingBox(bbMob);
-	m_gameObjects.push_back(move(mob));
+	//auto mob{ make_unique<GameObject>() };
+	//mob->SetMesh(m_meshes["GAROO"]);
+	//mob->SetShader(m_shaders["MODEL"]);
+	//mob->SetTexture(m_textures["GAROO"]);
+	//mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
+	//mob->PlayAnimation("IDLE");
+	//mob->SetBoundingBox(bbMob);
+	//m_gameObjects.push_back(move(mob));
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -341,7 +373,11 @@ void Scene::ReleaseUploadBuffer()
 
 void Scene::Update(FLOAT deltaTime)
 {
-	//UpdateLights(deltaTime);
+	// 게임오브젝트 삭제
+	//m_gameObjects.erase(remove_if(m_gameObjects.begin(), m_gameObjects.end(),
+	//	[](unique_ptr<GameObject>& object) {
+	//		return object->isDeleted();
+	//	}), m_gameObjects.end());
 }
 
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
@@ -378,20 +414,7 @@ void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comman
 
 void Scene::UpdateLights(FLOAT deltaTime)
 {
-	// 0 ~ 2pi
-	static float t{ 0.0f };
-	const float radius{ 50.0f };
 
-	XMFLOAT3 position{ radius * cosf(t), 0.0f, radius * sinf(t) };
-	XMFLOAT3 direction{ Vector3::Normalize(Vector3::Mul(position, -1)) };
-
-	// 데이터 설정
-	m_cbSceneData->ligths[0].position = position;
-	m_cbSceneData->ligths[0].direction = direction;
-
-	t += 0.25f * deltaTime;
-	if (t >= 2.0f * 3.141592f)
-		t = 0.0f;
 }
 
 void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -434,7 +457,7 @@ void Scene::ProcessClient(LPVOID arg)
 void Scene::RecvPacket()
 {
 	// size, type, PlayerData
-	char recv_buf[sizeof(UCHAR) + sizeof(UCHAR) + sizeof(playerData)];
+	char recv_buf[sizeof(UCHAR) + sizeof(UCHAR) + sizeof(PlayerData)];
 	WSABUF wsabuf;
 	wsabuf.buf = recv_buf;
 	wsabuf.len = sizeof(recv_buf);
@@ -471,7 +494,7 @@ void Scene::RecvPacket()
 		for (auto& p : m_multiPlayers)
 		{
 			if (!p) continue;
-			//if (p->GetId() != packet.data.id) continue;
+			if (p->GetId() != packet.data.id) continue;
 			if (AnimationInfo* aniInfo{ p->GetAnimationInfo() })
 			{
 				switch (packet.data.state)
@@ -510,51 +533,9 @@ void Scene::RecvPacket()
 		break;
 	}
 	default:
-		//char garbage[BUF_SIZE];
-		//int error_code = recv(g_c_socket, garbage, recv_size - 2, MSG_WAITALL);
-		//if (error_code == SOCKET_ERROR) error_display("RecvData");
 		cout << "Wrong Packet" << endl;
 		break;
 	}
-
-	/*constexpr int head_size = 2;
-	char head_buf[head_size];
-	char net_buf[BUF_SIZE];
-	
-	int recv_result = recv(g_c_socket, head_buf, head_size, MSG_WAITALL);
-	if (recv_result == SOCKET_ERROR)
-	{
-		error_display("recv()");
-		while (1);
-	}
-	int packet_size = head_buf[0];
-	int packet_type = head_buf[1];
-	cout << "[packet]: " << packet_size << ", " << packet_type << endl;
-
-	switch (packet_type)
-	{
-	case SC_PACKET_LOGIN_OK: 
-	{
-		sc_packet_login_ok recv_packet;
-		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
-		cout << "[SC_PACKET_LOGIN_OK] received" << endl;
-		break;
-	}
-	case SC_PACKET_UPDATE_CLIENT: 
-	{
-		sc_packet_update_client recv_packet;
-		recv_result += recv(g_c_socket, reinterpret_cast<char*>(&recv_packet) + head_size, packet_size - head_size, MSG_WAITALL);
-		cout << "[SC_PACKET_UPDATE_CLIENT] received" << endl;
-		break;
-	}
-	default: 
-	{
-		char garbage[20];
-		recv_result += recv(g_c_socket, garbage, packet_size - 2, MSG_WAITALL);
-		cout << "[Unknown_Packet] received" << endl;
-		break;
-	}
-	}*/
 }
 
 void Scene::SendPacket(LPVOID lp_packet)

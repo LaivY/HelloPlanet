@@ -410,7 +410,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
 }
 
-BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height)
+BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position)
 {
 	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 

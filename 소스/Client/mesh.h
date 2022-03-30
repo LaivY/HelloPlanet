@@ -105,7 +105,7 @@ public:
 class BillboardMesh : public Mesh
 {
 public:
-	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, FLOAT width, FLOAT height);
+	BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position = { 0.0f, 0.0f, 0.0f });
 	~BillboardMesh() = default;
 };
 

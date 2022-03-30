@@ -11,7 +11,7 @@ void errorDisplay(const int errNum, const char* msg);
 
 class client {
 public:
-	playerData		m_data;
+	PlayerData		m_data;
 	SOCKET			m_socket;
 	char			m_clientBuf[BUF_SIZE];
 	std::mutex		m_lock;
@@ -210,7 +210,7 @@ void ProcessRecvPacket(int id)
 	for (;;)
 	{
 		// cs_packet_update_legs
-		// size, type, state, pos, velocity, pitch
+		// size, type, state, pos, velocity, yaw
 		char buf[1 + 1 + 1 + 12 + 12 + 4]{};
 		WSABUF wsabuf;
 		wsabuf.buf = buf;
@@ -220,7 +220,7 @@ void ProcessRecvPacket(int id)
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
-			if(WSAGetLastError() == WSAECONNRESET)
+			if (WSAGetLastError() == WSAECONNRESET)
 			{
 				std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << std::endl;
 				Disconnect(cl.m_data.id);
