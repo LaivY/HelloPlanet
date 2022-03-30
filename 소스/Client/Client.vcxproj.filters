@@ -82,6 +82,9 @@
     <ClInclude Include="..\Server\protocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="ui.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp">
@@ -121,6 +124,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="timer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ui.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

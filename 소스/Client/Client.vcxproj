@@ -166,6 +166,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="texture.h" />
     <ClInclude Include="timer.h" />
+    <ClInclude Include="ui.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp" />
@@ -181,6 +182,7 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="timer.cpp" />
+    <ClCompile Include="ui.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\animation.hlsl">
