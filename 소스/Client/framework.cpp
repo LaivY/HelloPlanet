@@ -425,6 +425,11 @@ void GameFramework::ConnectServer()
 	// socket 생성
 	g_c_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (g_c_socket == INVALID_SOCKET) error_quit("socket()");
+	LINGER optVal;
+	optVal.l_onoff = 1;
+	optVal.l_linger = 0;
+	//int retVal = setsockopt(g_c_socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&optVal), sizeof(optVal));
+	//if (retVal == SOCKET_ERROR) error_quit("setsockopt()");
 
 	// connect
 	SOCKADDR_IN server_address;

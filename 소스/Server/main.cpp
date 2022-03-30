@@ -14,6 +14,7 @@ public:
 	playerData		m_data;
 	SOCKET			m_socket;
 	char			m_clientBuf[BUF_SIZE];
+	std::mutex		m_lock;
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
@@ -59,12 +60,14 @@ std::vector<std::thread> threads;
 
 CHAR GetNewId()
 {
-	for (int i = 0; i < MAX_USER; ++i)
-		if (false == clients[i].m_data.isActive) 
+	for (int i = 0; i < MAX_USER; ++i) {
+		std::cout << "id 검색중: " << i << std::endl;
+		if (false == clients[i].m_data.isActive)
 		{
-			clients[i].m_data.isActive = true;
+			std::cout << "찾았다: " << i << std::endl;
 			return i;
 		}
+	}
 	std::cout << "Maximum Number of Clients Overflow!!\n";
 	return -1;
 }
@@ -84,9 +87,9 @@ void SendLoginOkPacket(int id)
 	wsabuf.buf = buf;
 	wsabuf.len = sizeof(buf);
 	DWORD sentByte;
-	std::cout << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << std::endl;
-	int retVal = WSASend(cl.m_socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv");
+	std::cout << "login pacet: " << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << std::endl;
+	const int retVal = WSASend(cl.m_socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Login Send");
 }
 
 //void send_move_packet(int c_id, int mover)
@@ -113,13 +116,16 @@ void SendLoginOkPacket(int id)
 
 void Disconnect(int id)
 {
-	clients[id].m_data.isActive = false;
-	for (const auto& cl : clients)
-	{
-		if (false == cl.m_data.isActive) continue;
-		//send_log_out(cl.m_data,id, id);
-	}
-	closesocket(clients[id].m_socket);
+	client& cl = clients[id];
+	cl.m_lock.lock();
+	cl.m_data.isActive = false;
+	cl.m_data.id = 0;
+	cl.m_data.pos = {};
+	cl.m_data.state = eLegState::IDLE;
+	cl.m_data.velocity = {};
+	closesocket(cl.m_socket);
+	cl.m_lock.unlock();
+
 }
 
 //void process_packet(int client_id, unsigned char* p)
@@ -212,7 +218,22 @@ void ProcessRecvPacket(int id)
 		DWORD recvd_byte;
 		DWORD flag{ 0 };
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv");
+		if (retVal == SOCKET_ERROR)
+		{
+			if(WSAGetLastError() == WSAECONNRESET)
+			{
+				std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << std::endl;
+				Disconnect(cl.m_data.id);
+				break;
+			}
+			errorDisplay(WSAGetLastError(), "Recv");
+		}
+		if (recvd_byte == 0)
+		{
+			std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << std::endl;
+			Disconnect(cl.m_data.id);
+			break;
+		}
 		switch (static_cast<int>(buf[1]))
 		{
 		case CS_PACKET_UPDATE_LEGS:
@@ -227,6 +248,29 @@ void ProcessRecvPacket(int id)
 	        std::cout << "Server Received Unknown Packet" << std::endl;
 			break;
 		}
+	}
+}
+
+bool g_isAccept = false;
+void AcceptThread(SOCKET socket)
+{
+	SOCKADDR_IN serverAddr;
+	INT addrSize = sizeof(serverAddr);
+	while (true) {
+		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
+		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
+		CHAR id{ GetNewId() };
+		client& cl = clients[id];
+		cl.m_lock.lock();
+		cl.m_socket = cSocket;
+		cl.m_data.id = id;
+		cl.m_data.isActive = true;
+		cl.m_data.state = eLegState::IDLE;
+		SendLoginOkPacket(id);
+		cl.m_lock.unlock();
+		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
+		threads.emplace_back(ProcessRecvPacket, id);
+		g_isAccept = true;
 	}
 }
 
@@ -252,20 +296,8 @@ int main()
 	//listen
 	retVal = listen(socket, SOMAXCONN);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "listen");
-
-	INT addrSize = sizeof(serverAddr);
-	for (int i = 0; i < MAX_USER; ++i)
-	{
-		CHAR id{ GetNewId() };
-		client& cl = clients[id];
-		cl.m_socket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
-		if (cl.m_socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
-		cl.m_data.id = id;
-		cl.m_data.state = eLegState::IDLE;
-		SendLoginOkPacket(id);
-		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
-		threads.emplace_back(ProcessRecvPacket, id);
-	}
+	
+	threads.emplace_back(AcceptThread, socket);
 
 	std::cout << "process start" << std::endl;
 
@@ -275,31 +307,48 @@ int main()
 		using namespace std;
 		auto point = chrono::system_clock::now();
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(point - time_point).count() / static_cast<float>(1000);
-
-		// process update packet
-		for (const auto& cl : clients)
-		{
-			sc_packet_update_client packet;
-			packet.data = cl.m_data;
-			packet.size = sizeof(packet);
-			packet.type = SC_PACKET_UPDATE_CLIENT;
-			char buf[sizeof(packet)];
-			memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-			WSABUF wsabuf;
-			wsabuf.buf = buf;
-			wsabuf.len = sizeof(buf);
-			DWORD sent_byte;
-			for (const auto& other : clients)
+		if (g_isAccept) {
+			// process update packet
+			for (const auto& cl : clients)
 			{
-				retVal = WSASend(other.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send");
+				if (!cl.m_data.isActive) continue;
+				sc_packet_update_client packet;
+				packet.data = cl.m_data;
+				packet.size = sizeof(packet);
+				packet.type = SC_PACKET_UPDATE_CLIENT;
+				char buf[sizeof(packet)];
+				memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+				WSABUF wsabuf;
+				wsabuf.buf = buf;
+				wsabuf.len = sizeof(buf);
+				DWORD sent_byte;
+				//for (const auto& other : clients)
+				//{
+				for (int i=0; i < MAX_USER; ++i){
+					if (!clients[i].m_data.isActive) continue;
+					retVal = WSASend(clients[i].m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+					if (retVal == SOCKET_ERROR)
+					{
+						if (WSAGetLastError() == WSAECONNRESET)
+						{
+							std::cout << "Disconnect " << static_cast<int>(cl.m_data.id)  << " " << clients[i].m_data.id << std::endl;
+							//Disconnect(cl.m_data.id);
+						}
+						else
+						{
+							cout << "ERROR SEND" << i << ", " << static_cast<int>(clients[i].m_data.id) << ", " << clients[i].m_data.isActive << endl;
+							cout << static_cast<int>(packet.data.id) << ", " << packet.data.isActive << endl;
+							errorDisplay(WSAGetLastError(), "Send");
+						}
+					}
+
+				}
 			}
 		}
-
 		time_point = point;
-		if (chrono::system_clock::now() - time_point < 16ms)
+		if (chrono::system_clock::now() - time_point < 32ms)
 		{
-			this_thread::sleep_for(16ms - (chrono::system_clock::now() - point));
+			this_thread::sleep_for(32ms - (chrono::system_clock::now() - point));
 		}
 	}
 	
@@ -320,7 +369,7 @@ void errorDisplay(const int errNum, const char* msg)
 		nullptr, errNum,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, nullptr);
-	std::wcout << "[" << msg << " Error] " << lpMsgBuf << std::endl;
+	std::wcout << errNum <<" [" << msg << " Error] " << lpMsgBuf << std::endl;
 	while (true);
 	LocalFree(lpMsgBuf);
 }
