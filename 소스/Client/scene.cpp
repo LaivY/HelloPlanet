@@ -115,6 +115,7 @@ void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	if (wParam == VK_ESCAPE)
 	{
+		closesocket(g_c_socket);
 		exit(0);
 	}
 }
