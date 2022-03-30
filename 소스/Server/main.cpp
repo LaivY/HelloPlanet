@@ -221,7 +221,7 @@ void ProcessRecvPacket(int id)
 		{
 			if(WSAGetLastError() == WSAECONNRESET)
 			{
-				std::cout << "Disconnect " << cl.m_data.id << std::endl;
+				std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << std::endl;
 				Disconnect(cl.m_data.id);
 				break;
 			}
@@ -229,7 +229,7 @@ void ProcessRecvPacket(int id)
 		}
 		if (recvd_byte == 0)
 		{
-			std::cout << "Disconnect " << cl.m_data.id << std::endl;
+			std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << std::endl;
 			Disconnect(cl.m_data.id);
 			break;
 		}
@@ -239,8 +239,8 @@ void ProcessRecvPacket(int id)
 			cl.m_data.state = static_cast<eLegState>(buf[2]);
 			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
 			memcpy(&cl.m_data.velocity, &buf[15], sizeof(cl.m_data.velocity));
-			std::cout << cl.m_data.pos.x		<< ", " << cl.m_data.pos.y		<< ", " << cl.m_data.pos.z		<< std::endl;
-			std::cout << cl.m_data.velocity.x	<< ", " << cl.m_data.velocity.y << ", " << cl.m_data.velocity.z << std::endl;
+			std::cout << static_cast<int>(cl.m_data.id) << " : " << cl.m_data.pos.x << ", " << cl.m_data.pos.y << ", " << cl.m_data.pos.z << std::endl;
+			//std::cout << cl.m_data.velocity.x	<< ", " << cl.m_data.velocity.y << ", " << cl.m_data.velocity.z << std::endl;
 			break;
  		default:
 	        std::cout << "Server Received Unknown Packet" << std::endl;
@@ -327,9 +327,17 @@ int main()
 					retVal = WSASend(clients[i].m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 					if (retVal == SOCKET_ERROR)
 					{
-						cout << "ERROR SEND" << i << ", " << static_cast<int>(clients[i].m_data.id) << ", " << clients[i].m_data.isActive << endl;
-						cout << static_cast<int>(packet.data.id) << ", " << packet.data.isActive << endl;
-						errorDisplay(WSAGetLastError(), "Send");
+						if (WSAGetLastError() == WSAECONNRESET)
+						{
+							std::cout << "Disconnect " << static_cast<int>(cl.m_data.id)  << " " << clients[i].m_data.id << std::endl;
+							//Disconnect(cl.m_data.id);
+						}
+						else
+						{
+							cout << "ERROR SEND" << i << ", " << static_cast<int>(clients[i].m_data.id) << ", " << clients[i].m_data.isActive << endl;
+							cout << static_cast<int>(packet.data.id) << ", " << packet.data.isActive << endl;
+							errorDisplay(WSAGetLastError(), "Send");
+						}
 					}
 
 				}
