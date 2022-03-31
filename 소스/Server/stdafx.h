@@ -10,3 +10,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#pragma comment (lib, "WS2_32.LIB")
+#pragma comment (lib, "MSWSock.LIB")
+
+
+
+void errorDisplay(const int errNum, const char* msg);

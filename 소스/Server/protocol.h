@@ -1,5 +1,4 @@
 ﻿#pragma once
-//#include <DirectXMath.h>
 
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";

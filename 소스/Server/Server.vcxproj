@@ -140,10 +140,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="framework.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="session.cpp" />
+    <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="framework.h" />
+    <ClInclude Include="main.h" />
     <ClInclude Include="protocol.h" />
+    <ClInclude Include="session.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
