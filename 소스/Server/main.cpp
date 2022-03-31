@@ -131,7 +131,6 @@ void Disconnect(int id)
 	cl.m_data.yaw = 0.0f;
 	closesocket(cl.m_socket);
 	cl.m_lock.unlock();
-
 }
 
 //void process_packet(int client_id, unsigned char* p)
@@ -218,9 +217,7 @@ void ProcessRecvPacket(int id)
 		// cs_packet_update_legs
 		// size, type, aniType, upperAniType, pos, velocity, yaw
 		char buf[1 + 1 + 1 + 1 + 12 + 12 + 4]{};
-		WSABUF wsabuf;
-		wsabuf.buf = buf;
-		wsabuf.len = sizeof(buf);
+		WSABUF wsabuf{sizeof(buf), buf};
 		DWORD recvd_byte;
 		DWORD flag{ 0 };
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
@@ -263,11 +260,11 @@ void ProcessRecvPacket(int id)
 bool g_isAccept = false;
 void AcceptThread(SOCKET socket)
 {
-	SOCKADDR_IN serverAddr;
-	INT addrSize = sizeof(serverAddr);
+	SOCKADDR_IN clientAddr;
+	INT addrSize = sizeof(clientAddr);
 	while (true)
 	{
-		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
+		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
 		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
 
 		CHAR id{ GetNewId() };
@@ -282,7 +279,7 @@ void AcceptThread(SOCKET socket)
 		SendLoginOkPacket(id);
 		cl.m_lock.unlock();
 
-		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
+		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(clientAddr.sin_addr) << std::endl;
 		threads.emplace_back(ProcessRecvPacket, id);
 		g_isAccept = true;
 	}
@@ -315,63 +312,70 @@ int main()
 
 	std::cout << "process start" << std::endl;
 
-	auto time_point = std::chrono::system_clock::now();
+	// 1초에 60회 동작하는 루프
+	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
+	using ms = std::chrono::duration<float, std::milli>;
+	std::chrono::time_point<std::chrono::steady_clock> fpsTimer(std::chrono::steady_clock::now());
+	frame FPS{};
+	frame frameNumber{};
 	for (;;)
 	{
 		using namespace std;
-		auto point = chrono::system_clock::now();
-		float elapsed = chrono::duration_cast<chrono::milliseconds>(point - time_point).count() / static_cast<float>(1000);
-		if (g_isAccept)
+		FPS = duration_cast<frame>(chrono::steady_clock::now() - fpsTimer);
+		if (FPS.count() >= 1)
 		{
-			// process update packet
-			for (const auto& cl : clients)
+			frameNumber = chrono::duration_cast<frame>(frameNumber + FPS);
+			fpsTimer = chrono::steady_clock::now();
+			cout << "LastFrame: " << duration_cast<ms>(FPS).count() << "ms  |  FPS: " << FPS.count() * 60 << " |  FrameNumber: " << frameNumber.count() << endl;
+			if (1 & frameNumber.count()) // even FrameNumber
 			{
-				if (!cl.m_data.isActive) continue;
-
-				sc_packet_update_client packet;
-				packet.size = sizeof(packet);
-				packet.type = SC_PACKET_UPDATE_CLIENT;
-				packet.data = cl.m_data;
-
-				char buf[sizeof(packet)];
-				memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-
-				WSABUF wsabuf;
-				wsabuf.buf = buf;
-				wsabuf.len = sizeof(buf);
-
-				DWORD sent_byte;
-				//for (const auto& other : clients)
-				//{
-				for (int i = 0; i < MAX_USER; ++i)
+				// playerData Send
+				if (g_isAccept)
 				{
-					if (!clients[i].m_data.isActive) continue;
-					retVal = WSASend(clients[i].m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-					if (retVal == SOCKET_ERROR)
+					for (const auto& cl : clients)
 					{
-						if (WSAGetLastError() == WSAECONNRESET)
+						if (!cl.m_data.isActive) continue;
+						sc_packet_update_client packet;
+						packet.size = sizeof(packet);
+						packet.type = SC_PACKET_UPDATE_CLIENT;
+						packet.data = cl.m_data;
+						char buf[sizeof(packet)];
+						memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+						WSABUF wsabuf{ sizeof(buf), buf };
+						DWORD sent_byte;
+						for (int i = 0; i < MAX_USER; ++i)
 						{
-							std::cout << "Disconnect " << static_cast<int>(cl.m_data.id)  << " " << clients[i].m_data.id << std::endl;
-							//Disconnect(cl.m_data.id);
-						}
-						else
-						{
-							cout << "ERROR SEND" << i << ", " << static_cast<int>(clients[i].m_data.id) << ", " << clients[i].m_data.isActive << endl;
-							cout << static_cast<int>(packet.data.id) << ", " << packet.data.isActive << endl;
-							errorDisplay(WSAGetLastError(), "Send");
+							if (!clients[i].m_data.isActive) continue;
+							retVal = WSASend(clients[i].m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+							if (retVal == SOCKET_ERROR)
+							{
+								if (WSAGetLastError() == WSAECONNRESET)
+								{
+									std::cout << "Disconnect " << static_cast<int>(cl.m_data.id) << " " << clients[i].m_data.id << std::endl;
+									//Disconnect(cl.m_data.id);
+								}
+								else
+								{
+									cout << "ERROR SEND" << i << ", " << static_cast<int>(clients[i].m_data.id) << ", " << clients[i].m_data.isActive << endl;
+									cout << static_cast<int>(packet.data.id) << ", " << packet.data.isActive << endl;
+									errorDisplay(WSAGetLastError(), "Send");
+								}
+							}
 						}
 					}
+					// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
+					for (auto& c : clients)
+						c.m_data.upperAniType = eUpperAnimationType::NONE;
 				}
+
 			}
-			// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
-			for (auto& c : clients)
-				c.m_data.upperAniType = eUpperAnimationType::NONE;
+			else // odd FrameNumber
+			{
+				// playerData Send
+			}
+			if (frameNumber.count() >= 60) frameNumber = chrono::duration_cast<frame>(frameNumber - frameNumber);
 		}
-		time_point = point;
-		if (chrono::system_clock::now() - time_point < 32ms)
-		{
-			this_thread::sleep_for(32ms - (chrono::system_clock::now() - point));
-		}
+	
 	}
 	
 	for (auto& cl : clients)
@@ -393,6 +397,6 @@ void errorDisplay(const int errNum, const char* msg)
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		reinterpret_cast<LPTSTR>(&lpMsgBuf), 0, nullptr);
 	std::wcout << errNum <<" [" << msg << " Error] " << lpMsgBuf << std::endl;
-	while (true);
+	//while (true);
 	LocalFree(lpMsgBuf);
 }

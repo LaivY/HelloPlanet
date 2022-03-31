@@ -31,6 +31,14 @@ enum class eUpperAnimationType : char
 	FIRING
 };
 
+enum class eMobAnimationType : char
+{ // 임시
+	IDLE,
+	ACK,
+	RUNNING,
+	DIE
+};
+
 #pragma pack (push, 1)
 struct PlayerData
 {
@@ -38,6 +46,16 @@ struct PlayerData
 	bool				isActive;		// 유효 여부
 	eAnimationType		aniType;		// 애니메이션 종류
 	eUpperAnimationType upperAniType;	// 상체 애니메이션 종류
+	DirectX::XMFLOAT3	pos;			// 위치
+	DirectX::XMFLOAT3	velocity;		// 속도
+	FLOAT				yaw;			// 회전각
+};
+
+struct MonsterData
+{
+	CHAR				id;				// 몬스터 고유 번호
+	CHAR				type;			// 몬스터 타입
+	eMobAnimationType	state;			// 애니메이션 종류
 	DirectX::XMFLOAT3	pos;			// 위치
 	DirectX::XMFLOAT3	velocity;		// 속도
 	FLOAT				yaw;			// 회전각
