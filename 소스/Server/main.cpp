@@ -9,7 +9,7 @@
 void errorDisplay(const int errNum, const char* msg);
 //void CALLBACK recv_callback(DWORD err, DWORD num_bytes, LPWSAOVERLAPPED over, DWORD flags);
 
-class client {
+class Client {
 public:
 	PlayerData		m_data;
 	SOCKET			m_socket;
@@ -18,11 +18,12 @@ public:
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 public:
-	client() : m_data{ 0, false, eLegState::IDLE }, m_socket{}, m_clientBuf{}
+	Client() : m_data{ 0, false, eAnimationType::IDLE }, m_socket{}, m_clientBuf{}
 	{
+
 	}
 
-	~client()
+	~Client()
 	{
 		closesocket(m_socket);
 	}
@@ -55,7 +56,7 @@ public:
 //	WSASend(c_socket, c_wsabuf, 1, 0, 0, &c_over, send_callback);
 //}
 
-std::array <client, MAX_USER> clients;
+std::array <Client, MAX_USER> clients;
 std::vector<std::thread> threads;
 
 CHAR GetNewId()
@@ -74,13 +75,16 @@ CHAR GetNewId()
 
 void SendLoginOkPacket(int id)
 {
-	client& cl = clients[id];
+	Client& cl = clients[id];
+
 	sc_packet_login_ok packet;
-	packet.data.id = id;
-	packet.data.isActive = true;
-	packet.data.state = eLegState::IDLE;
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
+	packet.data.id = id;
+	packet.data.isActive = true;
+	packet.data.aniType = eAnimationType::IDLE;
+	packet.data.upperAniType = eUpperAnimationType::NONE;
+
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	WSABUF wsabuf;
@@ -116,13 +120,15 @@ void SendLoginOkPacket(int id)
 
 void Disconnect(int id)
 {
-	client& cl = clients[id];
+	Client& cl = clients[id];
 	cl.m_lock.lock();
-	cl.m_data.isActive = false;
 	cl.m_data.id = 0;
+	cl.m_data.isActive = false;
+	cl.m_data.aniType = eAnimationType::IDLE;
+	cl.m_data.upperAniType = eUpperAnimationType::NONE;
 	cl.m_data.pos = {};
-	cl.m_data.state = eLegState::IDLE;
 	cl.m_data.velocity = {};
+	cl.m_data.yaw = 0.0f;
 	closesocket(cl.m_socket);
 	cl.m_lock.unlock();
 
@@ -206,12 +212,12 @@ void Disconnect(int id)
 
 void ProcessRecvPacket(int id)
 {
-	client& cl = clients[id];
+	Client& cl = clients[id];
 	for (;;)
 	{
 		// cs_packet_update_legs
-		// size, type, state, pos, velocity, yaw
-		char buf[1 + 1 + 1 + 12 + 12 + 4]{};
+		// size, type, aniType, upperAniType, pos, velocity, yaw
+		char buf[1 + 1 + 1 + 1 + 12 + 12 + 4]{};
 		WSABUF wsabuf;
 		wsabuf.buf = buf;
 		wsabuf.len = sizeof(buf);
@@ -237,12 +243,15 @@ void ProcessRecvPacket(int id)
 		switch (static_cast<int>(buf[1]))
 		{
 		case CS_PACKET_UPDATE_LEGS:
-			cl.m_data.state = static_cast<eLegState>(buf[2]);
-			memcpy(&cl.m_data.pos, &buf[3], sizeof(cl.m_data.pos));
-			memcpy(&cl.m_data.velocity, &buf[15], sizeof(cl.m_data.velocity));
-			memcpy(&cl.m_data.yaw, &buf[27], sizeof(cl.m_data.yaw));
-			std::cout << cl.m_data.pos.x		<< ", " << cl.m_data.pos.y		<< ", " << cl.m_data.pos.z		<< ", " << std::endl;
-			std::cout << cl.m_data.velocity.x	<< ", " << cl.m_data.velocity.y << ", " << cl.m_data.velocity.z << ", " << std::endl << std::endl;
+			cl.m_data.aniType = static_cast<eAnimationType>(buf[2]);
+			cl.m_data.upperAniType = static_cast<eUpperAnimationType>(buf[3]);
+			memcpy(&cl.m_data.pos, &buf[4], sizeof(cl.m_data.pos));
+			memcpy(&cl.m_data.velocity, &buf[16], sizeof(cl.m_data.velocity));
+			memcpy(&cl.m_data.yaw, &buf[28], sizeof(cl.m_data.yaw));
+			
+			// 애니메이션 리시브 확인
+			std::cout << id << "PLAYER : " << static_cast<int>(cl.m_data.aniType) << ", " << static_cast<int>(cl.m_data.upperAniType) << std::endl;
+
 			break;
  		default:
 	        std::cout << "Server Received Unknown Packet" << std::endl;
@@ -256,18 +265,23 @@ void AcceptThread(SOCKET socket)
 {
 	SOCKADDR_IN serverAddr;
 	INT addrSize = sizeof(serverAddr);
-	while (true) {
+	while (true)
+	{
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&serverAddr), &addrSize, nullptr, 0);
 		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
+
 		CHAR id{ GetNewId() };
-		client& cl = clients[id];
+		Client& cl = clients[id];
+
 		cl.m_lock.lock();
-		cl.m_socket = cSocket;
 		cl.m_data.id = id;
 		cl.m_data.isActive = true;
-		cl.m_data.state = eLegState::IDLE;
+		cl.m_data.aniType = eAnimationType::IDLE;
+		cl.m_data.upperAniType = eUpperAnimationType::NONE;
+		cl.m_socket = cSocket;
 		SendLoginOkPacket(id);
 		cl.m_lock.unlock();
+
 		std::cout << "\n[" << static_cast<int>(cl.m_data.id) << " Client connect] IP: " << inet_ntoa(serverAddr.sin_addr) << std::endl;
 		threads.emplace_back(ProcessRecvPacket, id);
 		g_isAccept = true;
@@ -307,24 +321,30 @@ int main()
 		using namespace std;
 		auto point = chrono::system_clock::now();
 		float elapsed = chrono::duration_cast<chrono::milliseconds>(point - time_point).count() / static_cast<float>(1000);
-		if (g_isAccept) {
+		if (g_isAccept)
+		{
 			// process update packet
 			for (const auto& cl : clients)
 			{
 				if (!cl.m_data.isActive) continue;
+
 				sc_packet_update_client packet;
-				packet.data = cl.m_data;
 				packet.size = sizeof(packet);
 				packet.type = SC_PACKET_UPDATE_CLIENT;
+				packet.data = cl.m_data;
+
 				char buf[sizeof(packet)];
 				memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+
 				WSABUF wsabuf;
 				wsabuf.buf = buf;
 				wsabuf.len = sizeof(buf);
+
 				DWORD sent_byte;
 				//for (const auto& other : clients)
 				//{
-				for (int i=0; i < MAX_USER; ++i){
+				for (int i = 0; i < MAX_USER; ++i)
+				{
 					if (!clients[i].m_data.isActive) continue;
 					retVal = WSASend(clients[i].m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 					if (retVal == SOCKET_ERROR)
@@ -342,6 +362,8 @@ int main()
 						}
 					}
 
+					// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
+					clients[i].m_data.upperAniType = eUpperAnimationType::NONE;
 				}
 			}
 		}
@@ -352,7 +374,8 @@ int main()
 		}
 	}
 	
-	for (auto& cl : clients) {
+	for (auto& cl : clients)
+	{
 		if (true == cl.m_data.isActive)
 			Disconnect(cl.m_data.id);
 	}

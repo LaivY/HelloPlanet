@@ -54,9 +54,10 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
 
 	// 움직인 정도에 비례해서 회전
+	float sensitive{ 2.5f };
 	int dx = newMousePosition.x - oldMousePosition.x;
 	int dy = newMousePosition.y - oldMousePosition.y;
-	float sensitive{ 2.5f };
+	if (dx == 0 && dy == 0) return;
 	
 #ifdef FREEVIEW
 	if (m_camera) m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
@@ -458,11 +459,8 @@ void Scene::RecvPacket()
 {
 	// size, type, PlayerData
 	char recv_buf[sizeof(UCHAR) + sizeof(UCHAR) + sizeof(PlayerData)];
-	WSABUF wsabuf;
-	wsabuf.buf = recv_buf;
-	wsabuf.len = sizeof(recv_buf);
-	DWORD recv_byte;
-	DWORD recv_flag = 0;
+	WSABUF wsabuf{ sizeof(recv_buf), recv_buf };
+	DWORD recv_byte{ 0 }, recv_flag{ 0 };
 	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
 	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
 
@@ -495,40 +493,7 @@ void Scene::RecvPacket()
 		{
 			if (!p) continue;
 			if (p->GetId() != packet.data.id) continue;
-			if (AnimationInfo* aniInfo{ p->GetAnimationInfo() })
-			{
-				switch (packet.data.state)
-				{
-				case eLegState::IDLE:
-					if (p->GetCurrAnimationName() != "IDLE" && p->GetAfterAnimationName() != "IDLE")
-						p->PlayAnimation("IDLE", TRUE);
-					break;
-				case eLegState::WALKING:
-					if (p->GetCurrAnimationName() != "WALKING" && p->GetAfterAnimationName() != "WALKING")
-						p->PlayAnimation("WALKING", TRUE);
-					break;
-				case eLegState::WALKLEFT:
-					if (p->GetCurrAnimationName() != "WALKLEFT" && p->GetAfterAnimationName() != "WALKLEFT")
-						p->PlayAnimation("WALKLEFT", TRUE);
-					break;
-				case eLegState::WALKRIGHT:
-					if (p->GetCurrAnimationName() != "WALKRIGHT" && p->GetAfterAnimationName() != "WALKRIGHT")
-						p->PlayAnimation("WALKRIGHT", TRUE);
-					break;
-				case eLegState::WALKBACK:
-					if (p->GetCurrAnimationName() != "WALKBACK" && p->GetAfterAnimationName() != "WALKBACK")
-						p->PlayAnimation("WALKBACK", TRUE);
-					break;
-				case eLegState::RUNNING:
-					if (p->GetCurrAnimationName() != "RUNNING" && p->GetAfterAnimationName() != "RUNNING")
-						p->PlayAnimation("RUNNING", TRUE);
-					break;
-				}
-			}
-			p->SetPosition(packet.data.pos);
-			p->SetVelocity(packet.data.velocity);
-			FLOAT yaw{ p->GetRollPitchYaw().z };
-			p->Rotate(0.0f, 0.0f, packet.data.yaw - yaw);
+			p->ApplyServerData(packet.data);
 		}
 		break;
 	}

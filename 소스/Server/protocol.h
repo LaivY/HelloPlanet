@@ -14,7 +14,7 @@ constexpr char CS_PACKET_UPDATE_LEGS = 2;
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 
-enum class eLegState : char
+enum class eAnimationType : char
 {
 	IDLE,
 	RUNNING,
@@ -24,16 +24,23 @@ enum class eLegState : char
 	WALKBACK
 };
 
+enum class eUpperAnimationType : char
+{
+	NONE,
+	RELOAD,
+	FIRING
+};
+
 #pragma pack (push, 1)
 struct PlayerData
 {
-	CHAR				id;
-	bool				isActive;
-	eLegState			state;
-	DirectX::XMFLOAT3	pos;		// 위치
-	DirectX::XMFLOAT3	velocity;	// 속도
-	FLOAT				yaw;		// 회전각
-	//FLOAT				deltaYaw;	// 기존 각도에서 회전한 각
+	CHAR				id;				// 플레이어 고유 번호
+	bool				isActive;		// 유효 여부
+	eAnimationType		aniType;		// 애니메이션 종류
+	eUpperAnimationType upperAniType;	// 상체 애니메이션 종류
+	DirectX::XMFLOAT3	pos;			// 위치
+	DirectX::XMFLOAT3	velocity;		// 속도
+	FLOAT				yaw;			// 회전각
 };
 
 struct cs_packet_login
@@ -46,7 +53,8 @@ struct cs_packet_update_legs
 {
 	UCHAR				size;
 	UCHAR				type;
-	eLegState			state;
+	eAnimationType		aniType;
+	eUpperAnimationType	upperAniType;
 	DirectX::XMFLOAT3	pos;
 	DirectX::XMFLOAT3	velocity;
 	FLOAT				yaw;

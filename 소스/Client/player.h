@@ -26,7 +26,8 @@ public:
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 	void SendPlayerData() const;
-	//void SendPlayerData(eLegState letState) const;
+	void ApplyServerData(const PlayerData& playerData);
+	//void SendPlayerData(eAnimationType letState) const;
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(ePlayerGunType weaponType) { m_gunType = weaponType; }

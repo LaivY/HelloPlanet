@@ -20,11 +20,9 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (m_upperAnimationInfo && GetUpperCurrAnimationName() == "RELOAD")
 				break;
 			PlayAnimation("FIRING", TRUE);
+			SendPlayerData(); // 서버에게 총 발사했다고 알림
 			break;
 		}
-		case WM_MOUSEMOVE:
-			SendPlayerData();
-			break;
 	}
 #endif
 }
@@ -114,7 +112,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		m_velocity.z = -m_speed;
 		SendPlayerData();
 	}
-	//else SendPlayerData(eLegState::IDLE);
+	//else SendPlayerData(eAnimationType::IDLE);
 #endif
 }
 
@@ -153,7 +151,10 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		{
 		case 'r': case 'R':
 			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD"))
+			{
 				PlayAnimation("RELOAD", TRUE);
+				SendPlayerData();
+			}
 			break;
 		}
 		break;
@@ -169,15 +170,20 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	{
 		if (currFrame >= endFrame)
 		{
-			if (m_upperAnimationInfo->state == eAnimationState::PLAY)
+			switch (m_upperAnimationInfo->state)
 			{
+			case eAnimationState::PLAY:
 				m_upperAnimationInfo->state = eAnimationState::SYNC;
 				m_upperAnimationInfo->blendingTimer = 0.0f;
-			}
-			else if (m_upperAnimationInfo->state == eAnimationState::BLENDING)
+				break;
+			case eAnimationState::BLENDING:
 				PlayAnimation(GetUpperAfterAnimationName());
-			else if (m_upperAnimationInfo->state == eAnimationState::SYNC)
+				break;
+			case eAnimationState::SYNC:
 				m_upperAnimationInfo.reset();
+				if (!m_isMultiPlayer) SendPlayerData(); // 서버에게 상체 애니메이션 끝났다고 알림
+				break;
+			}
 		}
 		return;
 	}
@@ -300,6 +306,8 @@ void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 
 	// 플레이어는 y축으로만 회전할 수 있다.
 	GameObject::Rotate(0.0f, 0.0f, yaw);
+
+	if (!m_isMultiPlayer) SendPlayerData(); // 서버에게 회전했다고 알림
 }
 
 void Player::PlayAnimation(const string& animationName, BOOL doBlending)
@@ -307,7 +315,6 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
 	string pureAnimationName{ GetPureAnimationName(animationName) };
-
 	if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
 	{
 		m_animationInfo->state = eAnimationState::PLAY;
@@ -374,27 +381,35 @@ void Player::SendPlayerData() const
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_UPDATE_LEGS;
 	
+	// 애니메이션 타입
 	if (GetAsyncKeyState('W') && GetAsyncKeyState('A') & 0x8000)
-		packet.state = eLegState::WALKLEFT;
+		packet.aniType = eAnimationType::WALKLEFT;
 	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
-		packet.state = eLegState::WALKRIGHT;
+		packet.aniType = eAnimationType::WALKRIGHT;
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
-		packet.state = eLegState::WALKLEFT;
+		packet.aniType = eAnimationType::WALKLEFT;
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
-		packet.state = eLegState::WALKRIGHT;
+		packet.aniType = eAnimationType::WALKRIGHT;
 	else if (GetAsyncKeyState('W') & 0x8000)
 		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-			packet.state = eLegState::RUNNING;
+			packet.aniType = eAnimationType::RUNNING;
 		else
-			packet.state = eLegState::WALKING;
+			packet.aniType = eAnimationType::WALKING;
 	else if (GetAsyncKeyState('A') & 0x8000)
-		packet.state = eLegState::WALKLEFT;
+		packet.aniType = eAnimationType::WALKLEFT;
 	else if (GetAsyncKeyState('S') & 0x8000)
-		packet.state = eLegState::WALKBACK;
+		packet.aniType = eAnimationType::WALKBACK;
 	else if (GetAsyncKeyState('D') & 0x8000)
-		packet.state = eLegState::WALKRIGHT;
+		packet.aniType = eAnimationType::WALKRIGHT;
 	else
-		packet.state = eLegState::IDLE;
+		packet.aniType = eAnimationType::IDLE;
+
+	// 상체 애니메이션 타입
+	packet.upperAniType = eUpperAnimationType::NONE;
+	if (GetAsyncKeyState('R') & 0x8000)
+		packet.upperAniType = eUpperAnimationType::RELOAD;
+	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+		packet.upperAniType = eUpperAnimationType::FIRING;
 
 	packet.pos = GetPosition();
 	packet.velocity = GetVelocity();
@@ -403,7 +418,58 @@ void Player::SendPlayerData() const
 #endif
 }
 
-//void Player::SendPlayerData(eLegState legState) const
+void Player::ApplyServerData(const PlayerData& playerData)
+{
+	// 애니메이션
+	switch (playerData.aniType)
+	{
+	case eAnimationType::IDLE:
+		if (GetCurrAnimationName() != "IDLE" && GetAfterAnimationName() != "IDLE")
+			PlayAnimation("IDLE", TRUE);
+		break;
+	case eAnimationType::WALKING:
+		if (GetCurrAnimationName() != "WALKING" && GetAfterAnimationName() != "WALKING")
+			PlayAnimation("WALKING", TRUE);
+		break;
+	case eAnimationType::WALKLEFT:
+		if (GetCurrAnimationName() != "WALKLEFT" && GetAfterAnimationName() != "WALKLEFT")
+			PlayAnimation("WALKLEFT", TRUE);
+		break;
+	case eAnimationType::WALKRIGHT:
+		if (GetCurrAnimationName() != "WALKRIGHT" && GetAfterAnimationName() != "WALKRIGHT")
+			PlayAnimation("WALKRIGHT", TRUE);
+		break;
+	case eAnimationType::WALKBACK:
+		if (GetCurrAnimationName() != "WALKBACK" && GetAfterAnimationName() != "WALKBACK")
+			PlayAnimation("WALKBACK", TRUE);
+		break;
+	case eAnimationType::RUNNING:
+		if (GetCurrAnimationName() != "RUNNING" && GetAfterAnimationName() != "RUNNING")
+			PlayAnimation("RUNNING", TRUE);
+		break;
+	}
+
+	// 상체 애니메이션
+	switch (playerData.upperAniType)
+	{
+	case eUpperAnimationType::NONE:
+		break;
+	case eUpperAnimationType::RELOAD:
+		if (GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD")
+			PlayAnimation("RELOAD", TRUE);
+		break;
+	case eUpperAnimationType::FIRING:
+		if (GetUpperCurrAnimationName() != "FIRING" && GetUpperAfterAnimationName() != "FIRING")
+			PlayAnimation("FIRING", TRUE);
+		break;
+	}
+
+	SetPosition(playerData.pos);
+	SetVelocity(playerData.velocity);
+	Rotate(0.0f, 0.0f, playerData.yaw - m_yaw);
+}
+
+//void Player::SendPlayerData(eAnimationType legState) const
 //{
 //	cs_packet_update_legs packet;
 //	packet.size = sizeof(packet);
