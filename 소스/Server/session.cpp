@@ -1,14 +1,13 @@
-#include "session.h"
+﻿#include "session.h"
 
-Session::Session()
-	: m_data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} },
-	m_socket{}, m_clientBuf{}
+Session::Session() : data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, socket{}
 {
+
 }
 
 Session::~Session()
 {
-	closesocket(m_socket);
+	closesocket(socket);
 }
 
 //void do_recv()

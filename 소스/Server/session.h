@@ -1,17 +1,18 @@
-#pragma once
+﻿#pragma once
 
 #include "stdafx.h"
 #include "protocol.h"
 
-class Session {
-public:
-	PlayerData		m_data;
-	SOCKET			m_socket;
-	char			m_clientBuf[BUF_SIZE];
-	std::mutex		m_lock;
-	//WSABUF		_wsabuf;
-	//WSAOVERLAPPED	_recv_over;
+class Session
+{
 public:
 	Session();
 	~Session();
+
+public:
+	SOCKET		socket;
+	PlayerData	data;
+	std::mutex	lock;
+	//WSABUF		_wsabuf;
+	//WSAOVERLAPPED	_recv_over;
 };

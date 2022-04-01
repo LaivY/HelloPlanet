@@ -1,4 +1,4 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 
 void errorDisplay(const int errNum, const char* msg)
 {

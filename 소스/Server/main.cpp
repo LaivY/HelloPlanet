@@ -1,6 +1,6 @@
 ﻿#include "main.h"
 
-NetFramework       g_netFramework{};
+NetworkFramework g_networkFramework{};
 
 int main()
 {
@@ -12,21 +12,18 @@ int main()
 	const SOCKET socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
 	if (socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "socket");
 
-	//bind
-	SOCKADDR_IN serverAddr;
-	ZeroMemory(&serverAddr, sizeof(serverAddr));
+	// bind
+	SOCKADDR_IN serverAddr{};
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(SERVER_PORT);
 	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	int retVal = bind(socket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr));
-	if(retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "bind");
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "bind");
 
-	//listen
+	// listen
 	retVal = listen(socket, SOMAXCONN);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "listen");
-	//std::thread lobbyThread = std::thread(&NetFramework::AcceptThread, ,socket);
-	//g_netFramework.threads.emplace_back(g_netFramework.AcceptThread, socket);
-	g_netFramework.threads.emplace_back(&NetFramework::AcceptThread, NetFramework::GetInstance(), socket);
+	g_networkFramework.threads.emplace_back(&NetworkFramework::AcceptThread, &g_networkFramework, socket);
 
 	std::cout << "main process start" << std::endl;
 
@@ -47,7 +44,7 @@ int main()
 			if (1 & frameNumber.count()) // even FrameNumber
 			{
 				// playerData Send
-				if (g_netFramework.m_isAccept) g_netFramework.SendPlayerDataPacket();
+				if (g_networkFramework.isAccept) g_networkFramework.SendPlayerDataPacket();
 			}
 			else // odd FrameNumber
 			{
@@ -55,15 +52,15 @@ int main()
 			}
 			if (frameNumber.count() >= 60) frameNumber = std::chrono::duration_cast<frame>(frameNumber - frameNumber);
 		}
-	
+
 	}
-	
-	for (auto& cl : g_netFramework.clients)
+
+	for (auto& c : g_networkFramework.clients)
 	{
-		if (true == cl.m_data.isActive)
-			g_netFramework.Disconnect(cl.m_data.id);
+		if (c.data.isActive)
+			g_networkFramework.Disconnect(c.data.id);
 	}
-	
+
 	closesocket(socket);
 	WSACleanup();
 }
@@ -76,8 +73,6 @@ int main()
 //	memset(&c_over, 0, sizeof(c_over));
 //	WSASend(c_socket, c_wsabuf, 1, 0, 0, &c_over, send_callback);
 //}
-
-
 
 //void process_packet(int client_id, unsigned char* p)
 //{

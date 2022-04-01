@@ -1,25 +1,24 @@
-#pragma once
+ï»¿#pragma once
 #include "session.h"
 
-class NetFramework
+class NetworkFramework
 {
-	static NetFramework* instance;
 public:
-	NetFramework()
-	{
-		assert(instance == nullptr);
-		instance = this;
-	}
-	//~NetFramework();
-	CHAR GetNewId();
-	void SendLoginOkPacket(int id);
-	void Disconnect(int id);
-	void ProcessRecvPacket(int id);
-	void AcceptThread(SOCKET socket);
-	void SendPlayerDataPacket();
-	static NetFramework* GetInstance();
+	NetworkFramework() : isAccept{ false } { }
+	~NetworkFramework() = default;
 
-	std::array <Session, MAX_USER> clients;
-	std::vector<std::thread> threads;
-	bool m_isAccept = false; // 1¸íÀÌ¶óµµ ¼­¹ö¿¡ µé¾î¿Ô´ÂÁö
+	void AcceptThread(SOCKET socket);
+	void SendLoginOkPacket(int id);
+	void SendPlayerDataPacket();
+
+	void ProcessRecvPacket(int id);
+
+	void Disconnect(int id);
+
+	CHAR GetNewId();
+
+public:
+	bool							isAccept; // 1ëª…ì´ë¼ë„ ì„œë²„ì— ë“¤ì–´ì™”ëŠ”ì§€
+	std::array<Session, MAX_USER>	clients;
+	std::vector<std::thread>		threads;
 };

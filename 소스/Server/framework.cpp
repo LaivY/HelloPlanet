@@ -1,25 +1,36 @@
-#include "framework.h"
+Ôªø#include "framework.h"
 
-NetFramework* NetFramework::instance = nullptr;
-NetFramework* NetFramework::GetInstance()
+void NetworkFramework::AcceptThread(SOCKET socket)
 {
-	return instance;
-}
-CHAR NetFramework::GetNewId()
-{
-	for (int i = 0; i < MAX_USER; ++i) {
-		//std::cout << "id ∞Àªˆ¡ﬂ: " << i << std::endl;
-		if (false == clients[i].m_data.isActive)
-		{
-			//std::cout << "√£æ“¥Ÿ: " << i << std::endl;
-			return i;
-		}
+	std::cout << "AcceptThread start" << std::endl;
+	SOCKADDR_IN clientAddr;
+	INT addrSize = sizeof(clientAddr);
+	while (true)
+	{
+		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
+		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
+
+		CHAR id{ GetNewId() };
+		Session& cl = clients[id];
+
+		cl.lock.lock();
+		cl.data.id = id;
+		cl.data.isActive = true;
+		cl.data.aniType = eAnimationType::IDLE;
+		cl.data.upperAniType = eUpperAnimationType::NONE;
+		cl.socket = cSocket;
+		SendLoginOkPacket(id);
+		cl.lock.unlock();
+		char ipInfo[20]{};
+		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
+		std::cout << "[" << static_cast<int>(cl.data.id) << " Session] connect IP: " << ipInfo << std::endl;
+		//m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
+		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
+		isAccept = true;
 	}
-	std::cout << "Maximum Number of Clients" << std::endl;
-	return -1;
 }
 
-void NetFramework::SendLoginOkPacket(int id)
+void NetworkFramework::SendLoginOkPacket(int id)
 {
 	Session& cl = clients[id];
 
@@ -36,26 +47,41 @@ void NetFramework::SendLoginOkPacket(int id)
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
 	std::cout << "login pacet: " << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << std::endl;
-	const int retVal = WSASend(cl.m_socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	const int retVal = WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Login Send");
 }
 
-void NetFramework::Disconnect(int id)
+void NetworkFramework::SendPlayerDataPacket()
 {
-	Session& cl = clients[id];
-	cl.m_lock.lock();
-	cl.m_data.id = 0;
-	cl.m_data.isActive = false;
-	cl.m_data.aniType = eAnimationType::IDLE;
-	cl.m_data.upperAniType = eUpperAnimationType::NONE;
-	cl.m_data.pos = {};
-	cl.m_data.velocity = {};
-	cl.m_data.yaw = 0.0f;
-	closesocket(cl.m_socket);
-	cl.m_lock.unlock();
+	for (const auto& player : clients)
+	{
+		if (!player.data.isActive) continue;
+		sc_packet_update_client packet;
+		packet.size = sizeof(packet);
+		packet.type = SC_PACKET_UPDATE_CLIENT;
+		packet.data = player.data;
+		char buf[sizeof(packet)];
+		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+		WSABUF wsabuf{ sizeof(buf), buf };
+		DWORD sent_byte;
+		for (const auto& other : clients)
+		{
+			if (!other.data.isActive) continue;
+			int retVal = WSASend(other.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR)
+			{
+				if (WSAGetLastError() == WSAECONNRESET)
+					std::cout << "Disconnect " << static_cast<int>(other.data.id) << " " << other.data.id << std::endl;
+				else errorDisplay(WSAGetLastError(), "Send");
+			}
+		}
+	}
+	// ÌîåÎ†àÏù¥Ïñ¥Ïùò ÏÉÅÏ≤¥ Ïï†ÎãàÎ©îÏù¥ÏÖòÏùÄ Ìïú Î≤à Î≥¥ÎÇ¥Í≥† ÎÇòÎ©¥ NONE ÏÉÅÌÉúÎ°ú Ï¥àÍ∏∞Ìôî
+	for (auto& c : clients)
+		c.data.upperAniType = eUpperAnimationType::NONE;
 }
 
-void NetFramework::ProcessRecvPacket(int id)
+void NetworkFramework::ProcessRecvPacket(int id)
 {
 	Session& cl = clients[id];
 	for (;;)
@@ -63,27 +89,28 @@ void NetFramework::ProcessRecvPacket(int id)
 		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
-		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
 			{
-				std::cout << "[" << static_cast<int>(cl.m_data.id) << " client] Abortive Close " << std::endl;
-				Disconnect(cl.m_data.id);
+				std::cout << "[" << static_cast<int>(cl.data.id) << " client] Abortive Close " << std::endl;
+				Disconnect(cl.data.id);
 				break;
 			}
 			errorDisplay(WSAGetLastError(), "Recv");
 		}
 		if (recvd_byte == 0)
 		{
-			std::cout << "[" << static_cast<int>(cl.m_data.id) << " client] Graceful Close " << std::endl;
-			Disconnect(cl.m_data.id);
+			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Graceful Close " << std::endl;
+			Disconnect(cl.data.id);
 			break;
 		}
 
 		UCHAR size{ static_cast<UCHAR>(buf[0]) };
 		UCHAR type{ static_cast<UCHAR>(buf[1]) };
+
 		switch (type)
 		{
 		case CS_PACKET_UPDATE_LEGS:
@@ -91,13 +118,13 @@ void NetFramework::ProcessRecvPacket(int id)
 			// aniType, upperAniType, pos, velocity, yaw
 			char subBuf[1 + 1 + 12 + 12 + 4];
 			wsabuf = { sizeof(subBuf), subBuf };
-			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 
-			cl.m_data.aniType = static_cast<eAnimationType>(subBuf[0]);
-			cl.m_data.upperAniType = static_cast<eUpperAnimationType>(subBuf[1]);
-			memcpy(&cl.m_data.pos, &subBuf[2], sizeof(cl.m_data.pos));
-			memcpy(&cl.m_data.velocity, &subBuf[14], sizeof(cl.m_data.velocity));
-			memcpy(&cl.m_data.yaw, &subBuf[26], sizeof(cl.m_data.yaw));
+			cl.data.aniType = static_cast<eAnimationType>(subBuf[0]);
+			cl.data.upperAniType = static_cast<eUpperAnimationType>(subBuf[1]);
+			memcpy(&cl.data.pos, &subBuf[2], sizeof(cl.data.pos));
+			memcpy(&cl.data.velocity, &subBuf[14], sizeof(cl.data.velocity));
+			memcpy(&cl.data.yaw, &subBuf[26], sizeof(cl.data.yaw));
 			break;
 		}
 		case CS_PACKET_BULLET_FIRE:
@@ -105,7 +132,7 @@ void NetFramework::ProcessRecvPacket(int id)
 			// pos, dir
 			char subBuf[12 + 12];
 			wsabuf = { sizeof(subBuf), subBuf };
-			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 
 			sc_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
@@ -120,72 +147,43 @@ void NetFramework::ProcessRecvPacket(int id)
 			DWORD sent_byte;
 			for (const auto& c : clients)
 			{
-				if (c.m_data.id == cl.m_data.id) continue; // √—¿ª Ω ªÁ∂˜ø°∞’ ∫∏≥ª¡ˆæ ¿Ω
-				WSASend(c.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+				if (c.data.id == cl.data.id) continue; // Ï¥ùÏùÑ Ïèú ÏÇ¨ÎûåÏóêÍ≤ê Î≥¥ÎÇ¥ÏßÄÏïäÏùå
+				WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			}
 			break;
 		}
 		default:
-			std::cout << "[" << static_cast<int>(cl.m_data.id) << " client] Server Received Unknown Packet" << std::endl;
+			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Server Received Unknown Packet" << std::endl;
 			break;
 		}
 	}
 }
-void NetFramework::AcceptThread(SOCKET socket)
+
+void NetworkFramework::Disconnect(int id)
 {
-	std::cout << "AcceptThread start" << std::endl;
-	SOCKADDR_IN clientAddr;
-	INT addrSize = sizeof(clientAddr);
-	while (true)
-	{
-		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
-		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
-
-		CHAR id{ GetNewId() };
-		Session& cl = clients[id];
-
-		cl.m_lock.lock();
-		cl.m_data.id = id;
-		cl.m_data.isActive = true;
-		cl.m_data.aniType = eAnimationType::IDLE;
-		cl.m_data.upperAniType = eUpperAnimationType::NONE;
-		cl.m_socket = cSocket;
-		SendLoginOkPacket(id);
-		cl.m_lock.unlock();
-		char ipInfo[20]{};
-		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
-		std::cout << "[" << static_cast<int>(cl.m_data.id) << " Session] connect IP: " << ipInfo << std::endl;
-		//m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
-		threads.emplace_back( &NetFramework::ProcessRecvPacket, NetFramework::GetInstance(), id);
-		m_isAccept = true;
-	}
+	Session& cl = clients[id];
+	cl.lock.lock();
+	cl.data.id = 0;
+	cl.data.isActive = false;
+	cl.data.aniType = eAnimationType::IDLE;
+	cl.data.upperAniType = eUpperAnimationType::NONE;
+	cl.data.pos = {};
+	cl.data.velocity = {};
+	cl.data.yaw = 0.0f;
+	closesocket(cl.socket);
+	cl.lock.unlock();
 }
-void NetFramework::SendPlayerDataPacket()
+
+CHAR NetworkFramework::GetNewId()
 {
-	for (const auto& player : clients)
-	{
-		if (!player.m_data.isActive) continue;
-		sc_packet_update_client packet;
-		packet.size = sizeof(packet);
-		packet.type = SC_PACKET_UPDATE_CLIENT;
-		packet.data = player.m_data;
-		char buf[sizeof(packet)];
-		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-		WSABUF wsabuf{ sizeof(buf), buf };
-		DWORD sent_byte;
-		for (const auto& other : clients)
+	for (int i = 0; i < MAX_USER; ++i) {
+		//std::cout << "id Í≤ÄÏÉâÏ§ë: " << i << std::endl;
+		if (false == clients[i].data.isActive)
 		{
-			if (!other.m_data.isActive) continue;
-			int retVal = WSASend(other.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR)
-			{
-				if (WSAGetLastError() == WSAECONNRESET)
-					std::cout << "Disconnect " << static_cast<int>(other.m_data.id) << " " << other.m_data.id << std::endl;
-				else errorDisplay(WSAGetLastError(), "Send");
-			}
+			//std::cout << "Ï∞æÏïòÎã§: " << i << std::endl;
+			return i;
 		}
 	}
-	// «√∑π¿ÃæÓ¿« ªÛ√º æ÷¥œ∏ﬁ¿Ãº«¿∫ «— π¯ ∫∏≥ª∞Ì ≥™∏È NONE ªÛ≈¬∑Œ √ ±‚»≠
-	for (auto& c : clients)
-		c.m_data.upperAniType = eUpperAnimationType::NONE;
+	std::cout << "Maximum Number of Clients" << std::endl;
+	return -1;
 }
