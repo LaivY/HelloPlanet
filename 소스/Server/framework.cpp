@@ -115,6 +115,8 @@ void NetFramework::ProcessRecvPacket(int id)
 
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };
+			memcpy(sendBuf, &packet, sizeof(packet));
+
 			DWORD sent_byte;
 			for (const auto& c : clients)
 			{
