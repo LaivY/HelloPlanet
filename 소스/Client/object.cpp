@@ -198,22 +198,32 @@ void Bullet::Update(FLOAT deltaTime)
 		m_isDeleted = TRUE;
 }
 
-UIObject::UIObject() : m_pivot{ eUIPivot::CENTER }
+UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }
 {
-
+	
 }
 
 void UIObject::SetPosition(const XMFLOAT3& position)
 {
+	SetPosition(position.x, position.y);
+}
+
+void UIObject::SetPosition(FLOAT x, FLOAT y)
+{
 	switch (m_pivot)
 	{
 	case eUIPivot::CENTER:
-		GameObject::SetPosition(position);
+		GameObject::SetPosition(XMFLOAT3{ x, y, 0.0f });
 		break;
 	}
 }
 
-void UIObject::SetPivot(eUIPivot pivot)
+XMFLOAT4X4 UIObject::GetViewMatrix() const
 {
-	m_pivot = pivot;
+	XMFLOAT4X4 viewMatrix{ Matrix::Identity() };
+	viewMatrix._11 = m_width;
+	viewMatrix._22 = m_height;
+	viewMatrix._41 = m_worldMatrix._41;
+	viewMatrix._42 = m_worldMatrix._42;
+	return viewMatrix;
 }

@@ -110,7 +110,6 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		packet.type = CS_PACKET_BULLET_FIRE;
 		packet.data = { start, target };
 		send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-
 		break;
 	}
 	}
@@ -231,7 +230,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
 	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
 
-	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 150.0f, 100.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
+	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -282,23 +281,23 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_camera->SetProjMatrix(projMatrix);
 
 	// UI 카메라 생성
-	m_uiCamera = make_unique<UICamera>();
+	m_uiCamera = make_unique<Camera>();
 	m_uiCamera->CreateShaderVariable(device, commandList);
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
-	//XMFLOAT4X4 viewMatrix{ Matrix::Identity() };
-	//viewMatrix._11 = 150.0f;
-	//viewMatrix._22 = 150.0f;
-	//m_uiCamera->SetViewMatrix(viewMatrix);
-
 	// UI 객체 생성
-	auto uiObject{ make_unique<GameObject>() };
+	auto uiObject{ make_unique<UIObject>(150.0f, 150.0f) };
 	uiObject->SetMesh(m_meshes["UI"]);
 	uiObject->SetShader(m_shaders["UI"]);
-	uiObject->SetTexture(m_textures["SKYBOX"]);
-	uiObject->Move(XMFLOAT3{ 0.0f, 0.0f, 1.0f });
+	uiObject->SetTexture(m_textures["GAROO"]);
 	m_uiObjects.push_back(move(uiObject));
+
+	//uiObject = make_unique<UIObject>(50.0f, 100.0f);
+	//uiObject->SetMesh(m_meshes["UI"]);
+	//uiObject->SetShader(m_shaders["UI"]);
+	//uiObject->SetTexture(m_textures["SKYBOX"]);
+	//m_uiObjects.push_back(move(uiObject));
 
 	// 바운딩박스
 	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
@@ -353,16 +352,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetMesh(m_meshes["FLOOR"]);
 	floor->SetShader(m_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
-
-	// 몬스터
-	//auto mob{ make_unique<GameObject>() };
-	//mob->SetMesh(m_meshes["GAROO"]);
-	//mob->SetShader(m_shaders["MODEL"]);
-	//mob->SetTexture(m_textures["GAROO"]);
-	//mob->Move(XMFLOAT3{ 15.0f, 0.0f, 15.0f });
-	//mob->PlayAnimation("IDLE");
-	//mob->SetBoundingBox(bbMob);
-	//m_gameObjects.push_back(move(mob));
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -436,11 +425,12 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 
 	// UI 렌더링
 	if (m_uiCamera)
-	{
-		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
+		{
+			m_uiCamera->SetViewMatrix(ui->GetViewMatrix());
+			m_uiCamera->UpdateShaderVariable(commandList);
 			ui->Render(commandList);
-	}
+		}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -451,11 +441,6 @@ void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comman
 
 	// 카메라 셰이더 변수 최신화
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);
-}
-
-void Scene::UpdateLights(FLOAT deltaTime)
-{
-
 }
 
 void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -556,11 +541,6 @@ void Scene::RecvPacket()
 		memcpy(&pos, &subBuf[0], sizeof(pos));
 		memcpy(&dir, &subBuf[12], sizeof(dir));
 
-		//string debug{};
-		//debug = "RECV BULLET : " + to_string(pos.x) + ", " + to_string(pos.y) + ", " + to_string(pos.z) + " / ";
-		//debug += to_string(dir.x) + " , " + to_string(dir.y) + ", " + to_string(dir.z) + "\n";
-		//OutputDebugStringA(debug.c_str());
-
 		auto bullet{ make_unique<Bullet>(dir) };
 		bullet->SetMesh(m_meshes["BULLET"]);
 		bullet->SetShader(m_shaders["DEFAULT"]);
@@ -576,11 +556,4 @@ void Scene::RecvPacket()
 		break;
 	}
 	}
-}
-
-void Scene::SendPacket(LPVOID lp_packet)
-{
-	const auto send_packet = static_cast<char*>(lp_packet);
-	int send_result = send(g_c_socket, send_packet, *send_packet, 0);
-	cout << "[Send_Packet] Type: " << *(send_packet + 1) << " , Byte: " << *send_packet << endl;
 }

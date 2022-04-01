@@ -53,13 +53,11 @@ public:
 	
 	// 업데이트 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void UpdateLights(FLOAT deltaTime);
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);
 	void RecvPacket();
-	void SendPacket(LPVOID lp_packet);
 	
 private:
 	D3D12_VIEWPORT										m_viewport;		// 뷰포트
@@ -80,7 +78,6 @@ private:
 	unique_ptr<Skybox>									m_skybox;		// 스카이박스
 	vector<unique_ptr<GameObject>>						m_gameObjects;	// 게임오브젝트들
 
-public:
 	unique_ptr<Camera>									m_uiCamera;		// UI 카메라
-	vector<unique_ptr<GameObject>>						m_uiObjects;	// UI
+	vector<unique_ptr<UIObject>>						m_uiObjects;	// UI
 };

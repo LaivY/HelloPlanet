@@ -330,7 +330,7 @@ void Mesh::ReleaseUploadBuffer()
 RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position)
 {
 	vector<Vertex> vertices;
-	Vertex v; v.materialIndex = 0;
+	Vertex v;
 	FLOAT hx{ position.x + width / 2.0f }, hy{ position.y + height / 2.0f }, hz{ position.z + length / 2.0f };
 	if (width == 0.0f) // YZ평면
 	{
@@ -401,7 +401,6 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 		}
 	}
-
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
 }
 

@@ -82,13 +82,3 @@ private:
 	FLOAT		m_distance;		// 오프셋 방향으로 떨어진 거리
 	FLOAT		m_delay;		// 움직임 딜레이 (0.0 ~ 1.0)
 };
-
-// http://egloos.zum.com/EireneHue/v/987437
-class UICamera : public Camera
-{
-public:
-	UICamera();
-	~UICamera() = default;
-
-	void Update(FLOAT /*deltaTime*/) { }
-};

@@ -147,12 +147,19 @@ enum class eUIPivot
 class UIObject : public GameObject
 {
 public:
-	UIObject();
+	UIObject(FLOAT width, FLOAT height);
 	~UIObject() = default;
 
 	void SetPosition(const XMFLOAT3& position);
-	void SetPivot(eUIPivot pivot);
+	void SetPosition(FLOAT x, FLOAT y);
+	void SetPivot(eUIPivot pivot) { m_pivot = pivot; }
+	void SetWidth(FLOAT width) { m_width = width; }
+	void SetHeight(FLOAT height) { m_height = height; }
+
+	XMFLOAT4X4 GetViewMatrix() const;
 
 private:
-	eUIPivot m_pivot;
+	eUIPivot	m_pivot;
+	FLOAT		m_width;
+	FLOAT		m_height;
 };
