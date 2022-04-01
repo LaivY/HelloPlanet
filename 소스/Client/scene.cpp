@@ -2,8 +2,7 @@
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f },
-	  m_scissorRect{ 0, 0, Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT },
-	  m_pcbScene{ nullptr }
+	  m_scissorRect{ 0, 0, Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT }, m_pcbScene{ nullptr }
 {
 
 }
@@ -99,7 +98,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// 총구에서 나오도록
 		start = Vector3::Add(start, Vector3::Mul(target, 10.0f));
 
-		unique_ptr<BulletObject> bullet{ make_unique<BulletObject>(target) };
+		unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
 		bullet->SetMesh(m_meshes["BULLET"]);
 		bullet->SetShader(m_shaders["DEFAULT"]);
 		bullet->SetPosition(start);
@@ -172,6 +171,8 @@ void Scene::OnUpdate(FLOAT deltaTime)
 		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
+	for (auto& ui : m_uiObjects)
+		ui->Update(deltaTime);
 }
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -222,13 +223,15 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f);
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 40.0f / 255.0f, 44.0f / 255.0f, 52.0f / 255.0f, 1.0f });
 
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
 	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
 	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
+
+	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 150.0f, 100.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -239,6 +242,8 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["BOUNDINGBOX"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+
+	m_shaders["UI"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -275,6 +280,25 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 5000.0f));
 	m_camera->SetProjMatrix(projMatrix);
+
+	// UI 카메라 생성
+	m_uiCamera = make_unique<UICamera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
+	m_uiCamera->SetProjMatrix(projMatrix);
+
+	//XMFLOAT4X4 viewMatrix{ Matrix::Identity() };
+	//viewMatrix._11 = 150.0f;
+	//viewMatrix._22 = 150.0f;
+	//m_uiCamera->SetViewMatrix(viewMatrix);
+
+	// UI 객체 생성
+	auto uiObject{ make_unique<GameObject>() };
+	uiObject->SetMesh(m_meshes["UI"]);
+	uiObject->SetShader(m_shaders["UI"]);
+	uiObject->SetTexture(m_textures["SKYBOX"]);
+	uiObject->Move(XMFLOAT3{ 0.0f, 0.0f, 1.0f });
+	m_uiObjects.push_back(move(uiObject));
 
 	// 바운딩박스
 	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
@@ -318,7 +342,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	}
 
 	// 스카이박스
-	m_skybox = make_unique<SkyboxObject>();
+	m_skybox = make_unique<Skybox>();
 	m_skybox->SetMesh(m_meshes["SKYBOX"]);
 	m_skybox->SetShader(m_shaders["SKYBOX"]);
 	m_skybox->SetTexture(m_textures["SKYBOX"]);
@@ -409,6 +433,14 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 게임오브젝트 렌더링
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
+
+	// UI 렌더링
+	if (m_uiCamera)
+	{
+		m_uiCamera->UpdateShaderVariable(commandList);
+		for (const auto& ui : m_uiObjects)
+			ui->Render(commandList);
+	}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

@@ -212,3 +212,8 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	//if (Vector3::Length(look))
 	//	m_at = Vector3::Normalize(look);
 }
+
+UICamera::UICamera() : Camera{}
+{
+
+}

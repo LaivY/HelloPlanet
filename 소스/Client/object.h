@@ -4,8 +4,6 @@
 #include "shader.h"
 #include "texture.h"
 
-class Camera;
-
 class DebugBoundingBox : public BoundingOrientedBox
 {
 public:
@@ -20,6 +18,10 @@ private:
 	shared_ptr<Mesh>	m_mesh;
 	shared_ptr<Shader>	m_shader;
 };
+
+// --------------------------------
+
+class Camera;
 
 enum class eAnimationState
 {
@@ -66,7 +68,7 @@ public:
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_worldMatrix = worldMatrix; }
-	void SetPosition(const XMFLOAT3& position);
+	virtual void SetPosition(const XMFLOAT3& position);
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
@@ -101,11 +103,13 @@ protected:
 	shared_ptr<DebugBoundingBox>	m_boundingBox;			// 바운딩박스
 };
 
-class SkyboxObject : public GameObject
+// --------------------------------
+
+class Skybox : public GameObject
 {
 public:
-	SkyboxObject() = default;
-	~SkyboxObject() = default;
+	Skybox() = default;
+	~Skybox() = default;
 
 	void Update(FLOAT deltaTime);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
@@ -114,11 +118,13 @@ private:
 	shared_ptr<Camera> m_camera;
 };
 
-class BulletObject : public GameObject
+// --------------------------------
+
+class Bullet : public GameObject
 {
 public:
-	BulletObject(const XMFLOAT3& direction, FLOAT speed = 500.0f, FLOAT lifeTime = 2.0f);
-	~BulletObject() = default;
+	Bullet(const XMFLOAT3& direction, FLOAT speed = 500.0f, FLOAT lifeTime = 2.0f);
+	~Bullet() = default;
 
 	void Update(FLOAT deltaTime);
 
@@ -127,4 +133,26 @@ private:
 	FLOAT		m_speed;
 	FLOAT		m_lifeTime;
 	FLOAT		m_lifeTimer;
+};
+
+// --------------------------------
+
+enum class eUIPivot
+{
+	LEFTTOP,	CENTERTOP,	RIGHTTOP,
+	LEFTCENTER, CENTER,		RIGHTCENTER,
+	LEFTBOT,	CENTERBOT,	RIGHTBOT
+};
+
+class UIObject : public GameObject
+{
+public:
+	UIObject();
+	~UIObject() = default;
+
+	void SetPosition(const XMFLOAT3& position);
+	void SetPivot(eUIPivot pivot);
+
+private:
+	eUIPivot m_pivot;
 };

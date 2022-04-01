@@ -64,11 +64,11 @@ class ThirdPersonCamera : public Camera
 {
 public:
 	ThirdPersonCamera();
-	virtual ~ThirdPersonCamera() = default;
+	~ThirdPersonCamera() = default;
 
-	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void Update(FLOAT deltaTime);
-	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	void Update(FLOAT deltaTime);
+	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 
 	void SetFocusOffset(const XMFLOAT3& focusOffset) { m_focusOffset = focusOffset; }
 	void SetDistance(FLOAT distance) { m_distance = clamp(distance, 3.0f, 9999.0f); }
@@ -81,4 +81,14 @@ private:
 	XMFLOAT3	m_focusOffset;	// 카메라가 바라볼 위치
 	FLOAT		m_distance;		// 오프셋 방향으로 떨어진 거리
 	FLOAT		m_delay;		// 움직임 딜레이 (0.0 ~ 1.0)
+};
+
+// http://egloos.zum.com/EireneHue/v/987437
+class UICamera : public Camera
+{
+public:
+	UICamera();
+	~UICamera() = default;
+
+	void Update(FLOAT /*deltaTime*/) { }
 };

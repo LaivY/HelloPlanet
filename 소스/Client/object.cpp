@@ -37,7 +37,7 @@ void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	if (!m_mesh) return;
+	if (!m_mesh || (!m_shader && !shader)) return;
 
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);
@@ -149,7 +149,7 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 
 void GameObject::SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox)
 {
-	m_boundingBox = move(boundingBox);
+	m_boundingBox = boundingBox;
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
@@ -172,13 +172,13 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	m_animationInfo->blendingTimer = 0.0f;
 }
 
-void SkyboxObject::Update(FLOAT deltaTime)
+void Skybox::Update(FLOAT deltaTime)
 {
 	if (!m_camera) return;
 	SetPosition(m_camera->GetEye());
 }
 
-BulletObject::BulletObject(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direction{ Vector3::Normalize(direction) }, m_speed{ speed }, m_lifeTime{ lifeTime }, m_lifeTimer{}
+Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direction{ Vector3::Normalize(direction) }, m_speed{ speed }, m_lifeTime{ lifeTime }, m_lifeTimer{}
 {
 	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 	XMFLOAT3 right{ Vector3::Normalize(Vector3::Cross(up, direction)) };
@@ -189,11 +189,31 @@ BulletObject::BulletObject(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTim
 	m_worldMatrix._31 = direction.x;	m_worldMatrix._32 = direction.y;	m_worldMatrix._33 = direction.z;
 }
 
-void BulletObject::Update(FLOAT deltaTime)
+void Bullet::Update(FLOAT deltaTime)
 {
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
 	
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
 		m_isDeleted = TRUE;
+}
+
+UIObject::UIObject() : m_pivot{ eUIPivot::CENTER }
+{
+
+}
+
+void UIObject::SetPosition(const XMFLOAT3& position)
+{
+	switch (m_pivot)
+	{
+	case eUIPivot::CENTER:
+		GameObject::SetPosition(position);
+		break;
+	}
+}
+
+void UIObject::SetPivot(eUIPivot pivot)
+{
+	m_pivot = pivot;
 }

@@ -69,8 +69,8 @@ struct MonsterData
 
 struct cs_packet_login
 {
-	UCHAR			size;
-	UCHAR			type;
+	UCHAR size;
+	UCHAR type;
 };
 
 struct cs_packet_update_legs
@@ -93,15 +93,16 @@ struct cs_packet_bullet_fire
 
 struct sc_packet_login_ok
 {
-	UCHAR			size;
-	UCHAR			type;
-	PlayerData		data;
+	UCHAR		size;
+	UCHAR		type;
+	PlayerData	data;
 };
 
 struct sc_packet_update_client
 {
-	UCHAR			size;
-	UCHAR			type;
-	PlayerData		data;
+	UCHAR		size;
+	UCHAR		type;
+	PlayerData	data;
 };
+
 #pragma pack(pop)

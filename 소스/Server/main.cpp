@@ -77,6 +77,8 @@ int main()
 //	WSASend(c_socket, c_wsabuf, 1, 0, 0, &c_over, send_callback);
 //}
 
+
+
 //void process_packet(int client_id, unsigned char* p)
 //{
 //	unsigned char packet_type = p[1];
@@ -149,6 +151,5 @@ int main()
 //	}
 //	break;
 //	default:
-//		break;
-//	}
-//}
+//}	LocalFree(lpMsgBuf);
+}//}

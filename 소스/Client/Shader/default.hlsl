@@ -23,7 +23,6 @@ float4 PS(PS_INPUT input) : SV_TARGET
     if (input.materialIndex < 0)
     {
         return g_texture.Sample(g_sampler, input.uv);
-        //return float4(1.0f, 1.0f, 1.0f, 1.0f);
     }
     return g_materials[input.materialIndex].baseColor;
 #endif

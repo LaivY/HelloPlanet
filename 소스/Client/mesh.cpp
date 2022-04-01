@@ -402,12 +402,15 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 	}
 
-	// 흰색 재질
-	Material material;
-	material.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-	m_materials.push_back(move(material));
-
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+}
+
+RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
+	: RectMesh{ device, commandList, width, height, length, position }
+{
+	Material material;
+	material.baseColor = color;
+	m_materials.push_back(move(material));
 }
 
 BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position)
