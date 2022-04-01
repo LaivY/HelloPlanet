@@ -287,17 +287,15 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// UI 객체 생성
-	auto uiObject{ make_unique<UIObject>(150.0f, 150.0f) };
-	uiObject->SetMesh(m_meshes["UI"]);
-	uiObject->SetShader(m_shaders["UI"]);
-	uiObject->SetTexture(m_textures["GAROO"]);
-	m_uiObjects.push_back(move(uiObject));
-
-	//uiObject = make_unique<UIObject>(50.0f, 100.0f);
-	//uiObject->SetMesh(m_meshes["UI"]);
-	//uiObject->SetShader(m_shaders["UI"]);
-	//uiObject->SetTexture(m_textures["SKYBOX"]);
-	//m_uiObjects.push_back(move(uiObject));
+	for (int i = -5; i < 5; ++i)
+	{
+		auto uiObject{ make_unique<UIObject>(50.0f + i * 10.0f, 50.0f + i * 10.0f) };
+		uiObject->SetMesh(m_meshes["UI"]);
+		uiObject->SetShader(m_shaders["UI"]);
+		uiObject->SetTexture(m_textures["GAROO"]);
+		uiObject->SetPosition(i * 100, i * 100);
+		m_uiObjects.push_back(move(uiObject));
+	}
 
 	// 바운딩박스
 	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
@@ -425,12 +423,11 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 
 	// UI 렌더링
 	if (m_uiCamera)
+	{
+		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
-		{
-			m_uiCamera->SetViewMatrix(ui->GetViewMatrix());
-			m_uiCamera->UpdateShaderVariable(commandList);
 			ui->Render(commandList);
-		}
+	}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

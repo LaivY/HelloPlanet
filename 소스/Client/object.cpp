@@ -200,7 +200,8 @@ void Bullet::Update(FLOAT deltaTime)
 
 UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }
 {
-	
+	m_worldMatrix._11 = width;
+	m_worldMatrix._22 = height;
 }
 
 void UIObject::SetPosition(const XMFLOAT3& position)
@@ -216,14 +217,4 @@ void UIObject::SetPosition(FLOAT x, FLOAT y)
 		GameObject::SetPosition(XMFLOAT3{ x, y, 0.0f });
 		break;
 	}
-}
-
-XMFLOAT4X4 UIObject::GetViewMatrix() const
-{
-	XMFLOAT4X4 viewMatrix{ Matrix::Identity() };
-	viewMatrix._11 = m_width;
-	viewMatrix._22 = m_height;
-	viewMatrix._41 = m_worldMatrix._41;
-	viewMatrix._42 = m_worldMatrix._42;
-	return viewMatrix;
 }

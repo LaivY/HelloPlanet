@@ -156,8 +156,6 @@ public:
 	void SetWidth(FLOAT width) { m_width = width; }
 	void SetHeight(FLOAT height) { m_height = height; }
 
-	XMFLOAT4X4 GetViewMatrix() const;
-
 private:
 	eUIPivot	m_pivot;
 	FLOAT		m_width;
