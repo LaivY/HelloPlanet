@@ -13,6 +13,7 @@ constexpr char CS_PACKET_BULLET_FIRE = 3;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
+constexpr char SC_PACKET_BULLET_FIRE = 3;
 
 enum class eAnimationType : char
 {
@@ -86,10 +87,12 @@ struct cs_packet_update_legs
 
 struct cs_packet_bullet_fire
 {
-	UCHAR				size;
-	UCHAR				type;
-	BulletData			data;
+	UCHAR		size;
+	UCHAR		type;
+	BulletData	data;
 };
+
+// ---------------------------------
 
 struct sc_packet_login_ok
 {
@@ -103,6 +106,13 @@ struct sc_packet_update_client
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
+};
+
+struct sc_packet_bullet_fire
+{
+	UCHAR		size;
+	UCHAR		type;
+	BulletData	data;
 };
 
 #pragma pack(pop)

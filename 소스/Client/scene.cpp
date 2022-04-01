@@ -497,20 +497,26 @@ void Scene::ProcessClient(LPVOID arg)
 
 void Scene::RecvPacket()
 {
-	// size, type, PlayerData
-	char recv_buf[sizeof(UCHAR) + sizeof(UCHAR) + sizeof(PlayerData)];
-	WSABUF wsabuf{ sizeof(recv_buf), recv_buf };
+	// size, type
+	char buf[2];
+	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD recv_byte{ 0 }, recv_flag{ 0 };
-	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
 	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
 
-	switch (recv_buf[1])
+	UCHAR size{ static_cast<UCHAR>(buf[0]) };
+	UCHAR type{ static_cast<UCHAR>(buf[1]) };
+
+	switch (type)
 	{
 	case SC_PACKET_LOGIN_OK:
 	{
-		sc_packet_login_ok packet;
-		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
-		if (m_player) m_player->SetId(static_cast<int>(packet.data.id));
+		char subBuf[sizeof(PlayerData)]{};
+		wsabuf = { sizeof(subBuf), subBuf };
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+		PlayerData pd; memcpy(&pd, subBuf, sizeof(pd));
+
+		if (m_player) m_player->SetId(static_cast<int>(pd.id));
 
 		int id{ 0 };
 		for (auto& p : m_multiPlayers)
@@ -522,24 +528,53 @@ void Scene::RecvPacket()
 	}
 	case SC_PACKET_UPDATE_CLIENT:
 	{
-		sc_packet_update_client packet;
-		memcpy(reinterpret_cast<char*>(&packet), recv_buf, sizeof(recv_buf));
+		char subBuf[sizeof(PlayerData)]{};
+		wsabuf = { sizeof(subBuf), subBuf };
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+		PlayerData pd; memcpy(&pd, subBuf, sizeof(pd));
 
 		// 나에 대한 정보는 무시
-		if (m_player->GetId() == packet.data.id)
+		if (m_player->GetId() == pd.id)
 			break;
 
 		for (auto& p : m_multiPlayers)
 		{
 			if (!p) continue;
-			if (p->GetId() != packet.data.id) continue;
-			p->ApplyServerData(packet.data);
+			if (p->GetId() != pd.id) continue;
+			p->ApplyServerData(pd);
 		}
 		break;
 	}
-	default:
-		cout << "Wrong Packet" << endl;
+	case SC_PACKET_BULLET_FIRE:
+	{
+		// pos, dir
+		char subBuf[12 + 12]{};
+		wsabuf = { sizeof(subBuf), subBuf };
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+
+		XMFLOAT3 pos{}, dir{};
+		memcpy(&pos, &subBuf[0], sizeof(pos));
+		memcpy(&dir, &subBuf[12], sizeof(dir));
+
+		//string debug{};
+		//debug = "RECV BULLET : " + to_string(pos.x) + ", " + to_string(pos.y) + ", " + to_string(pos.z) + " / ";
+		//debug += to_string(dir.x) + " , " + to_string(dir.y) + ", " + to_string(dir.z) + "\n";
+		//OutputDebugStringA(debug.c_str());
+
+		auto bullet{ make_unique<Bullet>(dir) };
+		bullet->SetMesh(m_meshes["BULLET"]);
+		bullet->SetShader(m_shaders["DEFAULT"]);
+		bullet->SetPosition(pos);
+		m_gameObjects.push_back(move(bullet));
 		break;
+	}
+	default:
+	{
+		string debug{};
+		debug += "RECV_ERR | size : " + to_string(static_cast<int>(size)) + ", type : " + to_string(static_cast<int>(type)) + "\n";
+		OutputDebugStringA(debug.c_str());
+		break;
+	}
 	}
 }
 

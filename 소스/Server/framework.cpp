@@ -60,10 +60,6 @@ void NetFramework::ProcessRecvPacket(int id)
 	Session& cl = clients[id];
 	for (;;)
 	{
-		// cs_packet_update_legs
-		// size, type, aniType, upperAniType, pos, velocity, yaw
-		//char buf[1 + 1 + 1 + 1 + 12 + 12 + 4]{};
-
 		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
@@ -102,7 +98,6 @@ void NetFramework::ProcessRecvPacket(int id)
 			memcpy(&cl.m_data.pos, &subBuf[2], sizeof(cl.m_data.pos));
 			memcpy(&cl.m_data.velocity, &subBuf[14], sizeof(cl.m_data.velocity));
 			memcpy(&cl.m_data.yaw, &subBuf[26], sizeof(cl.m_data.yaw));
-
 			break;
 		}
 		case CS_PACKET_BULLET_FIRE:
@@ -111,14 +106,21 @@ void NetFramework::ProcessRecvPacket(int id)
 			char subBuf[12 + 12];
 			wsabuf = { sizeof(subBuf), subBuf };
 			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-			break;
-			BulletData bullet{};
-			memcpy(&bullet.pos, &subBuf[0], sizeof(bullet.pos));
-			memcpy(&bullet.dir, &subBuf[12], sizeof(bullet.dir));
 
-			std::cout << "RECV BULLET : " 
-					  << bullet.pos.x << ", " << bullet.pos.y << ", " << bullet.pos.z << " / " 
-					  << bullet.dir.x << ", " << bullet.dir.y << ", " << bullet.dir.z << std::endl;
+			sc_packet_bullet_fire packet{};
+			packet.size = sizeof(packet);
+			packet.type = SC_PACKET_BULLET_FIRE;
+			memcpy(&packet.data.pos, &subBuf[0], sizeof(packet.data.pos));
+			memcpy(&packet.data.dir, &subBuf[12], sizeof(packet.data.dir));
+
+			char sendBuf[sizeof(packet)];
+			wsabuf = { sizeof(sendBuf), sendBuf };
+			DWORD sent_byte;
+			for (const auto& c : clients)
+			{
+				if (c.m_data.id == cl.m_data.id) continue; // ÃÑÀ» ½ð »ç¶÷¿¡°Õ º¸³»Áö¾ÊÀ½
+				WSASend(c.m_socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			}
 			break;
 		}
 		default:
