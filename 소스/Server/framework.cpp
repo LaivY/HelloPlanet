@@ -68,6 +68,7 @@ void NetFramework::ProcessRecvPacket(int id)
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -108,7 +109,7 @@ void NetFramework::ProcessRecvPacket(int id)
 		{
 			// pos, dir
 			char subBuf[12 + 12];
-			wsabuf = { sizeof(subBuf, subBuf) };
+			wsabuf = { sizeof(subBuf), subBuf };
 			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			break;
 			BulletData bullet{};

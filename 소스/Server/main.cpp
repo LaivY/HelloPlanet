@@ -43,7 +43,7 @@ int main()
 		{
 			frameNumber = std::chrono::duration_cast<frame>(frameNumber + FPS);
 			fpsTimer = std::chrono::steady_clock::now();
-			std::cout << "LastFrame: " << duration_cast<ms>(FPS).count() << "ms  |  FPS: " << FPS.count() * 60 << " |  FrameNumber: " << frameNumber.count() << std::endl;
+			//std::cout << "LastFrame: " << duration_cast<ms>(FPS).count() << "ms  |  FPS: " << FPS.count() * 60 << " |  FrameNumber: " << frameNumber.count() << std::endl;
 			if (1 & frameNumber.count()) // even FrameNumber
 			{
 				// playerData Send
