@@ -172,13 +172,13 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	m_animationInfo->blendingTimer = 0.0f;
 }
 
-void Skybox::Update(FLOAT deltaTime)
+void SkyboxObject::Update(FLOAT deltaTime)
 {
 	if (!m_camera) return;
 	SetPosition(m_camera->GetEye());
 }
 
-Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direction{ Vector3::Normalize(direction) }, m_speed{ speed }, m_lifeTime{ lifeTime }, m_lifeTimer{}
+BulletObject::BulletObject(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direction{ Vector3::Normalize(direction) }, m_speed{ speed }, m_lifeTime{ lifeTime }, m_lifeTimer{}
 {
 	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 	XMFLOAT3 right{ Vector3::Normalize(Vector3::Cross(up, direction)) };
@@ -189,7 +189,7 @@ Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direc
 	m_worldMatrix._31 = direction.x;	m_worldMatrix._32 = direction.y;	m_worldMatrix._33 = direction.z;
 }
 
-void Bullet::Update(FLOAT deltaTime)
+void BulletObject::Update(FLOAT deltaTime)
 {
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
 	

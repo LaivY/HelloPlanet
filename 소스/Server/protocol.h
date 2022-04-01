@@ -9,6 +9,7 @@ constexpr int  MAX_USER = 3;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;
+constexpr char CS_PACKET_BULLET_FIRE = 3;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
@@ -50,6 +51,12 @@ struct PlayerData
 	FLOAT				yaw;			// 회전각
 };
 
+struct BulletData
+{
+	DirectX::XMFLOAT3 pos; // 위치
+	DirectX::XMFLOAT3 dir; // 방향
+};
+
 struct MonsterData
 {
 	CHAR				id;				// 몬스터 고유 번호
@@ -75,6 +82,13 @@ struct cs_packet_update_legs
 	DirectX::XMFLOAT3	pos;
 	DirectX::XMFLOAT3	velocity;
 	FLOAT				yaw;
+};
+
+struct cs_packet_bullet_fire
+{
+	UCHAR				size;
+	UCHAR				type;
+	BulletData			data;
 };
 
 struct sc_packet_login_ok

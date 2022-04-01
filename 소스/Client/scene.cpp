@@ -99,11 +99,19 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		// 총구에서 나오도록
 		start = Vector3::Add(start, Vector3::Mul(target, 10.0f));
 
-		unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
+		unique_ptr<BulletObject> bullet{ make_unique<BulletObject>(target) };
 		bullet->SetMesh(m_meshes["BULLET"]);
 		bullet->SetShader(m_shaders["DEFAULT"]);
 		bullet->SetPosition(start);
 		m_gameObjects.push_back(move(bullet));
+
+		// 총알 발사 정보 서버로 송신
+		cs_packet_bullet_fire packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_BULLET_FIRE;
+		packet.data = { start, target };
+		send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
 		break;
 	}
 	}
@@ -310,7 +318,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	}
 
 	// 스카이박스
-	m_skybox = make_unique<Skybox>();
+	m_skybox = make_unique<SkyboxObject>();
 	m_skybox->SetMesh(m_meshes["SKYBOX"]);
 	m_skybox->SetShader(m_shaders["SKYBOX"]);
 	m_skybox->SetTexture(m_textures["SKYBOX"]);

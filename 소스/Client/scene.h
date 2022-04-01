@@ -77,6 +77,6 @@ private:
 	shared_ptr<Camera>									m_camera;		// 카메라
 	shared_ptr<Player>									m_player;		// 플레이어
 	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;	// 멀티플레이어
-	unique_ptr<Skybox>									m_skybox;		// 스카이박스
+	unique_ptr<SkyboxObject>									m_skybox;		// 스카이박스
 	vector<unique_ptr<GameObject>>						m_gameObjects;	// 게임오브젝트들
 };

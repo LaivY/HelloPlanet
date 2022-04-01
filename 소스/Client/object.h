@@ -101,11 +101,11 @@ protected:
 	shared_ptr<DebugBoundingBox>	m_boundingBox;			// 바운딩박스
 };
 
-class Skybox : public GameObject
+class SkyboxObject : public GameObject
 {
 public:
-	Skybox() = default;
-	~Skybox() = default;
+	SkyboxObject() = default;
+	~SkyboxObject() = default;
 
 	void Update(FLOAT deltaTime);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
@@ -114,11 +114,11 @@ private:
 	shared_ptr<Camera> m_camera;
 };
 
-class Bullet : public GameObject
+class BulletObject : public GameObject
 {
 public:
-	Bullet(const XMFLOAT3& direction, FLOAT speed = 500.0f, FLOAT lifeTime = 2.0f);
-	~Bullet() = default;
+	BulletObject(const XMFLOAT3& direction, FLOAT speed = 500.0f, FLOAT lifeTime = 2.0f);
+	~BulletObject() = default;
 
 	void Update(FLOAT deltaTime);
 

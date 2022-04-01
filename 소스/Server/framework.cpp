@@ -62,10 +62,11 @@ void NetFramework::ProcessRecvPacket(int id)
 	{
 		// cs_packet_update_legs
 		// size, type, aniType, upperAniType, pos, velocity, yaw
-		char buf[1 + 1 + 1 + 1 + 12 + 12 + 4]{};
+		//char buf[1 + 1 + 1 + 1 + 12 + 12 + 4]{};
+
+		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
-		DWORD recvd_byte;
-		DWORD flag{ 0 };
+		DWORD recvd_byte{ 0 }, flag{ 0 };
 		int retVal = WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
@@ -83,17 +84,42 @@ void NetFramework::ProcessRecvPacket(int id)
 			Disconnect(cl.m_data.id);
 			break;
 		}
-		switch (static_cast<int>(buf[1]))
+
+		UCHAR size{ static_cast<UCHAR>(buf[0]) };
+		UCHAR type{ static_cast<UCHAR>(buf[1]) };
+		switch (type)
 		{
 		case CS_PACKET_UPDATE_LEGS:
-			cl.m_data.aniType = static_cast<eAnimationType>(buf[2]);
-			cl.m_data.upperAniType = static_cast<eUpperAnimationType>(buf[3]);
-			memcpy(&cl.m_data.pos, &buf[4], sizeof(cl.m_data.pos));
-			memcpy(&cl.m_data.velocity, &buf[16], sizeof(cl.m_data.velocity));
-			memcpy(&cl.m_data.yaw, &buf[28], sizeof(cl.m_data.yaw));
-			// 애니메이션 리시브 확인
-			// std::cout << id << "PLAYER : " << static_cast<int>(cl.m_data.aniType) << ", " << static_cast<int>(cl.m_data.upperAniType) << std::endl;
+		{
+			// aniType, upperAniType, pos, velocity, yaw
+			char subBuf[1 + 1 + 12 + 12 + 4];
+			wsabuf = { sizeof(subBuf), subBuf };
+			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+
+			cl.m_data.aniType = static_cast<eAnimationType>(subBuf[0]);
+			cl.m_data.upperAniType = static_cast<eUpperAnimationType>(subBuf[1]);
+			memcpy(&cl.m_data.pos, &subBuf[2], sizeof(cl.m_data.pos));
+			memcpy(&cl.m_data.velocity, &subBuf[14], sizeof(cl.m_data.velocity));
+			memcpy(&cl.m_data.yaw, &subBuf[26], sizeof(cl.m_data.yaw));
+
 			break;
+		}
+		case CS_PACKET_BULLET_FIRE:
+		{
+			// pos, dir
+			char subBuf[12 + 12];
+			wsabuf = { sizeof(subBuf, subBuf) };
+			WSARecv(cl.m_socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			break;
+			BulletData bullet{};
+			memcpy(&bullet.pos, &subBuf[0], sizeof(bullet.pos));
+			memcpy(&bullet.dir, &subBuf[12], sizeof(bullet.dir));
+
+			std::cout << "RECV BULLET : " 
+					  << bullet.pos.x << ", " << bullet.pos.y << ", " << bullet.pos.z << " / " 
+					  << bullet.dir.x << ", " << bullet.dir.y << ", " << bullet.dir.z << std::endl;
+			break;
+		}
 		default:
 			std::cout << "[" << static_cast<int>(cl.m_data.id) << " client] Server Received Unknown Packet" << std::endl;
 			break;
