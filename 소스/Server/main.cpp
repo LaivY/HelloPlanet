@@ -1,12 +1,13 @@
 ﻿#include "main.h"
 
 NetworkFramework	g_networkFramework{};
+SOCKET				g_socket{};
 
 int main()
 {
 	std::wcout.imbue(std::locale("korean"));
 	
-	if (g_networkFramework.OnInit()) return 1;
+	if (g_networkFramework.OnInit(g_socket)) return 1;
 	std::cout << "main process start" << std::endl;
 
 	// 1초에 60회 동작하는 루프
@@ -43,7 +44,7 @@ int main()
 			g_networkFramework.Disconnect(c.data.id);
 	}
 	
-	closesocket(g_networkFramework.socket);
+	closesocket(g_socket);
 	WSACleanup();
 }
 
