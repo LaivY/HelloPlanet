@@ -213,8 +213,79 @@ void UIObject::SetPosition(FLOAT x, FLOAT y)
 {
 	switch (m_pivot)
 	{
+	case eUIPivot::LEFTTOP:
+		m_worldMatrix._41 = x + m_width / 2.0f;
+		m_worldMatrix._42 = y - m_height / 2.0f;
+		break;
+	case eUIPivot::CENTERTOP:
+		m_worldMatrix._42 = y - m_height / 2.0f;
+		break;
+	case eUIPivot::RIGHTTOP:
+		m_worldMatrix._41 = x - m_width / 2.0f;
+		m_worldMatrix._42 = y - m_height / 2.0f;
+		break;
+	case eUIPivot::LEFTCENTER:
+		m_worldMatrix._41 = x + m_width / 2.0f;
+		break;
 	case eUIPivot::CENTER:
-		GameObject::SetPosition(XMFLOAT3{ x, y, 0.0f });
+		m_worldMatrix._41 = x;
+		m_worldMatrix._42 = y;
+		break;
+	case eUIPivot::RIGHTCENTER:
+		m_worldMatrix._41 = x - m_width / 2.0f;
+		break;
+	case eUIPivot::LEFTBOT:
+		m_worldMatrix._41 = x + m_width / 2.0f;
+		m_worldMatrix._42 = y + m_height / 2.0f;
+		break;
+	case eUIPivot::CENTERBOT:
+		m_worldMatrix._42 = y + m_height / 2.0f;
+		break;
+	case eUIPivot::RIGHTBOT:
+		m_worldMatrix._41 = x - m_width / 2.0f;
+		m_worldMatrix._42 = y + m_height / 2.0f;
+		break;
+	}
+}
+
+void UIObject::SetWidth(FLOAT width)
+{
+	m_width = width;
+	m_worldMatrix._11 = width;
+
+	FLOAT deltaWidth{ width - m_width };
+	switch (m_pivot)
+	{
+	case eUIPivot::LEFTTOP:
+	case eUIPivot::LEFTCENTER:
+	case eUIPivot::LEFTBOT:
+		m_worldMatrix._41 += deltaWidth / 2.0f;
+		break;
+	case eUIPivot::RIGHTTOP:
+	case eUIPivot::RIGHTCENTER:
+	case eUIPivot::RIGHTBOT:
+		m_worldMatrix._41 -= deltaWidth / 2.0f;
+		break;
+	}
+}
+
+void UIObject::SetHeight(FLOAT height)
+{
+	m_height = height;
+	m_worldMatrix._22 = height;
+
+	FLOAT deltaHeight{ height - m_height };
+	switch (m_pivot)
+	{
+	case eUIPivot::LEFTTOP:
+	case eUIPivot::RIGHTTOP:
+	case eUIPivot::CENTERTOP:
+		m_worldMatrix._42 += deltaHeight / 2.0f;
+		break;
+	case eUIPivot::LEFTBOT:
+	case eUIPivot::CENTERBOT:
+	case eUIPivot::RIGHTBOT:
+		m_worldMatrix._42 -= deltaHeight / 2.0f;
 		break;
 	}
 }

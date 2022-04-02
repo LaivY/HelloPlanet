@@ -327,10 +327,19 @@ void Mesh::ReleaseUploadBuffer()
 	if (m_indexUploadBuffer) m_indexUploadBuffer.Reset();
 }
 
-RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position)
+RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
 {
 	vector<Vertex> vertices;
 	Vertex v;
+	if (color.w > 0.0f)
+	{
+		v.materialIndex = 0;
+
+		Material material;
+		material.baseColor = color;
+		m_materials.push_back(move(material));
+	}
+
 	FLOAT hx{ position.x + width / 2.0f }, hy{ position.y + height / 2.0f }, hz{ position.z + length / 2.0f };
 	if (width == 0.0f) // YZ평면
 	{
@@ -402,14 +411,6 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 	}
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-}
-
-RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
-	: RectMesh{ device, commandList, width, height, length, position }
-{
-	Material material;
-	material.baseColor = color;
-	m_materials.push_back(move(material));
 }
 
 BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position)

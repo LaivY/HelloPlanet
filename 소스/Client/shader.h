@@ -17,11 +17,18 @@ protected:
 	vector<D3D12_INPUT_ELEMENT_DESC>	m_inputLayout;
 };
 
-class SkyboxShader : public Shader
+class NoDepthShader : public Shader
 {
 public:
-	SkyboxShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	~SkyboxShader() = default;
+	NoDepthShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
+	~NoDepthShader() = default;
+};
+
+class BlendingShader : public Shader
+{
+public:
+	BlendingShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
+	~BlendingShader() = default;
 };
 
 class WireframeShader : public Shader

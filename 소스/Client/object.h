@@ -153,8 +153,8 @@ public:
 	void SetPosition(const XMFLOAT3& position);
 	void SetPosition(FLOAT x, FLOAT y);
 	void SetPivot(eUIPivot pivot) { m_pivot = pivot; }
-	void SetWidth(FLOAT width) { m_width = width; }
-	void SetHeight(FLOAT height) { m_height = height; }
+	void SetWidth(FLOAT width);
+	void SetHeight(FLOAT height);
 
 private:
 	eUIPivot	m_pivot;

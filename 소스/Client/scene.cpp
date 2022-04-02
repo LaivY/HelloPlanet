@@ -96,7 +96,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		target = Vector3::Normalize(target);
 
 		// 총구에서 나오도록
-		start = Vector3::Add(start, Vector3::Mul(target, 10.0f));
+		start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
 
 		unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
 		bullet->SetMesh(m_meshes["BULLET"]);
@@ -231,18 +231,19 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
 
 	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
+	m_meshes["HPBAR"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f }, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.5f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["SKYBOX"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
+	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
 	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["BOUNDINGBOX"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 
-	m_shaders["UI"] = make_shared<SkyboxShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -287,15 +288,13 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// UI 객체 생성
-	for (int i = -5; i < 5; ++i)
-	{
-		auto uiObject{ make_unique<UIObject>(50.0f + i * 10.0f, 50.0f + i * 10.0f) };
-		uiObject->SetMesh(m_meshes["UI"]);
-		uiObject->SetShader(m_shaders["UI"]);
-		uiObject->SetTexture(m_textures["GAROO"]);
-		uiObject->SetPosition(i * 100, i * 100);
-		m_uiObjects.push_back(move(uiObject));
-	}
+	auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
+	hpBar->SetMesh(m_meshes["HPBAR"]);
+	hpBar->SetShader(m_shaders["UI"]);
+	hpBar->SetPivot(eUIPivot::LEFTBOT);
+	hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
+					   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
+	m_uiObjects.push_back(move(hpBar));
 
 	// 바운딩박스
 	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
