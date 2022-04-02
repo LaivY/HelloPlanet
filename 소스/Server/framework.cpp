@@ -1,5 +1,27 @@
 ﻿#include "framework.h"
 
+int NetworkFramework::OnInit()
+{
+	WSADATA WSAData;
+	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != 0) return 1;
+
+	socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+	if (socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Socket");
+
+	// bind
+	SOCKADDR_IN serverAddr{};
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = htons(SERVER_PORT);
+	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	int retVal = bind(socket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr));
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Bind");
+
+	// listen
+	retVal = listen(socket, SOMAXCONN);
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Listen");
+	threads.emplace_back(&NetworkFramework::AcceptThread, this, socket);
+}
+
 void NetworkFramework::AcceptThread(SOCKET socket)
 {
 	std::cout << "AcceptThread start" << std::endl;
@@ -8,22 +30,22 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	while (true)
 	{
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
-		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "accept");
+		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept");
 
 		CHAR id{ GetNewId() };
-		Session& cl = clients[id];
+		Session& player = clients[id];
 
-		cl.lock.lock();
-		cl.data.id = id;
-		cl.data.isActive = true;
-		cl.data.aniType = eAnimationType::IDLE;
-		cl.data.upperAniType = eUpperAnimationType::NONE;
-		cl.socket = cSocket;
+		player.lock.lock();
+		player.data.id = id;
+		player.data.isActive = true;
+		player.data.aniType = eAnimationType::IDLE;
+		player.data.upperAniType = eUpperAnimationType::NONE;
+		player.socket = cSocket;
 		SendLoginOkPacket(id);
-		cl.lock.unlock();
+		player.lock.unlock();
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
-		std::cout << "[" << static_cast<int>(cl.data.id) << " Session] connect IP: " << ipInfo << std::endl;
+		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
 		//m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		isAccept = true;
@@ -32,7 +54,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 
 void NetworkFramework::SendLoginOkPacket(int id)
 {
-	Session& cl = clients[id];
+	Session& player = clients[id];
 
 	sc_packet_login_ok packet;
 	packet.size = sizeof(packet);
@@ -46,9 +68,9 @@ void NetworkFramework::SendLoginOkPacket(int id)
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
-	std::cout << "login pacet: " << static_cast<int>(buf[0]) << " : " << static_cast<int>(buf[1]) << " : " << static_cast<int>(buf[2]) << std::endl;
-	const int retVal = WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Login Send");
+	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
+	const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
 }
 
 void NetworkFramework::SendPlayerDataPacket()
@@ -71,14 +93,22 @@ void NetworkFramework::SendPlayerDataPacket()
 			if (retVal == SOCKET_ERROR)
 			{
 				if (WSAGetLastError() == WSAECONNRESET)
-					std::cout << "Disconnect " << static_cast<int>(other.data.id) << " " << other.data.id << std::endl;
-				else errorDisplay(WSAGetLastError(), "Send");
+					std::cout <<  "[" << static_cast<int>(other.data.id) << " SESSION] Disconnect" << std::endl;
+				else errorDisplay(WSAGetLastError(), "SendPlayerData");
 			}
 		}
 	}
 	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
 	for (auto& c : clients)
 		c.data.upperAniType = eUpperAnimationType::NONE;
+}
+
+void NetworkFramework::SendMonsterDataPacket()
+{
+	for (const auto& player : clients)
+	{
+
+	}
 }
 
 void NetworkFramework::ProcessRecvPacket(int id)
