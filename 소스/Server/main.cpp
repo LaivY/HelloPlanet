@@ -1,30 +1,12 @@
 ﻿#include "main.h"
 
-NetworkFramework g_networkFramework{};
+NetworkFramework	g_networkFramework{};
 
 int main()
 {
 	std::wcout.imbue(std::locale("korean"));
-
-	WSADATA WSAData;
-	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != 0) return 1;
-
-	const SOCKET socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
-	if (socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "socket");
-
-	// bind
-	SOCKADDR_IN serverAddr{};
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(SERVER_PORT);
-	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	int retVal = bind(socket, reinterpret_cast<sockaddr*>(&serverAddr), sizeof(serverAddr));
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "bind");
-
-	// listen
-	retVal = listen(socket, SOMAXCONN);
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "listen");
-	g_networkFramework.threads.emplace_back(&NetworkFramework::AcceptThread, &g_networkFramework, socket);
-
+	
+	if (g_networkFramework.OnInit()) return 1;
 	std::cout << "main process start" << std::endl;
 
 	// 1초에 60회 동작하는 루프
@@ -55,13 +37,13 @@ int main()
 
 	}
 
-	for (auto& c : g_networkFramework.clients)
+	for (const auto& c : g_networkFramework.clients)
 	{
 		if (c.data.isActive)
 			g_networkFramework.Disconnect(c.data.id);
 	}
-
-	closesocket(socket);
+	
+	closesocket(g_networkFramework.socket);
 	WSACleanup();
 }
 

@@ -114,5 +114,4 @@ struct sc_packet_bullet_fire
 	UCHAR		type;
 	BulletData	data;
 };
-
 #pragma pack(pop)

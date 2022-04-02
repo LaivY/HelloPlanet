@@ -7,10 +7,11 @@ public:
 	NetworkFramework() : isAccept{ false } { }
 	~NetworkFramework() = default;
 
+	int OnInit();
 	void AcceptThread(SOCKET socket);
 	void SendLoginOkPacket(int id);
 	void SendPlayerDataPacket();
-
+	void SendMonsterDataPacket();
 	void ProcessRecvPacket(int id);
 
 	void Disconnect(int id);
@@ -19,6 +20,7 @@ public:
 
 public:
 	bool							isAccept; // 1명이라도 서버에 들어왔는지
+	SOCKET							socket;
 	std::array<Session, MAX_USER>	clients;
 	std::vector<std::thread>		threads;
 };
