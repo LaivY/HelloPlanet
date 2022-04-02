@@ -1,6 +1,6 @@
 ﻿#include "framework.h"
 
-int NetworkFramework::OnInit()
+int NetworkFramework::OnInit(SOCKET socket)
 {
 	WSADATA WSAData;
 	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != 0) return 1;
@@ -20,6 +20,7 @@ int NetworkFramework::OnInit()
 	retVal = listen(socket, SOMAXCONN);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Listen");
 	threads.emplace_back(&NetworkFramework::AcceptThread, this, socket);
+	return 0;
 }
 
 void NetworkFramework::AcceptThread(SOCKET socket)

@@ -7,7 +7,7 @@ public:
 	NetworkFramework() : isAccept{ false } { }
 	~NetworkFramework() = default;
 
-	int OnInit();
+	int OnInit(SOCKET socket);
 	void AcceptThread(SOCKET socket);
 	void SendLoginOkPacket(int id);
 	void SendPlayerDataPacket();
