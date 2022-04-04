@@ -82,34 +82,12 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_LBUTTONDOWN:
 	{
-		// 총알 시작 좌표
-		XMFLOAT3 start{ m_camera->GetEye() };
-		start = Vector3::Add(start, m_player->GetRight());
-		start = Vector3::Add(start, Vector3::Mul(m_player->GetUp(), -0.5f));
+		if (m_player->GetCurrAnimationName() == "RUNNING")
+			break;
+		if (m_player->GetUpperCurrAnimationName() == "RELOAD")
+			break;
 
-		// 화면 정중앙 엄청 멀리
-		XMFLOAT3 _far{ m_camera->GetEye() };
-		_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
-
-		// 총 -> 화면 정중앙 멀리
-		XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
-		target = Vector3::Normalize(target);
-
-		// 총구에서 나오도록
-		start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
-
-		unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
-		bullet->SetMesh(m_meshes["BULLET"]);
-		bullet->SetShader(m_shaders["DEFAULT"]);
-		bullet->SetPosition(start);
-		m_gameObjects.push_back(move(bullet));
-
-		// 총알 발사 정보 서버로 송신
-		cs_packet_bullet_fire packet{};
-		packet.size = sizeof(packet);
-		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = { start, target };
-		send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		CreateBullet();
 		break;
 	}
 	}
@@ -242,7 +220,6 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["BOUNDINGBOX"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
-
 	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
@@ -409,9 +386,6 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 플레이어 렌더링
-	if (m_player) m_player->Render(commandList);
-
 	// 멀티플레이어 렌더링
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
@@ -419,6 +393,10 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 게임오브젝트 렌더링
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
+
+	// 플레이어 렌더링
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
 	if (m_uiCamera)
@@ -468,6 +446,39 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void Scene::CreateBullet()
+{
+	// 총알 시작 좌표
+	XMFLOAT3 start{ m_camera->GetEye() };
+	start = Vector3::Add(start, m_player->GetRight());
+	start = Vector3::Add(start, Vector3::Mul(m_player->GetUp(), -0.5f));
+
+	// 화면 정중앙 엄청 멀리
+	XMFLOAT3 _far{ m_camera->GetEye() };
+	_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+
+	// 총 -> 화면 정중앙 멀리
+	XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
+	target = Vector3::Normalize(target);
+
+	// 총구에서 나오도록
+	start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
+
+	// 총알 생성
+	unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
+	bullet->SetMesh(m_meshes["BULLET"]);
+	bullet->SetShader(m_shaders["DEFAULT"]);
+	bullet->SetPosition(start);
+	m_gameObjects.push_back(move(bullet));
+
+	// 총알 발사 정보 서버로 송신
+	cs_packet_bullet_fire packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_BULLET_FIRE;
+	packet.data = { start, target };
+	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Scene::ProcessClient(LPVOID arg)

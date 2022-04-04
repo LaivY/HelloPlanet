@@ -17,9 +17,9 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (GetCurrAnimationName() == "RUNNING")
 				break;
-			if (m_upperAnimationInfo && GetUpperCurrAnimationName() == "RELOAD")
+			if (GetUpperCurrAnimationName() == "RELOAD")
 				break;
-			PlayAnimation("FIRING", TRUE);
+			PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 			SendPlayerData(); // 서버에게 총 발사했다고 알림
 			break;
 		}
@@ -150,7 +150,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		switch (wParam)
 		{
 		case 'r': case 'R':
-			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD"))
+			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
 			{
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();

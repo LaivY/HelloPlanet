@@ -77,7 +77,6 @@ float4 Lighting(float3 position, float3 normal, int materialIndex)
 	{
 		material = g_materials[materialIndex];
 	}
-
     for (int i = 0; i < MAX_LIGHT; ++i)
     {
 		lightColor += ComputeDirectionalLight(g_lights[i], material, normal, toEye);
