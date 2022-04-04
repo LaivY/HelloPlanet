@@ -106,9 +106,27 @@ void NetworkFramework::SendPlayerDataPacket()
 
 void NetworkFramework::SendMonsterDataPacket()
 {
+	sc_packet_update_monsters packet{};
+	for(int i = 0;i < MAX_MONSTER;++i)
+	{
+		packet.data[i] = monsters[i];
+	}
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_UPDATE_MONSTER;
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ buf[0], buf};
+	DWORD sent_byte;
 	for (const auto& player : clients)
 	{
-
+		if (!player.data.isActive) continue;
+		int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(player.data.id) << " SESSION] Disconnect" << std::endl;
+			else errorDisplay(WSAGetLastError(), "SendMonsterData");
+		}
 	}
 }
 
