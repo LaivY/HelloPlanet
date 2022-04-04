@@ -17,9 +17,9 @@ void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (GetCurrAnimationName() == "RUNNING")
 				break;
-			if (m_upperAnimationInfo && GetUpperCurrAnimationName() == "RELOAD")
+			if (GetUpperCurrAnimationName() == "RELOAD")
 				break;
-			PlayAnimation("FIRING", TRUE);
+			PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 			SendPlayerData(); // 서버에게 총 발사했다고 알림
 			break;
 		}
