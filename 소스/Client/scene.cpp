@@ -161,35 +161,28 @@ void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPt
 
 void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// 플레이어 관련 메쉬 로딩
 	vector<pair<string, string>> animations
 	{
 		{ "idle", "IDLE" }, { "walking", "WALKING" }, {"walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
 		{ "walkBack", "WALKBACK" }, {"running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
 	};
-
 	m_meshes["PLAYER"] = make_shared<Mesh>();
 	m_meshes["PLAYER"]->LoadMesh(device, commandList, Utile::PATH("player.txt", Utile::RESOURCE));
 	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
 			m_meshes["PLAYER"]->LoadAnimation(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".txt", Utile::RESOURCE), weaponName + "/" + animationName);
-
 	m_meshes["AR"] = make_shared<Mesh>();
 	m_meshes["AR"]->LoadMesh(device, commandList, Utile::PATH("AR/AR.txt", Utile::RESOURCE));
 	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
-
 	m_meshes["SG"] = make_shared<Mesh>();
 	m_meshes["SG"]->LoadMesh(device, commandList, Utile::PATH("SG/SG.txt", Utile::RESOURCE));
 	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
-
 	m_meshes["MG"] = make_shared<Mesh>();
 	m_meshes["MG"]->LoadMesh(device, commandList, Utile::PATH("MG/MG.txt", Utile::RESOURCE));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
-	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
-
-	m_meshes["SKYBOX"] = make_shared<Mesh>();
-	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
-
+	// 몬스터 관련 로딩
 	m_meshes["GAROO"] = make_shared<Mesh>();
 	m_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt", Utile::RESOURCE));
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt", Utile::RESOURCE), "ATTACK");
@@ -200,16 +193,51 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 40.0f / 255.0f, 44.0f / 255.0f, 52.0f / 255.0f, 1.0f });
+	// 게임오브젝트 관련 로딩
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{});
+	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
-	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
-	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
-
+	// 맵 오브젝트 관련 로딩
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
 	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
+	m_meshes["PLANT"] = make_shared<Mesh>();
+	m_meshes["PLANT"]->LoadMesh(device, commandList, Utile::PATH(("Object/bigPlant.txt"), Utile::RESOURCE));
+	m_meshes["TREE"] = make_shared<Mesh>();
+	m_meshes["TREE"]->LoadMesh(device, commandList, Utile::PATH(("Object/tree.txt"), Utile::RESOURCE));
+	m_meshes["ROCK1"] = make_shared<Mesh>();
+	m_meshes["ROCK1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock1.txt"), Utile::RESOURCE));
+	m_meshes["ROCK2"] = make_shared<Mesh>();
+	m_meshes["ROCK2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock2.txt"), Utile::RESOURCE));
+	m_meshes["ROCK3"] = make_shared<Mesh>();
+	m_meshes["ROCK3"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock3.txt"), Utile::RESOURCE));
+	m_meshes["SMALLROCK"] = make_shared<Mesh>();
+	m_meshes["SMALLROCK"]->LoadMesh(device, commandList, Utile::PATH(("Object/smallRock.txt"), Utile::RESOURCE));
+	m_meshes["ROCKGROUP1"] = make_shared<Mesh>();
+	m_meshes["ROCKGROUP1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup1.txt"), Utile::RESOURCE));
+	m_meshes["ROCKGROUP2"] = make_shared<Mesh>();
+	m_meshes["ROCKGROUP2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup2.txt"), Utile::RESOURCE));
+	m_meshes["DROPSHIP"] = make_shared<Mesh>();
+	m_meshes["DROPSHIP"]->LoadMesh(device, commandList, Utile::PATH(("Object/dropship.txt"), Utile::RESOURCE));
+	m_meshes["MUSHROOMS"] = make_shared<Mesh>();
+	m_meshes["MUSHROOMS"]->LoadMesh(device, commandList, Utile::PATH(("Object/mushrooms.txt"), Utile::RESOURCE));
+	m_meshes["SKULL"] = make_shared<Mesh>();
+	m_meshes["SKULL"]->LoadMesh(device, commandList, Utile::PATH(("Object/skull.txt"), Utile::RESOURCE));
+	m_meshes["RIBS"] = make_shared<Mesh>();
+	m_meshes["RIBS"]->LoadMesh(device, commandList, Utile::PATH(("Object/ribs.txt"), Utile::RESOURCE));
+	m_meshes["ROCK4"] = make_shared<Mesh>();
+	m_meshes["ROCK4"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock4.txt"), Utile::RESOURCE));
+	m_meshes["ROCK5"] = make_shared<Mesh>();
+	m_meshes["ROCK5"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock5.txt"), Utile::RESOURCE));
 
+	// 게임 시스템 관련 로딩
+	m_meshes["SKYBOX"] = make_shared<Mesh>();
+	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
 	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 	m_meshes["HPBAR"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f }, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.5f });
+
+	// 바운딩박스 로딩
+	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
+	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -226,12 +254,25 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	m_textures["SKYBOX"] = make_shared<Texture>();
-	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/Skybox.dds"), Utile::RESOURCE));
+	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds"), Utile::RESOURCE));
 	m_textures["SKYBOX"]->CreateTexture(device);
 
 	m_textures["GAROO"] = make_shared<Texture>();
 	m_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds"), Utile::RESOURCE));
 	m_textures["GAROO"]->CreateTexture(device);
+
+	m_textures["FLOOR"] = make_shared<Texture>();
+	m_textures["FLOOR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/floor.dds"), Utile::RESOURCE));
+	m_textures["FLOOR"]->CreateTexture(device);
+	m_textures["OBJECT1"] = make_shared<Texture>();
+	m_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds"), Utile::RESOURCE));
+	m_textures["OBJECT1"]->CreateTexture(device);
+	m_textures["OBJECT2"] = make_shared<Texture>();
+	m_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds"), Utile::RESOURCE));
+	m_textures["OBJECT2"]->CreateTexture(device);
+	m_textures["OBJECT3"] = make_shared<Texture>();
+	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds"), Utile::RESOURCE));
+	m_textures["OBJECT3"]->CreateTexture(device);
 }
 
 void Scene::CreateLights()
@@ -325,6 +366,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	auto floor{ make_unique<GameObject>() };
 	floor->SetMesh(m_meshes["FLOOR"]);
 	floor->SetShader(m_shaders["DEFAULT"]);
+	floor->SetTexture(m_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
 }
 
@@ -349,12 +391,76 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 		XMMATRIX transMatrix{ XMMatrixTranslation(trans.x, trans.y, trans.z) };
 		worldMatrix = worldMatrix * scaleMatrix * rotateMatrix * transMatrix;
 
-		XMFLOAT4X4 world; XMStoreFloat4x4(&world, worldMatrix);
+		XMFLOAT4X4 world;
+		XMStoreFloat4x4(&world, worldMatrix);
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
-		object->SetMesh(m_meshes["MOUNTAIN"]);
 		object->SetShader(m_shaders["MODEL"]);
 		object->SetWorldMatrix(world);
+
+		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
+		switch (mot)
+		{
+		case eMapObjectType::MOUNTAIN:
+			object->SetMesh(m_meshes["MOUNTAIN"]);
+			break;
+		case eMapObjectType::PLANT:
+			object->SetMesh(m_meshes["PLANT"]);
+			object->SetTexture(m_textures["OBJECT1"]);
+			break;
+		case eMapObjectType::TREE:
+			object->SetMesh(m_meshes["TREE"]);
+			object->SetTexture(m_textures["OBJECT2"]);
+			break;
+		case eMapObjectType::ROCK1:
+			object->SetMesh(m_meshes["ROCK1"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::ROCK2:
+			object->SetMesh(m_meshes["ROCK2"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::ROCK3:
+			object->SetMesh(m_meshes["ROCK3"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::SMALLROCK:
+			object->SetMesh(m_meshes["SMALLROCK"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::ROCKGROUP1:
+			object->SetMesh(m_meshes["ROCKGROUP1"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::ROCKGROUP2:
+			object->SetMesh(m_meshes["ROCKGROUP2"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::DROPSHIP:
+			object->SetMesh(m_meshes["DROPSHIP"]);
+			object->SetTexture(m_textures["OBJECT3"]);
+			break;
+		case eMapObjectType::MUSHROOMS:
+			object->SetMesh(m_meshes["MUSHROOMS"]);
+			object->SetTexture(m_textures["OBJECT1"]);
+			break;
+		case eMapObjectType::SKULL:
+			object->SetMesh(m_meshes["SKULL"]);
+			object->SetTexture(m_textures["OBJECT2"]);
+			break;
+		case eMapObjectType::RIBS:
+			object->SetMesh(m_meshes["RIBS"]);
+			object->SetTexture(m_textures["OBJECT2"]);
+			break;
+		case eMapObjectType::ROCK4:
+			object->SetMesh(m_meshes["ROCK4"]);
+			object->SetTexture(m_textures["OBJECT1"]);
+			break;
+		case eMapObjectType::ROCK5:
+			object->SetMesh(m_meshes["ROCK5"]);
+			object->SetTexture(m_textures["OBJECT1"]);
+			break;
+		}
 		m_gameObjects.push_back(move(object));
 	}
 }
