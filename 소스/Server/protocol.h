@@ -107,7 +107,7 @@ struct sc_packet_update_client
 {
 	UCHAR		size;
 	UCHAR		type;
-	PlayerData	data;
+	PlayerData	data[MAX_USER];
 };
 
 struct sc_packet_bullet_fire

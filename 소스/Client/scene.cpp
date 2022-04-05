@@ -510,21 +510,39 @@ void Scene::RecvPacket()
 	}
 	case SC_PACKET_UPDATE_CLIENT:
 	{
-		char subBuf[sizeof(PlayerData)]{};
+		char subBuf[sizeof(PlayerData) * MAX_USER]{};
 		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
-		PlayerData pd; memcpy(&pd, subBuf, sizeof(pd));
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
+		for (int i = 0; i < MAX_USER; ++i)
+		{
+			PlayerData pd;
+			memcpy(&pd, subBuf + (i * sizeof(PlayerData)), sizeof(PlayerData));
+			
+			// 나에 대한 정보는 무시
+			if (m_player->GetId() == pd.id) continue;
+				//break;
+
+			for (auto& p : m_multiPlayers)
+			{
+				if (!p) continue;
+				if (p->GetId() != pd.id) continue;
+				p->ApplyServerData(pd);
+			}
+			
+			//break;
+		}
+		
 
 		// 나에 대한 정보는 무시
-		if (m_player->GetId() == pd.id)
-			break;
+		//if (m_player->GetId() == pd.id)
+		//	break;
 
-		for (auto& p : m_multiPlayers)
-		{
-			if (!p) continue;
-			if (p->GetId() != pd.id) continue;
-			p->ApplyServerData(pd);
-		}
+		//for (auto& p : m_multiPlayers)
+		//{
+		//	if (!p) continue;
+		//	if (p->GetId() != pd.id) continue;
+		//	p->ApplyServerData(pd);
+		//}
 		break;
 	}
 	case SC_PACKET_BULLET_FIRE:
