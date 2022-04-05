@@ -102,6 +102,13 @@ public:
 	~RectMesh() = default;
 };
 
+class GridMesh : public Mesh
+{
+public:
+	GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount, const XMFLOAT4& color = { 0.0f, 0.0f, 0.0f, 0.0f });
+	~GridMesh() = default;
+};
+
 class BillboardMesh : public Mesh
 {
 public:

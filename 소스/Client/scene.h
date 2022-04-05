@@ -9,7 +9,7 @@ struct Light
 {
 	XMFLOAT4X4	lightViewMatrix;
 	XMFLOAT4X4	lightProjMatrix;
-	XMFLOAT3	position;
+	XMFLOAT3	color;
 	FLOAT		padding1;
 	XMFLOAT3	direction;
 	FLOAT		padding2;

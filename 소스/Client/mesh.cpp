@@ -423,6 +423,69 @@ BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
 }
 
+GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount, const XMFLOAT4& color)
+{
+	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+
+	vector<Vertex> vertices;
+	Vertex v;
+	if (color.w > 0.0f)
+	{
+		v.materialIndex = 0;
+
+		Material material;
+		material.baseColor = color;
+		m_materials.push_back(move(material));
+	}
+
+	// 사각형 하나의 가로, 세로 길이
+	float x{ width / static_cast<float>(xCount) };
+	float z{ length / static_cast<float>(zCount) };
+
+	// 한 줄 당 정점 개수
+	int widthVertexCount{ xCount + 1 };
+	int lengthVertexCount{ zCount + 1 };
+
+	// 정점 추가, 하늘에서 +z축을 머리로 두고 밑을 봤을 때를 기준으로 왼쪽밑에서 오른쪽으로 진행하고 그 다음 윗줄로 이동함
+	for (int i = 0; i <= zCount; ++i)
+		for (int j = 0; j <= xCount; ++j)
+		{
+			v.position.x = (-width / 2.0f) + (x * j);
+			v.position.y = 0.0f;
+			v.position.z = (-length / 2.0f) + (z * i);
+			v.uv.x = x * j / width;
+			v.uv.y = 1.0f - (z * i / length);
+			vertices.push_back(v);
+		}
+
+	// 인덱스 추가
+	vector<UINT> indices;
+	for (int i = 0; i < lengthVertexCount - 1; ++i)
+	{
+		if (i % 2 == 0)
+			for (int j = 0; j < widthVertexCount; ++j)
+			{
+				// 첫번째 줄을 제외하고 줄이 바뀔 때 (x, z) 추가
+				if (i > 0 && j == 0)
+					indices.push_back(j + (i * widthVertexCount));
+				indices.push_back(j + (i * widthVertexCount));
+				indices.push_back(j + (i * widthVertexCount) + widthVertexCount);
+			}
+		else
+			for (int j = widthVertexCount - 1; j >= 0; --j)
+			{
+				// 줄이 바뀔 때 (x, z) 추가
+				if (j == widthVertexCount - 1)
+					indices.push_back(j + (i * widthVertexCount));
+				indices.push_back(j + (i * widthVertexCount));
+				indices.push_back(j + (i * widthVertexCount) + widthVertexCount);
+			}
+	}
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateIndexBuffer(device, commandList, indices.data(), indices.size());
+}
+
 CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
 {
 	// 큐브 가로, 세로, 높이

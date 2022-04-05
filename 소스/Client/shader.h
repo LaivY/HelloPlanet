@@ -31,6 +31,13 @@ public:
 	~BlendingShader() = default;
 };
 
+class ShadowShader : public Shader
+{
+public:
+	ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs);
+	~ShadowShader() = default;
+};
+
 class WireframeShader : public Shader
 {
 public:

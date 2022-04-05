@@ -28,7 +28,7 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateTextures(device, commandList);
 
 	// 그림자맵 생성
-	//m_shadowMap = make_unique<ShadowMap>(device, 1024 * 16, 1024 * 16);
+	m_shadowMap = make_unique<ShadowMap>(device, 1024 * 16, 1024 * 16);
 
 	// 블러 필터 생성
 	//m_blurFilter = make_unique<BlurFilter>(device);
@@ -194,7 +194,8 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	// 게임오브젝트 관련 로딩
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{});
+	//m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f });
+	m_meshes["FLOOR"] = make_shared<GridMesh>(device, commandList, 2000.0f, 2000.0f, 200, 200, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
 	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
@@ -235,7 +236,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 	m_meshes["HPBAR"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f }, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.5f });
 
-	// 바운딩박스 로딩
+	// 디버그 바운딩박스 로딩
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
 	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
@@ -243,12 +244,15 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["SHADOW"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS");
 	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
 	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["BOUNDINGBOX"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+
+	// 디버그
+	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -277,9 +281,40 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 void Scene::CreateLights()
 {
-	Light light{};
-	light.direction = XMFLOAT3{ -25.0f, -6.0f, 3.0f };
-	m_cbSceneData->ligths[0] = light;
+	// 첫번째 조명은 그림자를 만듦
+	m_cbSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbSceneData->ligths[0].direction = XMFLOAT3{ -25.0f, -6.0f, 3.0f };
+
+	// 씬을 모두 감싸는 바운딩 구
+	BoundingSphere sceneSphere{ XMFLOAT3{ 0.0f, 0.0f, 0.0f }, 1000.0f * sqrt(2.0f) };
+
+	// 메쉬 정점을 조명 좌표계로 바꿔주는 행렬 계산
+	XMFLOAT3 lightDir{ Vector3::Normalize(m_cbSceneData->ligths[0].direction) };
+	XMFLOAT3 lightPos{ Vector3::Mul(lightDir, -2.0f * sceneSphere.Radius) };
+	XMFLOAT3 targetPos{ sceneSphere.Center };
+	XMFLOAT3 lightUp{ 0.0f, 1.0f, 0.0f };
+
+	XMFLOAT4X4 lightViewMatrix;
+	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&lightPos), XMLoadFloat3(&targetPos), XMLoadFloat3(&lightUp)));
+
+	// 조명 좌표계에서의 씬 구 원점
+	XMFLOAT3 sphereCenterLS{ Vector3::TransformCoord(targetPos, lightViewMatrix) };
+
+	// 직교 투영 행렬 설정
+	float l = sphereCenterLS.x - sceneSphere.Radius;
+	float b = sphereCenterLS.y - sceneSphere.Radius;
+	float n = sphereCenterLS.z - sceneSphere.Radius;
+	float r = sphereCenterLS.x + sceneSphere.Radius;
+	float t = sphereCenterLS.y + sceneSphere.Radius;
+	float f = sphereCenterLS.z + sceneSphere.Radius;
+	XMFLOAT4X4 lightProjMatrix;
+	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicOffCenterLH(l, r, b, t, n, f));
+
+	m_cbSceneData->ligths[0].lightViewMatrix = Matrix::Transpose(lightViewMatrix);
+	m_cbSceneData->ligths[0].lightProjMatrix = Matrix::Transpose(lightProjMatrix);
+
+	m_cbSceneData->ligths[1].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
+	m_cbSceneData->ligths[1].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
 }
 
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -317,11 +352,11 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 바운딩박스
 	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
 	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
-	bbPlayer->SetShader(m_shaders["BOUNDINGBOX"]);
+	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
 
 	shared_ptr<DebugBoundingBox> bbMob{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
 	bbMob->SetMesh(m_meshes["BB_MOB"]);
-	bbMob->SetShader(m_shaders["BOUNDINGBOX"]);
+	bbMob->SetShader(m_shaders["WIREFRAME"]);
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
@@ -405,12 +440,12 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			object->SetMesh(m_meshes["MOUNTAIN"]);
 			break;
 		case eMapObjectType::PLANT:
-			object->SetMesh(m_meshes["PLANT"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			//object->SetMesh(m_meshes["PLANT"]);
+			//object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::TREE:
-			object->SetMesh(m_meshes["TREE"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			//object->SetMesh(m_meshes["TREE"]);
+			//object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK1:
 			object->SetMesh(m_meshes["ROCK1"]);
@@ -437,20 +472,20 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			object->SetTexture(m_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::DROPSHIP:
-			object->SetMesh(m_meshes["DROPSHIP"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			//object->SetMesh(m_meshes["DROPSHIP"]);
+			//object->SetTexture(m_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::MUSHROOMS:
-			object->SetMesh(m_meshes["MUSHROOMS"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			//object->SetMesh(m_meshes["MUSHROOMS"]);
+			//object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::SKULL:
-			object->SetMesh(m_meshes["SKULL"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			//object->SetMesh(m_meshes["SKULL"]);
+			//object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::RIBS:
-			object->SetMesh(m_meshes["RIBS"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			//object->SetMesh(m_meshes["RIBS"]);
+			//object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK4:
 			object->SetMesh(m_meshes["ROCK4"]);
@@ -530,7 +565,7 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	// 셰이더에 묶기
 	ID3D12DescriptorHeap* ppHeaps[] = { m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(4, m_shadowMap->GetGpuSrvHandle());
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 
 	// 뷰포트, 가위사각형 설정
 	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
@@ -546,7 +581,6 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
 
 	// 렌더링
-	if (m_player) m_player->Render(commandList, m_shaders.at("SHADOW"));
 	for (const auto& object : m_gameObjects)
 		object->Render(commandList, m_shaders.at("SHADOW"));
 	

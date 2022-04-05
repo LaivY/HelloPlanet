@@ -58,6 +58,37 @@ struct PS_INPUT
 	int materialIndex   : MATERIAL;
 };
 
+float CalcShadowFactor(float4 shadowPosH)
+{   
+    // Complete projection by doing division by w.
+    shadowPosH.xyz /= shadowPosH.w;
+
+    // Depth in NDC space.
+    float depth = shadowPosH.z;
+
+    uint width, height, numMips;
+    g_shadowMap.GetDimensions(0, width, height, numMips);
+
+    // Texel size.
+    float dx = 1.0f / (float)width;
+
+    float percentLit = 0.0f;
+    const float2 offsets[9] =
+    {
+        float2(-dx, -dx), float2(0.0f, -dx), float2(dx, -dx),
+        float2(-dx, 0.0f), float2(0.0f, 0.0f), float2(dx, 0.0f),
+        float2(-dx, +dx), float2(0.0f, +dx), float2(dx, +dx)
+    };
+
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        percentLit += g_shadowMap.SampleCmpLevelZero(g_shadowSampler, shadowPosH.xy + offsets[i], depth).r;
+    }
+    return percentLit / 9.0f;
+}
+
+
 float4 Lighting(float3 position, float3 normal, int materialIndex)
 {
     float3 lightColor = float3(0.0f, 0.0f, 0.0f);
