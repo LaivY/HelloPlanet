@@ -63,8 +63,13 @@ float CalcShadowFactor(float4 shadowPosH)
     // Complete projection by doing division by w.
     shadowPosH.xyz /= shadowPosH.w;
 
+	// NDC -> Texture 좌표계
+	shadowPosH.x = shadowPosH.x * 0.5f + 0.5f;
+	shadowPosH.y = shadowPosH.y * -0.5f + 0.5f;
+
     // Depth in NDC space.
     float depth = shadowPosH.z;
+	depth -= 0.001f;
 
     uint width, height, numMips;
     g_shadowMap.GetDimensions(0, width, height, numMips);
@@ -88,7 +93,6 @@ float CalcShadowFactor(float4 shadowPosH)
     return percentLit / 9.0f;
 }
 
-
 float4 Lighting(float3 position, float3 normal, int materialIndex)
 {
     float3 lightColor = float3(0.0f, 0.0f, 0.0f);
@@ -107,6 +111,8 @@ float4 Lighting(float3 position, float3 normal, int materialIndex)
 	else
 	{
 		material = g_materials[materialIndex];
+		material.reflection = float3(0.1f, 0.1f, 0.1f);
+		material.roughness = 0.95f;
 	}
     for (int i = 0; i < MAX_LIGHT; ++i)
     {

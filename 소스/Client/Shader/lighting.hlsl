@@ -2,14 +2,6 @@
 #define POINT_LIGHT         1
 #define MAX_LIGHT           2
 
-static const matrix toTextureMatrix =
-{
-	0.5f,  0.0f, 0.0f, 0.5f,
-	0.0f, -0.5f, 0.0f, 0.5f,
-	0.0f,  0.0f, 1.0f, 0.0f,
-	0.0f,  0.0f, 0.0f, 1.0f
-};
-
 struct Light
 {
 	matrix	lightViewMatrix;

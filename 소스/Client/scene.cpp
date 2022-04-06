@@ -28,7 +28,7 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateTextures(device, commandList);
 
 	// 그림자맵 생성
-	m_shadowMap = make_unique<ShadowMap>(device, 1024 * 16, 1024 * 16);
+	m_shadowMap = make_unique<ShadowMap>(device, 1024 * 4, 1024 * 4);
 
 	// 블러 필터 생성
 	//m_blurFilter = make_unique<BlurFilter>(device);
@@ -279,37 +279,17 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["OBJECT3"]->CreateTexture(device);
 }
 
-void Scene::CreateLights()
+void Scene::CreateLights() const
 {
 	// 첫번째 조명은 그림자를 만듦
 	m_cbSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
 	m_cbSceneData->ligths[0].direction = XMFLOAT3{ -25.0f, -6.0f, 3.0f };
 
-	// 씬을 모두 감싸는 바운딩 구
-	BoundingSphere sceneSphere{ XMFLOAT3{ 0.0f, 0.0f, 0.0f }, 1000.0f * sqrt(2.0f) };
-
-	// 메쉬 정점을 조명 좌표계로 바꿔주는 행렬 계산
-	XMFLOAT3 lightDir{ Vector3::Normalize(m_cbSceneData->ligths[0].direction) };
-	XMFLOAT3 lightPos{ Vector3::Mul(lightDir, -2.0f * sceneSphere.Radius) };
-	XMFLOAT3 targetPos{ sceneSphere.Center };
-	XMFLOAT3 lightUp{ 0.0f, 1.0f, 0.0f };
-
-	XMFLOAT4X4 lightViewMatrix;
-	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&lightPos), XMLoadFloat3(&targetPos), XMLoadFloat3(&lightUp)));
-
-	// 조명 좌표계에서의 씬 구 원점
-	XMFLOAT3 sphereCenterLS{ Vector3::TransformCoord(targetPos, lightViewMatrix) };
-
-	// 직교 투영 행렬 설정
-	float l = sphereCenterLS.x - sceneSphere.Radius;
-	float b = sphereCenterLS.y - sceneSphere.Radius;
-	float n = sphereCenterLS.z - sceneSphere.Radius;
-	float r = sphereCenterLS.x + sceneSphere.Radius;
-	float t = sphereCenterLS.y + sceneSphere.Radius;
-	float f = sphereCenterLS.z + sceneSphere.Radius;
-	XMFLOAT4X4 lightProjMatrix;
-	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicOffCenterLH(l, r, b, t, n, f));
-
+	XMFLOAT3 pos{ 3000.0f, 3000.0f, 3000.0f }, at{ -1.0f, -1.0f, -1.0f }, up{ 0.0f, 1.0f, 0.0f };
+	//XMFLOAT3 pos{ 0.0f, 1000.0f, 0.0f }, at{ 0.0f, -1.0f, 0.0f }, up{ 0.0f, 0.0f, 1.0f };
+	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
+	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&pos), XMLoadFloat3(&at), XMLoadFloat3(&up)));
+	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 5000.0f));
 	m_cbSceneData->ligths[0].lightViewMatrix = Matrix::Transpose(lightViewMatrix);
 	m_cbSceneData->ligths[0].lightProjMatrix = Matrix::Transpose(lightProjMatrix);
 
@@ -332,6 +312,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 5000.0f));
+	//XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 5000.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// UI 카메라 생성
@@ -540,16 +521,21 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
-	if (m_uiCamera)
-	{
-		m_uiCamera->UpdateShaderVariable(commandList);
-		for (const auto& ui : m_uiObjects)
-			ui->Render(commandList);
-	}
+	//if (m_uiCamera)
+	//{
+	//	m_uiCamera->UpdateShaderVariable(commandList);
+	//	for (const auto& ui : m_uiObjects)
+	//		ui->Render(commandList);
+	//}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
+	// 그림자 테스트
+	//m_cbSceneData->ligths[0].direction = m_camera->GetAt();
+	//m_cbSceneData->ligths[0].lightViewMatrix = Matrix::Transpose(m_camera->GetViewMatrix());
+	//m_cbSceneData->ligths[0].lightProjMatrix = Matrix::Transpose(m_camera->GetProjMatrix());
+
 	// 씬 셰이더 변수 최신화
 	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());

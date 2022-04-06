@@ -429,6 +429,7 @@ GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	vector<Vertex> vertices;
 	Vertex v;
+	v.normal = XMFLOAT3{ 0.0f, 1.0f, 0.0f };
 	if (color.w > 0.0f)
 	{
 		v.materialIndex = 0;
