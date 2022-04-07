@@ -1,5 +1,5 @@
 #include "common.hlsl"
-#define LIGHTING
+#define SHADOW
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -16,15 +16,12 @@ PS_INPUT VS(VS_INPUT input)
 
 float4 PS(PS_INPUT input) : SV_TARGET
 {
-#ifdef LIGHTING
     float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
-    float shadowFactor = CalcShadowFactor(input.shadowPosH);
-    return g_materials[input.materialIndex].baseColor + lightColor * shadowFactor;
-#else
-    if (input.materialIndex < 0)
-    {
-        return g_texture.Sample(g_sampler, input.uv);
-    }
-    return g_materials[input.materialIndex].baseColor;
+    float shadowFactor = 1.0f;
+
+#ifdef SHADOW
+    shadowFactor = CalcShadowFactor(input.shadowPosH);
 #endif
+
+    return g_materials[input.materialIndex].baseColor + lightColor * shadowFactor;
 }

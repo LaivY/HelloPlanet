@@ -283,13 +283,14 @@ void Scene::CreateLights() const
 {
 	// 첫번째 조명은 그림자를 만듦
 	m_cbSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbSceneData->ligths[0].direction = XMFLOAT3{ -25.0f, -6.0f, 3.0f };
+	m_cbSceneData->ligths[0].direction = Vector3::Normalize(XMFLOAT3{ -6.0f, -25.0f, 3.0f });
 
-	XMFLOAT3 pos{ 3000.0f, 3000.0f, 3000.0f }, at{ -1.0f, -1.0f, -1.0f }, up{ 0.0f, 1.0f, 0.0f };
-	//XMFLOAT3 pos{ 0.0f, 1000.0f, 0.0f }, at{ 0.0f, -1.0f, 0.0f }, up{ 0.0f, 0.0f, 1.0f };
+	XMFLOAT3 at{ m_cbSceneData->ligths[0].direction };
+	XMFLOAT3 pos{ Vector3::Mul(at, -1000.0f) };
+	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&pos), XMLoadFloat3(&at), XMLoadFloat3(&up)));
-	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 5000.0f));
+	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(3000.0f, 3000.0f, 0.0f, 5000.0f));
 	m_cbSceneData->ligths[0].lightViewMatrix = Matrix::Transpose(lightViewMatrix);
 	m_cbSceneData->ligths[0].lightProjMatrix = Matrix::Transpose(lightProjMatrix);
 

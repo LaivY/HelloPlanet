@@ -60,16 +60,14 @@ struct PS_INPUT
 
 float CalcShadowFactor(float4 shadowPosH)
 {   
-    // Complete projection by doing division by w.
-    shadowPosH.xyz /= shadowPosH.w;
-
-	// NDC -> Texture 좌표계
 	shadowPosH.x = shadowPosH.x * 0.5f + 0.5f;
 	shadowPosH.y = shadowPosH.y * -0.5f + 0.5f;
 
+    // Complete projection by doing division by w.
+    shadowPosH.xyz /= shadowPosH.w;
+
     // Depth in NDC space.
     float depth = shadowPosH.z;
-	depth -= 0.001f;
 
     uint width, height, numMips;
     g_shadowMap.GetDimensions(0, width, height, numMips);
