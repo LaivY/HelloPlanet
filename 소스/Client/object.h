@@ -77,6 +77,7 @@ public:
 	virtual void SetPosition(const XMFLOAT3& position);
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
+	void SetShadowShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox);
@@ -87,6 +88,7 @@ public:
 	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
 	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
+	shared_ptr<Shader> GetShadowShader() const { return m_shadowShader; }
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
 	BOOL isDeleted() const { return m_isDeleted; }
@@ -100,6 +102,7 @@ protected:
 
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더
+	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
 	shared_ptr<Texture>				m_texture;				// 텍스쳐
 	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
 	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체

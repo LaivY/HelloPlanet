@@ -195,8 +195,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	// 게임오브젝트 관련 로딩
-	//m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f });
-	m_meshes["FLOOR"] = make_shared<GridMesh>(device, commandList, 2000.0f, 2000.0f, 200, 200, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
 	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
@@ -245,12 +244,16 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["SHADOW"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS");
 	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
 	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+
+	// 그림자 셰이더
+	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL");
+	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK");
+	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION");
 
 	// 디버그
 	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
@@ -342,15 +345,12 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
-#ifdef FIRSTVIEW
-	m_player->SetMesh(m_meshes["SG"]);
-	m_player->SetShader(m_shaders["LINK"]);
-#else
 	m_player->SetMesh(m_meshes["PLAYER"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
+	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 	m_player->SetGunMesh(m_meshes["SG"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
-#endif
+	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 	m_player->SetGunType(ePlayerGunType::SG);
 	m_player->PlayAnimation("IDLE");
 	m_player->SetBoundingBox(bbPlayer);
@@ -365,8 +365,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		p = make_unique<Player>(TRUE);
 		p->SetMesh(m_meshes["PLAYER"]);
 		p->SetShader(m_shaders["ANIMATION"]);
+		p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 		p->SetGunMesh(m_meshes["AR"]);
 		p->SetGunShader(m_shaders["LINK"]);
+		p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 		p->SetGunType(ePlayerGunType::AR);
 		p->PlayAnimation("IDLE");
 		p->SetBoundingBox(bbPlayer);
@@ -413,6 +415,7 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
 		object->SetShader(m_shaders["MODEL"]);
+		object->SetShadowShader(m_shaders["SHADOW_MODEL"]);
 		object->SetWorldMatrix(world);
 
 		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
@@ -564,8 +567,20 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 	// 렌더링
 	for (const auto& object : m_gameObjects)
-		object->Render(commandList, m_shaders.at("SHADOW"));
-	
+	{
+		auto shadowShader{ object->GetShadowShader() };
+		if (shadowShader)
+			object->Render(commandList, shadowShader);
+	}
+	for (const auto& player : m_multiPlayers)
+	{
+		if (!player) continue;
+		auto shadowShader{ player->GetShadowShader() };
+		if (shadowShader)
+			player->RenderToShadowMap(commandList);
+	}
+	if (m_player) m_player->RenderToShadowMap(commandList);
+
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }

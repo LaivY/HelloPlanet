@@ -345,6 +345,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.x > 0.0f)
 		{
+			v.normal = XMFLOAT3{ -1.0f, 0.0f, 0.0f };
 			v.position = { +hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, -hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -355,6 +356,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 1.0f, 0.0f, 0.0f };
 			v.position = { +hx, +hy, -hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -368,6 +370,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.z > 0.0f)
 		{
+			v.normal = XMFLOAT3{ 0.0f, 0.0f, -1.0f };
 			v.position = { -hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -378,6 +381,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 0.0f, 0.0f, 1.0f };
 			v.position = { +hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { -hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -391,6 +395,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.y > 0.0f)
 		{
+			v.normal = XMFLOAT3{ 0.0f, -1.0f, 0.0f };
 			v.position = { -hx, +hy, -hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -401,6 +406,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 0.0f, 1.0f, 0.0f };
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, -hz }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
@@ -421,105 +427,6 @@ BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	v.position = position;
 	v.uv = XMFLOAT2{ width, height };
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
-}
-
-GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount,
-				   const XMFLOAT4& color, const string& fileName, UINT imageWidth, UINT imageHeight) : m_imageWidth{ imageWidth }, m_imageHeight{ imageHeight }
-{
-	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
-
-	if (!fileName.empty())
-		LoadNormalMapFile(fileName, imageWidth, imageHeight);
-
-	vector<Vertex> vertices;
-	Vertex v;
-	v.normal = XMFLOAT3{ 0.0f, 1.0f, 0.0f };
-	if (color.w > 0.0f)
-	{
-		v.materialIndex = 0;
-
-		Material material;
-		material.baseColor = color;
-		m_materials.push_back(move(material));
-	}
-
-	// 사각형 하나의 가로, 세로 길이
-	float x{ width / static_cast<float>(xCount) };
-	float z{ length / static_cast<float>(zCount) };
-
-	// 한 줄 당 정점 개수
-	int widthVertexCount{ xCount + 1 };
-	int lengthVertexCount{ zCount + 1 };
-
-	// 정점 추가, 하늘에서 +z축을 머리로 두고 밑을 봤을 때를 기준으로 왼쪽밑에서 오른쪽으로 진행하고 그 다음 윗줄로 이동함
-	for (int i = 0; i <= zCount; ++i)
-		for (int j = 0; j <= xCount; ++j)
-		{
-			v.position.x = (-width / 2.0f) + (x * j);
-			v.position.y = 0.0f;
-			v.position.z = (-length / 2.0f) + (z * i);
-			v.normal = GetNormal(x * j / width, 1.0f - z * i / length);
-			v.uv.x = x * j / width;
-			v.uv.y = 1.0f - (z * i / length);
-			vertices.push_back(v);
-		}
-
-	// 인덱스 추가
-	vector<UINT> indices;
-	for (int i = 0; i < lengthVertexCount - 1; ++i)
-	{
-		if (i % 2 == 0)
-			for (int j = 0; j < widthVertexCount; ++j)
-			{
-				// 첫번째 줄을 제외하고 줄이 바뀔 때 (x, z) 추가
-				if (i > 0 && j == 0)
-					indices.push_back(j + (i * widthVertexCount));
-				indices.push_back(j + (i * widthVertexCount));
-				indices.push_back(j + (i * widthVertexCount) + widthVertexCount);
-			}
-		else
-			for (int j = widthVertexCount - 1; j >= 0; --j)
-			{
-				// 줄이 바뀔 때 (x, z) 추가
-				if (j == widthVertexCount - 1)
-					indices.push_back(j + (i * widthVertexCount));
-				indices.push_back(j + (i * widthVertexCount));
-				indices.push_back(j + (i * widthVertexCount) + widthVertexCount);
-			}
-	}
-
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
-	CreateIndexBuffer(device, commandList, indices.data(), static_cast<UINT>(indices.size()));
-}
-
-void GridMesh::LoadNormalMapFile(const string& fileName, UINT imageWidth, UINT imageHeight)
-{
-	ifstream file{ fileName, ios::binary };
-	vector<unsigned char> data{ istream_iterator<unsigned char>(file), {} };
-
-	m_normals = make_unique<XMFLOAT3[]>(imageWidth * imageHeight);
-	for (int i = 0, j = 0; i < data.size(); ++i, ++j)
-	{
-		float x{ static_cast<int>(data[i++]) / 255.0f };
-		float y{ static_cast<int>(data[i++]) / 255.0f };
-		float z{ static_cast<int>(data[i]) / 255.0f };
-		m_normals[j] = XMFLOAT3{ x, y, z };
-	}
-}
-
-XMFLOAT3 GridMesh::GetNormal(FLOAT x, FLOAT y) const
-{
-	if (!m_normals)
-		return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
-
-	int ix{ static_cast<int>(x) };
-	int iy{ static_cast<int>(y) };
-	float fx{ x - ix };
-	float fy{ y - iy };
-
-	XMFLOAT3 n1{ Vector3::Interpolate(m_normals[ix + iy * m_imageWidth], m_normals[ix + 1 + iy * m_imageWidth], fx) };
-	XMFLOAT3 n2{ Vector3::Interpolate(m_normals[ix + (iy + 1) * m_imageWidth], m_normals[ix + 1 + (iy + 1) * m_imageWidth], fx) };
-	return Vector3::Interpolate(n1, n2, fy);
 }
 
 CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)

@@ -244,7 +244,16 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 
 		m_camera->UpdateShaderVariableByPlayer(commandList);	// 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
-		GameObject::Render(commandList, shader);				// 플레이어를 렌더링한다.
+		
+		// 총을 렌더링한다.
+		UpdateShaderVariable(commandList);
+		if (m_gunMesh)
+		{
+			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			m_gunMesh->UpdateShaderVariable(commandList, this);
+			m_gunMesh->Render(commandList);
+		}
 
 		// 이후 렌더링할 객체들을 위해 카메라 파라미터를 이전 것으로 되돌린다.
 		m_camera->SetAt(at);
@@ -261,6 +270,17 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 			m_gunMesh->Render(commandList);
 		}
 #endif
+	}
+}
+
+void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	GameObject::Render(commandList, m_shadowShader);
+	if (m_gunMesh)
+	{
+		commandList->SetPipelineState(m_gunShadowShader->GetPipelineState().Get());
+		m_gunMesh->UpdateShaderVariable(commandList, this);
+		m_gunMesh->Render(commandList);
 	}
 }
 

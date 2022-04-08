@@ -18,10 +18,8 @@ float4 PS(PS_INPUT input) : SV_TARGET
 {
     float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
     float shadowFactor = 1.0f;
-
 #ifdef SHADOW
     shadowFactor = CalcShadowFactor(input.shadowPosH);
 #endif
-
     return g_materials[input.materialIndex].baseColor + lightColor * shadowFactor;
 }

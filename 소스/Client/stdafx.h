@@ -1,5 +1,5 @@
 ﻿#pragma once
-#define FREEVIEW
+#define FIRSTVIEW
 //#define BOUNDINGBOX
 //#define NETWORK
 
