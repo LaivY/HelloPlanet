@@ -434,7 +434,7 @@ void Player::SendPlayerData() const
 	packet.pos = GetPosition();
 	packet.velocity = GetVelocity();
 	packet.yaw = m_yaw;
-	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 #endif
 }
 

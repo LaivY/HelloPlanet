@@ -1,4 +1,5 @@
 ﻿#include "scene.h"
+#include "framework.h"
 
 Scene::Scene()
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f },
@@ -36,6 +37,9 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 조명, 재질 생성
 	CreateLights();
+
+	// UI 오브젝트 생성
+	CreateUIObjects(device, commandList);
 
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
@@ -134,8 +138,7 @@ void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	if (wParam == VK_ESCAPE)
 	{
-		closesocket(g_c_socket);
-		exit(0);
+		PostMessage(hWnd, WM_QUIT, 0, 0);
 	}
 }
 
@@ -239,6 +242,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	// 디버그 바운딩박스 로딩
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
 	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
+	m_meshes["BB_SMALLROCK"] = make_shared<CubeMesh>(device, commandList, 100.0f, 100.0f, 100.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
@@ -302,6 +306,18 @@ void Scene::CreateLights() const
 	m_cbSceneData->ligths[1].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
 }
 
+void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	// 체력바
+	auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
+	hpBar->SetMesh(m_meshes["HPBAR"]);
+	hpBar->SetShader(m_shaders["UI"]);
+	hpBar->SetPivot(eUIPivot::LEFTBOT);
+	hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
+					   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
+	m_uiObjects.push_back(move(hpBar));
+}
+
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라 생성
@@ -325,21 +341,12 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
-	// UI 객체 생성
-	auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
-	hpBar->SetMesh(m_meshes["HPBAR"]);
-	hpBar->SetShader(m_shaders["UI"]);
-	hpBar->SetPivot(eUIPivot::LEFTBOT);
-	hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
-					   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
-	m_uiObjects.push_back(move(hpBar));
-
 	// 바운딩박스
-	shared_ptr<DebugBoundingBox> bbPlayer{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
+	SharedBoundingBox bbPlayer{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
 	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
 
-	shared_ptr<DebugBoundingBox> bbMob{ make_unique<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
+	SharedBoundingBox bbMob{ make_shared<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
 	bbMob->SetMesh(m_meshes["BB_MOB"]);
 	bbMob->SetShader(m_shaders["WIREFRAME"]);
 
@@ -353,7 +360,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 	m_player->SetGunType(ePlayerGunType::SG);
 	m_player->PlayAnimation("IDLE");
-	m_player->SetBoundingBox(bbPlayer);
+	m_player->AddBoundingBox(bbPlayer);
 
 	// 카메라, 플레이어 서로 설정
 	m_camera->SetPlayer(m_player);
@@ -371,7 +378,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 		p->SetGunType(ePlayerGunType::AR);
 		p->PlayAnimation("IDLE");
-		p->SetBoundingBox(bbPlayer);
+		p->AddBoundingBox(bbPlayer);
 	}
 
 	// 스카이박스
@@ -422,8 +429,10 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 		switch (mot)
 		{
 		case eMapObjectType::MOUNTAIN:
+		{
 			object->SetMesh(m_meshes["MOUNTAIN"]);
 			break;
+		}
 		case eMapObjectType::PLANT:
 			//object->SetMesh(m_meshes["PLANT"]);
 			//object->SetTexture(m_textures["OBJECT1"]);
@@ -433,9 +442,11 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			//object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK1:
+		{
 			object->SetMesh(m_meshes["ROCK1"]);
 			object->SetTexture(m_textures["OBJECT3"]);
 			break;
+		}
 		case eMapObjectType::ROCK2:
 			object->SetMesh(m_meshes["ROCK2"]);
 			object->SetTexture(m_textures["OBJECT3"]);
@@ -449,13 +460,22 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			object->SetTexture(m_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::ROCKGROUP1:
+		{
 			object->SetMesh(m_meshes["ROCKGROUP1"]);
 			object->SetTexture(m_textures["OBJECT3"]);
+
+			SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 50.0f, 0.0f }, XMFLOAT3{ 50.0f, 50.0f, 50.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
+			bb->SetMesh(m_meshes["BB_SMALLROCK"]);
+			bb->SetShader(m_shaders["WIREFRAME"]);
+			object->AddBoundingBox(bb);
 			break;
+		}
 		case eMapObjectType::ROCKGROUP2:
+		{
 			object->SetMesh(m_meshes["ROCKGROUP2"]);
 			object->SetTexture(m_textures["OBJECT3"]);
 			break;
+		}
 		case eMapObjectType::DROPSHIP:
 			//object->SetMesh(m_meshes["DROPSHIP"]);
 			//object->SetTexture(m_textures["OBJECT3"]);
@@ -496,10 +516,37 @@ void Scene::ReleaseUploadBuffer()
 void Scene::Update(FLOAT deltaTime)
 {
 	// 게임오브젝트 삭제
-	//m_gameObjects.erase(remove_if(m_gameObjects.begin(), m_gameObjects.end(),
-	//	[](unique_ptr<GameObject>& object) {
-	//		return object->isDeleted();
-	//	}), m_gameObjects.end());
+	m_gameObjects.erase(remove_if(m_gameObjects.begin(), m_gameObjects.end(),
+		[](unique_ptr<GameObject>& object) {
+			return object->isDeleted();
+		}), m_gameObjects.end());
+
+	// 플레이어 충돌판정
+	for (const auto& object : m_gameObjects)
+	{
+		const auto& boundingBoxes{ object->GetBoundingBox() };
+		for (const auto& bb : boundingBoxes)
+		{
+			const auto& pb{ m_player->GetBoundingBox() };
+			BoundingOrientedBox a{ *pb.front() };
+			BoundingOrientedBox b{ *bb };
+
+			a.Transform(a, XMLoadFloat4x4(&m_player->GetWorldMatrix()));
+			b.Transform(b, XMLoadFloat4x4(&object->GetWorldMatrix()));
+
+			if (a.Intersects(b))
+			{
+				XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), object->GetPosition()) };
+				v = Vector3::Normalize(v);
+
+				m_player->Move(Vector3::Mul(v, Vector3::Length(m_player->GetVelocity()) * deltaTime));
+
+				static int i = 0;
+				string debug{ "INTERSECT! (" + to_string(i++) + ")\n" };
+				OutputDebugStringA(debug.c_str());
+			}
+		}
+	}
 }
 
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
@@ -615,7 +662,7 @@ void Scene::CreateBullet()
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_BULLET_FIRE;
 	packet.data = { start, target };
-	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Scene::ProcessClient(LPVOID arg)
@@ -630,7 +677,7 @@ void Scene::RecvPacket()
 	char buf[2];
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD recv_byte{ 0 }, recv_flag{ 0 };
-	int error_code = WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
+	int error_code = WSARecv(g_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
 	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
 
 	UCHAR size{ static_cast<UCHAR>(buf[0]) };
@@ -639,87 +686,17 @@ void Scene::RecvPacket()
 	switch (type)
 	{
 	case SC_PACKET_LOGIN_OK:
-	{
-		char subBuf[sizeof(PlayerData)]{};
-		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
-		PlayerData pd; memcpy(&pd, subBuf, sizeof(pd));
-
-		if (m_player) m_player->SetId(static_cast<int>(pd.id));
-
-		int id{ 0 };
-		for (auto& p : m_multiPlayers)
-		{
-			if (id == m_player->GetId()) ++id;
-			p->SetId(id++);
-		}
+		RecvLoginOk();
 		break;
-	}
 	case SC_PACKET_UPDATE_CLIENT:
-	{
-		char subBuf[sizeof(PlayerData) * MAX_USER]{};
-		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
-		for (int i = 0; i < MAX_USER; ++i)
-		{
-			PlayerData pd;
-			memcpy(&pd, subBuf + (i * sizeof(PlayerData)), sizeof(PlayerData));
-			
-			// 나에 대한 정보는 무시
-			if (m_player->GetId() == pd.id) continue;
-				//break;
-
-			for (auto& p : m_multiPlayers)
-			{
-				if (!p) continue;
-				if (p->GetId() != pd.id) continue;
-				p->ApplyServerData(pd);
-			}
-			
-			//break;
-		}
-		
-
-		// 나에 대한 정보는 무시
-		//if (m_player->GetId() == pd.id)
-		//	break;
-
-		//for (auto& p : m_multiPlayers)
-		//{
-		//	if (!p) continue;
-		//	if (p->GetId() != pd.id) continue;
-		//	p->ApplyServerData(pd);
-		//}
+		RecvUpdateClient();
 		break;
-	}
-	case SC_PACKET_BULLET_FIRE:
-	{
-		// pos, dir
-		char subBuf[12 + 12]{};
-		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
-
-		XMFLOAT3 pos{}, dir{};
-		memcpy(&pos, &subBuf[0], sizeof(pos));
-		memcpy(&dir, &subBuf[12], sizeof(dir));
-
-		auto bullet{ make_unique<Bullet>(dir) };
-		bullet->SetMesh(m_meshes["BULLET"]);
-		bullet->SetShader(m_shaders["DEFAULT"]);
-		bullet->SetPosition(pos);
-		m_gameObjects.push_back(move(bullet));
-		break;
-	}
 	case SC_PACKET_UPDATE_MONSTER:
-	{
-			// test size = 2 / char id + char type
-		char subBuf[2+2]{};
-		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
-		cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " <<
-			static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
+		RecvUpdateMonster();
 		break;
-	}
+	case SC_PACKET_BULLET_FIRE:
+		RecvBulletFire();
+		break;
 	default:
 	{
 		string debug{};
@@ -728,4 +705,86 @@ void Scene::RecvPacket()
 		break;
 	}
 	}
+
+	string debug{ to_string(g_isConnected) + "\n" };
+	OutputDebugStringA(debug.c_str());
+}
+
+void Scene::RecvLoginOk()
+{
+	char subBuf[sizeof(PlayerData)]{};
+	WSABUF wsabuf{ sizeof(subBuf), subBuf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	// 내 플레이어 id 설정
+	if (m_player)
+	{
+		PlayerData data;
+		memcpy(&data, subBuf, sizeof(data));
+		m_player->SetId(static_cast<int>(data.id));
+	}
+
+	// 다른 플레이어 id 설정
+	int id{ 0 };
+	for (auto& p : m_multiPlayers)
+	{
+		if (id == m_player->GetId()) ++id;
+		p->SetId(id++);
+	}
+}
+
+void Scene::RecvUpdateClient()
+{
+	char subBuf[sizeof(PlayerData) * MAX_USER]{};
+	WSABUF wsabuf{ sizeof(subBuf), subBuf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	// 모든 플레이어의 데이터
+	array<PlayerData, MAX_USER> data;
+	memcpy(&data, subBuf, sizeof(PlayerData) * MAX_USER);
+
+	// 멀티플레이어 업데이트
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		for (auto& d : data)
+		{
+			if (!d.isActive) continue;
+			if (p->GetId() != d.id) continue;
+			p->ApplyServerData(d);
+		}
+	}
+}
+
+void Scene::RecvUpdateMonster()
+{
+	// test size = 2 / char id + char type
+	char subBuf[2 + 2]{};
+	WSABUF wsabuf{ sizeof(subBuf), subBuf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " <<
+	static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
+}
+
+void Scene::RecvBulletFire()
+{
+	// pos, dir
+	char subBuf[12 + 12]{};
+	WSABUF wsabuf{ sizeof(subBuf), subBuf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	XMFLOAT3 pos{}, dir{};
+	memcpy(&pos, &subBuf[0], sizeof(pos));
+	memcpy(&dir, &subBuf[12], sizeof(dir));
+
+	auto bullet{ make_unique<Bullet>(dir) };
+	bullet->SetMesh(m_meshes["BULLET"]);
+	bullet->SetShader(m_shaders["DEFAULT"]);
+	bullet->SetPosition(pos);
+	m_gameObjects.push_back(move(bullet));
 }

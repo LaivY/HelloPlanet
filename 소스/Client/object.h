@@ -56,6 +56,8 @@ struct AnimationInfo
 	FLOAT			blendingTimer;
 };
 
+typedef shared_ptr<DebugBoundingBox> SharedBoundingBox;
+
 class GameObject
 {
 public:
@@ -80,7 +82,7 @@ public:
 	void SetShadowShader(const shared_ptr<Shader>& shader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
-	void SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox);
+	void AddBoundingBox(const SharedBoundingBox& boundingBox);
 
 	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
 	XMFLOAT3 GetRight() const { return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 }; }
@@ -92,24 +94,24 @@ public:
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
 	BOOL isDeleted() const { return m_isDeleted; }
-	shared_ptr<DebugBoundingBox> GetBoundingBox() const { return m_boundingBox; }
+	const vector<SharedBoundingBox>& GetBoundingBox() const { return m_boundingBoxes; }
 
 protected:
-	XMFLOAT4X4						m_worldMatrix;			// 월드 변환 행렬
-	FLOAT							m_roll;					// z축 회전각
-	FLOAT							m_pitch;				// x축 회전각
-	FLOAT							m_yaw;					// y축 회전각
+	XMFLOAT4X4					m_worldMatrix;			// 월드 변환 행렬
+	FLOAT						m_roll;					// z축 회전각
+	FLOAT						m_pitch;				// x축 회전각
+	FLOAT						m_yaw;					// y축 회전각
 
-	shared_ptr<Mesh>				m_mesh;					// 메쉬
-	shared_ptr<Shader>				m_shader;				// 셰이더
-	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
-	shared_ptr<Texture>				m_texture;				// 텍스쳐
-	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
-	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체
-	unique_ptr<AnimationInfo>		m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
+	shared_ptr<Mesh>			m_mesh;					// 메쉬
+	shared_ptr<Shader>			m_shader;				// 셰이더
+	shared_ptr<Shader>			m_shadowShader;			// 그림자 셰이더
+	shared_ptr<Texture>			m_texture;				// 텍스쳐
+	unique_ptr<TextureInfo>		m_textureInfo;			// 텍스쳐 정보 구조체
+	unique_ptr<AnimationInfo>	m_animationInfo;		// 애니메이션 정보 구조체
+	unique_ptr<AnimationInfo>	m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
 
-	BOOL							m_isDeleted;			// 삭제 여부
-	shared_ptr<DebugBoundingBox>	m_boundingBox;			// 바운딩박스
+	BOOL						m_isDeleted;			// 삭제 여부
+	vector<SharedBoundingBox>	m_boundingBoxes;		// 바운딩박스
 };
 
 // --------------------------------

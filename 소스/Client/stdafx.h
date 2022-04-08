@@ -1,6 +1,6 @@
 ﻿#pragma once
 #define FIRSTVIEW
-//#define BOUNDINGBOX
+#define BOUNDINGBOX
 //#define NETWORK
 
 #include "targetver.h"
@@ -46,10 +46,14 @@ using namespace DirectX;
 #include <MSWSock.h>
 #include "../Server/protocol.h"
 
+class GameFramework;
+
+extern GameFramework        g_gameFramework;                    // 게임프레임워크
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
-extern SOCKET               g_c_socket;                         // 소켓
+extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
+extern thread               g_networkThread;
 
 namespace DX
 {

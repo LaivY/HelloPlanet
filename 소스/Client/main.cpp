@@ -12,7 +12,6 @@
 HINSTANCE           hInst;
 WCHAR               szTitle[MAX_LOADSTRING];
 WCHAR               szWindowClass[MAX_LOADSTRING];
-GameFramework       g_gameFramework{ Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT };
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);

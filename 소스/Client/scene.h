@@ -41,6 +41,7 @@ public:
 	void CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
 	void CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateLights() const;
+	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
@@ -61,6 +62,10 @@ public:
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);
 	void RecvPacket();
+	void RecvLoginOk();
+	void RecvUpdateClient();
+	void RecvUpdateMonster();
+	void RecvBulletFire();
 	
 private:
 	D3D12_VIEWPORT										m_viewport;		// 뷰포트

@@ -50,7 +50,8 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	m_mesh->Render(commandList);
 
 #ifdef BOUNDINGBOX
-	if (m_boundingBox) m_boundingBox->Render(commandList);
+	for (const auto& bb : m_boundingBoxes)
+		bb->Render(commandList);
 #endif
 }
 
@@ -152,9 +153,9 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 	m_textureInfo = move(textureInfo);
 }
 
-void GameObject::SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox)
+void GameObject::AddBoundingBox(const SharedBoundingBox& boundingBox)
 {
-	m_boundingBox = boundingBox;
+	m_boundingBoxes.push_back(boundingBox);
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)

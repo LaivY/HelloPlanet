@@ -8,12 +8,7 @@ GameFramework::GameFramework(UINT width, UINT height) :
 
 GameFramework::~GameFramework()
 {
-#ifdef NETWORK
-	g_isConnected = FALSE;
-	m_networkThread.join();
-	closesocket(g_c_socket);
-	WSACleanup();
-#endif
+
 }
 
 void GameFramework::GameLoop()
@@ -38,7 +33,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 #ifdef NETWORK
 	ConnectServer();
-	m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
+	g_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_socket) };
 #endif
 }
 
@@ -61,6 +56,13 @@ void GameFramework::OnDestroy()
 {
 	WaitForPreviousFrame();
 	CloseHandle(m_fenceEvent);
+
+#ifdef NETWORK
+	g_isConnected = FALSE;
+	g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
+#endif
 }
 
 void GameFramework::OnMouseEvent()
@@ -423,8 +425,8 @@ void GameFramework::ConnectServer()
 		return;
 
 	// socket 생성
-	g_c_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (g_c_socket == INVALID_SOCKET) error_quit("socket()");
+	g_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (g_socket == INVALID_SOCKET) error_quit("socket()");
 	LINGER optVal;
 	optVal.l_onoff = 1;
 	optVal.l_linger = 0;
@@ -437,7 +439,7 @@ void GameFramework::ConnectServer()
 	server_address.sin_family = AF_INET;
 	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
 	server_address.sin_port = htons(SERVER_PORT);
-	const int return_value = connect(g_c_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
+	const int return_value = connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
 	if (return_value == SOCKET_ERROR) error_quit("connect()");
 
 	// non blocking socket setting (test)
