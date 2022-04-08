@@ -133,7 +133,7 @@ void NetworkFramework::SendPlayerDataPacket()
 void NetworkFramework::SendMonsterDataPacket()
 {
 	sc_packet_update_monsters packet{};
-	for(int i = 0;i < MAX_MONSTER;++i)
+	for (int i = 0; i < MAX_MONSTER; ++i)
 	{
 		packet.data[i] = monsters[i];
 	}
