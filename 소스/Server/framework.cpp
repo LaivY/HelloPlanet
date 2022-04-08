@@ -76,29 +76,55 @@ void NetworkFramework::SendLoginOkPacket(int id)
 
 void NetworkFramework::SendPlayerDataPacket()
 {
+	sc_packet_update_client packet{};
+	for (int i = 0; i < MAX_USER; ++i) {
+		packet.data[i] = clients[i].data;
+	}
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_UPDATE_CLIENT;
+	//packet.data = player.data;
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sent_byte;
+	for (const auto& cl : clients)
+	{
+		if (!cl.data.isActive) continue;
+		int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(cl.data.id) << " SESSION] Disconnect" << std::endl;
+			else errorDisplay(WSAGetLastError(), "SendPlayerData");
+		}
+	}
+	/*
 	for (const auto& player : clients)
 	{
 		if (!player.data.isActive) continue;
-		sc_packet_update_client packet;
+		sc_packet_update_client packet{};
+		for (int i = 0; i < MAX_USER; ++i)	{
+			packet.data[i] = clients[i].data;
+		}
 		packet.size = sizeof(packet);
 		packet.type = SC_PACKET_UPDATE_CLIENT;
-		packet.data = player.data;
+		//packet.data = player.data;
 		char buf[sizeof(packet)];
 		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD sent_byte;
-		for (const auto& other : clients)
+		for (const auto& cl : clients)
 		{
-			if (!other.data.isActive) continue;
-			int retVal = WSASend(other.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (!cl.data.isActive) continue;
+			int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR)
 			{
 				if (WSAGetLastError() == WSAECONNRESET)
-					std::cout <<  "[" << static_cast<int>(other.data.id) << " SESSION] Disconnect" << std::endl;
+					std::cout <<  "[" << static_cast<int>(cl.data.id) << " SESSION] Disconnect" << std::endl;
 				else errorDisplay(WSAGetLastError(), "SendPlayerData");
 			}
 		}
-	}
+	}*/
 	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
 	for (auto& c : clients)
 		c.data.upperAniType = eUpperAnimationType::NONE;
@@ -106,9 +132,27 @@ void NetworkFramework::SendPlayerDataPacket()
 
 void NetworkFramework::SendMonsterDataPacket()
 {
+	sc_packet_update_monsters packet{};
+	for(int i = 0;i < MAX_MONSTER;++i)
+	{
+		packet.data[i] = monsters[i];
+	}
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_UPDATE_MONSTER;
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ buf[0], buf};
+	DWORD sent_byte;
 	for (const auto& player : clients)
 	{
-
+		if (!player.data.isActive) continue;
+		int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(player.data.id) << " SESSION] Disconnect" << std::endl;
+			else errorDisplay(WSAGetLastError(), "SendMonsterData");
+		}
 	}
 }
 
@@ -121,7 +165,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
 		int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-		std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
+		//std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)

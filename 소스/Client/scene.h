@@ -76,11 +76,11 @@ private:
 	unique_ptr<ShadowMap>								m_shadowMap;	// 그림자맵
 
 	shared_ptr<Camera>									m_camera;		// 카메라
+	unique_ptr<Skybox>									m_skybox;		// 스카이박스
 	shared_ptr<Player>									m_player;		// 플레이어
 	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;	// 멀티플레이어
-	unique_ptr<Skybox>									m_skybox;		// 스카이박스
 	vector<unique_ptr<GameObject>>						m_gameObjects;	// 게임오브젝트들
 
 	unique_ptr<Camera>									m_uiCamera;		// UI 카메라
-	vector<unique_ptr<UIObject>>						m_uiObjects;	// UI
+	vector<unique_ptr<UIObject>>						m_uiObjects;	// UI 오브젝트
 };

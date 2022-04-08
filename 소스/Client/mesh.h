@@ -105,8 +105,17 @@ public:
 class GridMesh : public Mesh
 {
 public:
-	GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount, const XMFLOAT4& color = { 0.0f, 0.0f, 0.0f, 0.0f });
+	GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount, 
+			 const XMFLOAT4& color = { 0.0f, 0.0f, 0.0f, 0.0f }, const string& fileName = "", UINT imageWidth = 0.0f, UINT imageHeight = 0.0f);
 	~GridMesh() = default;
+
+	void LoadNormalMapFile(const string& fileName, UINT imageWidth, UINT imageHeight);
+	XMFLOAT3 GetNormal(FLOAT x, FLOAT y) const;
+
+private:
+	unique_ptr<XMFLOAT3[]>	m_normals;
+	UINT					m_imageWidth;
+	UINT					m_imageHeight;
 };
 
 class BillboardMesh : public Mesh

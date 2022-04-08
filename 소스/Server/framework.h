@@ -19,8 +19,8 @@ public:
 	CHAR GetNewId();
 
 public:
-	bool							isAccept; // 1명이라도 서버에 들어왔는지
-	SOCKET							socket;
-	std::array<Session, MAX_USER>	clients;
-	std::vector<std::thread>		threads;
+	bool									isAccept; // 1명이라도 서버에 들어왔는지
+	std::array<Session, MAX_USER>			clients;
+	std::array<MonsterData, MAX_MONSTER>	monsters;
+	std::vector<std::thread>				threads;
 };

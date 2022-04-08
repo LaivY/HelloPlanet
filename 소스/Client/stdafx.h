@@ -130,6 +130,10 @@ namespace Vector3
         XMStoreFloat3(&result, XMVector3TransformNormal(XMLoadFloat3(&a), XMLoadFloat4x4(&b)));
         return result;
     }
+    inline XMFLOAT3 Interpolate(const XMFLOAT3& a, const XMFLOAT3& b, const FLOAT& t)
+    {
+        return XMFLOAT3{ lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t) };
+    }
     inline void Print(const XMFLOAT3& a, BOOL newLine=TRUE)
     {
         cout << a.x << ", " << a.y << ", " << a.z;

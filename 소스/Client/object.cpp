@@ -76,7 +76,7 @@ void GameObject::Update(FLOAT deltaTime)
 				m_textureInfo->frame = 0;
 			else
 			{
-				m_textureInfo->frame = m_texture->GetTextureCount() - 1;
+				m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
 				m_isDeleted = true;
 			}
 		}

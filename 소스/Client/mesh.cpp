@@ -49,7 +49,7 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 		file >> dumy >> m.roughness;
 		m_materials.push_back(move(m));
 	}
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
@@ -410,7 +410,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 		}
 	}
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
 BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position)
@@ -423,9 +423,13 @@ BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	CreateVertexBuffer(device, commandList, &v, sizeof(Vertex), 1);
 }
 
-GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount, const XMFLOAT4& color)
+GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT length, INT xCount, INT zCount,
+				   const XMFLOAT4& color, const string& fileName, UINT imageWidth, UINT imageHeight) : m_imageWidth{ imageWidth }, m_imageHeight{ imageHeight }
 {
 	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+
+	if (!fileName.empty())
+		LoadNormalMapFile(fileName, imageWidth, imageHeight);
 
 	vector<Vertex> vertices;
 	Vertex v;
@@ -454,6 +458,7 @@ GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			v.position.x = (-width / 2.0f) + (x * j);
 			v.position.y = 0.0f;
 			v.position.z = (-length / 2.0f) + (z * i);
+			v.normal = GetNormal(x * j / width, 1.0f - z * i / length);
 			v.uv.x = x * j / width;
 			v.uv.y = 1.0f - (z * i / length);
 			vertices.push_back(v);
@@ -483,8 +488,38 @@ GridMesh::GridMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			}
 	}
 
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
-	CreateIndexBuffer(device, commandList, indices.data(), indices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
+	CreateIndexBuffer(device, commandList, indices.data(), static_cast<UINT>(indices.size()));
+}
+
+void GridMesh::LoadNormalMapFile(const string& fileName, UINT imageWidth, UINT imageHeight)
+{
+	ifstream file{ fileName, ios::binary };
+	vector<unsigned char> data{ istream_iterator<unsigned char>(file), {} };
+
+	m_normals = make_unique<XMFLOAT3[]>(imageWidth * imageHeight);
+	for (int i = 0, j = 0; i < data.size(); ++i, ++j)
+	{
+		float x{ static_cast<int>(data[i++]) / 255.0f };
+		float y{ static_cast<int>(data[i++]) / 255.0f };
+		float z{ static_cast<int>(data[i]) / 255.0f };
+		m_normals[j] = XMFLOAT3{ x, y, z };
+	}
+}
+
+XMFLOAT3 GridMesh::GetNormal(FLOAT x, FLOAT y) const
+{
+	if (!m_normals)
+		return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+
+	int ix{ static_cast<int>(x) };
+	int iy{ static_cast<int>(y) };
+	float fx{ x - ix };
+	float fy{ y - iy };
+
+	XMFLOAT3 n1{ Vector3::Interpolate(m_normals[ix + iy * m_imageWidth], m_normals[ix + 1 + iy * m_imageWidth], fx) };
+	XMFLOAT3 n2{ Vector3::Interpolate(m_normals[ix + (iy + 1) * m_imageWidth], m_normals[ix + 1 + (iy + 1) * m_imageWidth], fx) };
+	return Vector3::Interpolate(n1, n2, fy);
 }
 
 CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
@@ -557,7 +592,7 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	material.baseColor = color;
 	m_materials.push_back(move(material));
 
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 
 	UINT cbMeshByteSize{ 0 };
 	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();

@@ -12,6 +12,7 @@ Scene::~Scene()
 	if (m_cbScene) m_cbScene->Unmap(0, NULL);
 }
 
+
 void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
@@ -28,7 +29,7 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateTextures(device, commandList);
 
 	// 그림자맵 생성
-	m_shadowMap = make_unique<ShadowMap>(device, 1024 * 4, 1024 * 4);
+	m_shadowMap = make_unique<ShadowMap>(device, 1 << 14, 1 << 14);
 
 	// 블러 필터 생성
 	//m_blurFilter = make_unique<BlurFilter>(device);
@@ -47,7 +48,7 @@ void Scene::OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime)
 {
 	// 화면 가운데 좌표 계산
 	RECT rect; GetWindowRect(hWnd, &rect);
-	POINT oldMousePosition{ rect.left + width / 2, rect.top + height / 2 };
+	POINT oldMousePosition{ static_cast<LONG>(rect.left + width / 2), static_cast<LONG>(rect.top + height / 2) };
 
 	// 움직인 마우스 좌표
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
@@ -283,10 +284,10 @@ void Scene::CreateLights() const
 {
 	// 첫번째 조명은 그림자를 만듦
 	m_cbSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbSceneData->ligths[0].direction = Vector3::Normalize(XMFLOAT3{ -6.0f, -25.0f, 3.0f });
+	m_cbSceneData->ligths[0].direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
 
 	XMFLOAT3 at{ m_cbSceneData->ligths[0].direction };
-	XMFLOAT3 pos{ Vector3::Mul(at, -1000.0f) };
+	XMFLOAT3 pos{ Vector3::Mul(at, -2000.0f) };
 	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&pos), XMLoadFloat3(&at), XMLoadFloat3(&up)));
@@ -313,7 +314,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 5000.0f));
-	//XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 5000.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// UI 카메라 생성
@@ -532,11 +532,6 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	// 그림자 테스트
-	//m_cbSceneData->ligths[0].direction = m_camera->GetAt();
-	//m_cbSceneData->ligths[0].lightViewMatrix = Matrix::Transpose(m_camera->GetViewMatrix());
-	//m_cbSceneData->ligths[0].lightProjMatrix = Matrix::Transpose(m_camera->GetProjMatrix());
-
 	// 씬 셰이더 변수 최신화
 	memcpy(m_pcbScene, m_cbSceneData.get(), sizeof(cbScene));
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbScene->GetGPUVirtualAddress());
@@ -647,21 +642,39 @@ void Scene::RecvPacket()
 	}
 	case SC_PACKET_UPDATE_CLIENT:
 	{
-		char subBuf[sizeof(PlayerData)]{};
+		char subBuf[sizeof(PlayerData) * MAX_USER]{};
 		wsabuf = { sizeof(subBuf), subBuf };
-		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
-		PlayerData pd; memcpy(&pd, subBuf, sizeof(pd));
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
+		for (int i = 0; i < MAX_USER; ++i)
+		{
+			PlayerData pd;
+			memcpy(&pd, subBuf + (i * sizeof(PlayerData)), sizeof(PlayerData));
+			
+			// 나에 대한 정보는 무시
+			if (m_player->GetId() == pd.id) continue;
+				//break;
+
+			for (auto& p : m_multiPlayers)
+			{
+				if (!p) continue;
+				if (p->GetId() != pd.id) continue;
+				p->ApplyServerData(pd);
+			}
+			
+			//break;
+		}
+		
 
 		// 나에 대한 정보는 무시
-		if (m_player->GetId() == pd.id)
-			break;
+		//if (m_player->GetId() == pd.id)
+		//	break;
 
-		for (auto& p : m_multiPlayers)
-		{
-			if (!p) continue;
-			if (p->GetId() != pd.id) continue;
-			p->ApplyServerData(pd);
-		}
+		//for (auto& p : m_multiPlayers)
+		//{
+		//	if (!p) continue;
+		//	if (p->GetId() != pd.id) continue;
+		//	p->ApplyServerData(pd);
+		//}
 		break;
 	}
 	case SC_PACKET_BULLET_FIRE:
@@ -680,6 +693,16 @@ void Scene::RecvPacket()
 		bullet->SetShader(m_shaders["DEFAULT"]);
 		bullet->SetPosition(pos);
 		m_gameObjects.push_back(move(bullet));
+		break;
+	}
+	case SC_PACKET_UPDATE_MONSTER:
+	{
+			// test size = 2 / char id + char type
+		char subBuf[2+2]{};
+		wsabuf = { sizeof(subBuf), subBuf };
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+		cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " <<
+			static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
 		break;
 	}
 	default:

@@ -93,7 +93,7 @@ float CalcShadowFactor(float4 shadowPosH)
 
 float4 Lighting(float3 position, float3 normal, int materialIndex)
 {
-    float3 lightColor = float3(0.0f, 0.0f, 0.0f);
+    float3 lightColor = float3(0.02f, 0.02f, 0.02f);
 
 	normal = normalize(normal);
 	float3 toEye = normalize(g_eye - position);
