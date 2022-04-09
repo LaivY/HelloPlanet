@@ -11,13 +11,9 @@ int main()
 	std::cout << "main process start" << std::endl;
 
 	// test
-	g_networkFramework.clients[0].data.pos.x = 0;
-	g_networkFramework.clients[0].data.pos.z = 0;
 	g_networkFramework.monsters[0].id = 0;
-	g_networkFramework.monsters[0].type = 8;
-	g_networkFramework.monsters[0].pos = {5, 0, 5};
-	g_networkFramework.monsters[1].id = 1;
-	g_networkFramework.monsters[1].type = 5;
+	g_networkFramework.monsters[0].type = 1;
+	g_networkFramework.monsters[0].pos = {50, 0, 50};
 
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
@@ -44,29 +40,7 @@ int main()
 				if (g_networkFramework.isAccept) g_networkFramework.SendMonsterDataPacket();
 			}
 			// temp monster timer
-			if (g_networkFramework.isAccept)
-			{
-				// speedFps는 1/60 초당가는 거리 만큼 좁아지는 타이머
-				// 한명이라도 들어오면 실행, 0번 몬스터가 0번 클라이언트를 향해 무작정 다가간다.
-				// 변수 초기화, 오버헤드가 큰 실수 제곱근 연산은 해당 플레이어가 움직일때(30fps로 Send할때)만 작동하게 바꿀예정
-				constexpr float fpsSpeed = 1.0f;
-				const float dis_x = g_networkFramework.clients[0].data.pos.x;
-				const float dis_z = g_networkFramework.clients[0].data.pos.z;
-				const float start_x = g_networkFramework.monsters[0].pos.x;
-				const float start_z = g_networkFramework.monsters[0].pos.z;
-				// a: 방향, (x, z): 목적지까지 도달하면 이번 프레임에 움직여야하는 좌표
-				const float a = abs((dis_z - start_z) / (dis_x - start_x)); 
-				const float x = fpsSpeed / (sqrt(pow(a, 2) + 1));
-				const float z = a * x;
-				if ((dis_x - start_x) < 0) g_networkFramework.monsters[0].pos.x -= x;
-				else g_networkFramework.monsters[0].pos.x += x;
-				if ((dis_z - start_z) < 0) g_networkFramework.monsters[0].pos.z -= z;
-				else g_networkFramework.monsters[0].pos.z += z;
-
-				//std::cout << "player: " << g_networkFramework.clients[0].data.pos.x << ", " << g_networkFramework.clients[0].data.pos.z << std::endl;
-				//std::cout << "monster: " << g_networkFramework.monsters[0].pos.x << ", " << g_networkFramework.monsters[0].pos.z << std::endl;
-				
-			}
+			if (g_networkFramework.isAccept) g_networkFramework.MonsterTimer(0);
 
 			if (frameNumber.count() >= 60)
 			{

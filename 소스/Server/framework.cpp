@@ -234,6 +234,39 @@ void NetworkFramework::ProcessRecvPacket(int id)
 	}
 }
 
+void NetworkFramework::MonsterTimer(int mobId)
+{
+	// speedFps는 1/60 초당가는 거리 만큼 좁아지는 타이머
+	// 한명이라도 들어오면 실행, 0번 몬스터가 0번 클라이언트를 향해 무작정 다가간다.
+	// 변수 초기화, 오버헤드가 큰 실수 제곱근 연산은 해당 플레이어가 움직일때(30fps로 Send할때)만 작동하게 바꿀예정
+	constexpr float fpsSpeed = 0.5f;
+	//monsters[mobId].velocity = fpsSpeed;
+	monsters[mobId].state = eMobAnimationType::RUNNING;
+	const float dis_x = clients[mobId].data.pos.x;
+	const float dis_z = clients[mobId].data.pos.z;
+	const float start_x = monsters[mobId].pos.x;
+	const float start_z = monsters[mobId].pos.z;
+	// a: 방향, (x, z): 목적지까지 도달하면 이번 프레임에 움직여야하는 좌표
+	const float a = abs((dis_z - start_z) / (dis_x - start_x));
+	const float x = fpsSpeed / (sqrt(pow(a, 2) + 1));
+	const float z = a * x;
+	if ((dis_x - start_x) < 0) monsters[mobId].pos.x -= x;
+	else monsters[mobId].pos.x += x;
+	if ((dis_z - start_z) < 0) monsters[mobId].pos.z -= z;
+	else monsters[mobId].pos.z += z;
+
+	if (start_x <= dis_x && start_z <= dis_z)
+		monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a));
+	else if (start_x > dis_x && start_z <= dis_z)
+		monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 90;
+	else if (start_x > dis_x && start_z > dis_z)
+		monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 180;
+	else if (start_x <= dis_x && start_z > dis_z)
+		monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 270;
+
+	//std::cout << "monster: " << g_networkFramework.monsters[0].pos.x << ", " << g_networkFramework.monsters[0].pos.z << ", " << g_networkFramework.monsters[0].yaw << std::endl;
+}
+
 void NetworkFramework::Disconnect(int id)
 {
 	Session& cl = clients[id];
