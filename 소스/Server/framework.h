@@ -13,7 +13,7 @@ public:
 	void SendPlayerDataPacket();
 	void SendMonsterDataPacket();
 	void ProcessRecvPacket(int id);
-
+	void MonsterTimer(int mobId);
 	void Disconnect(int id);
 
 	CHAR GetNewId();
