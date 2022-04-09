@@ -52,6 +52,34 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
+void Mesh::LoadMeshBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
+{
+	ifstream file{ fileName, ios::binary };
+
+	// 메쉬 변환 행렬
+	m_transformMatrix = make_unique<XMFLOAT4X4>();
+	file.read(reinterpret_cast<char*>(m_transformMatrix.get()), sizeof(XMFLOAT4X4));
+
+	// 정점 개수
+	int vertexCount{};
+	file.read(reinterpret_cast<char*>(&vertexCount), sizeof(int));
+
+	// 정점 데이터
+	vector<Vertex> vertices;
+	vertices.resize(vertexCount);
+	file.read(reinterpret_cast<char*>(vertices.data()), sizeof(Vertex) * vertexCount);
+
+	// 재질 개수
+	int materialCount{};
+	file.read(reinterpret_cast<char*>(&materialCount), sizeof(int));
+
+	// 재질 데이터
+	m_materials.resize(materialCount);
+	file.read(reinterpret_cast<char*>(m_materials.data()), sizeof(Material) * materialCount);
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
+}
+
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
 {
 	ifstream file{ fileName };
@@ -79,6 +107,25 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 			joint.animationTransformMatrix.push_back(move(matrix));
 		}
 		animation.joints.push_back(move(joint));
+	}
+	m_animations[animationName] = move(animation);
+}
+
+void Mesh::LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
+{
+	ifstream file{ fileName, ios::binary };
+
+	int jointCount{};
+	file.read(reinterpret_cast<char*>(&jointCount), sizeof(int));
+
+	Animation animation{};
+	file.read(reinterpret_cast<char*>(&animation.length), sizeof(int));
+
+	animation.joints.resize(jointCount);
+	for (int i = 0; i < jointCount; ++i)
+	{
+		animation.joints[i].animationTransformMatrix.resize(animation.length);
+		file.read(reinterpret_cast<char*>(animation.joints[i].animationTransformMatrix.data()), sizeof(XMFLOAT4X4) * animation.length);
 	}
 	m_animations[animationName] = move(animation);
 }

@@ -40,7 +40,6 @@ struct VS_INPUT
 {
 	float4 position     : POSITION;
 	float3 normal       : NORMAL;
-	float4 color        : COLOR;
 	float2 uv           : TEXCOORD;
 	int materialIndex   : MATERIAL;
 	uint4 boneIndex     : BONEINDEX;
@@ -53,7 +52,6 @@ struct PS_INPUT
 	float4 positionW    : POSITION0;
 	float4 shadowPosH   : POSITION1;
 	float3 normalW      : NORMAL;
-	float4 color        : COLOR;
 	float2 uv           : TEXCOORD;
 	int materialIndex   : MATERIAL;
 };

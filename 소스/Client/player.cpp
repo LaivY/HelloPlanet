@@ -134,7 +134,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			SendPlayerData();
 			break;
 		case VK_SHIFT:
-			if (GetAsyncKeyState('W') & 0x8000)
+			if (GetAsyncKeyState('W') & 0x8000 && m_gunType != ePlayerGunType::MG)
 			{
 				if (GetUpperCurrAnimationName() != "RELOAD")
 					PlayAnimation("WALKING", TRUE);

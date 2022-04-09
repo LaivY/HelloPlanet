@@ -5,11 +5,10 @@ class GameObject;
 
 struct Vertex
 {
-	Vertex() : position{}, normal{}, color{}, uv{}, materialIndex{ -1 }, boneIndex{}, boneWeight{} { }
+	Vertex() : position{}, normal{}, uv{}, materialIndex{ -1 }, boneIndex{}, boneWeight{} { }
 
 	XMFLOAT3	position;
 	XMFLOAT3	normal;
-	XMFLOAT4	color;
 	XMFLOAT2	uv;
 	INT			materialIndex;
 	XMUINT4		boneIndex;
@@ -62,7 +61,9 @@ public:
 	virtual ~Mesh() = default;
 
 	void LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
+	void LoadMeshBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
 	void LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
+	void LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);

@@ -55,6 +55,7 @@ public:
 	// 업데이트 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void PlayerCollisionCheck(FLOAT deltaTime);
 
 	// 게임플레이 관련 함수
 	void CreateBullet();

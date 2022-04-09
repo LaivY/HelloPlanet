@@ -169,15 +169,18 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	vector<pair<string, string>> animations
 	{
 		{ "idle", "IDLE" }, { "walking", "WALKING" }, {"walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
-		{ "walkBack", "WALKBACK" }, {"running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
+		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
 	};
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMesh(device, commandList, Utile::PATH("player.txt", Utile::RESOURCE));
+	//m_meshes["PLAYER"]->LoadMesh(device, commandList, Utile::PATH("player.txt", Utile::RESOURCE));
+	m_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin", Utile::RESOURCE));
 	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
-			m_meshes["PLAYER"]->LoadAnimation(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".txt", Utile::RESOURCE), weaponName + "/" + animationName);
+				m_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH(weaponName + "/bin/" + fileName + ".bin", Utile::RESOURCE), weaponName + "/" + animationName);
+
 	m_meshes["AR"] = make_shared<Mesh>();
-	m_meshes["AR"]->LoadMesh(device, commandList, Utile::PATH("AR/AR.txt", Utile::RESOURCE));
+	//m_meshes["AR"]->LoadMesh(device, commandList, Utile::PATH("AR/AR.txt", Utile::RESOURCE));
+	m_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("AR/bin/AR.bin", Utile::RESOURCE));
 	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
 	m_meshes["SG"] = make_shared<Mesh>();
 	m_meshes["SG"]->LoadMesh(device, commandList, Utile::PATH("SG/SG.txt", Utile::RESOURCE));
@@ -373,10 +376,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		p->SetMesh(m_meshes["PLAYER"]);
 		p->SetShader(m_shaders["ANIMATION"]);
 		p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
-		p->SetGunMesh(m_meshes["AR"]);
+		p->SetGunMesh(m_meshes["SG"]);
 		p->SetGunShader(m_shaders["LINK"]);
 		p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
-		p->SetGunType(ePlayerGunType::AR);
+		p->SetGunType(ePlayerGunType::SG);
 		p->PlayAnimation("IDLE");
 		p->AddBoundingBox(bbPlayer);
 	}
@@ -521,32 +524,8 @@ void Scene::Update(FLOAT deltaTime)
 			return object->isDeleted();
 		}), m_gameObjects.end());
 
-	// 플레이어 충돌판정
-	for (const auto& object : m_gameObjects)
-	{
-		const auto& boundingBoxes{ object->GetBoundingBox() };
-		for (const auto& bb : boundingBoxes)
-		{
-			const auto& pb{ m_player->GetBoundingBox() };
-			BoundingOrientedBox a{ *pb.front() };
-			BoundingOrientedBox b{ *bb };
-
-			a.Transform(a, XMLoadFloat4x4(&m_player->GetWorldMatrix()));
-			b.Transform(b, XMLoadFloat4x4(&object->GetWorldMatrix()));
-
-			if (a.Intersects(b))
-			{
-				XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), object->GetPosition()) };
-				v = Vector3::Normalize(v);
-
-				m_player->Move(Vector3::Mul(v, Vector3::Length(m_player->GetVelocity()) * deltaTime));
-
-				static int i = 0;
-				string debug{ "INTERSECT! (" + to_string(i++) + ")\n" };
-				OutputDebugStringA(debug.c_str());
-			}
-		}
-	}
+	// 충돌판정
+	PlayerCollisionCheck(deltaTime);
 }
 
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
@@ -630,6 +609,47 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void Scene::PlayerCollisionCheck(FLOAT deltaTime)
+{
+	// 플레이어의 바운딩박스
+	const auto& pPbb{ m_player->GetBoundingBox().front() };
+	BoundingOrientedBox pbb;
+	pPbb->Transform(pbb, XMLoadFloat4x4(&m_player->GetWorldMatrix()));
+
+	// 플레이어와 게임오브젝트 충돌판정
+	for (const auto& object : m_gameObjects)
+	{
+		const auto& boundingBoxes{ object->GetBoundingBox() };
+		for (const auto& bb : boundingBoxes)
+		{
+			BoundingOrientedBox obb;
+			bb->Transform(obb, XMLoadFloat4x4(&object->GetWorldMatrix()));
+			if (pbb.Intersects(obb))
+			{
+				XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), object->GetPosition()) };
+				v = Vector3::Normalize(v);
+				m_player->Move(Vector3::Mul(v, Vector3::Length(m_player->GetVelocity()) * deltaTime));
+				m_player->SendPlayerData();
+			}
+		}
+	}
+
+	// 플레이어와 멀티플레이어 충돌판정
+	for (const auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		BoundingOrientedBox mpbb;
+		p->GetBoundingBox().front()->Transform(mpbb, XMLoadFloat4x4(&p->GetWorldMatrix()));
+		if (pbb.Intersects(mpbb))
+		{
+			XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), p->GetPosition()) };
+			v = Vector3::Normalize(v);
+			m_player->Move(Vector3::Mul(v, 3.0f * deltaTime));
+			m_player->SendPlayerData();
+		}
+	}
 }
 
 void Scene::CreateBullet()
