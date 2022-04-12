@@ -97,6 +97,7 @@ private:
 	unique_ptr<Skybox>									m_skybox;		// 스카이박스
 	shared_ptr<Player>									m_player;		// 플레이어
 	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;	// 멀티플레이어
+	unordered_map<INT, unique_ptr<GameObject>>			m_monsters;		// 몬스터들
 	vector<unique_ptr<GameObject>>						m_gameObjects;	// 게임오브젝트들
 
 	unique_ptr<Camera>									m_uiCamera;		// UI 카메라

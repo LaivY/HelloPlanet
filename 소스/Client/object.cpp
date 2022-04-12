@@ -24,7 +24,7 @@ void DebugBoundingBox::SetShader(const shared_ptr<Shader>& shader)
 	m_shader = shader;
 }
 
-GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
+GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -92,8 +92,10 @@ void GameObject::Update(FLOAT deltaTime)
 			m_animationInfo->blendingTimer += deltaTime;
 	}
 
-	// 바운딩 박스 정렬
-	//if (m_boundingBox) m_boundingBox->Center = GetPosition();
+	// 이동
+	Move(Vector3::Mul(GetRight(), m_velocity.x * deltaTime));
+	Move(Vector3::Mul(GetUp(), m_velocity.y * deltaTime));
+	Move(Vector3::Mul(GetLook(), m_velocity.z * deltaTime));
 }
 
 void GameObject::Move(const XMFLOAT3& shift)

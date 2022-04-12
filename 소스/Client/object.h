@@ -80,6 +80,7 @@ public:
 
 	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_worldMatrix = worldMatrix; }
 	virtual void SetPosition(const XMFLOAT3& position);
+	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader);
@@ -104,6 +105,7 @@ protected:
 	FLOAT							m_roll;					// z축 회전각
 	FLOAT							m_pitch;				// x축 회전각
 	FLOAT							m_yaw;					// y축 회전각
+	XMFLOAT3						m_velocity;				// 속도
 
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더

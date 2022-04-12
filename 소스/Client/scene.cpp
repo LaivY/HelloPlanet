@@ -873,14 +873,24 @@ void Scene::RecvUpdateClient()
 
 void Scene::RecvUpdateMonster()
 {
-	// test size = 2 / char id + char type
-	char subBuf[2 + 2]{};
+	// 모든 몬스터의 정보를 수신함
+	char subBuf[sizeof(MonsterData) * MAX_MONSTER]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " <<
-	static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
+	MonsterData monsters[MAX_MONSTER];
+	memcpy(monsters, subBuf, sizeof(MonsterData) * MAX_MONSTER);
+
+	for (int i = 0; i < MAX_MONSTER; ++i)
+	{
+		const MonsterData& m{ monsters[i] };
+		if (!m_monsters[m.id])
+			m_monsters[m.id] = make_unique<GameObject>();
+		m_monsters[m.id]->SetPosition(m.pos);
+	}
+
+	cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " << static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
 }
 
 void Scene::RecvBulletFire()

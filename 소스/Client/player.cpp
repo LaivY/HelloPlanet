@@ -2,7 +2,7 @@
 #include "camera.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ eGunType::NONE },
-									 m_speed{ 20.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f }, m_shotSpeed{ 1.0f }, m_shotTimer{ 0.0f },
+									 m_speed{ 20.0f }, m_shotSpeed{ 1.0f }, m_shotTimer{ 0.0f },
 									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
@@ -278,8 +278,6 @@ void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandL
 
 void Player::Update(FLOAT deltaTime)
 {
-	GameObject::Update(deltaTime);
-
 	// 상체 애니메이션 타이머 진행
 	if (m_upperAnimationInfo)
 		switch (m_upperAnimationInfo->state)
@@ -293,12 +291,7 @@ void Player::Update(FLOAT deltaTime)
 			break;
 		}
 
-	// 이동
-	Move(Vector3::Mul(GetRight(), m_velocity.x * deltaTime));
-	Move(Vector3::Mul(GetLook(), m_velocity.z * deltaTime));
-
-	// 마찰력
-	//m_velocity = Vector3::Mul(m_velocity, m_friction * deltaTime);
+	GameObject::Update(deltaTime);
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -373,19 +366,6 @@ void Player::SetGunType(eGunType gunType)
 	}
 	m_shotTimer = 0.0f;
 	m_gunType = gunType;
-}
-
-void Player::AddVelocity(const XMFLOAT3& increase)
-{
-	m_velocity = Vector3::Add(m_velocity, increase);
-
-	// 최대 속도에 걸린다면 해당 비율로 축소시킴
-	FLOAT length{ Vector3::Length(m_velocity) };
-	if (length > m_maxVelocity)
-	{
-		FLOAT ratio{ m_maxVelocity / length };
-		m_velocity = Vector3::Mul(m_velocity, ratio);
-	}
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)

@@ -33,8 +33,8 @@ public:
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(eGunType gunType);
-	void AddVelocity(const XMFLOAT3& increase);
-	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
+	//void AddVelocity(const XMFLOAT3& increase);
+	//void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
@@ -53,10 +53,10 @@ private:
 	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
 	eGunType						m_gunType;			// 총 타입
 
-	FLOAT							m_speed;			// 속도(실수)
-	XMFLOAT3						m_velocity;			// 속도(벡터)
-	FLOAT							m_maxVelocity;		// 최대속도
-	FLOAT							m_friction;			// 마찰력
+	FLOAT							m_speed;			// 속력(실수)
+	//XMFLOAT3						m_velocity;			// 속도(벡터)
+	//FLOAT							m_maxVelocity;		// 최대속도
+	//FLOAT							m_friction;			// 마찰력
 	FLOAT							m_shotSpeed;		// 공격속도
 	FLOAT							m_shotTimer;		// 공격속도 타이머
 
