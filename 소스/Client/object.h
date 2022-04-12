@@ -152,6 +152,18 @@ private:
 	FLOAT		m_lifeTimer;
 };
 
+class Monster : public GameObject
+{
+public:
+	Monster() = default;
+	~Monster() = default;
+
+	void ApplyServerData(const MonsterData& monsterData);
+
+private:
+	INT	m_id;
+};
+
 // --------------------------------
 
 enum class eUIPivot

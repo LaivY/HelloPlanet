@@ -105,6 +105,9 @@ void GameObject::Move(const XMFLOAT3& shift)
 
 void GameObject::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 {
+	// 회전각 합산
+	m_roll += roll; m_pitch += pitch; m_yaw += yaw;
+
 	// 회전
 	XMMATRIX rotate{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll)) };
 	XMMATRIX worldMatrix{ rotate * XMLoadFloat4x4(&m_worldMatrix) };
@@ -203,10 +206,37 @@ Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direc
 void Bullet::Update(FLOAT deltaTime)
 {
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
-	
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
 		m_isDeleted = TRUE;
+}
+
+void Monster::ApplyServerData(const MonsterData& monsterData)
+{
+	switch (monsterData.aniType)
+	{
+	case eMobAnimationType::IDLE:
+		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
+			PlayAnimation("IDLE", TRUE);
+		break;
+	case eMobAnimationType::ACK:
+		if (m_animationInfo->currAnimationName != "ATTACK" && m_animationInfo->afterAnimationName != "ATTACK")
+			PlayAnimation("ATTACK", TRUE);
+		break;
+	case eMobAnimationType::RUNNING:
+		if (m_animationInfo->currAnimationName != "RUNNING" && m_animationInfo->afterAnimationName != "RUNNING")
+			PlayAnimation("RUNNING", TRUE);
+		break;
+	case eMobAnimationType::DIE:
+		if (m_animationInfo->currAnimationName != "DIE" && m_animationInfo->afterAnimationName != "DIE")
+			PlayAnimation("DIE", TRUE);
+		break;
+	}
+
+	m_id = monsterData.id;
+	SetPosition(monsterData.pos);
+	SetVelocity(monsterData.velocity);
+	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
 UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }

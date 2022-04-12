@@ -154,6 +154,8 @@ void Scene::OnUpdate(FLOAT deltaTime)
 		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
+	for (auto& [_, m] : m_monsters)
+		m->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
 		ui->Update(deltaTime);
 }
@@ -199,7 +201,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt", Utile::RESOURCE), "DIE");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt", Utile::RESOURCE), "HIT");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt", Utile::RESOURCE), "IDLE");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/run.txt", Utile::RESOURCE), "RUNNING");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/running.txt", Utile::RESOURCE), "RUNNING");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
@@ -247,7 +249,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	// 디버그 바운딩박스 로딩
 	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
-	m_meshes["BB_MOB"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
+	m_meshes["BB_GAROO"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 	m_meshes["BB_SMALLROCK"] = make_shared<CubeMesh>(device, commandList, 100.0f, 100.0f, 100.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
 
@@ -360,9 +362,9 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
 	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
 
-	SharedBoundingBox bbMob{ make_shared<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
-	bbMob->SetMesh(m_meshes["BB_MOB"]);
-	bbMob->SetShader(m_shaders["WIREFRAME"]);
+	//SharedBoundingBox bbMob{ make_shared<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
+	//bbMob->SetMesh(m_meshes["BB_GAROO"]);
+	//bbMob->SetShader(m_shaders["WIREFRAME"]);
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
@@ -892,16 +894,18 @@ void Scene::RecvUpdateMonster()
 	for (int i = 0; i < MAX_MONSTER; ++i)
 	{
 		const MonsterData& m{ monsters[i] };
+
+		// 해당 id의 몬스터가 없는 경우엔 생성
 		if (!m_monsters[m.id])
-			m_monsters[m.id] = make_unique<GameObject>();
-		m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
-		m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
-		m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-		m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
-		m_monsters[m.id]->SetPosition(m.pos);
-		m_monsters[m.id]->SetVelocity(m.velocity);
-		m_monsters[m.id]->Rotate(0.0f, 0.0f, m_monsters[m.id]->GetRollPitchYaw().z - m.yaw);
-		m_monsters[m.id]->PlayAnimation("IDLE");
+		{
+			m_monsters[m.id] = make_unique<Monster>();
+			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
+			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
+			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+			m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
+			m_monsters[m.id]->PlayAnimation("IDLE");
+		}
+		m_monsters[m.id]->ApplyServerData(m);
 	}
 }
 

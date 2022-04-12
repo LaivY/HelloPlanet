@@ -64,7 +64,7 @@ struct MonsterData
 {
 	CHAR				id;			// 몬스터 고유 번호
 	CHAR				type;		// 몬스터 타입
-	eMobAnimationType	state;		// 애니메이션 종류
+	eMobAnimationType	aniType;	// 애니메이션 종류
 	DirectX::XMFLOAT3	pos;		// 위치
 	DirectX::XMFLOAT3	velocity;	// 속도
 	FLOAT				yaw;		// 회전각

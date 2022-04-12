@@ -302,15 +302,15 @@ void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	else if (m_pitch + pitch < Setting::CAMERA_MIN_PITCH)
 		pitch = Setting::CAMERA_MIN_PITCH - m_pitch;
 
-	// 회전각 합산
-	m_roll += roll; m_pitch += pitch; m_yaw += yaw;
-
 	// 카메라는 x,y축으로 회전할 수 있다.
 	// GameObject::Rotate에서 플레이어의 로컬 x,y,z축을 변경하므로 먼저 호출해야한다.
 	if (m_camera) m_camera->Rotate(0.0f, pitch, yaw);
 
 	// 플레이어는 y축으로만 회전할 수 있다.
 	GameObject::Rotate(0.0f, 0.0f, yaw);
+
+	// 회전각 합산. yaw의 경우 GameObject::Rotate에서 합산됬다.
+	m_roll += roll; m_pitch += pitch;
 
 	if (!m_isMultiPlayer) SendPlayerData(); // 서버에게 회전했다고 알림
 }
