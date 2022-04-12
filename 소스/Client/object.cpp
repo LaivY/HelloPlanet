@@ -31,8 +31,8 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_vel
 
 void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
-	if (currFrame >= endFrame)
-		PlayAnimation(m_animationInfo->currAnimationName);
+	//if (currFrame >= endFrame)
+	//	PlayAnimation(m_animationInfo->currAnimationName);
 }
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
@@ -177,10 +177,10 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	}
 	else
 	{
-		m_animationInfo->afterAnimationName.clear();
-		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->currAnimationName = animationName;
 		m_animationInfo->currTimer = 0.0f;
+		m_animationInfo->afterAnimationName.clear();
+		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->state = eAnimationState::PLAY;
 	}
 	m_animationInfo->blendingTimer = 0.0f;
@@ -209,6 +209,22 @@ void Bullet::Update(FLOAT deltaTime)
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
 		m_isDeleted = TRUE;
+}
+
+void Monster::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
+{
+	// 오류
+	if (isUpper) return;
+	if (m_animationInfo->state == eAnimationState::PLAY)
+	{
+		if (currFrame >= endFrame)
+			PlayAnimation(m_animationInfo->currAnimationName);
+	}
+	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
+	{
+		if (currFrame >= endFrame)
+			PlayAnimation(m_animationInfo->afterAnimationName);
+	}
 }
 
 void Monster::ApplyServerData(const MonsterData& monsterData)

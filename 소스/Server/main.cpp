@@ -28,6 +28,7 @@ int main()
 		{
 			frameNumber = std::chrono::duration_cast<frame>(frameNumber + FPS);
 			fpsTimer = std::chrono::steady_clock::now();
+
 			//std::cout << "LastFrame: " << duration_cast<ms>(FPS).count() << "ms  |  FPS: " << FPS.count() * 60 << " |  FrameNumber: " << frameNumber.count() << std::endl;
 			if (1 & frameNumber.count()) // even FrameNumber
 			{
@@ -40,7 +41,7 @@ int main()
 				if (g_networkFramework.isAccept) g_networkFramework.SendMonsterDataPacket();
 			}
 			// temp monster timer
-			if (g_networkFramework.isAccept) g_networkFramework.MonsterTimer(0);
+			if (g_networkFramework.isAccept) g_networkFramework.MonsterTimer(duration_cast<ms>(FPS).count() / 1000.0f, 0);
 
 			if (frameNumber.count() >= 60)
 			{

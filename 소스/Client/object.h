@@ -155,9 +155,10 @@ private:
 class Monster : public GameObject
 {
 public:
-	Monster() = default;
+	Monster() : m_id{ -1 } { }
 	~Monster() = default;
 
+	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
 	void ApplyServerData(const MonsterData& monsterData);
 
 private:

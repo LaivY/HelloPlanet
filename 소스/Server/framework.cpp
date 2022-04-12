@@ -234,7 +234,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 	}
 }
 
-void NetworkFramework::MonsterTimer(int mobId)
+void NetworkFramework::MonsterTimer(FLOAT deltaTime, int mobId)
 {
 	// speedFps는 1/60 초당가는 거리 만큼 좁아지는 타이머
 	// 한명이라도 들어오면 실행, 0번 몬스터가 0번 클라이언트를 향해 무작정 다가간다.
@@ -263,31 +263,40 @@ void NetworkFramework::MonsterTimer(int mobId)
 	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 180;
 	//else if (start_x <= dis_x && start_z > dis_z)
 	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 270;
-
 	//std::cout << "monster: " << g_networkFramework.monsters[0].pos.x << ", " << g_networkFramework.monsters[0].pos.z << ", " << g_networkFramework.monsters[0].yaw << std::endl;
+
+	constexpr float MOB_SPEED{ 50.0f }; // 1초당 움직일 거리
 
 	using namespace DirectX;
 	XMVECTOR playerPos{ XMLoadFloat3(&clients[0].data.pos) };		// 플레이어 위치
 	XMVECTOR mobPos{ XMLoadFloat3(&monsters[mobId].pos) };			// 몬스터 위치
 	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) };			// 몬스터 -> 플레이어 방향 벡터
 	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
-	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
-
-	XMFLOAT3 direction{};
-	XMStoreFloat3(&direction, dir);
+	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
 
 	// 몹 이동속도
-	XMStoreFloat3(&monsters[mobId].velocity, dir * 0.5f);
+	XMFLOAT3 velocity{};
+	XMStoreFloat3(&velocity, dir * MOB_SPEED);
 
 	// 몹 위치
-	monsters[mobId].pos.x += monsters[mobId].velocity.x;
-	monsters[mobId].pos.y += monsters[mobId].velocity.y;
-	monsters[mobId].pos.z += monsters[mobId].velocity.z;
+	monsters[mobId].pos.x += velocity.x * deltaTime;
+	monsters[mobId].pos.y += velocity.y * deltaTime;
+	monsters[mobId].pos.z += velocity.z * deltaTime;
+
+	// 몹 속도
+	// 클라이언트에서 속도는 로컬좌표계 기준이다.
+	// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
+	// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
+	monsters[mobId].velocity.x = 0.0f;
+	monsters[mobId].velocity.y = 0.0f;
+	monsters[mobId].velocity.z = MOB_SPEED;
 
 	// 몹 각도
-	XMFLOAT3 angle{};
-	XMStoreFloat3(&angle, radian);
+	XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
 	angle.x = XMConvertToDegrees(angle.x);
+
+	// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
+	XMFLOAT3 direction{}; XMStoreFloat3(&direction, dir);
 	if (direction.x < 0) angle.x *= -1;
 	monsters[mobId].yaw = angle.x;
 

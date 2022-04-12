@@ -13,7 +13,6 @@ Scene::~Scene()
 	if (m_cbScene) m_cbScene->Unmap(0, NULL);
 }
 
-
 void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
@@ -888,13 +887,11 @@ void Scene::RecvUpdateMonster()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	MonsterData monsters[MAX_MONSTER];
-	memcpy(monsters, subBuf, sizeof(MonsterData) * MAX_MONSTER);
+	array<MonsterData, MAX_MONSTER> monsters{};
+	memcpy(monsters.data(), subBuf, sizeof(MonsterData) * MAX_MONSTER);
 
-	for (int i = 0; i < MAX_MONSTER; ++i)
+	for (const MonsterData& m : monsters)
 	{
-		const MonsterData& m{ monsters[i] };
-
 		// 해당 id의 몬스터가 없는 경우엔 생성
 		if (!m_monsters[m.id])
 		{
