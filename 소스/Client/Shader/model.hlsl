@@ -1,5 +1,4 @@
 #include "common.hlsl"
-#define SHADOW
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -24,10 +23,7 @@ float4 PS(PS_INPUT input) : SV_TARGET
         output = g_materials[input.materialIndex].baseColor;
     }
     float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
-    float shadowFactor = 1.0f;
-#ifdef SHADOW
-    shadowFactor = CalcShadowFactor(input.positionW);
-#endif
+    float shadowFactor = CalcShadowFactor(input.positionW);
     return output + lightColor * shadowFactor;
 }
 

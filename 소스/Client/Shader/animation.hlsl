@@ -1,5 +1,4 @@
 #include "common.hlsl"
-//#define SHADOW
 
 PS_INPUT VS(VS_INPUT input)
 {
@@ -13,7 +12,6 @@ PS_INPUT VS(VS_INPUT input)
     }
     output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
     output.positionH = mul(mul(output.positionW, g_viewMatrix), g_projMatrix);
-    output.shadowPosH = mul(mul(output.positionW, g_lights[0].lightViewMatrix), g_lights[0].lightProjMatrix);
     output.normalW = mul(normalL, (float3x3) g_meshTransformMatrix);
     output.normalW = mul(output.normalW, (float3x3) g_worldMatrix);
     output.uv = input.uv;
@@ -33,9 +31,6 @@ float4 PS(PS_INPUT input) : SV_TARGET
         output = g_materials[input.materialIndex].baseColor;
     }
     float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
-    float shadowFactor = 1.0f;
-#ifdef SHADOW
-    shadowFactor = CalcShadowFactor(input.shadowPosH);
-#endif
+    float shadowFactor = CalcShadowFactor(input.positionW);
     return output + lightColor * shadowFactor;
 }

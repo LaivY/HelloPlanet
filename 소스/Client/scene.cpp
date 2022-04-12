@@ -560,6 +560,10 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
 
+	// 몬스터 렌더링
+	for (const auto& [_, m] : m_monsters)
+		m->Render(commandList);
+
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
@@ -612,6 +616,12 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 			auto shadowShader{ object->GetShadowShader(i) };
 			if (shadowShader)
 				object->Render(commandList, shadowShader);
+		}
+		for (const auto& [_, monster] : m_monsters)
+		{
+			auto shadowShader{ monster->GetShadowShader(i) };
+			if (shadowShader)
+				monster->Render(commandList, shadowShader);
 		}
 		for (const auto& player : m_multiPlayers)
 		{
@@ -818,9 +828,6 @@ void Scene::RecvPacket()
 		break;
 	}
 	}
-
-	string debug{ to_string(g_isConnected) + "\n" };
-	OutputDebugStringA(debug.c_str());
 }
 
 void Scene::RecvLoginOk()
@@ -887,10 +894,15 @@ void Scene::RecvUpdateMonster()
 		const MonsterData& m{ monsters[i] };
 		if (!m_monsters[m.id])
 			m_monsters[m.id] = make_unique<GameObject>();
+		m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
+		m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
+		m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+		m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
 		m_monsters[m.id]->SetPosition(m.pos);
+		m_monsters[m.id]->SetVelocity(m.velocity);
+		m_monsters[m.id]->Rotate(0.0f, 0.0f, m_monsters[m.id]->GetRollPitchYaw().z - m.yaw);
+		m_monsters[m.id]->PlayAnimation("IDLE");
 	}
-
-	cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " << static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
 }
 
 void Scene::RecvBulletFire()

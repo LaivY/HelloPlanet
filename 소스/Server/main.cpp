@@ -6,7 +6,7 @@ SOCKET				g_socket{};
 int main()
 {
 	std::wcout.imbue(std::locale("korean"));
-	
+
 	if (g_networkFramework.OnInit(g_socket)) return 1;
 	std::cout << "main process start" << std::endl;
 
@@ -36,7 +36,15 @@ int main()
 			}
 			else // odd FrameNumber
 			{
-				// playerData Send
+				// MonsterData Send
+				if (g_networkFramework.isAccept) g_networkFramework.SendMonsterDataPacket();
+			}
+			// temp monster timer
+			if (g_networkFramework.isAccept) g_networkFramework.MonsterTimer(0);
+
+			if (frameNumber.count() >= 60)
+			{
+				frameNumber = std::chrono::duration_cast<frame>(frameNumber - frameNumber);
 			}
 		}
 	}
@@ -46,7 +54,7 @@ int main()
 		if (c.data.isActive)
 			g_networkFramework.Disconnect(c.data.id);
 	}
-	
+
 	closesocket(g_socket);
 	WSACleanup();
 }
