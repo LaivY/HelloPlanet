@@ -67,7 +67,7 @@ void GameFramework::OnDestroy()
 
 void GameFramework::OnMouseEvent()
 {
-	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_width, m_height, m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer.GetDeltaTime());
 }
 
 void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -109,6 +109,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 
 	// 서술자힙 크기
 	g_cbvSrvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_dsvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	g_device = m_device;
 }
 
@@ -224,7 +225,7 @@ void GameFramework::CreateRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE ranges[2];
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Setting::SHADOWMAP_COUNT, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 
 	// 자주 갱신하는 순서대로 해야 성능에 좋음
 	CD3DX12_ROOT_PARAMETER rootParameter[7];
@@ -234,7 +235,7 @@ void GameFramework::CreateRootSignature()
 	rootParameter[3].InitAsConstantBufferView(3);											// cbScene : b3
 	rootParameter[4].InitAsConstantBufferView(4);											// cbGameFramework : b4
 	rootParameter[5].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_texture : t0
-	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1
+	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1 ~ t3
 
 	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
 	samplerDesc[0].Init(

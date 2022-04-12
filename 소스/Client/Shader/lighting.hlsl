@@ -1,11 +1,22 @@
 #define DIRECTIONAL_LIGHT   0
 #define POINT_LIGHT         1
-#define MAX_LIGHT           2
+#define MAX_LIGHT           1
+#define SHADOWMAP_COUNT     4
 
 struct Light
 {
 	matrix	lightViewMatrix;
 	matrix 	lightProjMatrix;
+	float3 	color;
+	float 	padding1;
+	float3 	direction;
+	float 	padding2;
+};
+
+struct ShadowLight
+{
+    matrix	lightViewMatrix[SHADOWMAP_COUNT];
+	matrix 	lightProjMatrix[SHADOWMAP_COUNT];
 	float3 	color;
 	float 	padding1;
 	float3 	direction;

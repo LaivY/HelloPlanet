@@ -15,9 +15,20 @@ struct Light
 	FLOAT		padding2;
 };
 
+struct ShadowLight
+{
+	XMFLOAT4X4	lightViewMatrix[Setting::SHADOWMAP_COUNT];
+	XMFLOAT4X4	lightProjMatrix[Setting::SHADOWMAP_COUNT];
+	XMFLOAT3	color;
+	FLOAT		padding1;
+	XMFLOAT3	direction;
+	FLOAT		padding2;
+};
+
 struct cbScene
 {
-	Light ligths[Setting::MAX_LIGHTS];
+	ShadowLight shadowLight;
+	Light		ligths[Setting::MAX_LIGHTS];
 };
 
 class Scene
@@ -29,7 +40,7 @@ public:
 	// 이벤트 함수
 	void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, 
 				const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
-	void OnMouseEvent(HWND hWnd, UINT width, UINT height, FLOAT deltaTime);
+	void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnKeyboardEvent(FLOAT deltaTime);
 	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -40,9 +51,9 @@ public:
 	void CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
 	void CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void CreateLights() const;
 	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void CreateLights() const;
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
 	// 초기화 후 호출되는 함수
@@ -56,6 +67,7 @@ public:
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void PlayerCollisionCheck(FLOAT deltaTime);
+	void UpdateShadowMatrix();
 
 	// 게임플레이 관련 함수
 	void CreateBullet();

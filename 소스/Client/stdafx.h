@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define BOUNDINGBOX
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -51,6 +51,7 @@ class GameFramework;
 extern GameFramework        g_gameFramework;                    // 게임프레임워크
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
+extern UINT                 g_dsvDescriptorIncrementSize;       // 깊이스텐실뷰 서술자 힙 크기
 extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
 extern thread               g_networkThread;
@@ -213,6 +214,7 @@ namespace Setting
     constexpr auto BLENDING_FRAMES  = 5;    // 메쉬 애니메이션 블렌딩에 걸리는 프레임
     constexpr auto CAMERA_MIN_PITCH = -60;  // 카메라 위아래 최소 각도
     constexpr auto CAMERA_MAX_PITCH = 60;   // 카메라 위아래 최대 각도
+    constexpr auto SHADOWMAP_COUNT  = 4;    // 케스케이드 그림자맵 개수
 }
 
 void error_quit(const char* msg);

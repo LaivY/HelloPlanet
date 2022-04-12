@@ -1,30 +1,33 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ ePlayerGunType::NONE },
-									 m_speed{ 20.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f },
+Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ eGunType::NONE },
+									 m_speed{ 20.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_maxVelocity{ 0.0f }, m_friction{ 0.96f }, m_shotSpeed{ 1.0f }, m_shotTimer{ 0.0f },
 									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
 }
 
-void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
-#ifndef FREEVIEW
-	switch (message)
+#ifdef FIRSTVIEW
+	m_shotTimer += deltaTime;
+	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000 && m_shotTimer > m_shotSpeed)
 	{
-		case WM_LBUTTONDOWN:
-		{
-			if (GetCurrAnimationName() == "RUNNING")
-				break;
-			if (GetUpperCurrAnimationName() == "RELOAD")
-				break;
-			PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
-			SendPlayerData(); // 서버에게 총 발사했다고 알림
-			break;
-		}
+		if (GetCurrAnimationName() == "RUNNING")
+			return;
+		if (GetUpperCurrAnimationName() == "RELOAD")
+			return;
+		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
+		SendPlayerData(); // 서버에게 총 발사했다고 알림
+		m_shotTimer -= m_shotSpeed;
 	}
 #endif
+}
+
+void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
 }
 
 void Player::OnKeyboardEvent(FLOAT deltaTime)
@@ -71,7 +74,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
 	{
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && GetUpperCurrAnimationName() != "RELOAD" && m_gunType != ePlayerGunType::MG)
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_gunType != eGunType::MG)
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
@@ -112,7 +115,6 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		m_velocity.z = -m_speed;
 		SendPlayerData();
 	}
-	//else SendPlayerData(eAnimationType::IDLE);
 #endif
 }
 
@@ -134,7 +136,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			SendPlayerData();
 			break;
 		case VK_SHIFT:
-			if (GetAsyncKeyState('W') & 0x8000 && m_gunType != ePlayerGunType::MG)
+			if (GetAsyncKeyState('W') & 0x8000 && m_gunType != eGunType::MG)
 			{
 				if (GetUpperCurrAnimationName() != "RELOAD")
 					PlayAnimation("WALKING", TRUE);
@@ -242,11 +244,10 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 #ifdef FIRSTVIEW
 		if (!m_camera) return;
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
-
-		m_camera->UpdateShaderVariableByPlayer(commandList);	// 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
-		
-		// 총을 렌더링한다.
-		UpdateShaderVariable(commandList);
+		m_camera->UpdateShaderVariableByPlayer(commandList); // 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
+#endif
+		// 렌더링
+		GameObject::Render(commandList, shader);
 		if (m_gunMesh)
 		{
 			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
@@ -254,31 +255,22 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 			m_gunMesh->UpdateShaderVariable(commandList, this);
 			m_gunMesh->Render(commandList);
 		}
-
+#ifdef FIRSTVIEW
 		// 이후 렌더링할 객체들을 위해 카메라 파라미터를 이전 것으로 되돌린다.
 		m_camera->SetAt(at);
 		m_camera->SetUp(up);
 		m_camera->Update(0.0f);
 		m_camera->UpdateShaderVariable(commandList);
-#else
-		GameObject::Render(commandList, shader);
-		if (m_gunMesh)
-		{
-			m_gunMesh->UpdateShaderVariable(commandList, this);
-			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
-			m_gunMesh->Render(commandList);
-		}
 #endif
 	}
 }
 
-void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex)
 {
-	GameObject::Render(commandList, m_shadowShader);
+	GameObject::Render(commandList, m_shadowShaders[shadowShaderIndex]);
 	if (m_gunMesh)
 	{
-		commandList->SetPipelineState(m_gunShadowShader->GetPipelineState().Get());
+		commandList->SetPipelineState(m_gunShadowShaders[shadowShaderIndex]->GetPipelineState().Get());
 		m_gunMesh->UpdateShaderVariable(commandList, this);
 		m_gunMesh->Render(commandList);
 	}
@@ -347,16 +339,40 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	// 아래의 애니메이션은 상체만 애니메이션함
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
 	{
-		if (m_gunType == ePlayerGunType::AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
-		else if (m_gunType == ePlayerGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
-		else if (m_gunType == ePlayerGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+		if (m_gunType == eGunType::AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
+		else if (m_gunType == eGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
+		else if (m_gunType == eGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+
+		if (pureAnimationName == "FIRING")
+		{
+			//m_upperAnimationInfo->blendingFrame = 1;
+			//m_upperAnimationInfo->fps = 1.0f / 60.0f;
+		}
 		return;
 	}
 
 	// 그 외는 상하체 모두 애니메이션함
-	if (m_gunType == ePlayerGunType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
-	else if (m_gunType == ePlayerGunType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
-	else if (m_gunType == ePlayerGunType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+	if (m_gunType == eGunType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
+	else if (m_gunType == eGunType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
+	else if (m_gunType == eGunType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+}
+
+void Player::SetGunType(eGunType gunType)
+{
+	switch (gunType)
+	{
+	case eGunType::AR:
+		m_shotSpeed = 0.3f;
+		break;
+	case eGunType::SG:
+		m_shotSpeed = 1.0f;
+		break;
+	case eGunType::MG:
+		m_shotSpeed = 0.1f;
+		break;
+	}
+	m_shotTimer = 0.0f;
+	m_gunType = gunType;
 }
 
 void Player::AddVelocity(const XMFLOAT3& increase)
@@ -500,6 +516,14 @@ void Player::ApplyServerData(const PlayerData& playerData)
 //	packet.yaw = m_yaw;
 //	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 //}
+
+void Player::SetGunShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
+{
+	m_gunShadowShaders[0] = sShader;
+	m_gunShadowShaders[1] = mShader;
+	m_gunShadowShaders[2] = lShader;
+	m_gunShadowShaders[3] = allShader;
+}
 
 string Player::GetPureAnimationName(const string& animationName) const
 {

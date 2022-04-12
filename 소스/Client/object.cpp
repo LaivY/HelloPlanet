@@ -138,9 +138,12 @@ void GameObject::SetShader(const shared_ptr<Shader>& shader)
 	m_shader = shader;
 }
 
-void GameObject::SetShadowShader(const shared_ptr<Shader>& shader)
+void GameObject::SetShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
 {
-	m_shadowShader = shader;
+	m_shadowShaders[0] = sShader;
+	m_shadowShaders[1] = mShader;
+	m_shadowShaders[2] = lShader;
+	m_shadowShaders[3] = allShader;
 }
 
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
