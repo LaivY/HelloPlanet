@@ -13,7 +13,7 @@ int main()
 	// test
 	g_networkFramework.monsters[0].id = 0;
 	g_networkFramework.monsters[0].type = 1;
-	g_networkFramework.monsters[0].pos = {50, 0, 50};
+	g_networkFramework.monsters[0].pos = { 50, 0, 50 };
 
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;

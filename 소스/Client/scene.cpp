@@ -796,7 +796,6 @@ void Scene::RecvPacket()
 
 	UCHAR size{ static_cast<UCHAR>(buf[0]) };
 	UCHAR type{ static_cast<UCHAR>(buf[1]) };
-
 	switch (type)
 	{
 	case SC_PACKET_LOGIN_OK:
