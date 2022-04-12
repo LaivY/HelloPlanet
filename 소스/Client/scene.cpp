@@ -674,7 +674,7 @@ void Scene::PlayerCollisionCheck(FLOAT deltaTime)
 void Scene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT + 1> casecade{ 0.0f, 0.05f, 0.2f, 0.4f, 0.6f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.05f, 0.2f, 0.4f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
 	XMFLOAT3 frustum[]{
@@ -699,7 +699,7 @@ void Scene::UpdateShadowMatrix()
 		v = Vector3::TransformCoord(v, toWorldMatrix);
 
 	// 큐브의 정점을 시야절두체 구간으로 변경
-	for (int i = 0; i < casecade.size() - 2; ++i)
+	for (int i = 0; i < casecade.size() - 1; ++i)
 	{
 		XMFLOAT3 tFrustum[8];
 		for (int j = 0; j < 8; ++j)
@@ -732,7 +732,7 @@ void Scene::UpdateShadowMatrix()
 
 		// 그림자를 만들 조명의 좌표를 바운딩구의 중심에서 빛의 반대방향으로 적당히 움직이여야함
 		// 이건 씬의 오브젝트를 고려해서 정말 적당한 수치만큼 움직여줘야함
-		float value{ max(750.0f, radius * 2.0f)};
+		float value{ max(750.0f, radius * 2.5f)};
 		XMFLOAT3 shadowLightPos{ Vector3::Add(center, Vector3::Mul(m_cbSceneData->shadowLight.direction, -value)) };
 
 		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
