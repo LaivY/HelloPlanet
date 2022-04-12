@@ -12,9 +12,8 @@ int main()
 
 	// test
 	g_networkFramework.monsters[0].id = 0;
-	g_networkFramework.monsters[0].type = 8;
-	g_networkFramework.monsters[1].id = 1;
-	g_networkFramework.monsters[1].type = 5;
+	g_networkFramework.monsters[0].type = 1;
+	g_networkFramework.monsters[0].pos = {50, 0, 50};
 
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
@@ -37,12 +36,9 @@ int main()
 			}
 			else // odd FrameNumber
 			{
-				// MonsterData Send
-				if (g_networkFramework.isAccept) g_networkFramework.SendMonsterDataPacket();
+				// playerData Send
 			}
-			if (frameNumber.count() >= 60) frameNumber = std::chrono::duration_cast<frame>(frameNumber - frameNumber);
 		}
-
 	}
 
 	for (const auto& c : g_networkFramework.clients)

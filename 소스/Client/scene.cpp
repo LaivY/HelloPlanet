@@ -896,6 +896,31 @@ void Scene::RecvBulletFire()
 	memcpy(&pos, &subBuf[0], sizeof(pos));
 	memcpy(&dir, &subBuf[12], sizeof(dir));
 
+		auto bullet{ make_unique<Bullet>(dir) };
+		bullet->SetMesh(m_meshes["BULLET"]);
+		bullet->SetShader(m_shaders["DEFAULT"]);
+		bullet->SetPosition(pos);
+		m_gameObjects.push_back(move(bullet));
+		break;
+	}
+	case SC_PACKET_UPDATE_MONSTER:
+	{
+			// test size = 2 / char id + char type
+		char subBuf[2+2]{};
+		wsabuf = { sizeof(subBuf), subBuf };
+		WSARecv(g_c_socket, &wsabuf, 1, &recv_byte, &recv_flag, 0, 0);
+		cout << static_cast<int>(subBuf[0]) << ", " << static_cast<int>(subBuf[1]) << ", " <<
+			static_cast<int>(subBuf[2]) << ", " << static_cast<int>(subBuf[3]) << ", " << endl;
+		break;
+	}
+	default:
+	{
+		string debug{};
+		debug += "RECV_ERR | size : " + to_string(static_cast<int>(size)) + ", type : " + to_string(static_cast<int>(type)) + "\n";
+		OutputDebugStringA(debug.c_str());
+		break;
+	}
+	}
 	auto bullet{ make_unique<Bullet>(dir) };
 	bullet->SetMesh(m_meshes["BULLET"]);
 	bullet->SetShader(m_shaders["DEFAULT"]);
