@@ -43,12 +43,12 @@ int main()
 			g_networkFramework.SendMonsterDataPacket();
 		}
 
-		// 서버에서 필요한 모든 계산 실행
+		// 서버에서 해야할 모든 계산 실행
 		g_networkFramework.Update(duration_cast<ms>(fps).count() / 1000.0f);
 
 		// 이번 프레임 계산이 끝난 시각 저장
 		frameCount = duration_cast<frame>(frameCount + fps);
-		if (frameCount.count() > 60)
+		if (frameCount.count() >= 60)
 			frameCount = frame::zero();
 		fpsTimer = std::chrono::steady_clock::now();
 	}
