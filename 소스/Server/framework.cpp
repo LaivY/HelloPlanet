@@ -241,6 +241,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 
 void NetworkFramework::Update(FLOAT deltaTime)
 {
+	// 몬스터 업데이트
 	for (auto& m : monsters)
 		m.Update(deltaTime);
 

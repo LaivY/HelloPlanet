@@ -30,6 +30,7 @@ private:
 	FLOAT							m_yaw;
 
 	// 서버에서 갖고있어야할 데이터들
+	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
 	DirectX::BoundingOrientedBox	m_boundingBox;	// 바운딩박스
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
 };
