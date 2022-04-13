@@ -1,4 +1,5 @@
 ﻿#include "framework.h"
+using namespace DirectX;
 
 int NetworkFramework::OnInit(SOCKET socket)
 {
@@ -136,7 +137,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_MONSTER;
 	for (int i = 0; i < MAX_MONSTER; ++i)
-		packet.data[i] = monsters[i];
+		packet.data[i] = monsters[i].GetData();
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -240,65 +241,46 @@ void NetworkFramework::ProcessRecvPacket(int id)
 
 void NetworkFramework::Update(FLOAT deltaTime)
 {
-	using namespace DirectX;
-	constexpr int TARGET_CLIENT_INDEX{ 0 };	// 몬스터가 쫓아갈 플레이어 인덱스
-	constexpr float MOB_SPEED{ 50.0f };		// 1초당 움직일 거리
+	for (auto& m : monsters)
+		m.Update(deltaTime);
 
-	// 모든 몬스터 업데이트
-	// 다만 현재 구조로는 모든 몬스터를 세팅해주지 않으면 쓰레기값으로 업데이트할 수도 있다.
-	// 나중에 array<unique_ptr<MonsterData>, MAX_MONSTER>로 바꿔야할 것 같다.
-	for (int i = 0; i < MAX_MONSTER; ++i)
+	// 충돌체크
+	CollisionCheck();
+}
+
+void NetworkFramework::CollisionCheck()
+{
+	// 총알과 충돌한 몬스터들 중 총알과 가장 가까운 몬스터와
+	// 충돌한 것으로 처리해야되기 때문에 총알을 바깥 for문으로 돌아야한다.
+	for (const BulletData& b : bullets)
 	{
-		XMVECTOR playerPos{ XMLoadFloat3(&clients[TARGET_CLIENT_INDEX].data.pos) };	// 플레이어 위치
-		XMVECTOR mobPos{ XMLoadFloat3(&monsters[i].pos) };							// 몬스터 위치
-		XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) };						// 몬스터 -> 플레이어 방향 벡터
+		Monster* hitMonsters{ nullptr };	// 피격된 몹
+		float length{ FLT_MAX };			// 피격된 몹과 총알 간의 거리
 
-		// 몹 이동속도
-		XMFLOAT3 velocity{};
-		XMStoreFloat3(&velocity, dir * MOB_SPEED);
-
-		// 몹 위치
-		monsters[i].pos.x += velocity.x * deltaTime;
-		monsters[i].pos.y += velocity.y * deltaTime;
-		monsters[i].pos.z += velocity.z * deltaTime;
-
-		// 몹 속도
-		// 클라이언트에서 속도는 로컬좌표계 기준이다.
-		// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
-		// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
-		monsters[i].velocity.x = 0.0f;
-		monsters[i].velocity.y = 0.0f;
-		monsters[i].velocity.z = MOB_SPEED;
-
-		// 몹 각도
-		XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
-		XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
-		XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
-		angle.x = XMConvertToDegrees(angle.x);
-
-		// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
-		XMFLOAT3 direction{}; XMStoreFloat3(&direction, dir);
-		monsters[i].yaw = direction.x < 0 ? -angle.x : angle.x;
-
-		// 몹 애니메이션
-		monsters[i].aniType = eMobAnimationType::RUNNING;
-
-		// 피격 계산
-		BoundingOrientedBox boundingBox{ Utility::GetBoundingBox(monsters[i]) };
-		for (const auto& bullet : bullets)
+		for (Monster& m : monsters)
 		{
-			XMVECTOR origin{ XMLoadFloat3(&bullet.pos) };
-			XMVECTOR direction{ XMLoadFloat3(&bullet.dir) };
+			BoundingOrientedBox boundingBox{ m.GetBoundingBox() };
+			XMVECTOR origin{ XMLoadFloat3(&b.pos) };
+			XMVECTOR direction{ XMLoadFloat3(&b.dir) };
 			float dist{ 3000.0f };
 			if (boundingBox.Intersects(origin, direction, dist))
-				std::cout << "HIT!" << std::endl;
-			else
-				std::cout << "NO HIT!" << std::endl;
+			{
+				// 기존 피격된 몹과 총알 간의 거리보다
+				// 새로 피격된 몹과 총알 간의 거리가 더 짧으면 피격 당한 몹을 바꿈
+				float l{ Vector3::Length(Vector3::Sub(b.pos, m.GetPosition())) };
+				if (l < length)
+				{
+					hitMonsters = &m;
+					length = l;
+				}
+			}
 		}
-
-		// 피격 계산을 완료한 총알은 삭제
-		bullets.clear();
+		if (hitMonsters)
+			hitMonsters->SetAnimationType(eMobAnimationType::HIT);
 	}
+
+	// 충돌체크가 완료된 총알들은 삭제
+	bullets.clear();
 }
 
 void NetworkFramework::Disconnect(int id)

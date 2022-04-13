@@ -235,13 +235,17 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
 			PlayAnimation("IDLE", TRUE);
 		break;
-	case eMobAnimationType::ACK:
-		if (m_animationInfo->currAnimationName != "ATTACK" && m_animationInfo->afterAnimationName != "ATTACK")
-			PlayAnimation("ATTACK", TRUE);
-		break;
 	case eMobAnimationType::RUNNING:
 		if (m_animationInfo->currAnimationName != "RUNNING" && m_animationInfo->afterAnimationName != "RUNNING")
 			PlayAnimation("RUNNING", TRUE);
+		break;
+	case eMobAnimationType::ATTACK:
+		if (m_animationInfo->currAnimationName != "ATTACK" && m_animationInfo->afterAnimationName != "ATTACK")
+			PlayAnimation("ATTACK", TRUE);
+		break;
+	case eMobAnimationType::HIT:
+		if (m_animationInfo->currAnimationName != "HIT" && m_animationInfo->afterAnimationName != "HIT")
+			PlayAnimation("HIT", TRUE);
 		break;
 	case eMobAnimationType::DIE:
 		if (m_animationInfo->currAnimationName != "DIE" && m_animationInfo->afterAnimationName != "DIE")

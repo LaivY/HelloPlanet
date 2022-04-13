@@ -1,8 +1,5 @@
 ﻿#include "main.h"
 
-NetworkFramework	g_networkFramework{};
-SOCKET				g_socket{};
-
 int main()
 {
 	std::wcout.imbue(std::locale("korean"));
@@ -11,9 +8,12 @@ int main()
 	std::cout << "main process start" << std::endl;
 
 	// test
-	g_networkFramework.monsters[0].id = 0;
-	g_networkFramework.monsters[0].type = 1;
-	g_networkFramework.monsters[0].pos = { 50, 0, 50 };
+	Monster monster{};
+	monster.SetId(0);
+	monster.SetType(0);
+	monster.SetAnimationType(eMobAnimationType::IDLE);
+	monster.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 150.0f });
+	g_networkFramework.monsters.push_back(std::move(monster));
 
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;

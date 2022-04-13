@@ -35,10 +35,12 @@ enum class eUpperAnimationType : char
 };
 
 enum class eMobAnimationType : char
-{ // 임시
+{
 	IDLE,
-	ACK,
+	WALKING,
 	RUNNING,
+	ATTACK,
+	HIT,
 	DIE
 };
 

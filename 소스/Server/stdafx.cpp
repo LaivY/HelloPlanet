@@ -1,4 +1,8 @@
 ﻿#include "stdafx.h"
+#include "framework.h"
+
+NetworkFramework	g_networkFramework{};
+SOCKET				g_socket{};
 
 void errorDisplay(const int errNum, const char* msg)
 {
