@@ -1,6 +1,6 @@
 ﻿#include "shadow.h"
 
-ShadowMap::ShadowMap(const ComPtr<ID3D12Device>& device, UINT width, UINT height, UINT count)
+ShadowMap::ShadowMap(const ComPtr<ID3D12Device>& device, UINT width, UINT height, INT count)
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f }, 
 	  m_scissorRect{ 0, 0, static_cast<int>(width), static_cast<int>(height) }, 
 	  m_format{ DXGI_FORMAT_R24G8_TYPELESS }, m_width{ width }, m_height{ height }, m_count{ count }

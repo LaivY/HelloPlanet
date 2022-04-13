@@ -4,7 +4,7 @@
 class ShadowMap
 {
 public:
-	ShadowMap(const ComPtr<ID3D12Device>& device, UINT width, UINT height, UINT count);
+	ShadowMap(const ComPtr<ID3D12Device>& device, UINT width, UINT height, INT count);
 	~ShadowMap() = default;
 
 	void CreateShadowMapTexture(const ComPtr<ID3D12Device>& device);
@@ -27,7 +27,7 @@ private:
 	DXGI_FORMAT						m_format;
 	UINT							m_width;
 	UINT							m_height;
-	UINT							m_count;
+	INT								m_count;
 
 	ComPtr<ID3D12DescriptorHeap>	m_srvHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_dsvHeap;

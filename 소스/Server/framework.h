@@ -13,14 +13,15 @@ public:
 	void SendPlayerDataPacket();
 	void SendMonsterDataPacket();
 	void ProcessRecvPacket(int id);
-	void MonsterTimer(FLOAT deltaTime, int mobId);
+	void Update(FLOAT deltaTime);
 	void Disconnect(int id);
 
 	CHAR GetNewId();
 
 public:
-	bool									isAccept; // 1명이라도 서버에 들어왔는지
-	std::array<Session, MAX_USER>			clients;
-	std::array<MonsterData, MAX_MONSTER>	monsters;
-	std::vector<std::thread>				threads;
+	bool									isAccept;	// 1명이라도 서버에 들어왔는지
+	std::array<Session, MAX_USER>			clients;	// 클라이언트
+	std::array<MonsterData, MAX_MONSTER>	monsters;	// 몬스터
+	std::vector<BulletData>					bullets;	// 총알
+	std::vector<std::thread>				threads;	// 쓰레드
 };

@@ -18,36 +18,39 @@ int main()
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
 	using ms = std::chrono::duration<float, std::milli>;
-	std::chrono::time_point<std::chrono::steady_clock> fpsTimer(std::chrono::steady_clock::now());
-	frame FPS{};
-	frame frameNumber{};
+	std::chrono::time_point<std::chrono::steady_clock> fpsTimer{ std::chrono::steady_clock::now() };
+
+	frame fps{}, frameCount{};
 	while (true)
 	{
-		FPS = std::chrono::duration_cast<frame>(std::chrono::steady_clock::now() - fpsTimer);
-		if (FPS.count() >= 1)
+		// 이전 사이클에 얼마나 시간이 걸렸는지 계산
+		fps = duration_cast<frame>(std::chrono::steady_clock::now() - fpsTimer);
+
+		// 아무도 서버에 접속하지 않았으면 패스
+		if (!g_networkFramework.isAccept) continue;
+
+		// 아직 1/60초가 안지났으면 패스
+		if (fps.count() < 1) continue;
+
+		if (frameCount.count() & 1) // even FrameNumber
 		{
-			frameNumber = std::chrono::duration_cast<frame>(frameNumber + FPS);
-			fpsTimer = std::chrono::steady_clock::now();
-
-			//std::cout << "LastFrame: " << duration_cast<ms>(FPS).count() << "ms  |  FPS: " << FPS.count() * 60 << " |  FrameNumber: " << frameNumber.count() << std::endl;
-			if (1 & frameNumber.count()) // even FrameNumber
-			{
-				// playerData Send
-				if (g_networkFramework.isAccept) g_networkFramework.SendPlayerDataPacket();
-			}
-			else // odd FrameNumber
-			{
-				// MonsterData Send
-				if (g_networkFramework.isAccept) g_networkFramework.SendMonsterDataPacket();
-			}
-			// temp monster timer
-			if (g_networkFramework.isAccept) g_networkFramework.MonsterTimer(duration_cast<ms>(FPS).count() / 1000.0f, 0);
-
-			if (frameNumber.count() >= 60)
-			{
-				frameNumber = std::chrono::duration_cast<frame>(frameNumber - frameNumber);
-			}
+			// playerData Send
+			g_networkFramework.SendPlayerDataPacket();
 		}
+		else // odd FrameNumber
+		{
+			// MonsterData Send
+			g_networkFramework.SendMonsterDataPacket();
+		}
+
+		// 서버에서 필요한 모든 계산 실행
+		g_networkFramework.Update(duration_cast<ms>(fps).count() / 1000.0f);
+
+		// 이번 프레임 계산이 끝난 시각 저장
+		frameCount = duration_cast<frame>(frameCount + fps);
+		if (frameCount.count() > 60)
+			frameCount = frame::zero();
+		fpsTimer = std::chrono::steady_clock::now();
 	}
 
 	for (const auto& c : g_networkFramework.clients)

@@ -55,38 +55,38 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 
 void NetworkFramework::SendLoginOkPacket(int id)
 {
-	Session& player = clients[id];
-
-	sc_packet_login_ok packet;
+	sc_packet_login_ok packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_LOGIN_OK;
 	packet.data.id = id;
 	packet.data.isActive = true;
 	packet.data.aniType = eAnimationType::IDLE;
 	packet.data.upperAniType = eUpperAnimationType::NONE;
-	packet.data.pos = { 0.0f, 0.0f, 0.0f };
+	packet.data.pos = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
+
 	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-	const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	const int retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
 }
 
 void NetworkFramework::SendPlayerDataPacket()
 {
 	sc_packet_update_client packet{};
-	for (int i = 0; i < MAX_USER; ++i) {
-		packet.data[i] = clients[i].data;
-	}
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_CLIENT;
-	//packet.data = player.data;
+	for (int i = 0; i < MAX_USER; ++i)
+		packet.data[i] = clients[i].data;
+
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sent_byte;
+
 	for (const auto& cl : clients)
 	{
 		if (!cl.data.isActive) continue;
@@ -133,16 +133,16 @@ void NetworkFramework::SendPlayerDataPacket()
 void NetworkFramework::SendMonsterDataPacket()
 {
 	sc_packet_update_monsters packet{};
-	for (int i = 0; i < MAX_MONSTER; ++i)
-	{
-		packet.data[i] = monsters[i];
-	}
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_MONSTER;
+	for (int i = 0; i < MAX_MONSTER; ++i)
+		packet.data[i] = monsters[i];
+
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	WSABUF wsabuf{ buf[0], buf};
+	WSABUF wsabuf{ sizeof(buf), buf};
 	DWORD sent_byte;
+
 	for (const auto& player : clients)
 	{
 		if (!player.data.isActive) continue;
@@ -218,13 +218,17 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };
 			memcpy(sendBuf, &packet, sizeof(packet));
-
 			DWORD sent_byte;
+
+			// 총알은 수신하자마자 다른 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
 				if (c.data.id == cl.data.id) continue; // 총을 쏜 사람에겐 보내지않음
 				WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			}
+
+			// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
+			bullets.push_back(packet.data);
 			break;
 		}
 		default:
@@ -234,74 +238,67 @@ void NetworkFramework::ProcessRecvPacket(int id)
 	}
 }
 
-void NetworkFramework::MonsterTimer(FLOAT deltaTime, int mobId)
+void NetworkFramework::Update(FLOAT deltaTime)
 {
-	// speedFps는 1/60 초당가는 거리 만큼 좁아지는 타이머
-	// 한명이라도 들어오면 실행, 0번 몬스터가 0번 클라이언트를 향해 무작정 다가간다.
-	// 변수 초기화, 오버헤드가 큰 실수 제곱근 연산은 해당 플레이어가 움직일때(30fps로 Send할때)만 작동하게 바꿀예정
-	//constexpr float fpsSpeed = 0.5f;
-	//monsters[mobId].velocity = fpsSpeed;
-	//monsters[mobId].state = eMobAnimationType::RUNNING;
-	//const float dis_x = clients[mobId].data.pos.x;
-	//const float dis_z = clients[mobId].data.pos.z;
-	//const float start_x = monsters[mobId].pos.x;
-	//const float start_z = monsters[mobId].pos.z;
-	//// a: 방향, (x, z): 목적지까지 도달하면 이번 프레임에 움직여야하는 좌표
-	//const float a = abs((dis_z - start_z) / (dis_x - start_x));
-	//const float x = fpsSpeed / (sqrt(pow(a, 2) + 1));
-	//const float z = a * x;
-	//if ((dis_x - start_x) < 0) monsters[mobId].pos.x -= x;
-	//else monsters[mobId].pos.x += x;
-	//if ((dis_z - start_z) < 0) monsters[mobId].pos.z -= z;
-	//else monsters[mobId].pos.z += z;
-
-	//if (start_x <= dis_x && start_z <= dis_z)
-	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a));
-	//else if (start_x > dis_x && start_z <= dis_z)
-	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 90;
-	//else if (start_x > dis_x && start_z > dis_z)
-	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 180;
-	//else if (start_x <= dis_x && start_z > dis_z)
-	//	monsters[mobId].yaw = DirectX::XMConvertToDegrees(atan(a)) + 270;
-	//std::cout << "monster: " << g_networkFramework.monsters[0].pos.x << ", " << g_networkFramework.monsters[0].pos.z << ", " << g_networkFramework.monsters[0].yaw << std::endl;
-
-	constexpr float MOB_SPEED{ 50.0f }; // 1초당 움직일 거리
-
 	using namespace DirectX;
-	XMVECTOR playerPos{ XMLoadFloat3(&clients[0].data.pos) };		// 플레이어 위치
-	XMVECTOR mobPos{ XMLoadFloat3(&monsters[mobId].pos) };			// 몬스터 위치
-	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) };			// 몬스터 -> 플레이어 방향 벡터
-	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
-	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
+	constexpr int TARGET_CLIENT_INDEX{ 0 };	// 몬스터가 쫓아갈 플레이어 인덱스
+	constexpr float MOB_SPEED{ 50.0f };		// 1초당 움직일 거리
 
-	// 몹 이동속도
-	XMFLOAT3 velocity{};
-	XMStoreFloat3(&velocity, dir * MOB_SPEED);
+	// 모든 몬스터 업데이트
+	// 다만 현재 구조로는 모든 몬스터를 세팅해주지 않으면 쓰레기값으로 업데이트할 수도 있다.
+	// 나중에 array<unique_ptr<MonsterData>, MAX_MONSTER>로 바꿔야할 것 같다.
+	for (int i = 0; i < MAX_MONSTER; ++i)
+	{
+		XMVECTOR playerPos{ XMLoadFloat3(&clients[TARGET_CLIENT_INDEX].data.pos) };	// 플레이어 위치
+		XMVECTOR mobPos{ XMLoadFloat3(&monsters[i].pos) };							// 몬스터 위치
+		XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) };						// 몬스터 -> 플레이어 방향 벡터
 
-	// 몹 위치
-	monsters[mobId].pos.x += velocity.x * deltaTime;
-	monsters[mobId].pos.y += velocity.y * deltaTime;
-	monsters[mobId].pos.z += velocity.z * deltaTime;
+		// 몹 이동속도
+		XMFLOAT3 velocity{};
+		XMStoreFloat3(&velocity, dir * MOB_SPEED);
 
-	// 몹 속도
-	// 클라이언트에서 속도는 로컬좌표계 기준이다.
-	// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
-	// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
-	monsters[mobId].velocity.x = 0.0f;
-	monsters[mobId].velocity.y = 0.0f;
-	monsters[mobId].velocity.z = MOB_SPEED;
+		// 몹 위치
+		monsters[i].pos.x += velocity.x * deltaTime;
+		monsters[i].pos.y += velocity.y * deltaTime;
+		monsters[i].pos.z += velocity.z * deltaTime;
 
-	// 몹 각도
-	XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
-	angle.x = XMConvertToDegrees(angle.x);
+		// 몹 속도
+		// 클라이언트에서 속도는 로컬좌표계 기준이다.
+		// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
+		// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
+		monsters[i].velocity.x = 0.0f;
+		monsters[i].velocity.y = 0.0f;
+		monsters[i].velocity.z = MOB_SPEED;
 
-	// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
-	XMFLOAT3 direction{}; XMStoreFloat3(&direction, dir);
-	if (direction.x < 0) angle.x *= -1;
-	monsters[mobId].yaw = angle.x;
+		// 몹 각도
+		XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
+		XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
+		XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
+		angle.x = XMConvertToDegrees(angle.x);
 
-	// 몹 애니메이션
-	monsters[mobId].aniType = eMobAnimationType::RUNNING;
+		// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
+		XMFLOAT3 direction{}; XMStoreFloat3(&direction, dir);
+		monsters[i].yaw = direction.x < 0 ? -angle.x : angle.x;
+
+		// 몹 애니메이션
+		monsters[i].aniType = eMobAnimationType::RUNNING;
+
+		// 피격 계산
+		BoundingOrientedBox boundingBox{ Utility::GetBoundingBox(monsters[i]) };
+		for (const auto& bullet : bullets)
+		{
+			XMVECTOR origin{ XMLoadFloat3(&bullet.pos) };
+			XMVECTOR direction{ XMLoadFloat3(&bullet.dir) };
+			float dist{ 3000.0f };
+			if (boundingBox.Intersects(origin, direction, dist))
+				std::cout << "HIT!" << std::endl;
+			else
+				std::cout << "NO HIT!" << std::endl;
+		}
+
+		// 피격 계산을 완료한 총알은 삭제
+		bullets.clear();
+	}
 }
 
 void NetworkFramework::Disconnect(int id)

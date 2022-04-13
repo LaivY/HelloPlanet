@@ -19,6 +19,5 @@ void errorDisplay(const int errNum, const char* msg);
 
 namespace Utility
 {
-	using namespace DirectX;
-	BoundingOrientedBox GetBoundingBox(const MonsterData& monsterData);
+	DirectX::BoundingOrientedBox GetBoundingBox(const MonsterData& monsterData);
 }
