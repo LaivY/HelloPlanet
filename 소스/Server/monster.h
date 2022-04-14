@@ -13,7 +13,7 @@ public:
 	void SetId(CHAR id);
 	void SetType(CHAR type);
 	void SetAnimationType(eMobAnimationType type);
-	void SetPosition(DirectX::XMFLOAT3 position);
+	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
 
 	MonsterData GetData() const;
