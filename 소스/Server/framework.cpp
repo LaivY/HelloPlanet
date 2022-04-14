@@ -264,12 +264,16 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	m_spawnCooldown -= deltaTime;
 	if (m_spawnCooldown <= 0.0f) {
 		const auto m = new Monster();
-		m->SetId(monsters.size());
+		m->SetId(m_lastMobId);
+		m->SetHp(100);
 		m->SetType(0);
 		m->SetAnimationType(eMobAnimationType::IDLE);
 		m->SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
-		g_networkFramework.monsters.push_back(std::move(*m));
+		monsters.push_back(std::move(*m));
+		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / "<< MAX_MONSTER << std::endl;
+
 		m_spawnCooldown = 5.0f;
+		m_lastMobId++;
 	}
 }
 
@@ -282,7 +286,7 @@ void NetworkFramework::CollisionCheck()
 	{
 		Monster* hitMonsters{ nullptr };	// 피격된 몹
 		float length{ FLT_MAX };			// 피격된 몹과 총알 간의 거리
-
+		int cnt{ 0 }, tmp{ 0 };
 		for (Monster& m : monsters)
 		{
 			BoundingOrientedBox boundingBox{ m.GetBoundingBox() };
@@ -298,13 +302,23 @@ void NetworkFramework::CollisionCheck()
 				{
 					hitMonsters = &m;
 					length = l;
+					tmp = cnt;
+					std::cout << tmp << "is hit" << std::endl;
 				}
 			}
+			cnt++;
 		}
-		if (hitMonsters)
+		if (hitMonsters) {
 			hitMonsters->SetAnimationType(eMobAnimationType::HIT);
+			// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
+			hitMonsters->SetHp(hitMonsters->GetHp() - 40);
+			if (hitMonsters->GetHp() <= 0)
+			{
+				monsters.erase(monsters.begin()+tmp);
+				std::cout << static_cast<int>(hitMonsters->GetId()) << " is erased" << std::endl;
+			}
+		}
 	}
-
 	// 충돌체크가 완료된 총알들은 삭제
 	bullets.clear();
 }
