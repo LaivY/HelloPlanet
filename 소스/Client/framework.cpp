@@ -380,7 +380,7 @@ void GameFramework::PopulateCommandList() const
 	// 씬 셰이더 변수 최신화
 	if (m_scene) m_scene->UpdateShaderVariable(m_commandList);
 
-	// 그림자맵에 깊이 버퍼 쓰기
+	// 그림자맵에 씬 렌더링
 	if (m_scene) m_scene->RenderToShadowMap(m_commandList);
 
 	// Indicate that the back buffer will be used as a render target

@@ -553,18 +553,18 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 멀티플레이어 렌더링
-	for (const auto& p : m_multiPlayers)
-		if (p) p->Render(commandList);
-
 	// 게임오브젝트 렌더링
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
 
+	// 멀티플레이어 렌더링
+	for (const auto& p : m_multiPlayers)
+		if (p) p->Render(commandList);
+
 	// 몬스터 렌더링
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
-
+	
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
@@ -892,8 +892,11 @@ void Scene::RecvUpdateMonster()
 
 	for (const MonsterData& m : monsters)
 	{
+		// id가 0보다 작으면 유효하지 않음
+		if (m.id < 0) continue;
+
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (m.id >= 0 && !m_monsters[m.id])
+		if (!m_monsters[m.id])
 		{
 			m_monsters[m.id] = make_unique<Monster>();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
