@@ -91,7 +91,7 @@ void NetworkFramework::SendPlayerDataPacket()
 	for (const auto& cl : clients)
 	{
 		if (!cl.data.isActive) continue;
-		int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		const int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -152,7 +152,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	for (const auto& player : clients)
 	{
 		if (!player.data.isActive) continue;
-		int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		const int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -170,7 +170,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
-		int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		const int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		//std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
 		if (retVal == SOCKET_ERROR)
 		{
@@ -246,6 +246,10 @@ void NetworkFramework::ProcessRecvPacket(int id)
 
 void NetworkFramework::Update(FLOAT deltaTime)
 {
+	// 몬스터 스폰
+	if (monsters.size() < MAX_MONSTER)
+		SpawnMonsters(deltaTime);
+
 	// 몬스터 업데이트
 	for (auto& m : monsters)
 		m.Update(deltaTime);
@@ -253,6 +257,22 @@ void NetworkFramework::Update(FLOAT deltaTime)
 	// 충돌체크
 	CollisionCheck();
 }
+
+void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
+{
+	// 쿨타임 때마다 생성
+	m_spawnCooldown -= deltaTime;
+	if (m_spawnCooldown <= 0.0f) {
+		const auto m = new Monster();
+		m->SetId(monsters.size());
+		m->SetType(0);
+		m->SetAnimationType(eMobAnimationType::IDLE);
+		m->SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		g_networkFramework.monsters.push_back(std::move(*m));
+		m_spawnCooldown = 5.0f;
+	}
+}
+
 
 void NetworkFramework::CollisionCheck()
 {
@@ -307,10 +327,8 @@ void NetworkFramework::Disconnect(int id)
 CHAR NetworkFramework::GetNewId()
 {
 	for (int i = 0; i < MAX_USER; ++i) {
-		//std::cout << "id 검색중: " << i << std::endl;
 		if (false == clients[i].data.isActive)
 		{
-			//std::cout << "찾았다: " << i << std::endl;
 			return i;
 		}
 	}

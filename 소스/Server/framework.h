@@ -6,7 +6,7 @@
 class NetworkFramework
 {
 public:
-	NetworkFramework() : isAccept{ false } { }
+	NetworkFramework() : isAccept{ false }, m_spawnCooldown{ 5.0f } { }
 	~NetworkFramework() = default;
 
 	int OnInit(SOCKET socket);
@@ -16,9 +16,10 @@ public:
 	void SendMonsterDataPacket();
 	void ProcessRecvPacket(int id);
 	void Update(FLOAT deltaTime);
+	void SpawnMonsters(FLOAT deltaTime);
 	void CollisionCheck();
 	void Disconnect(int id);
-
+	
 	CHAR GetNewId();
 
 public:
@@ -27,4 +28,5 @@ public:
 	std::vector<Monster>			monsters;	// 몬스터
 	std::list<BulletData>			bullets;	// 총알
 	std::vector<std::thread>		threads;	// 쓰레드
+	FLOAT							m_spawnCooldown; // 스폰 쿨다운
 };

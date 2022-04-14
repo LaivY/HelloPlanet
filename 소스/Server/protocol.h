@@ -6,7 +6,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
-constexpr int  MAX_MONSTER = 2;
+constexpr int  MAX_MONSTER = 3;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;

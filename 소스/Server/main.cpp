@@ -7,21 +7,6 @@ int main()
 	if (g_networkFramework.OnInit(g_socket)) return 1;
 	std::cout << "main process start" << std::endl;
 
-	// test
-	Monster monster{};
-	monster.SetId(0);
-	monster.SetType(0);
-	monster.SetAnimationType(eMobAnimationType::IDLE);
-	monster.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 300.0f });
-	g_networkFramework.monsters.push_back(std::move(monster));
-
-	//Monster monster2{};
-	//monster2.SetId(1);
-	//monster2.SetType(0);
-	//monster2.SetAnimationType(eMobAnimationType::IDLE);
-	//monster2.SetPosition(DirectX::XMFLOAT3{ 50.0f, 0.0f, 250.0f });
-	//g_networkFramework.monsters.push_back(std::move(monster2));
-
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
 	using ms = std::chrono::duration<float, std::milli>;
