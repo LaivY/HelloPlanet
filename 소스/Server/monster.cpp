@@ -28,7 +28,7 @@ void Monster::Update(FLOAT deltaTime)
 	}
 	else
 	{
-		//XMStoreFloat3(&velocity, dir * MOB_SPEED);
+		XMStoreFloat3(&velocity, dir * MOB_SPEED);
 		m_hitTimer = 0.0f;
 	}
 

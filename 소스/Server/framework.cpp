@@ -136,8 +136,13 @@ void NetworkFramework::SendMonsterDataPacket()
 	sc_packet_update_monsters packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_MONSTER;
-	for (int i = 0; i < MAX_MONSTER; ++i)
+	//for (int i = 0; i < MAX_MONSTER; ++i)
+	//	packet.data[i] = monsters[i].GetData();
+	for (int i = 0; i < monsters.size(); ++i)
 		packet.data[i] = monsters[i].GetData();
+	if (monsters.size() < MAX_MONSTER)
+		for (int i = monsters.size(); i < MAX_MONSTER; ++i)
+			packet.data[i] = MonsterData{ .id = -1 };
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));

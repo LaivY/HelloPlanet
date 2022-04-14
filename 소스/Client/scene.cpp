@@ -893,7 +893,7 @@ void Scene::RecvUpdateMonster()
 	for (const MonsterData& m : monsters)
 	{
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (!m_monsters[m.id])
+		if (m.id >= 0 && !m_monsters[m.id])
 		{
 			m_monsters[m.id] = make_unique<Monster>();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);

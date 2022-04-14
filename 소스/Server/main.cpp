@@ -12,7 +12,7 @@ int main()
 	monster.SetId(0);
 	monster.SetType(0);
 	monster.SetAnimationType(eMobAnimationType::IDLE);
-	monster.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 150.0f });
+	monster.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 50.0f });
 	g_networkFramework.monsters.push_back(std::move(monster));
 
 	// 1초에 60회 동작하는 루프
