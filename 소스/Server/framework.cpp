@@ -263,14 +263,14 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	// 쿨타임 때마다 생성
 	m_spawnCooldown -= deltaTime;
 	if (m_spawnCooldown <= 0.0f) {
-		const auto m = new Monster();
-		m->SetId(m_lastMobId);
-		m->SetHp(100);
-		m->SetType(0);
-		m->SetAnimationType(eMobAnimationType::IDLE);
-		m->SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
-		monsters.push_back(std::move(*m));
-		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / "<< MAX_MONSTER << std::endl;
+		Monster m{};
+		m.SetId(m_lastMobId);
+		m.SetHp(100);
+		m.SetType(0);
+		m.SetAnimationType(eMobAnimationType::IDLE);
+		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		monsters.push_back(std::move(m));
+		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / "<< MAX_MONSTER << std::endl;
 
 		m_spawnCooldown = 5.0f;
 		m_lastMobId++;
@@ -314,7 +314,7 @@ void NetworkFramework::CollisionCheck()
 			hitMonsters->SetHp(hitMonsters->GetHp() - 40);
 			if (hitMonsters->GetHp() <= 0)
 			{
-				monsters.erase(monsters.begin()+tmp);
+				monsters.erase(monsters.begin() + tmp);
 				std::cout << static_cast<int>(hitMonsters->GetId()) << " is erased" << std::endl;
 			}
 		}

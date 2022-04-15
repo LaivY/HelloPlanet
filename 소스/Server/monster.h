@@ -15,14 +15,13 @@ public:
 	void SetAnimationType(eMobAnimationType type);
 	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
-	void SetHp(int hp);
+	void SetHp(INT hp);
 
-	INT GetHp() const;
-	CHAR GetId() const;
 	MonsterData GetData() const;
 	DirectX::XMFLOAT3 GetPosition() const;
-	DirectX::BoundingOrientedBox GetBoundingBox();
-
+	DirectX::BoundingOrientedBox GetBoundingBox() const;
+	INT GetHp() const;
+	CHAR GetId() const;
 
 private:
 	// 클라이언트로 보낼 데이터들

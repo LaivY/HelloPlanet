@@ -2,7 +2,7 @@
 #include "framework.h"
 using namespace DirectX;
 
-Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}
+Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_hp{}
 {
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
@@ -114,16 +114,6 @@ void Monster::SetHp(INT hp)
 	m_hp = hp;
 }
 
-INT Monster::GetHp() const
-{
-	return m_hp;
-}
-
-CHAR Monster::GetId() const
-{
-	return m_id;
-}
-
 MonsterData Monster::GetData() const
 {
 	return MonsterData{ m_id, m_type, m_aniType, m_position, m_velocity, m_yaw };
@@ -134,9 +124,19 @@ DirectX::XMFLOAT3 Monster::GetPosition() const
 	return m_position;
 }
 
-BoundingOrientedBox Monster::GetBoundingBox()
+BoundingOrientedBox Monster::GetBoundingBox() const
 {
 	BoundingOrientedBox result{};
 	m_boundingBox.Transform(result, XMLoadFloat4x4(&m_worldMatrix));
 	return result;
+}
+
+INT Monster::GetHp() const
+{
+	return m_hp;
+}
+
+CHAR Monster::GetId() const
+{
+	return m_id;
 }
