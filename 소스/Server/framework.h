@@ -25,6 +25,6 @@ public:
 	bool							isAccept;	// 1명이라도 서버에 들어왔는지
 	std::array<Session, MAX_USER>	clients;	// 클라이언트
 	std::vector<Monster>			monsters;	// 몬스터
-	std::list<BulletData>			bullets;	// 총알
+	std::vector<BulletData>			bullets;	// 총알
 	std::vector<std::thread>		threads;	// 쓰레드
 };

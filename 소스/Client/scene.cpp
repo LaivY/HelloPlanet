@@ -92,7 +92,6 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		if (m_player->GetUpperCurrAnimationName() == "RELOAD")
 			break;
-
 		CreateBullet();
 		break;
 	}
