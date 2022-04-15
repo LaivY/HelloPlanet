@@ -263,7 +263,7 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	// 쿨타임 때마다 생성
 	m_spawnCooldown -= deltaTime;
 	if (m_spawnCooldown <= 0.0f) {
-		Monster m{};
+		Monster m;
 		m.SetId(m_lastMobId);
 		m.SetHp(100);
 		m.SetType(0);
@@ -309,14 +309,16 @@ void NetworkFramework::CollisionCheck()
 			cnt++;
 		}
 		if (hitMonsters) {
-			hitMonsters->SetAnimationType(eMobAnimationType::HIT);
 			// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
 			hitMonsters->SetHp(hitMonsters->GetHp() - 40);
 			if (hitMonsters->GetHp() <= 0)
 			{
-				monsters.erase(monsters.begin() + tmp);
+				monsters.erase(monsters.begin()+tmp);
+				hitMonsters->SetAnimationType(eMobAnimationType::DIE);
+
 				std::cout << static_cast<int>(hitMonsters->GetId()) << " is erased" << std::endl;
 			}
+			else hitMonsters->SetAnimationType(eMobAnimationType::HIT);
 		}
 	}
 	// 충돌체크가 완료된 총알들은 삭제
