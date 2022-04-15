@@ -109,6 +109,21 @@ void Monster::SetYaw(FLOAT yaw)
 	m_yaw = yaw;
 }
 
+void Monster::SetHp(INT hp)
+{
+	m_hp = hp;
+}
+
+INT Monster::GetHp() const
+{
+	return m_hp;
+}
+
+CHAR Monster::GetId() const
+{
+	return m_id;
+}
+
 MonsterData Monster::GetData() const
 {
 	return MonsterData{ m_id, m_type, m_aniType, m_position, m_velocity, m_yaw };

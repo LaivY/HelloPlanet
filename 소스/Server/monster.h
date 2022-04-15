@@ -15,10 +15,14 @@ public:
 	void SetAnimationType(eMobAnimationType type);
 	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
+	void SetHp(int hp);
 
+	INT GetHp() const;
+	CHAR GetId() const;
 	MonsterData GetData() const;
 	DirectX::XMFLOAT3 GetPosition() const;
 	DirectX::BoundingOrientedBox GetBoundingBox();
+
 
 private:
 	// 클라이언트로 보낼 데이터들
@@ -33,4 +37,5 @@ private:
 	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
 	DirectX::BoundingOrientedBox	m_boundingBox;	// 바운딩박스
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
+	INT								m_hp;			// 체력
 };

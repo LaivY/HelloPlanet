@@ -91,7 +91,7 @@ void NetworkFramework::SendPlayerDataPacket()
 	for (const auto& cl : clients)
 	{
 		if (!cl.data.isActive) continue;
-		int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		const int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -152,7 +152,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	for (const auto& player : clients)
 	{
 		if (!player.data.isActive) continue;
-		int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		const int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -170,7 +170,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
-		int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+		const int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		//std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
 		if (retVal == SOCKET_ERROR)
 		{
@@ -246,6 +246,10 @@ void NetworkFramework::ProcessRecvPacket(int id)
 
 void NetworkFramework::Update(FLOAT deltaTime)
 {
+	// 몬스터 스폰
+	if (monsters.size() < MAX_MONSTER)
+		SpawnMonsters(deltaTime);
+
 	// 몬스터 업데이트
 	for (auto& m : monsters)
 		m.Update(deltaTime);
@@ -253,6 +257,26 @@ void NetworkFramework::Update(FLOAT deltaTime)
 	// 충돌체크
 	CollisionCheck();
 }
+
+void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
+{
+	// 쿨타임 때마다 생성
+	m_spawnCooldown -= deltaTime;
+	if (m_spawnCooldown <= 0.0f) {
+		const auto m = new Monster();
+		m->SetId(m_lastMobId);
+		m->SetHp(100);
+		m->SetType(0);
+		m->SetAnimationType(eMobAnimationType::IDLE);
+		m->SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		monsters.push_back(std::move(*m));
+		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / "<< MAX_MONSTER << std::endl;
+
+		m_spawnCooldown = 5.0f;
+		m_lastMobId++;
+	}
+}
+
 
 void NetworkFramework::CollisionCheck()
 {
@@ -262,7 +286,7 @@ void NetworkFramework::CollisionCheck()
 	{
 		Monster* hitMonsters{ nullptr };	// 피격된 몹
 		float length{ FLT_MAX };			// 피격된 몹과 총알 간의 거리
-
+		int cnt{ 0 }, tmp{ 0 };
 		for (Monster& m : monsters)
 		{
 			BoundingOrientedBox boundingBox{ m.GetBoundingBox() };
@@ -278,13 +302,23 @@ void NetworkFramework::CollisionCheck()
 				{
 					hitMonsters = &m;
 					length = l;
+					tmp = cnt;
+					std::cout << tmp << "is hit" << std::endl;
 				}
 			}
+			cnt++;
 		}
-		if (hitMonsters)
+		if (hitMonsters) {
 			hitMonsters->SetAnimationType(eMobAnimationType::HIT);
+			// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
+			hitMonsters->SetHp(hitMonsters->GetHp() - 40);
+			if (hitMonsters->GetHp() <= 0)
+			{
+				monsters.erase(monsters.begin()+tmp);
+				std::cout << static_cast<int>(hitMonsters->GetId()) << " is erased" << std::endl;
+			}
+		}
 	}
-
 	// 충돌체크가 완료된 총알들은 삭제
 	bullets.clear();
 }
@@ -307,10 +341,8 @@ void NetworkFramework::Disconnect(int id)
 CHAR NetworkFramework::GetNewId()
 {
 	for (int i = 0; i < MAX_USER; ++i) {
-		//std::cout << "id 검색중: " << i << std::endl;
 		if (false == clients[i].data.isActive)
 		{
-			//std::cout << "찾았다: " << i << std::endl;
 			return i;
 		}
 	}
