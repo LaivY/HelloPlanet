@@ -218,7 +218,14 @@ void Monster::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	if (m_animationInfo->state == eAnimationState::PLAY)
 	{
 		if (currFrame >= endFrame)
+		{
+			if (m_animationInfo->currAnimationName == "DIE")
+			{
+				m_isDeleted = TRUE;
+				return;
+			}
 			PlayAnimation(m_animationInfo->currAnimationName);
+		}
 	}
 	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
 	{
@@ -229,6 +236,9 @@ void Monster::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void Monster::ApplyServerData(const MonsterData& monsterData)
 {
+	if (m_animationInfo->currAnimationName == "DIE" && m_animationInfo->afterAnimationName != "DIE")
+		return;
+
 	switch (monsterData.aniType)
 	{
 	case eMobAnimationType::IDLE:
@@ -250,7 +260,8 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	case eMobAnimationType::DIE:
 		if (m_animationInfo->currAnimationName != "DIE" && m_animationInfo->afterAnimationName != "DIE")
 			PlayAnimation("DIE", TRUE);
-		break;
+		SetVelocity(XMFLOAT3{ 0.0f, -3.0f, 0.0f });
+		return;
 	}
 
 	m_id = monsterData.id;

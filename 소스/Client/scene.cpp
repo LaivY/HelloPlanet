@@ -530,10 +530,10 @@ void Scene::ReleaseUploadBuffer()
 void Scene::Update(FLOAT deltaTime)
 {
 	// 게임오브젝트 삭제
-	m_gameObjects.erase(remove_if(m_gameObjects.begin(), m_gameObjects.end(),
-		[](unique_ptr<GameObject>& object) {
-			return object->isDeleted();
-		}), m_gameObjects.end());
+	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
+
+	// 몬스터 삭제
+	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
 
 	// 충돌판정
 	PlayerCollisionCheck(deltaTime);

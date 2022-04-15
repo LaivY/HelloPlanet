@@ -8,6 +8,7 @@ public:
 	Monster();
 	~Monster() = default;
 
+	void OnHit(const BulletData& bullet);
 	void Update(FLOAT deltaTime);
 
 	void SetId(CHAR id);

@@ -2,16 +2,28 @@
 #include "framework.h"
 using namespace DirectX;
 
+constexpr int	TARGET_CLIENT_INDEX{ 0 };	// 몬스터가 쫓아갈 플레이어 인덱스
+constexpr float MOB_SPEED{ 50.0f };			// 1초당 움직일 거리
+constexpr float HIT_PERIOD{ 0.7f };			// 맞으면 넉백당하는 시간
+
 Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_hp{}
 {
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
+void Monster::OnHit(const BulletData& bullet)
+{
+	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
+	SetHp(m_hp - 40);
+	if (m_hp <= 0)
+		m_aniType = eMobAnimationType::DIE;
+	else if (m_aniType == eMobAnimationType::RUNNING)
+		m_aniType = eMobAnimationType::HIT;
+}
+
 void Monster::Update(FLOAT deltaTime)
 {
-	constexpr int TARGET_CLIENT_INDEX{ 0 };	// 몬스터가 쫓아갈 플레이어 인덱스
-	constexpr float MOB_SPEED{ 50.0f };		// 1초당 움직일 거리
-	constexpr float HIT_PERIOD{ 0.7f };		// 맞으면 넉백당하는 시간
+	if (m_hp <= 0) return;
 
 	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[TARGET_CLIENT_INDEX].data.pos) };
 	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };

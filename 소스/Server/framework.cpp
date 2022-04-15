@@ -136,13 +136,10 @@ void NetworkFramework::SendMonsterDataPacket()
 	sc_packet_update_monsters packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_MONSTER;
-	//for (int i = 0; i < MAX_MONSTER; ++i)
-	//	packet.data[i] = monsters[i].GetData();
 	for (int i = 0; i < monsters.size(); ++i)
 		packet.data[i] = monsters[i].GetData();
-	if (monsters.size() < MAX_MONSTER)
-		for (int i = monsters.size(); i < MAX_MONSTER; ++i)
-			packet.data[i] = MonsterData{ .id = -1 };
+	for (int i = monsters.size(); i < MAX_MONSTER; ++i)
+		packet.data[i] = MonsterData{ .id = -1 };
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -160,6 +157,9 @@ void NetworkFramework::SendMonsterDataPacket()
 			else errorDisplay(WSAGetLastError(), "SendMonsterData");
 		}
 	}
+
+	// 죽은 몬스터는 서버에서 삭제
+	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
 }
 
 void NetworkFramework::ProcessRecvPacket(int id)
@@ -262,15 +262,16 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 {
 	// 쿨타임 때마다 생성
 	m_spawnCooldown -= deltaTime;
-	if (m_spawnCooldown <= 0.0f) {
+	if (m_spawnCooldown <= 0.0f)
+	{
 		Monster m;
 		m.SetId(m_lastMobId);
 		m.SetHp(100);
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
 		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
-		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / "<< MAX_MONSTER << std::endl;
 
 		m_spawnCooldown = 5.0f;
 		m_lastMobId++;
@@ -284,11 +285,13 @@ void NetworkFramework::CollisionCheck()
 	// 충돌한 것으로 처리해야되기 때문에 총알을 바깥 for문으로 돌아야한다.
 	for (const BulletData& b : bullets)
 	{
-		Monster* hitMonsters{ nullptr };	// 피격된 몹
-		float length{ FLT_MAX };			// 피격된 몹과 총알 간의 거리
-		int cnt{ 0 }, tmp{ 0 };
+		Monster* hitMonster{ nullptr };	// 피격된 몹
+		float length{ FLT_MAX };		// 피격된 몹과 총알 간의 거리
+
 		for (Monster& m : monsters)
 		{
+			if (m.GetHp() <= 0) continue;
+
 			BoundingOrientedBox boundingBox{ m.GetBoundingBox() };
 			XMVECTOR origin{ XMLoadFloat3(&b.pos) };
 			XMVECTOR direction{ XMLoadFloat3(&b.dir) };
@@ -300,27 +303,15 @@ void NetworkFramework::CollisionCheck()
 				float l{ Vector3::Length(Vector3::Sub(b.pos, m.GetPosition())) };
 				if (l < length)
 				{
-					hitMonsters = &m;
+					hitMonster = &m;
 					length = l;
-					tmp = cnt;
-					std::cout << tmp << "is hit" << std::endl;
+					std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
 			}
-			cnt++;
 		}
-		if (hitMonsters) {
-			// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
-			hitMonsters->SetHp(hitMonsters->GetHp() - 40);
-			if (hitMonsters->GetHp() <= 0)
-			{
-				monsters.erase(monsters.begin()+tmp);
-				hitMonsters->SetAnimationType(eMobAnimationType::DIE);
-
-				std::cout << static_cast<int>(hitMonsters->GetId()) << " is erased" << std::endl;
-			}
-			else hitMonsters->SetAnimationType(eMobAnimationType::HIT);
-		}
+		if (hitMonster) hitMonster->OnHit(b);
 	}
+
 	// 충돌체크가 완료된 총알들은 삭제
 	bullets.clear();
 }
