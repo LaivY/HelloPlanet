@@ -19,6 +19,7 @@ constexpr char SC_PACKET_UPDATE_MONSTER = 4;
 
 enum class eAnimationType : char
 {
+	NONE,
 	IDLE,
 	RUNNING,
 	WALKING,

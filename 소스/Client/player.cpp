@@ -290,7 +290,6 @@ void Player::Update(FLOAT deltaTime)
 			m_upperAnimationInfo->blendingTimer += deltaTime;
 			break;
 		}
-
 	GameObject::Update(deltaTime);
 }
 
@@ -319,7 +318,6 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
-	string pureAnimationName{ GetPureAnimationName(animationName) };
 	if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
 	{
 		m_animationInfo->state = eAnimationState::PLAY;
@@ -330,6 +328,7 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	}
 	
 	// 아래의 애니메이션은 상체만 애니메이션함
+	string pureAnimationName{ GetPureAnimationName(animationName) };
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
 	{
 		if (m_gunType == eGunType::AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
@@ -396,37 +395,8 @@ void Player::SendPlayerData() const
 	cs_packet_update_legs packet;
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_UPDATE_LEGS;
-	
-	// 애니메이션 타입
-	if (GetAsyncKeyState('W') && GetAsyncKeyState('A') & 0x8000)
-		packet.aniType = eAnimationType::WALKLEFT;
-	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
-		packet.aniType = eAnimationType::WALKRIGHT;
-	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
-		packet.aniType = eAnimationType::WALKLEFT;
-	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
-		packet.aniType = eAnimationType::WALKRIGHT;
-	else if (GetAsyncKeyState('W') & 0x8000)
-		if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-			packet.aniType = eAnimationType::RUNNING;
-		else
-			packet.aniType = eAnimationType::WALKING;
-	else if (GetAsyncKeyState('A') & 0x8000)
-		packet.aniType = eAnimationType::WALKLEFT;
-	else if (GetAsyncKeyState('S') & 0x8000)
-		packet.aniType = eAnimationType::WALKBACK;
-	else if (GetAsyncKeyState('D') & 0x8000)
-		packet.aniType = eAnimationType::WALKRIGHT;
-	else
-		packet.aniType = eAnimationType::IDLE;
-
-	// 상체 애니메이션 타입
-	packet.upperAniType = eUpperAnimationType::NONE;
-	if (GetAsyncKeyState('R') & 0x8000)
-		packet.upperAniType = eUpperAnimationType::RELOAD;
-	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
-		packet.upperAniType = eUpperAnimationType::FIRING;
-
+	packet.aniType = GetAnimationType();
+	packet.upperAniType = GetUpperAnimationType();
 	packet.pos = GetPosition();
 	packet.velocity = GetVelocity();
 	packet.yaw = m_yaw;
@@ -485,18 +455,6 @@ void Player::ApplyServerData(const PlayerData& playerData)
 	Rotate(0.0f, 0.0f, playerData.yaw - m_yaw);
 }
 
-//void Player::SendPlayerData(eAnimationType legState) const
-//{
-//	cs_packet_update_legs packet;
-//	packet.size = sizeof(packet);
-//	packet.type = CS_PACKET_UPDATE_LEGS;
-//	packet.state = legState;
-//	packet.pos = GetPosition();
-//	packet.velocity = GetVelocity();
-//	packet.yaw = m_yaw;
-//	send(g_c_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-//}
-
 void Player::SetGunShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
 {
 	m_gunShadowShaders[0] = sShader;
@@ -532,4 +490,44 @@ string Player::GetUpperAfterAnimationName() const
 {
 	if (!m_upperAnimationInfo) return "";
 	return GetPureAnimationName(m_upperAnimationInfo->afterAnimationName);
+}
+
+eAnimationType Player::GetAnimationType() const
+{
+	static auto pred = [](const string& aniName) {
+		if (aniName == "IDLE")
+			return eAnimationType::IDLE;
+		else if (aniName == "RUNNING")
+			return eAnimationType::RUNNING;
+		else if (aniName == "WALKING")
+			return eAnimationType::WALKING;
+		else if (aniName == "WALKLEFT")
+			return eAnimationType::WALKLEFT;
+		else if (aniName == "WALKRIGHT")
+			return eAnimationType::WALKRIGHT;
+		else if (aniName == "WALKBACK")
+			return eAnimationType::WALKBACK;
+		return eAnimationType::NONE;
+	};
+	if (!m_animationInfo) return eAnimationType::NONE;
+	if (m_animationInfo->afterAnimationName.empty())
+		return pred(GetCurrAnimationName());
+	else
+		return pred(GetAfterAnimationName());
+}
+
+eUpperAnimationType Player::GetUpperAnimationType() const
+{
+	static auto pred = [](const string& aniName) {
+		if (aniName == "RELOAD")
+			return eUpperAnimationType::RELOAD;
+		else if (aniName == "FIRING")
+			return eUpperAnimationType::FIRING;
+		return eUpperAnimationType::NONE;
+	};
+	if (!m_upperAnimationInfo) return eUpperAnimationType::NONE;
+	if (m_upperAnimationInfo->afterAnimationName.empty())
+		return pred(GetUpperCurrAnimationName());
+	else
+		return pred(GetUpperAfterAnimationName());
 }

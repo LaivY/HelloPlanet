@@ -14,10 +14,12 @@
 #include <wrl.h>
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <exception>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -54,7 +56,8 @@ extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼�
 extern UINT                 g_dsvDescriptorIncrementSize;       // 깊이스텐실뷰 서술자 힙 크기
 extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
-extern thread               g_networkThread;
+extern thread               g_networkThread;                    // 네트워크 쓰레드
+extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
 
 namespace DX
 {

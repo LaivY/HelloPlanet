@@ -7,7 +7,8 @@ UINT					g_cbvSrvDescriptorIncrementSize{ 0 };
 UINT					g_dsvDescriptorIncrementSize{ 0 };
 SOCKET					g_socket{};
 BOOL					g_isConnected{ FALSE };
-thread                  g_networkThread;
+thread                  g_networkThread{};
+mutex                   g_mutex{};
 
 namespace Utile
 {

@@ -29,12 +29,9 @@ public:
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex);
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
-	//void SendPlayerData(eAnimationType letState) const;
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(eGunType gunType);
-	//void AddVelocity(const XMFLOAT3& increase);
-	//void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
@@ -47,6 +44,8 @@ public:
 	string GetAfterAnimationName() const;
 	string GetUpperCurrAnimationName() const;
 	string GetUpperAfterAnimationName() const;
+	eAnimationType GetAnimationType() const;
+	eUpperAnimationType GetUpperAnimationType() const;
 
 private:
 	INT								m_id;				// 플레이어 고유 아이디

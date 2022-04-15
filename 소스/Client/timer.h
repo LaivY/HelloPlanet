@@ -9,10 +9,11 @@ public:
 
 	void Tick();
 	FLOAT GetDeltaTime() const { return m_deltaTime; }
-	FLOAT GetFPS() const { return 1.0f / m_deltaTime; }
+	FLOAT GetFPS() const;
 
 private:
 	LARGE_INTEGER	m_tick;
 	LARGE_INTEGER	m_frequency;
 	FLOAT			m_deltaTime;
+	deque<FLOAT>	m_deltaTimes;
 };

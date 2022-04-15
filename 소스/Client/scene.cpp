@@ -529,11 +529,15 @@ void Scene::ReleaseUploadBuffer()
 
 void Scene::Update(FLOAT deltaTime)
 {
+	unique_lock<mutex> lock{ g_mutex };
+
 	// 게임오브젝트 삭제
 	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
 
 	// 몬스터 삭제
 	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
+
+	lock.unlock();
 
 	// 충돌판정
 	PlayerCollisionCheck(deltaTime);
@@ -553,17 +557,21 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	if (m_skybox) m_skybox->Render(commandList);
 
 	// 게임오브젝트 렌더링
+	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
+	lock.unlock();
 
 	// 멀티플레이어 렌더링
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
 
 	// 몬스터 렌더링
+	lock.lock();
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
-	
+	lock.unlock();
+
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
@@ -611,6 +619,7 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 		commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle(i));
 
 		// 렌더링
+		unique_lock<mutex> lock{ g_mutex };
 		for (const auto& object : m_gameObjects)
 		{
 			auto shadowShader{ object->GetShadowShader(i) };
@@ -623,6 +632,7 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 			if (shadowShader)
 				monster->Render(commandList, shadowShader);
 		}
+		lock.unlock();
 		for (const auto& player : m_multiPlayers)
 		{
 			if (!player) continue;
@@ -779,7 +789,10 @@ void Scene::CreateBullet()
 	bullet->SetMesh(m_meshes["BULLET"]);
 	bullet->SetShader(m_shaders["DEFAULT"]);
 	bullet->SetPosition(start);
+
+	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
+	lock.unlock();
 
 	// 총알 발사 정보 서버로 송신
 	cs_packet_bullet_fire packet{};
@@ -800,8 +813,8 @@ void Scene::RecvPacket()
 	// size, type
 	char buf[2];
 	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD recv_byte{ 0 }, recv_flag{ 0 };
-	int error_code = WSARecv(g_socket, &wsabuf, 1, &recv_byte, &recv_flag, nullptr, nullptr);
+	DWORD recvByte{ 0 }, recvFlag{ 0 };
+	int error_code = WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 	if (error_code == SOCKET_ERROR) error_display("RecvSizeType");
 
 	UCHAR size{ static_cast<UCHAR>(buf[0]) };
@@ -895,8 +908,10 @@ void Scene::RecvUpdateMonster()
 		if (m.id < 0) continue;
 
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (!m_monsters[m.id])
+		if (m_monsters.find(m.id) == m_monsters.end())
 		{
+			this_thread::yield();
+			unique_lock<mutex> lock{ g_mutex };
 			m_monsters[m.id] = make_unique<Monster>();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
 			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
@@ -924,5 +939,7 @@ void Scene::RecvBulletFire()
 	bullet->SetMesh(m_meshes["BULLET"]);
 	bullet->SetShader(m_shaders["DEFAULT"]);
 	bullet->SetPosition(pos);
+
+	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
 }
