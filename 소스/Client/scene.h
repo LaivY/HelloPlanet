@@ -93,8 +93,8 @@ private:
 	unordered_map<string, shared_ptr<Texture>>			m_textures;		// 텍스쳐
 	unique_ptr<ShadowMap>								m_shadowMap;	// 그림자맵
 
-	shared_ptr<Camera>									m_camera;		// 카메라
 	unique_ptr<Skybox>									m_skybox;		// 스카이박스
+	shared_ptr<Camera>									m_camera;		// 카메라
 	shared_ptr<Player>									m_player;		// 플레이어
 	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;	// 멀티플레이어
 	unordered_map<INT, unique_ptr<Monster>>				m_monsters;		// 몬스터들

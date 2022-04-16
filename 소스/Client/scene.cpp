@@ -360,19 +360,15 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
 	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
 
-	//SharedBoundingBox bbMob{ make_shared<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
-	//bbMob->SetMesh(m_meshes["BB_GAROO"]);
-	//bbMob->SetShader(m_shaders["WIREFRAME"]);
-
 	// 플레이어 생성
 	m_player = make_shared<Player>();
 	m_player->SetMesh(m_meshes["ARM"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
 	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-	m_player->SetGunMesh(m_meshes["SG"]);
+	m_player->SetGunMesh(m_meshes["AR"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-	m_player->SetGunType(eGunType::SG);
+	m_player->SetGunType(eGunType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
@@ -408,6 +404,18 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetShader(m_shaders["DEFAULT"]);
 	floor->SetTexture(m_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
+
+	// 몬스터
+	//for (int i = 0; i < 20; ++i)
+	//{
+	//	auto monster{ make_unique<Monster>() };
+	//	monster->SetMesh(m_meshes["GAROO"]);
+	//	monster->SetShader(m_shaders["ANIMATION"]);
+	//	monster->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+	//	monster->SetTexture(m_textures["GAROO"]);
+	//	monster->PlayAnimation("IDLE");
+	//	m_monsters[i] = move(monster);
+	//}
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -789,10 +797,7 @@ void Scene::CreateBullet()
 	bullet->SetMesh(m_meshes["BULLET"]);
 	bullet->SetShader(m_shaders["DEFAULT"]);
 	bullet->SetPosition(start);
-
-	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
-	lock.unlock();
 
 	// 총알 발사 정보 서버로 송신
 	cs_packet_bullet_fire packet{};
@@ -910,9 +915,9 @@ void Scene::RecvUpdateMonster()
 		// 해당 id의 몬스터가 없는 경우엔 생성
 		if (m_monsters.find(m.id) == m_monsters.end())
 		{
-			this_thread::yield();
 			unique_lock<mutex> lock{ g_mutex };
 			m_monsters[m.id] = make_unique<Monster>();
+			lock.unlock();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
 			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
 			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);

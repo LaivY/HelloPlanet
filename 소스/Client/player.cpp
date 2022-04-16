@@ -2,8 +2,7 @@
 #include "camera.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ eGunType::NONE },
-									 m_speed{ 20.0f }, m_shotSpeed{ 1.0f }, m_shotTimer{ 0.0f },
-									 m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
+									 m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	
 }
@@ -12,15 +11,41 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 #ifdef FIRSTVIEW
 	m_shotTimer += deltaTime;
-	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000 && m_shotTimer > m_shotSpeed)
+	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
+		if (m_shotTimer < m_shotSpeed)
+			return;
 		if (GetCurrAnimationName() == "RUNNING")
 			return;
 		if (GetUpperCurrAnimationName() == "RELOAD")
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData(); // 서버에게 총 발사했다고 알림
-		m_shotTimer -= m_shotSpeed;
+
+		// 총알 시작 좌표
+		XMFLOAT3 start{ m_camera->GetEye() };
+		start = Vector3::Add(start, GetRight());
+		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+
+		// 화면 정중앙 엄청 멀리
+		XMFLOAT3 _far{ m_camera->GetEye() };
+		_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+
+		// 총 -> 화면 정중앙 멀리
+		XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
+		target = Vector3::Normalize(target);
+
+		// 총구에서 나오도록
+		start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
+
+		// 총알 발사 정보 서버로 송신
+		cs_packet_bullet_fire packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_BULLET_FIRE;
+		packet.data = { start, target };
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
+		m_shotTimer = 0.0f;
 	}
 #endif
 }
@@ -175,6 +200,8 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			switch (m_upperAnimationInfo->state)
 			{
 			case eAnimationState::PLAY:
+				if (GetUpperCurrAnimationName() == "FIRING" && GetAsyncKeyState(VK_LBUTTON) & 0x8000)
+					break;
 				m_upperAnimationInfo->state = eAnimationState::SYNC;
 				m_upperAnimationInfo->blendingTimer = 0.0f;
 				break;
@@ -190,9 +217,12 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		return;
 	}
 
-	if (m_animationInfo->state == eAnimationState::PLAY) // 프레임 진행 중
+	// 애니메이션이 끝났을 때
+	if (currFrame >= endFrame)
 	{
-		if (currFrame >= endFrame)
+		switch (m_animationInfo->state)
+		{
+		case eAnimationState::PLAY:
 		{
 			// 이동
 			string currPureAnimationName{ GetCurrAnimationName() };
@@ -215,13 +245,11 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 			// 그 외에는 대기 애니메이션 재생
 			PlayAnimation("IDLE", TRUE);
+			break;
 		}
-	}
-	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
-	{
-		if (currFrame >= endFrame)
-		{
+		case eAnimationState::BLENDING:
 			PlayAnimation(GetAfterAnimationName());
+			break;
 		}
 	}
 }
@@ -335,10 +363,11 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 		else if (m_gunType == eGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
 		else if (m_gunType == eGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 
+		// 발사 애니메이션 자연스럽게
 		if (pureAnimationName == "FIRING")
 		{
-			//m_upperAnimationInfo->blendingFrame = 1;
-			//m_upperAnimationInfo->fps = 1.0f / 60.0f;
+			m_upperAnimationInfo->blendingFrame = 3;
+			m_upperAnimationInfo->fps = 1.0f / 24.0f;
 		}
 		return;
 	}
@@ -354,7 +383,7 @@ void Player::SetGunType(eGunType gunType)
 	switch (gunType)
 	{
 	case eGunType::AR:
-		m_shotSpeed = 0.3f;
+		m_shotSpeed = 0.16f;
 		break;
 	case eGunType::SG:
 		m_shotSpeed = 1.0f;
