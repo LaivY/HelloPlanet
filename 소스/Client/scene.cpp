@@ -376,21 +376,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_camera->SetPlayer(m_player);
 	m_player->SetCamera(m_camera);
 
-	// 멀티플레이어
-	for (unique_ptr<Player>& p : m_multiPlayers)
-	{
-		p = make_unique<Player>(TRUE);
-		p->SetMesh(m_meshes["PLAYER"]);
-		p->SetShader(m_shaders["ANIMATION"]);
-		p->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-		p->SetGunMesh(m_meshes["SG"]);
-		p->SetGunShader(m_shaders["LINK"]);
-		p->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-		p->SetGunType(eGunType::SG);
-		p->PlayAnimation("IDLE");
-		p->AddBoundingBox(bbPlayer);
-	}
-
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
 	m_skybox->SetMesh(m_meshes["SKYBOX"]);
@@ -404,18 +389,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetShader(m_shaders["DEFAULT"]);
 	floor->SetTexture(m_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
-
-	// 몬스터
-	//for (int i = 0; i < 20; ++i)
-	//{
-	//	auto monster{ make_unique<Monster>() };
-	//	monster->SetMesh(m_meshes["GAROO"]);
-	//	monster->SetShader(m_shaders["ANIMATION"]);
-	//	monster->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-	//	monster->SetTexture(m_textures["GAROO"]);
-	//	monster->PlayAnimation("IDLE");
-	//	m_monsters[i] = move(monster);
-	//}
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -855,21 +828,36 @@ void Scene::RecvLoginOk()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	// 내 플레이어 id 설정
-	if (m_player)
+	if (!m_player) return;
+
+	PlayerData data;
+	memcpy(&data, subBuf, sizeof(data));
+
+	// 로그인 패킷을 처음 수신했을 경우 자신의 id 설정
+	if (m_player->GetId() == -1)
 	{
-		PlayerData data;
-		memcpy(&data, subBuf, sizeof(data));
 		m_player->SetId(static_cast<int>(data.id));
+		return;
 	}
 
-	// 다른 플레이어 id 설정
-	int id{ 0 };
-	for (auto& p : m_multiPlayers)
-	{
-		if (id == m_player->GetId()) ++id;
-		p->SetId(id++);
-	}
+	// 다른 플레이어들 정보일 경우
+	if (m_player->GetId() != data.id)
+		for (auto& p : m_multiPlayers)
+		{
+			if (p) continue;
+			p = make_unique<Player>(TRUE);
+			p->SetMesh(m_meshes["PLAYER"]);
+			p->SetShader(m_shaders["ANIMATION"]);
+			p->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+			p->SetGunMesh(m_meshes["SG"]);
+			p->SetGunShader(m_shaders["LINK"]);
+			p->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
+			p->SetGunType(eGunType::SG);
+			p->PlayAnimation("IDLE");
+			p->SetId(static_cast<int>(data.id));
+			p->ApplyServerData(data);
+			break;
+		}
 }
 
 void Scene::RecvUpdateClient()

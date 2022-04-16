@@ -4,7 +4,8 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ eGunType::NONE },
 									 m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
-	
+	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
+	m_boundingBoxes.push_back(bb);
 }
 
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -501,11 +502,13 @@ string Player::GetPureAnimationName(const string& animationName) const
 
 string Player::GetCurrAnimationName() const
 {
+	if (!m_animationInfo) return "";
 	return GetPureAnimationName(m_animationInfo->currAnimationName);
 }
 
 string Player::GetAfterAnimationName() const
 {
+	if (!m_animationInfo) return "";
 	return GetPureAnimationName(m_animationInfo->afterAnimationName);
 }
 
