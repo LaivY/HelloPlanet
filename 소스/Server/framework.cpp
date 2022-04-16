@@ -71,8 +71,27 @@ void NetworkFramework::SendLoginOkPacket(int id)
 	DWORD sentByte;
 
 	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-	const int retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	int retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+
+	for (auto& cl:clients)
+	{
+		// clients[id](본인) 제외
+		if (cl.data.id == id) continue;
+		// 접속 안한 클라이언트 제외
+		if (!cl.data.isActive) continue;
+
+		// clients[id]의 정보를 cl에게 전송
+		retVal = WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+
+		// cl의 정보를 clients[id]에게 전송
+		packet.data = cl.data;
+		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+		wsabuf.buf = buf;
+		retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+	}
 }
 
 void NetworkFramework::SendPlayerDataPacket()
