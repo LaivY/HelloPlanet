@@ -48,7 +48,6 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
 		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
-		//m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		isAccept = true;
 	}
@@ -72,7 +71,7 @@ void NetworkFramework::SendLoginOkPacket(int id)
 
 	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
 	int retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend1");
 
 	for (auto& cl:clients)
 	{
@@ -83,14 +82,14 @@ void NetworkFramework::SendLoginOkPacket(int id)
 
 		// clients[id]의 정보를 cl에게 전송
 		retVal = WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend2");
 
 		// cl의 정보를 clients[id]에게 전송
 		packet.data = cl.data;
 		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 		wsabuf.buf = buf;
 		retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend");
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend3");
 	}
 }
 
@@ -189,8 +188,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		char buf[2]; // size, type
 		WSABUF wsabuf{ sizeof(buf), buf };
 		DWORD recvd_byte{ 0 }, flag{ 0 };
-		const int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-		//std::cout << "[" << static_cast<int>(buf[0]) << " type] : " << static_cast<int>(buf[1]) << "byte received" << std::endl;
+		int retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
@@ -199,7 +197,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 				Disconnect(cl.data.id);
 				break;
 			}
-			errorDisplay(WSAGetLastError(), "Recv");
+			errorDisplay(WSAGetLastError(), "Recv()");
 		}
 		if (recvd_byte == 0)
 		{
@@ -218,8 +216,8 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			// aniType, upperAniType, pos, velocity, yaw
 			char subBuf[1 + 1 + 12 + 12 + 4];
 			wsabuf = { sizeof(subBuf), subBuf };
-			WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-
+			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_UPDATE_LEGS)");
 			cl.data.aniType = static_cast<eAnimationType>(subBuf[0]);
 			cl.data.upperAniType = static_cast<eUpperAnimationType>(subBuf[1]);
 			memcpy(&cl.data.pos, &subBuf[2], sizeof(cl.data.pos));
@@ -232,8 +230,8 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			// pos, dir
 			char subBuf[12 + 12];
 			wsabuf = { sizeof(subBuf), subBuf };
-			WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-
+			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
 			sc_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_BULLET_FIRE;
@@ -248,8 +246,8 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			// 총알은 수신하자마자 다른 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
-				if (c.data.id == cl.data.id) continue; // 총을 쏜 사람에겐 보내지않음
-				WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
 			}
 
 			// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
