@@ -14,14 +14,10 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	m_shotTimer += deltaTime;
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
-		if (m_shotTimer < m_shotSpeed)
-			return;
-		if (GetCurrAnimationName() == "RUNNING")
-			return;
-		if (GetUpperCurrAnimationName() == "RELOAD")
+		if (m_shotTimer < m_shotSpeed || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
-		SendPlayerData(); // 서버에게 총 발사했다고 알림
+		SendPlayerData();
 
 		// 총알 시작 좌표
 		XMFLOAT3 start{ m_camera->GetEye() };
@@ -29,11 +25,11 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
 
 		// 화면 정중앙 엄청 멀리
-		XMFLOAT3 _far{ m_camera->GetEye() };
-		_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+		XMFLOAT3 f{ m_camera->GetEye() };
+		f = Vector3::Add(f, Vector3::Mul(m_camera->GetAt(), 1000.0f));
 
 		// 총 -> 화면 정중앙 멀리
-		XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
+		XMFLOAT3 target{ Vector3::Sub(f, m_camera->GetEye()) };
 		target = Vector3::Normalize(target);
 
 		// 총구에서 나오도록
@@ -100,7 +96,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
 	{
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_gunType != eGunType::MG)
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_gunType != eGunType::MG && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
@@ -157,12 +153,24 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		case 'a': case 'A':
 		case 'd': case 'D':
 		case 's': case 'S':
-			PlayAnimation("IDLE", TRUE);
+			if (GetAfterAnimationName() == "WALKING")
+				PlayAnimation("IDLE");
+			else
+				PlayAnimation("IDLE", TRUE);
 			m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
 			SendPlayerData();
 			break;
 		case VK_SHIFT:
-			if (GetAsyncKeyState('W') & 0x8000 && m_gunType != eGunType::MG)
+			// MG는 패스
+			if (m_gunType == eGunType::MG)
+				break;
+			// 안뛰고 있을 때는 패스
+			if (GetCurrAnimationName() != "RUNNING")
+				break;
+			// 달리기에서 다른 애니메이션으로 블렌딩 중일 때는 패스
+			if (GetCurrAnimationName() == "RUNNING" && !m_animationInfo->afterAnimationName.empty())
+				break;
+			if (GetAsyncKeyState('W') & 0x8000)
 			{
 				if (GetUpperCurrAnimationName() != "RELOAD")
 					PlayAnimation("WALKING", TRUE);
@@ -201,8 +209,6 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			switch (m_upperAnimationInfo->state)
 			{
 			case eAnimationState::PLAY:
-				if (GetUpperCurrAnimationName() == "FIRING" && GetAsyncKeyState(VK_LBUTTON) & 0x8000)
-					break;
 				m_upperAnimationInfo->state = eAnimationState::SYNC;
 				m_upperAnimationInfo->blendingTimer = 0.0f;
 				break;
@@ -230,10 +236,14 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			if (((GetAsyncKeyState('W') & 0x8000) && currPureAnimationName == "WALKING") ||
 				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && currPureAnimationName == "RUNNING") ||
 				((GetAsyncKeyState('A') & 0x8000) && currPureAnimationName == "WALKLEFT") ||
-				((GetAsyncKeyState('D') & 0x8000) && currPureAnimationName == "WALKRIGHT") ||
-				((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK"))
+				((GetAsyncKeyState('D') & 0x8000) && currPureAnimationName == "WALKRIGHT"))
 			{
 				PlayAnimation(currPureAnimationName);
+				return;
+			}
+			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
+			{
+				PlayAnimation(currPureAnimationName, TRUE);
 				return;
 			}
 
@@ -347,14 +357,14 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
-	if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
-	{
-		m_animationInfo->state = eAnimationState::PLAY;
-		m_animationInfo->afterAnimationName.clear();
-		m_animationInfo->afterTimer = 0.0f;
-		m_animationInfo->blendingTimer = 0.0f;
-		return;
-	}
+	//if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
+	//{
+	//	m_animationInfo->state = eAnimationState::PLAY;
+	//	m_animationInfo->afterAnimationName.clear();
+	//	m_animationInfo->afterTimer = 0.0f;
+	//	m_animationInfo->blendingTimer = 0.0f;
+	//	return;
+	//}
 	
 	// 아래의 애니메이션은 상체만 애니메이션함
 	string pureAnimationName{ GetPureAnimationName(animationName) };
@@ -364,7 +374,7 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 		else if (m_gunType == eGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
 		else if (m_gunType == eGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 
-		// 발사 애니메이션 자연스럽게
+		// 발사 애니메이션 속도 조절
 		if (pureAnimationName == "FIRING")
 		{
 			m_upperAnimationInfo->blendingFrame = 3;
