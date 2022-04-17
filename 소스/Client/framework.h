@@ -95,5 +95,5 @@ private:
 	unique_ptr<Scene>					m_scene;
 
 	// 서버 통신 쓰레드
-	thread								m_networkThread;
+	//thread								m_networkThread;
 };

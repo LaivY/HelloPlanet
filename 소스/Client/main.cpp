@@ -12,7 +12,6 @@
 HINSTANCE           hInst;
 WCHAR               szTitle[MAX_LOADSTRING];
 WCHAR               szWindowClass[MAX_LOADSTRING];
-GameFramework       g_gameFramework{ Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT };
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -87,7 +86,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
 	// 윈도우 사이즈를 프레임워크 생성할 때 정한 너비와 높이로 설정
-	RECT rect{ 0, 0, g_gameFramework.GetWindowWidth(), g_gameFramework.GetWindowHeight() };
+	RECT rect{ 0, 0, static_cast<LONG>(g_gameFramework.GetWindowWidth()), static_cast<LONG>(g_gameFramework.GetWindowHeight()) };
 	DWORD dwStyle{ WS_OVERLAPPED | WS_SYSMENU | WS_BORDER };
 	AdjustWindowRect(&rect, dwStyle, FALSE);
 

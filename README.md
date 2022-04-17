@@ -62,6 +62,8 @@
 · class GameFramework
 ├── · class Timer
 └── · class Scene
+    ├── · class Camera
+    │   └─ · class Player
     ├── · class Mesh
     │	└─ · struct Vertex
     │	└─ · struct Material
@@ -69,18 +71,16 @@
     │	└─ · struct Animation
     ├── · class Shader
     ├── · class Texture
-    ├── · class GameObject
-    │	└─ · class Mesh
-    │	└─ · class Shader
-    │	└─ · class Texture
-    │	└─ · struct TextureInfo
-    │	└─ · struct AnimationInfo
-    ├── · class Player : public GameObject
-    │	└─ · class Camera
-    ├── · class Camera
-    │	└─ · class Player
-    └── · class Skybox
-        └─ · class Camera
-	└─ · class GameObject
+    └─┬─ · class GameObject
+      │  └─ · class Mesh
+      │  └─ · class Shader
+      │  └─ · class Texture
+      │  └─ · struct TextureInfo
+      │  └─ · struct AnimationInfo
+      ├─ · class UIObject : public GameObject
+      ├─ · class Skybox : public GameObject
+      ├─ · class Bullet : public GameObject
+      └─ · class Player : public GameObject
+         └─ · class Camera
 ```
 ## 2. 서버

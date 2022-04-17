@@ -49,7 +49,35 @@ void Mesh::LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graph
 		file >> dumy >> m.roughness;
 		m_materials.push_back(move(m));
 	}
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
+}
+
+void Mesh::LoadMeshBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName)
+{
+	ifstream file{ fileName, ios::binary };
+
+	// 메쉬 변환 행렬
+	m_transformMatrix = make_unique<XMFLOAT4X4>();
+	file.read(reinterpret_cast<char*>(m_transformMatrix.get()), sizeof(XMFLOAT4X4));
+
+	// 정점 개수
+	int vertexCount{};
+	file.read(reinterpret_cast<char*>(&vertexCount), sizeof(int));
+
+	// 정점 데이터
+	vector<Vertex> vertices;
+	vertices.resize(vertexCount);
+	file.read(reinterpret_cast<char*>(vertices.data()), sizeof(Vertex) * vertexCount);
+
+	// 재질 개수
+	int materialCount{};
+	file.read(reinterpret_cast<char*>(&materialCount), sizeof(int));
+
+	// 재질 데이터
+	m_materials.resize(materialCount);
+	file.read(reinterpret_cast<char*>(m_materials.data()), sizeof(Material) * materialCount);
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
 void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
@@ -79,6 +107,25 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 			joint.animationTransformMatrix.push_back(move(matrix));
 		}
 		animation.joints.push_back(move(joint));
+	}
+	m_animations[animationName] = move(animation);
+}
+
+void Mesh::LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName)
+{
+	ifstream file{ fileName, ios::binary };
+
+	int jointCount{};
+	file.read(reinterpret_cast<char*>(&jointCount), sizeof(int));
+
+	Animation animation{};
+	file.read(reinterpret_cast<char*>(&animation.length), sizeof(int));
+
+	animation.joints.resize(jointCount);
+	for (int i = 0; i < jointCount; ++i)
+	{
+		animation.joints[i].animationTransformMatrix.resize(animation.length);
+		file.read(reinterpret_cast<char*>(animation.joints[i].animationTransformMatrix.data()), sizeof(XMFLOAT4X4) * animation.length);
 	}
 	m_animations[animationName] = move(animation);
 }
@@ -165,16 +212,17 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		};
 
 		// 현재 진행중인 애니메이션을 처리할 때 필요한 변수들
-		constexpr float FPS{ 1.0f / 30.0f };																			// 애니메이션 1프레임 당 시간
-		const float currFrame{ animationInfo->currTimer / FPS };														// 프레임(실수)
-		const int nCurrFrame{ min(static_cast<int>(floorf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 프레임(정수)
-		const int nNextFrame{ min(static_cast<int>(ceilf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 다음 프레임(정수)
-		const float t{ currFrame - static_cast<int>(currFrame) };														// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
+		float fps{ animationInfo->fps };																		// 애니메이션 1프레임 당 시간
+		float currFrame{ animationInfo->currTimer / fps };														// 프레임(실수)
+		int nCurrFrame{ min(static_cast<int>(floorf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 프레임(정수)
+		int nNextFrame{ min(static_cast<int>(ceilf(currFrame)), static_cast<int>(currAnimation.length - 1)) };	// 다음 프레임(정수)
+		float t{ currFrame - static_cast<int>(currFrame) };														// 프레임 진행 간 선형보간에 사용할 매개변수(실수 프레임의 소수부)
 
 		// 블렌딩에 걸리는 시간
-		constexpr float totalBlendingTime{ Setting::BLENDING_FRAMES * FPS };
+		float totalBlendingTime{ animationInfo->blendingFrame * fps };
 
-		int start{ 0 }, end{ static_cast<int>(currAnimation.joints.size()) }; // 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
+		// 상하체 애니메이션 분리에 사용되는 인덱스 결정 변수
+		int start{ 0 }, end{ static_cast<int>(currAnimation.joints.size()) };
 
 		// 상체 애니메이션
 		if (AnimationInfo* upperAnimationInfo{ object->GetUpperAnimationInfo() })
@@ -189,7 +237,9 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			};
 
 			// 현재 진행중인 상체 애니메이션을 처리할 때 필요한 변수들
-			const float upperCurrFrame{ upperAnimationInfo->currTimer / FPS };
+			fps = upperAnimationInfo->fps;
+			totalBlendingTime = upperAnimationInfo->blendingFrame * fps;
+			const float upperCurrFrame{ upperAnimationInfo->currTimer / fps };
 			const int nUpperCurrFrame{ min(static_cast<int>(floorf(upperCurrFrame)), static_cast<int>(currUpperAnimation.length - 1)) };
 			const int nUpperNextFrame{ min(static_cast<int>(ceilf(upperCurrFrame)), static_cast<int>(currUpperAnimation.length - 1)) };
 			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
@@ -240,7 +290,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / FPS, Setting::BLENDING_FRAMES, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::SYNC)
 			{
@@ -267,7 +317,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													  t) };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / FPS, Setting::BLENDING_FRAMES, TRUE);
+				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
 			}
 		}
 
@@ -301,7 +351,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				const XMFLOAT4X4& after{ afterAnimation.joints[i].animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 			}
-			object->OnAnimation(animationInfo->blendingTimer / FPS, Setting::BLENDING_FRAMES);
+			object->OnAnimation(animationInfo->blendingTimer / fps, animationInfo->blendingFrame);
 		}
 	}
 
@@ -345,6 +395,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.x > 0.0f)
 		{
+			v.normal = XMFLOAT3{ -1.0f, 0.0f, 0.0f };
 			v.position = { +hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, -hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -355,6 +406,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 1.0f, 0.0f, 0.0f };
 			v.position = { +hx, +hy, -hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -368,6 +420,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.z > 0.0f)
 		{
+			v.normal = XMFLOAT3{ 0.0f, 0.0f, -1.0f };
 			v.position = { -hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -378,6 +431,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 0.0f, 0.0f, 1.0f };
 			v.position = { +hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { -hx, -hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -391,6 +445,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	{
 		if (position.y > 0.0f)
 		{
+			v.normal = XMFLOAT3{ 0.0f, -1.0f, 0.0f };
 			v.position = { -hx, +hy, -hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
@@ -401,6 +456,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 		}
 		else
 		{
+			v.normal = XMFLOAT3{ 0.0f, 1.0f, 0.0f };
 			v.position = { +hx, +hy, -hz }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, -hz }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
 			v.position = { -hx, +hy, +hz }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
@@ -410,7 +466,7 @@ RectMesh::RectMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 			v.position = { +hx, +hy, +hz }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
 		}
 	}
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
 BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, const XMFLOAT3& position)
@@ -493,7 +549,7 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	material.baseColor = color;
 	m_materials.push_back(move(material));
 
-	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), vertices.size());
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 
 	UINT cbMeshByteSize{ 0 };
 	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();

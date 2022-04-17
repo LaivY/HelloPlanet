@@ -1,9 +1,14 @@
 ﻿#include "stdafx.h"
+#include "framework.h"
 
+GameFramework           g_gameFramework{ Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT };
 ComPtr<ID3D12Device>	g_device{ nullptr };
 UINT					g_cbvSrvDescriptorIncrementSize{ 0 };
-SOCKET					g_c_socket{};
+UINT					g_dsvDescriptorIncrementSize{ 0 };
+SOCKET					g_socket{};
 BOOL					g_isConnected{ FALSE };
+thread                  g_networkThread{};
+mutex                   g_mutex{};
 
 namespace Utile
 {

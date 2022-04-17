@@ -17,7 +17,7 @@ void Camera::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 }
 
-void Camera::Update(FLOAT /*deltaTime*/)
+void Camera::Update(FLOAT deltaTime)
 {
 #ifdef FIRSTVIEW
 	if (m_player)
@@ -26,6 +26,22 @@ void Camera::Update(FLOAT /*deltaTime*/)
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetRight(), m_offset.x));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), m_offset.y));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), m_offset.z));
+
+		static float offsetTimer{ 0.0f };
+		if (AnimationInfo* aniInfo{ m_player->GetAnimationInfo() };
+			m_player->GetCurrAnimationName() == "RUNNING" && m_player->GetAfterAnimationName().empty() && !m_player->GetUpperAnimationInfo())
+		{
+			offsetTimer += deltaTime * 5.0f;
+			offsetTimer = min(offsetTimer, 1.0f);
+		}
+		else
+		{
+			offsetTimer -= deltaTime * 10.0f;
+			offsetTimer = max(0.0f, offsetTimer);
+		}
+		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), -offsetTimer * 2.0f));
+		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), -offsetTimer * 3.0f));
+
 		SetEye(Vector3::Add(m_player->GetPosition(), offset));
 	}
 #endif

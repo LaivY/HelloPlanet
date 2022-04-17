@@ -1,20 +1,23 @@
 #define DIRECTIONAL_LIGHT   0
 #define POINT_LIGHT         1
 #define MAX_LIGHT           1
-
-static const matrix toTextureMatrix =
-{
-	0.5f,  0.0f, 0.0f, 0.0f,
-	0.0f, -0.5f, 0.0f, 0.0f,
-	0.0f,  0.0f, 1.0f, 0.0f,
-	0.5f,  0.5f, 0.0f, 1.0f
-};
+#define SHADOWMAP_COUNT     4
 
 struct Light
 {
 	matrix	lightViewMatrix;
 	matrix 	lightProjMatrix;
-	float3 	position;
+	float3 	color;
+	float 	padding1;
+	float3 	direction;
+	float 	padding2;
+};
+
+struct ShadowLight
+{
+    matrix	lightViewMatrix[SHADOWMAP_COUNT];
+	matrix 	lightProjMatrix[SHADOWMAP_COUNT];
+	float3 	color;
 	float 	padding1;
 	float3 	direction;
 	float 	padding2;
@@ -60,7 +63,7 @@ float3 ComputeDirectionalLight(Light light, Material material, float3 normal, fl
     float3 lightVec = -light.direction;
 
     float ndotl = max(dot(lightVec, normal), 0.0f);
-    float3 lightStrength = 0.1f * ndotl;
+    float3 lightStrength = light.color * ndotl;
 
     return BlinnPhong(material, lightStrength, lightVec, normal, toEye);
 }

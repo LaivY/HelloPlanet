@@ -8,12 +8,7 @@ GameFramework::GameFramework(UINT width, UINT height) :
 
 GameFramework::~GameFramework()
 {
-#ifdef NETWORK
-	g_isConnected = FALSE;
-	m_networkThread.join();
-	closesocket(g_c_socket);
-	WSACleanup();
-#endif
+
 }
 
 void GameFramework::GameLoop()
@@ -38,7 +33,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 #ifdef NETWORK
 	ConnectServer();
-	m_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_c_socket) };
+	g_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_socket) };
 #endif
 }
 
@@ -61,11 +56,18 @@ void GameFramework::OnDestroy()
 {
 	WaitForPreviousFrame();
 	CloseHandle(m_fenceEvent);
+
+#ifdef NETWORK
+	g_isConnected = FALSE;
+	g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
+#endif
 }
 
 void GameFramework::OnMouseEvent()
 {
-	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_width, m_height, m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer.GetDeltaTime());
 }
 
 void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -107,6 +109,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 
 	// 서술자힙 크기
 	g_cbvSrvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	g_dsvDescriptorIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	g_device = m_device;
 }
 
@@ -222,7 +225,7 @@ void GameFramework::CreateRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE ranges[2];
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Setting::SHADOWMAP_COUNT, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 
 	// 자주 갱신하는 순서대로 해야 성능에 좋음
 	CD3DX12_ROOT_PARAMETER rootParameter[7];
@@ -232,7 +235,7 @@ void GameFramework::CreateRootSignature()
 	rootParameter[3].InitAsConstantBufferView(3);											// cbScene : b3
 	rootParameter[4].InitAsConstantBufferView(4);											// cbGameFramework : b4
 	rootParameter[5].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_texture : t0
-	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1
+	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1 ~ t3
 
 	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
 	samplerDesc[0].Init(
@@ -377,7 +380,7 @@ void GameFramework::PopulateCommandList() const
 	// 씬 셰이더 변수 최신화
 	if (m_scene) m_scene->UpdateShaderVariable(m_commandList);
 
-	// 그림자맵에 깊이 버퍼 쓰기
+	// 그림자맵에 씬 렌더링
 	if (m_scene) m_scene->RenderToShadowMap(m_commandList);
 
 	// Indicate that the back buffer will be used as a render target
@@ -423,8 +426,8 @@ void GameFramework::ConnectServer()
 		return;
 
 	// socket 생성
-	g_c_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (g_c_socket == INVALID_SOCKET) error_quit("socket()");
+	g_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (g_socket == INVALID_SOCKET) error_quit("socket()");
 	LINGER optVal;
 	optVal.l_onoff = 1;
 	optVal.l_linger = 0;
@@ -437,7 +440,7 @@ void GameFramework::ConnectServer()
 	server_address.sin_family = AF_INET;
 	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
 	server_address.sin_port = htons(SERVER_PORT);
-	const int return_value = connect(g_c_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
+	const int return_value = connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
 	if (return_value == SOCKET_ERROR) error_quit("connect()");
 
 	// non blocking socket setting (test)

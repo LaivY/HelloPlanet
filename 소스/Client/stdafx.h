@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define BOUNDINGBOX
-//#define NETWORK
+#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -14,10 +14,12 @@
 #include <wrl.h>
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <exception>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -46,10 +48,16 @@ using namespace DirectX;
 #include <MSWSock.h>
 #include "../Server/protocol.h"
 
+class GameFramework;
+
+extern GameFramework        g_gameFramework;                    // 게임프레임워크
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
-extern SOCKET               g_c_socket;                         // 소켓
+extern UINT                 g_dsvDescriptorIncrementSize;       // 깊이스텐실뷰 서술자 힙 크기
+extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
+extern thread               g_networkThread;                    // 네트워크 쓰레드
+extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
 
 namespace DX
 {
@@ -130,6 +138,10 @@ namespace Vector3
         XMStoreFloat3(&result, XMVector3TransformNormal(XMLoadFloat3(&a), XMLoadFloat4x4(&b)));
         return result;
     }
+    inline XMFLOAT3 Interpolate(const XMFLOAT3& a, const XMFLOAT3& b, const FLOAT& t)
+    {
+        return XMFLOAT3{ lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t) };
+    }
     inline void Print(const XMFLOAT3& a, BOOL newLine=TRUE)
     {
         cout << a.x << ", " << a.y << ", " << a.z;
@@ -199,12 +211,13 @@ namespace Setting
     constexpr auto SCREEN_WIDTH     = 1280; // 화면 가로 길이
     constexpr auto SCREEN_HEIGHT    = 720;  // 화면 세로 길이
     constexpr auto MAX_PLAYERS      = 2;    // 최대 플레이어 수(본인 제외)
-    constexpr auto MAX_LIGHTS       = 1;    // 씬 조명 최대 개수
+    constexpr auto MAX_LIGHTS       = 2;    // 씬 조명 최대 개수
     constexpr auto MAX_MATERIALS    = 10;   // 메쉬 재질 최대 개수
     constexpr auto MAX_JOINTS       = 50;   // 메쉬 뼈 최대 개수
     constexpr auto BLENDING_FRAMES  = 5;    // 메쉬 애니메이션 블렌딩에 걸리는 프레임
     constexpr auto CAMERA_MIN_PITCH = -60;  // 카메라 위아래 최소 각도
     constexpr auto CAMERA_MAX_PITCH = 60;   // 카메라 위아래 최대 각도
+    constexpr auto SHADOWMAP_COUNT  = 4;    // 케스케이드 그림자맵 개수
 }
 
 void error_quit(const char* msg);

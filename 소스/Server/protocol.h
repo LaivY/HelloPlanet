@@ -6,6 +6,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
+constexpr int  MAX_MONSTER = 10;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;
@@ -14,9 +15,11 @@ constexpr char CS_PACKET_BULLET_FIRE = 3;
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 constexpr char SC_PACKET_BULLET_FIRE = 3;
+constexpr char SC_PACKET_UPDATE_MONSTER = 4;
 
 enum class eAnimationType : char
 {
+	NONE,
 	IDLE,
 	RUNNING,
 	WALKING,
@@ -33,10 +36,12 @@ enum class eUpperAnimationType : char
 };
 
 enum class eMobAnimationType : char
-{ // 임시
+{
 	IDLE,
-	ACK,
+	WALKING,
 	RUNNING,
+	ATTACK,
+	HIT,
 	DIE
 };
 
@@ -62,7 +67,7 @@ struct MonsterData
 {
 	CHAR				id;			// 몬스터 고유 번호
 	CHAR				type;		// 몬스터 타입
-	eMobAnimationType	state;		// 애니메이션 종류
+	eMobAnimationType	aniType;	// 애니메이션 종류
 	DirectX::XMFLOAT3	pos;		// 위치
 	DirectX::XMFLOAT3	velocity;	// 속도
 	FLOAT				yaw;		// 회전각
@@ -105,7 +110,7 @@ struct sc_packet_update_client
 {
 	UCHAR		size;
 	UCHAR		type;
-	PlayerData	data;
+	PlayerData	data[MAX_USER];
 };
 
 struct sc_packet_bullet_fire
@@ -114,4 +119,12 @@ struct sc_packet_bullet_fire
 	UCHAR		type;
 	BulletData	data;
 };
+
+struct sc_packet_update_monsters
+{
+	UCHAR		size;
+	UCHAR		type;
+	MonsterData	data[MAX_MONSTER];
+};
+
 #pragma pack(pop)

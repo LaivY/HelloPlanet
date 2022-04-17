@@ -24,15 +24,15 @@ void DebugBoundingBox::SetShader(const shared_ptr<Shader>& shader)
 	m_shader = shader;
 }
 
-GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
+GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
 
 void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
-	if (currFrame >= endFrame)
-		PlayAnimation(m_animationInfo->currAnimationName);
+	//if (currFrame >= endFrame)
+	//	PlayAnimation(m_animationInfo->currAnimationName);
 }
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
@@ -50,7 +50,8 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	m_mesh->Render(commandList);
 
 #ifdef BOUNDINGBOX
-	if (m_boundingBox) m_boundingBox->Render(commandList);
+	for (const auto& bb : m_boundingBoxes)
+		bb->Render(commandList);
 #endif
 }
 
@@ -76,7 +77,7 @@ void GameObject::Update(FLOAT deltaTime)
 				m_textureInfo->frame = 0;
 			else
 			{
-				m_textureInfo->frame = m_texture->GetTextureCount() - 1;
+				m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
 				m_isDeleted = true;
 			}
 		}
@@ -91,8 +92,10 @@ void GameObject::Update(FLOAT deltaTime)
 			m_animationInfo->blendingTimer += deltaTime;
 	}
 
-	// 바운딩 박스 정렬
-	//if (m_boundingBox) m_boundingBox->Center = GetPosition();
+	// 이동
+	Move(Vector3::Mul(GetRight(), m_velocity.x * deltaTime));
+	Move(Vector3::Mul(GetUp(), m_velocity.y * deltaTime));
+	Move(Vector3::Mul(GetLook(), m_velocity.z * deltaTime));
 }
 
 void GameObject::Move(const XMFLOAT3& shift)
@@ -102,6 +105,9 @@ void GameObject::Move(const XMFLOAT3& shift)
 
 void GameObject::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 {
+	// 회전각 합산
+	m_roll += roll; m_pitch += pitch; m_yaw += yaw;
+
 	// 회전
 	XMMATRIX rotate{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll)) };
 	XMMATRIX worldMatrix{ rotate * XMLoadFloat4x4(&m_worldMatrix) };
@@ -137,6 +143,14 @@ void GameObject::SetShader(const shared_ptr<Shader>& shader)
 	m_shader = shader;
 }
 
+void GameObject::SetShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
+{
+	m_shadowShaders[0] = sShader;
+	m_shadowShaders[1] = mShader;
+	m_shadowShaders[2] = lShader;
+	m_shadowShaders[3] = allShader;
+}
+
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 {
 	m_texture = texture;
@@ -147,9 +161,9 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 	m_textureInfo = move(textureInfo);
 }
 
-void GameObject::SetBoundingBox(const shared_ptr<DebugBoundingBox>& boundingBox)
+void GameObject::AddBoundingBox(const SharedBoundingBox& boundingBox)
 {
-	m_boundingBox = boundingBox;
+	m_boundingBoxes.push_back(boundingBox);
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
@@ -163,10 +177,10 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	}
 	else
 	{
-		m_animationInfo->afterAnimationName.clear();
-		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->currAnimationName = animationName;
 		m_animationInfo->currTimer = 0.0f;
+		m_animationInfo->afterAnimationName.clear();
+		m_animationInfo->afterTimer = 0.0f;
 		m_animationInfo->state = eAnimationState::PLAY;
 	}
 	m_animationInfo->blendingTimer = 0.0f;
@@ -192,10 +206,68 @@ Bullet::Bullet(const XMFLOAT3& direction, FLOAT speed, FLOAT lifeTime) : m_direc
 void Bullet::Update(FLOAT deltaTime)
 {
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
-	
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
 		m_isDeleted = TRUE;
+}
+
+void Monster::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
+{
+	// 오류
+	if (isUpper) return;
+	if (m_animationInfo->state == eAnimationState::PLAY)
+	{
+		if (currFrame >= endFrame)
+		{
+			if (m_animationInfo->currAnimationName == "DIE")
+			{
+				m_isDeleted = TRUE;
+				return;
+			}
+			PlayAnimation(m_animationInfo->currAnimationName);
+		}
+	}
+	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
+	{
+		if (currFrame >= endFrame)
+			PlayAnimation(m_animationInfo->afterAnimationName);
+	}
+}
+
+void Monster::ApplyServerData(const MonsterData& monsterData)
+{
+	if (m_animationInfo->currAnimationName == "DIE" && m_animationInfo->afterAnimationName != "DIE")
+		return;
+
+	switch (monsterData.aniType)
+	{
+	case eMobAnimationType::IDLE:
+		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
+			PlayAnimation("IDLE", TRUE);
+		break;
+	case eMobAnimationType::RUNNING:
+		if (m_animationInfo->currAnimationName != "RUNNING" && m_animationInfo->afterAnimationName != "RUNNING")
+			PlayAnimation("RUNNING", TRUE);
+		break;
+	case eMobAnimationType::ATTACK:
+		if (m_animationInfo->currAnimationName != "ATTACK" && m_animationInfo->afterAnimationName != "ATTACK")
+			PlayAnimation("ATTACK", TRUE);
+		break;
+	case eMobAnimationType::HIT:
+		if (m_animationInfo->currAnimationName != "HIT" && m_animationInfo->afterAnimationName != "HIT")
+			PlayAnimation("HIT", TRUE);
+		break;
+	case eMobAnimationType::DIE:
+		if (m_animationInfo->currAnimationName != "DIE" && m_animationInfo->afterAnimationName != "DIE")
+			PlayAnimation("DIE", TRUE);
+		SetVelocity(XMFLOAT3{ 0.0f, -3.0f, 0.0f });
+		return;
+	}
+
+	m_id = monsterData.id;
+	SetPosition(monsterData.pos);
+	SetVelocity(monsterData.velocity);
+	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
 UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }
