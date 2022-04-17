@@ -191,7 +191,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	// 게임오브젝트 관련 로딩
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
-	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
@@ -244,7 +244,7 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("ui.hlsl"), Utile::SHADER), "VS", "PS");
 
 	// 그림자 셰이더
 	m_shaders["SHADOW_MODEL_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_S");
@@ -286,6 +286,10 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["OBJECT3"] = make_shared<Texture>();
 	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds"), Utile::RESOURCE));
 	m_textures["OBJECT3"]->CreateTexture(device);
+
+	m_textures["CROSSHAIR"] = make_shared<Texture>();
+	m_textures["CROSSHAIR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/crosshair.dds"), Utile::RESOURCE));
+	m_textures["CROSSHAIR"]->CreateTexture(device);
 }
 
 void Scene::CreateLights() const
@@ -308,14 +312,21 @@ void Scene::CreateLights() const
 
 void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// 조준점
+	auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
+	crossHair->SetMesh(m_meshes["UI"]);
+	crossHair->SetShader(m_shaders["UI"]);
+	crossHair->SetTexture(m_textures["CROSSHAIR"]);
+	m_uiObjects.push_back(move(crossHair));
+
 	// 체력바
-	auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
-	hpBar->SetMesh(m_meshes["HPBAR"]);
-	hpBar->SetShader(m_shaders["UI"]);
-	hpBar->SetPivot(eUIPivot::LEFTBOT);
-	hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
-					   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
-	m_uiObjects.push_back(move(hpBar));
+	//auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
+	//hpBar->SetMesh(m_meshes["HPBAR"]);
+	//hpBar->SetShader(m_shaders["UI"]);
+	//hpBar->SetPivot(eUIPivot::LEFTBOT);
+	//hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
+	//				   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
+	//m_uiObjects.push_back(move(hpBar));
 }
 
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -351,10 +362,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetMesh(m_meshes["ARM"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
 	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-	m_player->SetGunMesh(m_meshes["SG"]);
+	m_player->SetGunMesh(m_meshes["AR"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-	m_player->SetGunType(eGunType::SG);
+	m_player->SetGunType(eGunType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
@@ -544,12 +555,12 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
-	//if (m_uiCamera)
-	//{
-	//	m_uiCamera->UpdateShaderVariable(commandList);
-	//	for (const auto& ui : m_uiObjects)
-	//		ui->Render(commandList);
-	//}
+	if (m_uiCamera)
+	{
+		m_uiCamera->UpdateShaderVariable(commandList);
+		for (const auto& ui : m_uiObjects)
+			ui->Render(commandList);
+	}
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

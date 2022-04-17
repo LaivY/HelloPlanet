@@ -140,7 +140,7 @@ private:
 class Bullet : public GameObject
 {
 public:
-	Bullet(const XMFLOAT3& direction, FLOAT speed = 1000.0f, FLOAT lifeTime = 0.2f);
+	Bullet(const XMFLOAT3& direction, FLOAT speed = 2000.0f, FLOAT lifeTime = 0.2f);
 	~Bullet() = default;
 
 	void Update(FLOAT deltaTime);

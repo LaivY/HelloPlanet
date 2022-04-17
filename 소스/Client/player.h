@@ -27,9 +27,10 @@ public:
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex);
-	void Fire() const;
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
+	void Fire();
+	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(eGunType gunType);
@@ -51,7 +52,14 @@ public:
 private:
 	INT								m_id;				// 플레이어 고유 아이디
 	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
+	BOOL							m_isFired;			// 발사 여부
 	eGunType						m_gunType;			// 총 타입
+
+	FLOAT							m_delayRoll;
+	FLOAT							m_delayPitch;
+	FLOAT							m_delayYaw;
+	FLOAT							m_delayTime;
+	FLOAT							m_delayTimer;
 
 	FLOAT							m_speed;			// 속력(실수)
 	//XMFLOAT3						m_velocity;			// 속도(벡터)

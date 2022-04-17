@@ -20,6 +20,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -58,6 +59,7 @@ extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
 extern thread               g_networkThread;                    // 네트워크 쓰레드
 extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
+extern mt19937              g_randomEngine;                     // 랜덤 값 생성에 필요한 엔진
 
 namespace DX
 {
@@ -198,6 +200,8 @@ namespace Utile
                                                 const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
     string PATH(const string& file, int type);
     wstring PATH(const wstring& file, int type);
+    int Random(int min, int max);
+    float Random(float min, float max);
 
     template <typename T>
     UINT GetConstantBufferSize()

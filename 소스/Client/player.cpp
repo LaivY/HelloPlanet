@@ -1,7 +1,7 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_gunType{ eGunType::NONE },
+Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
 									 m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
@@ -18,7 +18,6 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData();
-		Fire();
 		m_shotTimer = 0.0f;
 	}
 #endif
@@ -181,6 +180,26 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	// 상체 애니메이션 콜백 처리
 	if (isUpper)
 	{
+		// 애니메이션에 맞춰 총 발사
+		if (!m_isMultiPlayer && !m_isFired && m_upperAnimationInfo->state == eAnimationState::PLAY && GetUpperCurrAnimationName() == "FIRING")
+		{
+			switch (m_gunType)
+			{
+			case eGunType::AR:
+				if (currFrame > 0.5f)
+					Fire();
+				break;
+			case eGunType::SG:
+				if (currFrame > 3.0f)
+					Fire();
+				break;
+			case eGunType::MG:
+				if (currFrame > 3.0f)
+					Fire();
+				break;
+			}
+		}
+
 		if (currFrame >= endFrame)
 		{
 			switch (m_upperAnimationInfo->state)
@@ -292,7 +311,7 @@ void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandL
 	}
 }
 
-void Player::Fire() const
+void Player::Fire()
 {
 	// 총알 시작 좌표
 	XMFLOAT3 start{ m_camera->GetEye() };
@@ -310,7 +329,7 @@ void Player::Fire() const
 		// 총구에서 나오도록
 		start = Vector3::Add(start, GetRight());
 		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
-		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 8.0f));
+		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1.0f));
 
 		// 총알 발사 정보 서버로 송신
 		cs_packet_bullet_fire packet{};
@@ -318,6 +337,9 @@ void Player::Fire() const
 		packet.type = CS_PACKET_BULLET_FIRE;
 		packet.data = { start, Vector3::Normalize(Vector3::Sub(center, start)) };
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
+		// 반동
+		DelayRotate(0.0f, -0.4f, Utile::Random(-0.1f, 0.1f), 0.1f);
 		break;
 	}
 	case eGunType::SG:
@@ -330,36 +352,54 @@ void Player::Fire() const
 		XMFLOAT3 up{ Vector3::Normalize(Vector3::Cross(m_camera->GetAt(), GetRight())) };
 
 		// 각 총알의 목표 방향
+		// 기본적으로 오각형 모양이고 거기서 랜덤으로 살짝 움직임
 		XMFLOAT3 targets[]{ center, center, center, center, center };
-		targets[0] = Vector3::Add(targets[0], Vector3::Mul(up, 50.0f));
+		targets[0] = Vector3::Add(targets[0], Vector3::Mul(up, 20.0f));
 
-		targets[1] = Vector3::Add(targets[1], Vector3::Mul(GetRight(), -50.0f));
-		targets[1] = Vector3::Add(targets[1], Vector3::Mul(up, 25.0f));
+		targets[1] = Vector3::Add(targets[1], Vector3::Mul(GetRight(), -25.0f));
+		targets[1] = Vector3::Add(targets[1], Vector3::Mul(up, 10.0f));
 
-		targets[2] = Vector3::Add(targets[2], Vector3::Mul(GetRight(), 50.0f));
-		targets[2] = Vector3::Add(targets[2], Vector3::Mul(up, 25.0f));
+		targets[2] = Vector3::Add(targets[2], Vector3::Mul(GetRight(), 25.0f));
+		targets[2] = Vector3::Add(targets[2], Vector3::Mul(up, 10.0f));
 
-		targets[3] = Vector3::Add(targets[3], Vector3::Mul(GetRight(), -25.0f));
-		targets[3] = Vector3::Add(targets[3], Vector3::Mul(up, -25.0f));
+		targets[3] = Vector3::Add(targets[3], Vector3::Mul(GetRight(), -15.0f));
+		targets[3] = Vector3::Add(targets[3], Vector3::Mul(up, -10.0f));
 
-		targets[4] = Vector3::Add(targets[4], Vector3::Mul(GetRight(), 25.0f));
-		targets[4] = Vector3::Add(targets[4], Vector3::Mul(up, -25.0f));
+		targets[4] = Vector3::Add(targets[4], Vector3::Mul(GetRight(), 15.0f));
+		targets[4] = Vector3::Add(targets[4], Vector3::Mul(up, -10.0f));
 
 		for (const XMFLOAT3& target : targets)
 		{
+			// 목표 방향을 랜덤으로 조금 움직임
+			XMFLOAT3 t{ target };
+			t = Vector3::Add(t, Vector3::Mul(GetRight(), Utile::Random(-5.0f, 5.0f)));
+			t = Vector3::Add(t, Vector3::Mul(up, Utile::Random(-5.0f, 5.0f)));
+
 			cs_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_BULLET_FIRE;
-			packet.data = { start, Vector3::Normalize(Vector3::Sub(target, start)) };
+			packet.data = { start, Vector3::Normalize(Vector3::Sub(t, start)) };
 			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
+
+		// 반동
+		DelayRotate(0.0f, -2.0f, 0.0f, 0.1f);
 		break;
 	}
 	case eGunType::MG:
 		break;
-	default:
-		break;
 	}
+
+	m_isFired = TRUE;
+}
+
+void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)
+{
+	m_delayRoll = roll;
+	m_delayPitch = pitch;
+	m_delayYaw = yaw;
+	m_delayTime = time;
+	m_delayTimer = time;
 }
 
 void Player::Update(FLOAT deltaTime)
@@ -377,6 +417,15 @@ void Player::Update(FLOAT deltaTime)
 			break;
 		}
 	GameObject::Update(deltaTime);
+
+	// 회전해야되면 회전
+	if (m_delayTimer > 0.0f)
+	{
+		Rotate(m_delayRoll * deltaTime / m_delayTime,
+			   m_delayPitch * deltaTime / m_delayTime,
+			   m_delayYaw * deltaTime / m_delayTime);
+		m_delayTimer = max(0.0f, m_delayTimer - deltaTime);
+	}
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -404,28 +453,34 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 {
 	// 무기 타입에 따라 해당 무기에 맞는 애니메이션을 재생함
 	// ex) AR을 착용한 플레이어가 IDLE이라는 애니메이션을 재생한다면 AR/IDLE 애니메이션이 재생됨
-	//if (m_animationInfo && m_animationInfo->state == eAnimationState::BLENDING && GetCurrAnimationName() == animationName)
-	//{
-	//	m_animationInfo->state = eAnimationState::PLAY;
-	//	m_animationInfo->afterAnimationName.clear();
-	//	m_animationInfo->afterTimer = 0.0f;
-	//	m_animationInfo->blendingTimer = 0.0f;
-	//	return;
-	//}
 	
 	// 아래의 애니메이션은 상체만 애니메이션함
 	string pureAnimationName{ GetPureAnimationName(animationName) };
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
 	{
-		if (m_gunType == eGunType::AR) PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
-		else if (m_gunType == eGunType::SG) PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
-		else if (m_gunType == eGunType::MG) PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
-
-		// 발사 애니메이션 속도 조절
-		if (pureAnimationName == "FIRING")
+		switch (m_gunType)
 		{
-			m_upperAnimationInfo->blendingFrame = 3;
-			m_upperAnimationInfo->fps = 1.0f / 24.0f;
+		case eGunType::AR:
+			PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
+			if (pureAnimationName == "FIRING")
+			{
+				m_upperAnimationInfo->blendingFrame = 3;
+				m_upperAnimationInfo->fps = 1.0f / 24.0f;
+				m_isFired = FALSE;
+			}
+			break;
+		case eGunType::SG:
+			PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
+			if (pureAnimationName == "FIRING")
+			{
+				m_upperAnimationInfo->blendingFrame = 3;
+				m_upperAnimationInfo->fps = 1.0f / 30.0f;
+				m_isFired = FALSE;
+			}
+			break;
+		case eGunType::MG:
+			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+			break;
 		}
 		return;
 	}
