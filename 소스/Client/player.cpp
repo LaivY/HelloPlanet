@@ -18,30 +18,7 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData();
-
-		// 총알 시작 좌표
-		XMFLOAT3 start{ m_camera->GetEye() };
-		start = Vector3::Add(start, GetRight());
-		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
-
-		// 화면 정중앙 엄청 멀리
-		XMFLOAT3 f{ m_camera->GetEye() };
-		f = Vector3::Add(f, Vector3::Mul(m_camera->GetAt(), 1000.0f));
-
-		// 총 -> 화면 정중앙 멀리
-		XMFLOAT3 target{ Vector3::Sub(f, m_camera->GetEye()) };
-		target = Vector3::Normalize(target);
-
-		// 총구에서 나오도록
-		start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
-
-		// 총알 발사 정보 서버로 송신
-		cs_packet_bullet_fire packet{};
-		packet.size = sizeof(packet);
-		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = { start, target };
-		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
-
+		Fire();
 		m_shotTimer = 0.0f;
 	}
 #endif
@@ -315,6 +292,76 @@ void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandL
 	}
 }
 
+void Player::Fire() const
+{
+	// 총알 시작 좌표
+	XMFLOAT3 start{ m_camera->GetEye() };
+
+	// 화면 중앙
+	XMFLOAT3 center{ m_camera->GetEye() };
+	center = Vector3::Add(center, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+
+	switch (m_gunType)
+	{
+	case eGunType::NONE:
+		break;
+	case eGunType::AR:
+	{
+		// 총구에서 나오도록
+		start = Vector3::Add(start, GetRight());
+		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 8.0f));
+
+		// 총알 발사 정보 서버로 송신
+		cs_packet_bullet_fire packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_BULLET_FIRE;
+		packet.data = { start, Vector3::Normalize(Vector3::Sub(center, start)) };
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		break;
+	}
+	case eGunType::SG:
+	{
+		// 총구에서 나오도록
+		start = Vector3::Add(start, Vector3::Mul(GetRight(), 1.0f));
+		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 5.0f));
+
+		XMFLOAT3 up{ Vector3::Normalize(Vector3::Cross(m_camera->GetAt(), GetRight())) };
+
+		// 각 총알의 목표 방향
+		XMFLOAT3 targets[]{ center, center, center, center, center };
+		targets[0] = Vector3::Add(targets[0], Vector3::Mul(up, 50.0f));
+
+		targets[1] = Vector3::Add(targets[1], Vector3::Mul(GetRight(), -50.0f));
+		targets[1] = Vector3::Add(targets[1], Vector3::Mul(up, 25.0f));
+
+		targets[2] = Vector3::Add(targets[2], Vector3::Mul(GetRight(), 50.0f));
+		targets[2] = Vector3::Add(targets[2], Vector3::Mul(up, 25.0f));
+
+		targets[3] = Vector3::Add(targets[3], Vector3::Mul(GetRight(), -25.0f));
+		targets[3] = Vector3::Add(targets[3], Vector3::Mul(up, -25.0f));
+
+		targets[4] = Vector3::Add(targets[4], Vector3::Mul(GetRight(), 25.0f));
+		targets[4] = Vector3::Add(targets[4], Vector3::Mul(up, -25.0f));
+
+		for (const XMFLOAT3& target : targets)
+		{
+			cs_packet_bullet_fire packet{};
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_BULLET_FIRE;
+			packet.data = { start, Vector3::Normalize(Vector3::Sub(target, start)) };
+			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		}
+		break;
+	}
+	case eGunType::MG:
+		break;
+	default:
+		break;
+	}
+}
+
 void Player::Update(FLOAT deltaTime)
 {
 	// 상체 애니메이션 타이머 진행
@@ -397,7 +444,7 @@ void Player::SetGunType(eGunType gunType)
 		m_shotSpeed = 0.16f;
 		break;
 	case eGunType::SG:
-		m_shotSpeed = 1.0f;
+		m_shotSpeed = 0.8f;
 		break;
 	case eGunType::MG:
 		m_shotSpeed = 0.1f;

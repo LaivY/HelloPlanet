@@ -82,20 +82,6 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
-
-	// 총알 발사 테스트
-	switch (message)
-	{
-	case WM_LBUTTONDOWN:
-	{
-		if (m_player->GetCurrAnimationName() == "RUNNING")
-			break;
-		if (m_player->GetUpperCurrAnimationName() == "RELOAD")
-			break;
-		CreateBullet();
-		break;
-	}
-	}
 }
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
@@ -205,7 +191,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	// 게임오브젝트 관련 로딩
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
-	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
@@ -365,10 +351,10 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetMesh(m_meshes["ARM"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
 	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-	m_player->SetGunMesh(m_meshes["AR"]);
+	m_player->SetGunMesh(m_meshes["SG"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-	m_player->SetGunType(eGunType::AR);
+	m_player->SetGunType(eGunType::SG);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
@@ -429,12 +415,12 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			break;
 		}
 		case eMapObjectType::PLANT:
-			//object->SetMesh(m_meshes["PLANT"]);
-			//object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(m_meshes["PLANT"]);
+			object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::TREE:
-			//object->SetMesh(m_meshes["TREE"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["TREE"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK1:
 		{
@@ -472,20 +458,20 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			break;
 		}
 		case eMapObjectType::DROPSHIP:
-			//object->SetMesh(m_meshes["DROPSHIP"]);
-			//object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(m_meshes["DROPSHIP"]);
+			object->SetTexture(m_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::MUSHROOMS:
-			//object->SetMesh(m_meshes["MUSHROOMS"]);
-			//object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(m_meshes["MUSHROOMS"]);
+			object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::SKULL:
-			//object->SetMesh(m_meshes["SKULL"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["SKULL"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::RIBS:
-			//object->SetMesh(m_meshes["RIBS"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["RIBS"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK4:
 			object->SetMesh(m_meshes["ROCK4"]);

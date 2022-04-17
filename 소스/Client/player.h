@@ -27,6 +27,7 @@ public:
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex);
+	void Fire() const;
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
 
