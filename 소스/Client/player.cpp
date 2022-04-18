@@ -303,12 +303,12 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	GameObject::Render(commandList, m_shadowShader);
-	//if (m_gunMesh)
-	//{
-	//	commandList->SetPipelineState(m_gunShadowShaders[0]->GetPipelineState().Get());
-	//	m_gunMesh->UpdateShaderVariable(commandList, this);
-	//	m_gunMesh->Render(commandList);
-	//}
+	if (m_gunMesh)
+	{
+		commandList->SetPipelineState(m_gunShadowShader->GetPipelineState().Get());
+		m_gunMesh->UpdateShaderVariable(commandList, this);
+		m_gunMesh->Render(commandList);
+	}
 }
 
 void Player::Fire()
@@ -597,12 +597,9 @@ void Player::ApplyServerData(const PlayerData& playerData)
 	Rotate(0.0f, 0.0f, playerData.yaw - m_yaw);
 }
 
-void Player::SetGunShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
+void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 {
-	m_gunShadowShaders[0] = sShader;
-	m_gunShadowShaders[1] = mShader;
-	m_gunShadowShaders[2] = lShader;
-	m_gunShadowShaders[3] = allShader;
+	m_gunShadowShader = shadowShader;
 }
 
 string Player::GetPureAnimationName(const string& animationName) const

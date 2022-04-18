@@ -88,38 +88,35 @@ public:
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void AddBoundingBox(const SharedBoundingBox& boundingBox);
 
+	BOOL isDeleted() const { return m_isDeleted; }
 	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
 	XMFLOAT3 GetRight() const { return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 }; }
 	XMFLOAT3 GetUp() const { return XMFLOAT3{ m_worldMatrix._21, m_worldMatrix._22, m_worldMatrix._23 }; }
 	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
 	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
+	const vector<SharedBoundingBox>& GetBoundingBox() const { return m_boundingBoxes; }
 	shared_ptr<Shader> GetShadowShader() const { return m_shadowShader; }
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
-	BOOL isDeleted() const { return m_isDeleted; }
-	const vector<SharedBoundingBox>& GetBoundingBox() const { return m_boundingBoxes; }
 
 protected:
+	BOOL							m_isDeleted;			// 삭제 여부
+
 	XMFLOAT4X4						m_worldMatrix;			// 월드 변환 행렬
 	FLOAT							m_roll;					// z축 회전각
 	FLOAT							m_pitch;				// x축 회전각
 	FLOAT							m_yaw;					// y축 회전각
 	XMFLOAT3						m_velocity;				// 속도
+	vector<SharedBoundingBox>		m_boundingBoxes;		// 바운딩박스
 
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더
-	//array<shared_ptr<Shader>,
-	//	  Setting::SHADOWMAP_COUNT>	m_shadowShaders;		// 그림자 셰이더
-	shared_ptr<Shader>				m_shadowShader;
-
+	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
 	shared_ptr<Texture>				m_texture;				// 텍스쳐
 	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
 	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체
 	unique_ptr<AnimationInfo>		m_upperAnimationInfo;	// 상체 애니메이션 정보 구조체
-
-	BOOL							m_isDeleted;			// 삭제 여부
-	vector<SharedBoundingBox>		m_boundingBoxes;		// 바운딩박스
 };
 
 // --------------------------------

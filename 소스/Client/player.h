@@ -37,7 +37,7 @@ public:
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
-	void SetGunShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader);
+	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 
 	INT GetId() const { return m_id; }
 	XMFLOAT3 GetVelocity() const { return m_velocity; }
@@ -62,15 +62,11 @@ private:
 	FLOAT							m_delayTimer;
 
 	FLOAT							m_speed;			// 속력(실수)
-	//XMFLOAT3						m_velocity;			// 속도(벡터)
-	//FLOAT							m_maxVelocity;		// 최대속도
-	//FLOAT							m_friction;			// 마찰력
 	FLOAT							m_shotSpeed;		// 공격속도
 	FLOAT							m_shotTimer;		// 공격속도 타이머
 
 	shared_ptr<Camera>				m_camera;			// 카메라
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
-	array<shared_ptr<Shader>, 
-		  Setting::SHADOWMAP_COUNT>	m_gunShadowShaders;	// 총 그림자 셰이더
+	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
 };

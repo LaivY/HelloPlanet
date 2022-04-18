@@ -355,7 +355,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 	m_player->SetGunMesh(m_meshes["AR"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
-	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
+	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 	m_player->SetGunType(eGunType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
@@ -405,7 +405,7 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
 		object->SetShader(m_shaders["MODEL"]);
-		//object->SetShadowShader(m_shaders["SHADOW_MODEL_S"], m_shaders["SHADOW_MODEL_M"], m_shaders["SHADOW_MODEL_L"], m_shaders["SHADOW_MODEL_ALL"]);
+		object->SetShadowShader(m_shaders["SHADOW_MODEL"]);
 		object->SetWorldMatrix(world);
 
 		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
@@ -587,6 +587,20 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
 
 	// 렌더링
+	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& object : m_gameObjects)
+	{
+		auto shadowShader{ object->GetShadowShader() };
+		if (shadowShader)
+			object->Render(commandList, shadowShader);
+	}
+	for (const auto& [_, monster] : m_monsters)
+	{
+		auto shadowShader{ monster->GetShadowShader() };
+		if (shadowShader)
+			monster->Render(commandList, shadowShader);
+	}
+	lock.unlock();
 	for (const auto& player : m_multiPlayers)
 	{
 		if (!player) continue;
@@ -601,48 +615,6 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
-
-	//for (int i = 0; i < Setting::SHADOWMAP_COUNT; ++i)
-	//{
-	//	// 리소스배리어 설정(깊이버퍼쓰기)
-	//	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-
-	//	// 깊이스텐실 버퍼 초기화
-	//	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(i), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-	//	// 렌더타겟 설정
-	//	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle(i));
-
-	//	// 렌더링
-	//	unique_lock<mutex> lock{ g_mutex };
-	//	for (const auto& object : m_gameObjects)
-	//	{
-	//		auto shadowShader{ object->GetShadowShader(i) };
-	//		if (shadowShader)
-	//			object->Render(commandList, shadowShader);
-	//	}
-	//	for (const auto& [_, monster] : m_monsters)
-	//	{
-	//		auto shadowShader{ monster->GetShadowShader(i) };
-	//		if (shadowShader)
-	//			monster->Render(commandList, shadowShader);
-	//	}
-	//	lock.unlock();
-	//	for (const auto& player : m_multiPlayers)
-	//	{
-	//		if (!player) continue;
-	//		player->RenderToShadowMap(commandList, i);
-	//	}
-	//	if (m_player)
-	//	{
-	//		m_player->SetMesh(m_meshes.at("PLAYER"));
-	//		m_player->RenderToShadowMap(commandList, i);
-	//		m_player->SetMesh(m_meshes.at("ARM"));
-	//	}
-
-	//	// 리소스배리어 설정(셰이더에서 읽기)
-	//	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
-	//}
 }
 
 void Scene::PlayerCollisionCheck(FLOAT deltaTime)
@@ -865,7 +837,7 @@ void Scene::RecvLoginOk()
 			p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 			p->SetGunMesh(m_meshes["SG"]);
 			p->SetGunShader(m_shaders["LINK"]);
-			p->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
+			p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
 			p->SetGunType(eGunType::SG);
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
