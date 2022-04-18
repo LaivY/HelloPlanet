@@ -3,7 +3,7 @@
 #define MAX_JOINT       96
 
 Texture2D g_texture                     : register(t0);
-Texture2D g_shadowMap[SHADOWMAP_COUNT]  : register(t1);
+Texture2DArray g_shadowMap				: register(t1);
 SamplerState g_sampler                  : register(s0);
 SamplerComparisonState g_shadowSampler  : register(s1);
 
@@ -59,6 +59,9 @@ struct PS_INPUT
 
 float CalcShadowFactor(float4 positionW)
 {
+	uint width, height, numElements, numMips;
+	g_shadowMap.GetDimensions(0, width, height, numElements, numMips);
+
 	for (int i = 0; i < SHADOWMAP_COUNT; ++i)
 	{
 		float4 shadowPosH = mul(mul(positionW, g_shadowLight.lightViewMatrix[i]), g_shadowLight.lightProjMatrix[i]);
@@ -79,11 +82,8 @@ float CalcShadowFactor(float4 positionW)
 		// Depth in NDC space.
 		float depth = shadowPosH.z;
 
-		uint width, height, numMips;
-		g_shadowMap[i].GetDimensions(0, width, height, numMips);
-
 		// Texel size.
-		float dx = 1.0f / (float)width;
+		float dx = 1.0f / (float) width;
 
 		float percentLit = 0.0f;
 		const float2 offsets[9] =
@@ -96,7 +96,7 @@ float CalcShadowFactor(float4 positionW)
 		[unroll]
 		for (int j = 0; j < 9; ++j)
 		{
-			percentLit += g_shadowMap[i].SampleCmpLevelZero(g_shadowSampler, shadowPosH.xy + offsets[j], depth).r;
+			percentLit += g_shadowMap.SampleCmpLevelZero(g_shadowSampler, float3(shadowPosH.xy + offsets[j], i), depth).r;
 		}
 		return percentLit / 9.0f;
 	}

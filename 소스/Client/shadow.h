@@ -18,8 +18,9 @@ public:
 	ComPtr<ID3D12DescriptorHeap> GetSrvHeap() const;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuSrvHandle(INT index) const;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE GetGpuSrvHandle(INT index) const;
-	CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuDsvHandle(INT index) const;
-	ComPtr<ID3D12Resource> GetShadowMap(INT index) const;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuDsvHandle() const;
+	//ComPtr<ID3D12Resource> GetShadowMap(INT index) const;
+	ComPtr<ID3D12Resource> GetShadowMap() const;
 
 private:
 	D3D12_VIEWPORT					m_viewport;
@@ -36,5 +37,6 @@ private:
 	CD3DX12_GPU_DESCRIPTOR_HANDLE	m_gpuSrvHandle;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	m_cpuDsvHandle;
 
-	vector<ComPtr<ID3D12Resource>>	m_shadowMaps;
+	//vector<ComPtr<ID3D12Resource>>	m_shadowMaps;
+	ComPtr<ID3D12Resource>			m_shadowMap;
 };

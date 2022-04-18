@@ -247,18 +247,9 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("ui.hlsl"), Utile::SHADER), "VS", "PS");
 
 	// 그림자 셰이더
-	m_shaders["SHADOW_MODEL_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_S");
-	m_shaders["SHADOW_MODEL_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_M");
-	m_shaders["SHADOW_MODEL_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_L");
-	m_shaders["SHADOW_MODEL_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_ALL");
-	m_shaders["SHADOW_LINK_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_S");
-	m_shaders["SHADOW_LINK_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_M");
-	m_shaders["SHADOW_LINK_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_L");
-	m_shaders["SHADOW_LINK_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_ALL");
-	m_shaders["SHADOW_ANIMATION_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_S");
-	m_shaders["SHADOW_ANIMATION_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_M");
-	m_shaders["SHADOW_ANIMATION_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_L");
-	m_shaders["SHADOW_ANIMATION_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_ALL");
+	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL", "GS");
+	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION", "GS");
+	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK", "GS");
 
 	// 디버그
 	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
@@ -361,7 +352,7 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_player = make_shared<Player>();
 	m_player->SetMesh(m_meshes["ARM"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
-	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 	m_player->SetGunMesh(m_meshes["AR"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
 	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
@@ -414,7 +405,7 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
 		object->SetShader(m_shaders["MODEL"]);
-		object->SetShadowShader(m_shaders["SHADOW_MODEL_S"], m_shaders["SHADOW_MODEL_M"], m_shaders["SHADOW_MODEL_L"], m_shaders["SHADOW_MODEL_ALL"]);
+		//object->SetShadowShader(m_shaders["SHADOW_MODEL_S"], m_shaders["SHADOW_MODEL_M"], m_shaders["SHADOW_MODEL_L"], m_shaders["SHADOW_MODEL_ALL"]);
 		object->SetWorldMatrix(world);
 
 		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
@@ -585,47 +576,73 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle(0));
-	for (int i = 0; i < Setting::SHADOWMAP_COUNT; ++i)
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	for (const auto& player : m_multiPlayers)
 	{
-		// 리소스배리어 설정(깊이버퍼쓰기)
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-
-		// 깊이스텐실 버퍼 초기화
-		commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(i), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-		// 렌더타겟 설정
-		commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle(i));
-
-		// 렌더링
-		unique_lock<mutex> lock{ g_mutex };
-		for (const auto& object : m_gameObjects)
-		{
-			auto shadowShader{ object->GetShadowShader(i) };
-			if (shadowShader)
-				object->Render(commandList, shadowShader);
-		}
-		for (const auto& [_, monster] : m_monsters)
-		{
-			auto shadowShader{ monster->GetShadowShader(i) };
-			if (shadowShader)
-				monster->Render(commandList, shadowShader);
-		}
-		lock.unlock();
-		for (const auto& player : m_multiPlayers)
-		{
-			if (!player) continue;
-			player->RenderToShadowMap(commandList, i);
-		}
-		if (m_player)
-		{
-			m_player->SetMesh(m_meshes.at("PLAYER"));
-			m_player->RenderToShadowMap(commandList, i);
-			m_player->SetMesh(m_meshes.at("ARM"));
-		}
-
-		// 리소스배리어 설정(셰이더에서 읽기)
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+		if (!player) continue;
+		player->RenderToShadowMap(commandList);
 	}
+	if (m_player)
+	{
+		m_player->SetMesh(m_meshes.at("PLAYER"));
+		m_player->RenderToShadowMap(commandList);
+		m_player->SetMesh(m_meshes.at("ARM"));
+	}
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+	//for (int i = 0; i < Setting::SHADOWMAP_COUNT; ++i)
+	//{
+	//	// 리소스배리어 설정(깊이버퍼쓰기)
+	//	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	//	// 깊이스텐실 버퍼 초기화
+	//	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(i), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	//	// 렌더타겟 설정
+	//	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle(i));
+
+	//	// 렌더링
+	//	unique_lock<mutex> lock{ g_mutex };
+	//	for (const auto& object : m_gameObjects)
+	//	{
+	//		auto shadowShader{ object->GetShadowShader(i) };
+	//		if (shadowShader)
+	//			object->Render(commandList, shadowShader);
+	//	}
+	//	for (const auto& [_, monster] : m_monsters)
+	//	{
+	//		auto shadowShader{ monster->GetShadowShader(i) };
+	//		if (shadowShader)
+	//			monster->Render(commandList, shadowShader);
+	//	}
+	//	lock.unlock();
+	//	for (const auto& player : m_multiPlayers)
+	//	{
+	//		if (!player) continue;
+	//		player->RenderToShadowMap(commandList, i);
+	//	}
+	//	if (m_player)
+	//	{
+	//		m_player->SetMesh(m_meshes.at("PLAYER"));
+	//		m_player->RenderToShadowMap(commandList, i);
+	//		m_player->SetMesh(m_meshes.at("ARM"));
+	//	}
+
+	//	// 리소스배리어 설정(셰이더에서 읽기)
+	//	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	//}
 }
 
 void Scene::PlayerCollisionCheck(FLOAT deltaTime)
@@ -845,7 +862,7 @@ void Scene::RecvLoginOk()
 			p = make_unique<Player>(TRUE);
 			p->SetMesh(m_meshes["PLAYER"]);
 			p->SetShader(m_shaders["ANIMATION"]);
-			p->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+			p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 			p->SetGunMesh(m_meshes["SG"]);
 			p->SetGunShader(m_shaders["LINK"]);
 			p->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
@@ -905,7 +922,7 @@ void Scene::RecvUpdateMonster()
 			lock.unlock();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
 			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
-			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 			m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
 			m_monsters[m.id]->PlayAnimation("IDLE");
 		}

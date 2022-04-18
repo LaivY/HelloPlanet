@@ -129,9 +129,9 @@ BlendingShader::BlendingShader(const ComPtr<ID3D12Device>& device, const ComPtr<
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
-ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs)
+ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& gs)
 {
-	ComPtr<ID3DBlob> vertexShader, error;
+	ComPtr<ID3DBlob> vertexShader, geometryShader, error;
 
 #if defined(_DEBUG)
 	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -140,6 +140,7 @@ ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 #endif
 
 	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, vs.c_str(), "vs_5_1", compileFlags, 0, &vertexShader, &error));
+	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, gs.c_str(), "gs_5_1", compileFlags, 0, &geometryShader, &error));
 
 	// 깊이값 바이어스 설정
 	CD3DX12_RASTERIZER_DESC rasterizerState{ D3D12_DEFAULT };
@@ -152,6 +153,7 @@ ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
 	psoDesc.pRootSignature = rootSignature.Get();
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
+	psoDesc.GS = CD3DX12_SHADER_BYTECODE(geometryShader.Get());
 	psoDesc.RasterizerState = rasterizerState;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);

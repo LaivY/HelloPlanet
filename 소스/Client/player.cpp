@@ -300,15 +300,15 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	}
 }
 
-void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex)
+void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	GameObject::Render(commandList, m_shadowShaders[shadowShaderIndex]);
-	if (m_gunMesh)
-	{
-		commandList->SetPipelineState(m_gunShadowShaders[shadowShaderIndex]->GetPipelineState().Get());
-		m_gunMesh->UpdateShaderVariable(commandList, this);
-		m_gunMesh->Render(commandList);
-	}
+	GameObject::Render(commandList, m_shadowShader);
+	//if (m_gunMesh)
+	//{
+	//	commandList->SetPipelineState(m_gunShadowShaders[0]->GetPipelineState().Get());
+	//	m_gunMesh->UpdateShaderVariable(commandList, this);
+	//	m_gunMesh->Render(commandList);
+	//}
 }
 
 void Player::Fire()
