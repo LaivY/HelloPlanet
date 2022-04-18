@@ -39,7 +39,8 @@ public:
 
 	// 이벤트 함수
 	void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, 
-				const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
+				const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+				const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
 	void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnKeyboardEvent(FLOAT deltaTime);
@@ -53,6 +54,7 @@ public:
 	void CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
 	void CreateLights() const;
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
@@ -62,6 +64,7 @@ public:
 	// 게임루프 함수
 	void Update(FLOAT deltaTime);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void Render2D(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
 	
 	// 업데이트 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
@@ -102,4 +105,6 @@ private:
 
 	unique_ptr<Camera>									m_uiCamera;		// UI 카메라
 	vector<unique_ptr<UIObject>>						m_uiObjects;	// UI 오브젝트
+
+	vector<unique_ptr<TextObject>>						m_textObjects;	// 텍스트 오브젝트
 };

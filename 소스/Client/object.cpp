@@ -358,3 +358,38 @@ void UIObject::SetHeight(FLOAT height)
 		break;
 	}
 }
+
+unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
+unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
+
+void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect)
+{
+	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	device->DrawText(
+		m_text.c_str(),
+		m_text.size() - 1,
+		s_formats[m_format].Get(),
+		&rect,
+		s_brushes[m_brush].Get()
+	);
+}
+
+void TextObject::SetBrush(const string& brush)
+{
+	m_brush = brush;
+}
+
+void TextObject::SetFormat(const string& format)
+{
+	m_format = format;
+}
+
+void TextObject::SetText(const wstring& text)
+{
+	m_text = text;
+}
+
+void TextObject::SetPosition(const XMFLOAT2& position)
+{
+	m_position = position;
+}

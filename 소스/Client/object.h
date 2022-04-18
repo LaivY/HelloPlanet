@@ -190,3 +190,25 @@ private:
 	FLOAT		m_width;
 	FLOAT		m_height;
 };
+
+class TextObject
+{
+public:
+	TextObject() = default;
+	~TextObject() = default;
+
+	void Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
+	void SetBrush(const string& brush);
+	void SetFormat(const string& format);
+	void SetText(const wstring& text);
+	void SetPosition(const XMFLOAT2& position);
+
+	static unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	s_brushes;
+	static unordered_map<string, ComPtr<IDWriteTextFormat>>		s_formats;
+
+private:
+	string		m_brush;
+	string		m_format;
+	wstring		m_text;
+	XMFLOAT2	m_position;
+};

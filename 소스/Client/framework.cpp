@@ -154,24 +154,7 @@ void GameFramework::LoadAssets()
 
 	// 씬 생성, 초기화
 	m_scene = make_unique<Scene>();
-	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature);
-
-	// Create D2D/DWrite objects for rendering text.
-	{
-		DX::ThrowIfFailed(m_d2dDeviceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &m_textBrush));
-		DX::ThrowIfFailed(m_dWriteFactory->CreateTextFormat(
-			L"Verdana",
-			NULL,
-			DWRITE_FONT_WEIGHT_NORMAL,
-			DWRITE_FONT_STYLE_NORMAL,
-			DWRITE_FONT_STRETCH_NORMAL,
-			50,
-			L"en-us",
-			&m_textFormat
-		));
-		DX::ThrowIfFailed(m_textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
-		DX::ThrowIfFailed(m_textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
-	}
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
 
 	// 명령 제출
 	m_commandList->Close();
@@ -468,15 +451,9 @@ void GameFramework::Render2D() const
 	// Render text directly to the back buffer.
 	m_d2dDeviceContext->SetTarget(m_d2dRenderTargets[m_frameIndex].Get());
 	m_d2dDeviceContext->BeginDraw();
-	m_d2dDeviceContext->SetTransform(D2D1::Matrix3x2F::Identity());
 
-	m_d2dDeviceContext->DrawText(
-		text,
-		_countof(text) - 1,
-		m_textFormat.Get(),
-		&textRect,
-		m_textBrush.Get()
-	);
+	if (m_scene) m_scene->Render2D(m_d2dDeviceContext, textRect);
+
 	DX::ThrowIfFailed(m_d2dDeviceContext->EndDraw());
 
 	// Release our wrapped render target resource. Releasing 

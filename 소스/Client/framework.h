@@ -83,8 +83,6 @@ private:
 	ComPtr<ID2D1DeviceContext2>			m_d2dDeviceContext;
 	ComPtr<ID3D11Resource>				m_wrappedBackBuffers[FrameCount];
 	ComPtr<ID2D1Bitmap1>				m_d2dRenderTargets[FrameCount];
-	ComPtr<ID2D1SolidColorBrush>		m_textBrush;
-	ComPtr<IDWriteTextFormat>			m_textFormat;
 
 	// Synchronization
 	ComPtr<ID3D12Fence>					m_fence;

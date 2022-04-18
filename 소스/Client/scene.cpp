@@ -14,7 +14,8 @@ Scene::~Scene()
 }
 
 void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
+				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+				   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	// 셰이더 변수 생성
 	CreateShaderVariable(device, commandList);
@@ -39,6 +40,9 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
+
+	// 텍스트 오브젝트 생성
+	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 
 	// 조명 생성
 	CreateLights();
@@ -379,6 +383,31 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	m_gameObjects.push_back(move(floor));
 }
 
+void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+{
+	// Create D2D/DWrite objects for rendering text.
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		L"Verdana",
+		NULL,
+		DWRITE_FONT_WEIGHT_NORMAL,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		50,
+		L"en-us",
+		&TextObject::s_formats["Verdana"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["Verdana"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
+	DX::ThrowIfFailed(TextObject::s_formats["Verdana"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+
+	auto text{ make_unique<TextObject>() };
+	text->SetText(TEXT("HELLO, 플래닛!"));
+	text->SetBrush("BLACK");
+	text->SetFormat("Verdana");
+	text->SetPosition(XMFLOAT2{ -100.0f, 0.0f });
+	m_textObjects.push_back(move(text));
+}
+
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
 {
 	ifstream map{ mapFile };
@@ -552,6 +581,12 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
 	}
+}
+
+void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect)
+{
+	for (const auto& t : m_textObjects)
+		t->Render(device, rect);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
