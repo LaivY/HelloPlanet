@@ -17,16 +17,14 @@ public:
 	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
 	void SetHp(INT hp);
-	void SetTarget(UCHAR id);
+	void SetTargetId(UCHAR id);
 
 	MonsterData GetData() const;
 	DirectX::XMFLOAT3 GetPosition() const;
 	DirectX::BoundingOrientedBox GetBoundingBox() const;
 	INT GetHp() const;
 	CHAR GetId() const;
-	UCHAR GetTarget() const;
-
-
+	UCHAR GetTargetId() const;
 
 private:
 	// 클라이언트로 보낼 데이터들

@@ -227,8 +227,8 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		}
 		case CS_PACKET_BULLET_FIRE:
 		{
-			// pos, dir
-			char subBuf[12 + 12];
+			// pos, dir, playerId
+			char subBuf[12 + 12 + 1];
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
@@ -237,6 +237,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			packet.type = SC_PACKET_BULLET_FIRE;
 			memcpy(&packet.data.pos, &subBuf[0], sizeof(packet.data.pos));
 			memcpy(&packet.data.dir, &subBuf[12], sizeof(packet.data.dir));
+			memcpy(&packet.data.playerId, &subBuf[24], sizeof(packet.data.playerId));
 
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };
@@ -248,10 +249,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			{
 				if(c.data.isActive == false) continue;
 				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-				if (retVal == SOCKET_ERROR) {
-					errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
-					std::cout << c.data.id << std::endl;;
-				}
+				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
 			}
 
 			// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
@@ -291,7 +289,7 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
 		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, -400.0f });
-		m.SetTarget(DetectPlayer(m.GetPosition()));
+		m.SetTargetId(DetectPlayer(m.GetPosition()));
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
@@ -313,12 +311,6 @@ UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos)
 			index = cl.data.id;
 		}
 	}
-	return index;
-}
-int Aggro()
-{
-	int index{ 0 };
-
 	return index;
 }
 

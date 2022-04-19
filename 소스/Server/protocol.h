@@ -59,8 +59,9 @@ struct PlayerData
 
 struct BulletData
 {
-	DirectX::XMFLOAT3 pos; // 위치
-	DirectX::XMFLOAT3 dir; // 방향
+	DirectX::XMFLOAT3 pos;		// 위치
+	DirectX::XMFLOAT3 dir;		// 방향
+	CHAR			  playerId; // 쏜 사람
 };
 
 struct MonsterData

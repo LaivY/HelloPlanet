@@ -6,13 +6,15 @@ using namespace DirectX;
 constexpr float MOB_SPEED{ 50.0f };			// 1초당 움직일 거리
 constexpr float HIT_PERIOD{ 0.7f };			// 맞으면 넉백당하는 시간
 
-Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_hp{}
+Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_hp{}, m_target{}
 {
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
 void Monster::OnHit(const BulletData& bullet)
 {
+	// 총알의 주인을 타겟으로 한다
+	SetTargetId(bullet.playerId);
 	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
 	SetHp(m_hp - 40);
 	if (m_hp <= 0)
@@ -26,7 +28,7 @@ void Monster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
 
-	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[static_cast<INT>(m_target)].data.pos) };
+	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[GetTargetId()].data.pos) };
 	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };
 	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) }; // 몬스터 -> 플레이어 방향 벡터
 
@@ -127,7 +129,7 @@ void Monster::SetHp(INT hp)
 	m_hp = hp;
 }
 
-void Monster::SetTarget(UCHAR id)
+void Monster::SetTargetId(UCHAR id)
 {
 	m_target = id;
 }
@@ -159,7 +161,7 @@ CHAR Monster::GetId() const
 	return m_id;
 }
 
-UCHAR Monster::GetTarget() const
+UCHAR Monster::GetTargetId() const
 {
 	return m_target;
 }

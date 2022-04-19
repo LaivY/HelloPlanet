@@ -972,15 +972,17 @@ void Scene::RecvUpdateMonster()
 
 void Scene::RecvBulletFire()
 {
-	// pos, dir
-	char subBuf[12 + 12]{};
+	// pos, dir, char
+	char subBuf[12 + 12 + 1]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
 	XMFLOAT3 pos{}, dir{};
+	char id{};
 	memcpy(&pos, &subBuf[0], sizeof(pos));
 	memcpy(&dir, &subBuf[12], sizeof(dir));
+	memcpy(&id, &subBuf[24], sizeof(id));
 
 	auto bullet{ make_unique<Bullet>(dir) };
 	bullet->SetMesh(m_meshes["BULLET"]);
