@@ -179,9 +179,11 @@ public:
 	UIObject(FLOAT width, FLOAT height);
 	~UIObject() = default;
 
+	void Update(FLOAT) { }
+
 	void SetPosition(const XMFLOAT3& position);
 	void SetPosition(FLOAT x, FLOAT y);
-	void SetPivot(ePivot pivot) { m_pivot = pivot; }
+	void SetPivot(const ePivot& pivot) { m_pivot = pivot; }
 	void SetWidth(FLOAT width);
 	void SetHeight(FLOAT height);
 

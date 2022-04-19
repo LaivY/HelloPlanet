@@ -287,6 +287,14 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["CROSSHAIR"] = make_shared<Texture>();
 	m_textures["CROSSHAIR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/crosshair.dds"), Utile::RESOURCE));
 	m_textures["CROSSHAIR"]->CreateTexture(device);
+
+	m_textures["HPBARBASE"] = make_shared<Texture>();
+	m_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds"), Utile::RESOURCE));
+	m_textures["HPBARBASE"]->CreateTexture(device);
+
+	m_textures["HPBAR"] = make_shared<Texture>();
+	m_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds"), Utile::RESOURCE));
+	m_textures["HPBAR"]->CreateTexture(device);
 }
 
 void Scene::CreateLights() const
@@ -309,6 +317,13 @@ void Scene::CreateLights() const
 
 void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// UI 카메라 생성
+	XMFLOAT4X4 projMatrix{};
+	m_uiCamera = make_unique<Camera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
+	m_uiCamera->SetProjMatrix(projMatrix);
+
 	// 조준점
 	auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
 	crossHair->SetMesh(m_meshes["UI"]);
@@ -316,14 +331,23 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	crossHair->SetTexture(m_textures["CROSSHAIR"]);
 	m_uiObjects.push_back(move(crossHair));
 
+	// 체력바 베이스
+	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
+	hpBarBase->SetMesh(m_meshes["UI"]);
+	hpBarBase->SetShader(m_shaders["UI"]);
+	hpBarBase->SetTexture(m_textures["HPBARBASE"]);
+	hpBarBase->SetPivot(ePivot::LEFTBOT);
+	hpBarBase->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	m_uiObjects.push_back(move(hpBarBase));
+
 	// 체력바
-	//auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
-	//hpBar->SetMesh(m_meshes["HPBAR"]);
-	//hpBar->SetShader(m_shaders["UI"]);
-	//hpBar->SetPivot(eUIPivot::LEFTBOT);
-	//hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
-	//				   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
-	//m_uiObjects.push_back(move(hpBar));
+	auto hpBar{ make_unique<UIObject>(100.0f, 30.0f) };
+	hpBar->SetMesh(m_meshes["UI"]);
+	hpBar->SetShader(m_shaders["UI"]);
+	hpBar->SetTexture(m_textures["HPBAR"]);
+	hpBar->SetPivot(ePivot::LEFTBOT);
+	hpBar->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	m_uiObjects.push_back(move(hpBar));
 }
 
 void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -342,12 +366,6 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
-
-	// UI 카메라 생성
-	m_uiCamera = make_unique<Camera>();
-	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 바운딩박스
 	SharedBoundingBox bbPlayer{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
@@ -389,7 +407,8 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 {
 	// Create D2D/DWrite objects for rendering text.
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &TextObject::s_brushes["RED"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.8f), &TextObject::s_brushes["LIGHTBLUE"]));
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 		TEXT("나눔바른고딕OTF"),
 		NULL,
