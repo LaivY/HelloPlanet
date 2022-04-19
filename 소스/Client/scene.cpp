@@ -340,11 +340,18 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 조준점
-	auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
-	crossHair->SetMesh(m_meshes["UI"]);
-	crossHair->SetShader(m_shaders["UI"]);
-	crossHair->SetTexture(m_textures["CROSSHAIR"]);
-	m_uiObjects.push_back(move(crossHair));
+	//auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
+	//crossHair->SetMesh(m_meshes["UI"]);
+	//crossHair->SetShader(m_shaders["UI"]);
+	//crossHair->SetTexture(m_textures["CROSSHAIR"]);
+	//m_uiObjects.push_back(move(crossHair));
+
+	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
+	crosshair->SetMesh(m_meshes["UI"]);
+	crosshair->SetShader(m_shaders["UI"]);
+	crosshair->SetTexture(m_textures["HPBAR"]);
+	crosshair->SetPlayer(m_player);
+	m_uiObjects.push_back(move(crosshair));
 
 	// 체력바 베이스
 	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
@@ -845,39 +852,6 @@ void Scene::UpdateShadowMatrix()
 		m_cbSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
-}
-
-void Scene::CreateBullet()
-{
-	// 총알 시작 좌표
-	XMFLOAT3 start{ m_camera->GetEye() };
-	start = Vector3::Add(start, m_player->GetRight());
-	start = Vector3::Add(start, Vector3::Mul(m_player->GetUp(), -0.5f));
-
-	// 화면 정중앙 엄청 멀리
-	XMFLOAT3 _far{ m_camera->GetEye() };
-	_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
-
-	// 총 -> 화면 정중앙 멀리
-	XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
-	target = Vector3::Normalize(target);
-
-	// 총구에서 나오도록
-	start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
-
-	// 총알 생성
-	unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
-	bullet->SetMesh(m_meshes["BULLET"]);
-	bullet->SetShader(m_shaders["DEFAULT"]);
-	bullet->SetPosition(start);
-	m_gameObjects.push_back(move(bullet));
-
-	// 총알 발사 정보 서버로 송신
-	cs_packet_bullet_fire packet{};
-	packet.size = sizeof(packet);
-	packet.type = CS_PACKET_BULLET_FIRE;
-	packet.data = { start, target };
-	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Scene::ProcessClient(LPVOID arg)

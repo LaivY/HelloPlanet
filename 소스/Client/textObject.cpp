@@ -171,9 +171,7 @@ void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 
 	// 플레이어의 체력을 표시한다.
 	// 포멧은 우측 하단 정렬이고, 현재 체력을 표시하고 그 오른쪽에 전체 체력을 표시한다.
-	
 	wstring hpText{ to_wstring(m_hp) };
-
 	m_text = hpText;
 	m_format = "HP";
 	CalcWidthHeight();
@@ -196,31 +194,6 @@ void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth + slashTextWidth, m_position.y));
 	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXHP"].Get(), &m_rect, s_brushes["BLACK"].Get());
-
-	//wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
-	//device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	//device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
-
-	//m_text = maxHpText;
-	//m_format = "MAXBULLETCOUNT";
-	//CalcWidthHeight();
-	//float maxHpTextWidth{ m_width };
-
-	//wstring slash{ TEXT("/") };
-	//device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth, m_position.y));
-	//device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLUE"].Get());
-
-	//m_text = slash;
-	//m_format = "MAXBULLETCOUNT";
-	//CalcWidthHeight();
-	//float slashTextWidth{ m_width };
-
-	//// 현재 총알 텍스트 애니메이션
-	//m_text = to_wstring(m_hp);
-	//D2D1::Matrix3x2F matrix{};
-	//matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth - slashTextWidth, m_position.y));
-	//device->SetTransform(matrix);
-	//device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["BULLETCOUNT"].Get(), &m_rect, m_hp == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
 }
 
 void HPTextObject::Update(FLOAT deltaTime)

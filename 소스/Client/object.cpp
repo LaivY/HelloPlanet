@@ -36,7 +36,7 @@ void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	if (!m_mesh || (!m_shader && !shader)) return;
+	//if (!m_mesh || (!m_shader && !shader)) return;
 
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);

@@ -74,9 +74,6 @@ public:
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
 
-	// 게임플레이 관련 함수
-	void CreateBullet();
-
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);
 	void RecvPacket();
