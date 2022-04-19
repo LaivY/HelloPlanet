@@ -4,6 +4,8 @@
 #include "object.h"
 #include "player.h"
 #include "shadow.h"
+#include "textObject.h"
+#include "uiObject.h"
 
 struct Light
 {
@@ -71,9 +73,6 @@ public:
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
-
-	// 게임플레이 관련 함수
-	void CreateBullet();
 
 	// 서버 통신 함수
 	/*virtual*/ void ProcessClient(LPVOID arg);

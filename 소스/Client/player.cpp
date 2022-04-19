@@ -3,7 +3,7 @@
 
 Player::Player(BOOL isMultiPlayer) : 
 	GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	m_boundingBoxes.push_back(bb);
@@ -502,13 +502,16 @@ void Player::SetGunType(eGunType gunType)
 	switch (gunType)
 	{
 	case eGunType::AR:
+		m_hp = m_maxHp = 150;
 		m_shotSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		break;
 	case eGunType::SG:
+		m_hp = m_maxHp = 175;
 		m_shotSpeed = 0.8f;
 		break;
 	case eGunType::MG:
+		m_hp = m_maxHp = 200;
 		m_shotSpeed = 0.1f;
 		break;
 	}
@@ -607,6 +610,21 @@ void Player::ApplyServerData(const PlayerData& playerData)
 void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 {
 	m_gunShadowShader = shadowShader;
+}
+
+INT Player::GetId() const
+{
+	return m_id;
+}
+
+INT Player::GetHp() const
+{
+	return m_hp;
+}
+
+INT Player::GetMaxHp() const
+{
+	return m_maxHp;
 }
 
 INT Player::GetBulletCount() const

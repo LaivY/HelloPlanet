@@ -35,11 +35,11 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	// 블러 필터 생성
 	//m_blurFilter = make_unique<BlurFilter>(device);
 
-	// UI 오브젝트 생성
-	CreateUIObjects(device, commandList);
-
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
+
+	// UI 오브젝트 생성
+	CreateUIObjects(device, commandList);
 
 	// 텍스트 오브젝트 생성
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
@@ -126,9 +126,24 @@ void Scene::OnKeyboardEvent(FLOAT deltaTime)
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
-	if (wParam == VK_ESCAPE)
+	switch (message)
 	{
-		PostMessage(hWnd, WM_QUIT, 0, 0);
+	case WM_KEYDOWN:
+		switch (wParam)
+		{
+		case VK_F1:
+			if (m_player)
+				m_player->SetHp(m_player->GetHp() - 10);
+			break;
+		case VK_F2:
+			if (m_player)
+				m_player->SetHp(m_player->GetHp() + 5);
+			break;
+		case VK_ESCAPE:
+			PostMessage(hWnd, WM_QUIT, 0, 0);
+			break;
+		}
+		break;
 	}
 }
 
@@ -196,7 +211,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	// 게임오브젝트 관련 로딩
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
 	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
@@ -325,11 +340,18 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 조준점
-	auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
-	crossHair->SetMesh(m_meshes["UI"]);
-	crossHair->SetShader(m_shaders["UI"]);
-	crossHair->SetTexture(m_textures["CROSSHAIR"]);
-	m_uiObjects.push_back(move(crossHair));
+	//auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
+	//crossHair->SetMesh(m_meshes["UI"]);
+	//crossHair->SetShader(m_shaders["UI"]);
+	//crossHair->SetTexture(m_textures["CROSSHAIR"]);
+	//m_uiObjects.push_back(move(crossHair));
+
+	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
+	crosshair->SetMesh(m_meshes["UI"]);
+	crosshair->SetShader(m_shaders["UI"]);
+	crosshair->SetTexture(m_textures["HPBAR"]);
+	crosshair->SetPlayer(m_player);
+	m_uiObjects.push_back(move(crosshair));
 
 	// 체력바 베이스
 	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
@@ -341,12 +363,13 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	m_uiObjects.push_back(move(hpBarBase));
 
 	// 체력바
-	auto hpBar{ make_unique<UIObject>(100.0f, 30.0f) };
+	auto hpBar{ make_unique<HpUIObject>(200.0f, 30.0f) };
 	hpBar->SetMesh(m_meshes["UI"]);
 	hpBar->SetShader(m_shaders["UI"]);
 	hpBar->SetTexture(m_textures["HPBAR"]);
 	hpBar->SetPivot(ePivot::LEFTBOT);
 	hpBar->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	hpBar->SetPlayer(m_player);
 	m_uiObjects.push_back(move(hpBar));
 }
 
@@ -408,10 +431,10 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	// Create D2D/DWrite objects for rendering text.
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.8f), &TextObject::s_brushes["LIGHTBLUE"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue, 0.8f), &TextObject::s_brushes["BLUE"]));
+
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
+		TEXT("나눔바른고딕OTF"), NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
@@ -435,10 +458,40 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
-	auto text{ make_unique<BulletTextObject>() };
-	text->SetPlayer(m_player);
-	text->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
-	m_textObjects.push_back(move(text));
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"), NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["HP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXHP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	auto bulletText{ make_unique<BulletTextObject>() };
+	bulletText->SetPlayer(m_player);
+	bulletText->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
+	m_textObjects.push_back(move(bulletText));
+
+	auto hpText{ make_unique<HPTextObject>() };
+	hpText->SetPlayer(m_player);
+	hpText->SetPosition(XMFLOAT2{ 50.0f, Setting::SCREEN_HEIGHT - 115.0f });
+	m_textObjects.push_back(move(hpText));
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -643,7 +696,7 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	// 셰이더에 묶기
 	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle(0));
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
@@ -799,39 +852,6 @@ void Scene::UpdateShadowMatrix()
 		m_cbSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
-}
-
-void Scene::CreateBullet()
-{
-	// 총알 시작 좌표
-	XMFLOAT3 start{ m_camera->GetEye() };
-	start = Vector3::Add(start, m_player->GetRight());
-	start = Vector3::Add(start, Vector3::Mul(m_player->GetUp(), -0.5f));
-
-	// 화면 정중앙 엄청 멀리
-	XMFLOAT3 _far{ m_camera->GetEye() };
-	_far = Vector3::Add(_far, Vector3::Mul(m_camera->GetAt(), 1000.0f));
-
-	// 총 -> 화면 정중앙 멀리
-	XMFLOAT3 target{ Vector3::Sub(_far, m_camera->GetEye()) };
-	target = Vector3::Normalize(target);
-
-	// 총구에서 나오도록
-	start = Vector3::Add(start, Vector3::Mul(target, 8.0f));
-
-	// 총알 생성
-	unique_ptr<Bullet> bullet{ make_unique<Bullet>(target) };
-	bullet->SetMesh(m_meshes["BULLET"]);
-	bullet->SetShader(m_shaders["DEFAULT"]);
-	bullet->SetPosition(start);
-	m_gameObjects.push_back(move(bullet));
-
-	// 총알 발사 정보 서버로 송신
-	cs_packet_bullet_fire packet{};
-	packet.size = sizeof(packet);
-	packet.type = CS_PACKET_BULLET_FIRE;
-	packet.data = { start, target };
-	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 }
 
 void Scene::ProcessClient(LPVOID arg)
