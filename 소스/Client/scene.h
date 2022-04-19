@@ -4,6 +4,8 @@
 #include "object.h"
 #include "player.h"
 #include "shadow.h"
+#include "textObject.h"
+#include "uiObject.h"
 
 struct Light
 {

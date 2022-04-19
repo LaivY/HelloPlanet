@@ -33,6 +33,7 @@ public:
 	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
+	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
 	void SetGunType(eGunType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }

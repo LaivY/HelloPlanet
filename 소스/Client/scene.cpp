@@ -35,11 +35,11 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	// 블러 필터 생성
 	//m_blurFilter = make_unique<BlurFilter>(device);
 
-	// UI 오브젝트 생성
-	CreateUIObjects(device, commandList);
-
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
+
+	// UI 오브젝트 생성
+	CreateUIObjects(device, commandList);
 
 	// 텍스트 오브젝트 생성
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
@@ -126,9 +126,24 @@ void Scene::OnKeyboardEvent(FLOAT deltaTime)
 void Scene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
-	if (wParam == VK_ESCAPE)
+	switch (message)
 	{
-		PostMessage(hWnd, WM_QUIT, 0, 0);
+	case WM_KEYDOWN:
+		switch (wParam)
+		{
+		case VK_F1:
+			if (m_player)
+				m_player->SetHp(m_player->GetHp() - 10);
+			break;
+		case VK_F2:
+			if (m_player)
+				m_player->SetHp(m_player->GetHp() + 5);
+			break;
+		case VK_ESCAPE:
+			PostMessage(hWnd, WM_QUIT, 0, 0);
+			break;
+		}
+		break;
 	}
 }
 
@@ -341,12 +356,13 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	m_uiObjects.push_back(move(hpBarBase));
 
 	// 체력바
-	auto hpBar{ make_unique<UIObject>(100.0f, 30.0f) };
+	auto hpBar{ make_unique<HpUIObject>(200.0f, 30.0f) };
 	hpBar->SetMesh(m_meshes["UI"]);
 	hpBar->SetShader(m_shaders["UI"]);
 	hpBar->SetTexture(m_textures["HPBAR"]);
 	hpBar->SetPivot(ePivot::LEFTBOT);
 	hpBar->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	hpBar->SetPlayer(m_player);
 	m_uiObjects.push_back(move(hpBar));
 }
 
