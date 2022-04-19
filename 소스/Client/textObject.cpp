@@ -1,4 +1,4 @@
-#include "textObject.h"
+ï»¿#include "textObject.h"
 #include "framework.h"
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
@@ -99,8 +99,8 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	if (!m_player) return;
 
-	// ÇÃ·¹ÀÌ¾îÀÇ ÃÑ¾Ë ¼ö¸¦ Ç¥½ÃÇÑ´Ù.
-	// Æ÷¸äÀº ÁÂÃø ÇÏ´Ü Á¤·ÄÀÌ°í, ÀüÃ¼ ÃÑ¾Ë ¼ö¸¦ Ç¥½ÃÇÑ ÈÄ ±× ¿ŞÂÊ¿¡ ÇöÀç ÃÑ¾Ë ¼ö¸¦ ±×¸°´Ù.
+	// í”Œë ˆì´ì–´ì˜ ì´ì•Œ ìˆ˜ë¥¼ í‘œì‹œí•œë‹¤.
+	// í¬ë©§ì€ ì¢Œì¸¡ í•˜ë‹¨ ì •ë ¬ì´ê³ , ì „ì²´ ì´ì•Œ ìˆ˜ë¥¼ í‘œì‹œí•œ í›„ ê·¸ ì™¼ìª½ì— í˜„ì¬ ì´ì•Œ ìˆ˜ë¥¼ ê·¸ë¦°ë‹¤.
 	wstring maxBulletCount{ to_wstring(m_player->GetMaxBulletCount()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
@@ -119,7 +119,7 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
-	// ÇöÀç ÃÑ¾Ë ÅØ½ºÆ® ¾Ö´Ï¸ŞÀÌ¼Ç
+	// í˜„ì¬ ì´ì•Œ í…ìŠ¤íŠ¸ ì• ë‹ˆë©”ì´ì…˜
 	m_text = to_wstring(m_bulletCount);
 	D2D1::Matrix3x2F matrix{};
 	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxBulletTextWidth - slashTextWidth, m_position.y));
@@ -138,14 +138,14 @@ void BulletTextObject::Update(FLOAT deltaTime)
 		m_scaleTimer = 0.0f;
 	}
 
-	// ÃÑ¾Ë ¼ö º¯ÇÔ¿¡ µû¶ó »ç°¢Çü ¹üÀ§ Àç°è»ê
+	// ì´ì•Œ ìˆ˜ ë³€í•¨ì— ë”°ë¼ ì‚¬ê°í˜• ë²”ìœ„ ì¬ê³„ì‚°
 	m_text = to_wstring(bulletCount);
 	m_format = "BULLETCOUNT";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
 
-	// ½ºÄÉÀÏ
+	// ìŠ¤ì¼€ì¼
 	constexpr float duration{ 0.1f };
 	float angle{ 30.0f + 150.0f * (m_scaleTimer / duration) };
 	m_scale = 1.0f + sinf(XMConvertToRadians(angle)) * 0.2f;
@@ -169,32 +169,58 @@ void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	if (!m_player) return;
 
-	// ÇÃ·¹ÀÌ¾îÀÇ ÃÑ¾Ë ¼ö¸¦ Ç¥½ÃÇÑ´Ù.
-	// Æ÷¸äÀº ÁÂÃø ÇÏ´Ü Á¤·ÄÀÌ°í, ÀüÃ¼ ÃÑ¾Ë ¼ö¸¦ Ç¥½ÃÇÑ ÈÄ ±× ¿ŞÂÊ¿¡ ÇöÀç ÃÑ¾Ë ¼ö¸¦ ±×¸°´Ù.
-	wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
-	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	// í”Œë ˆì´ì–´ì˜ ì²´ë ¥ì„ í‘œì‹œí•œë‹¤.
+	// í¬ë©§ì€ ìš°ì¸¡ í•˜ë‹¨ ì •ë ¬ì´ê³ , í˜„ì¬ ì²´ë ¥ì„ í‘œì‹œí•˜ê³  ê·¸ ì˜¤ë¥¸ìª½ì— ì „ì²´ ì²´ë ¥ì„ í‘œì‹œí•œë‹¤.
+	
+	wstring hpText{ to_wstring(m_hp) };
 
-	m_text = maxHpText;
-	m_format = "MAXBULLETCOUNT";
+	m_text = hpText;
+	m_format = "HP";
 	CalcWidthHeight();
-	float maxHpTextWidth{ m_width };
+	float hpTextWidth{ m_width };
+
+	D2D1::Matrix3x2F matrix{};
+	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { hpTextWidth, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	device->SetTransform(matrix);
+	device->DrawText(hpText.c_str(), static_cast<UINT32>(hpText.size()), s_formats["HP"].Get(), &m_rect, s_brushes["BLACK"].Get());
 
 	wstring slash{ TEXT("/") };
-	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth, m_position.y));
-	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLUE"].Get());
+	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth, m_position.y));
+	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXHP"].Get(), &m_rect, s_brushes["BLUE"].Get());
 
 	m_text = slash;
-	m_format = "MAXBULLETCOUNT";
+	m_format = "MAXHP";
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
-	// ÇöÀç ÃÑ¾Ë ÅØ½ºÆ® ¾Ö´Ï¸ŞÀÌ¼Ç
-	m_text = to_wstring(m_hp);
-	D2D1::Matrix3x2F matrix{};
-	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth - slashTextWidth, m_position.y));
-	device->SetTransform(matrix);
-	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["BULLETCOUNT"].Get(), &m_rect, m_hp == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
+	wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
+	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth + slashTextWidth, m_position.y));
+	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXHP"].Get(), &m_rect, s_brushes["BLACK"].Get());
+
+	//wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
+	//device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	//device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+
+	//m_text = maxHpText;
+	//m_format = "MAXBULLETCOUNT";
+	//CalcWidthHeight();
+	//float maxHpTextWidth{ m_width };
+
+	//wstring slash{ TEXT("/") };
+	//device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth, m_position.y));
+	//device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLUE"].Get());
+
+	//m_text = slash;
+	//m_format = "MAXBULLETCOUNT";
+	//CalcWidthHeight();
+	//float slashTextWidth{ m_width };
+
+	//// í˜„ì¬ ì´ì•Œ í…ìŠ¤íŠ¸ ì• ë‹ˆë©”ì´ì…˜
+	//m_text = to_wstring(m_hp);
+	//D2D1::Matrix3x2F matrix{};
+	//matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxHpTextWidth - slashTextWidth, m_position.y));
+	//device->SetTransform(matrix);
+	//device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["BULLETCOUNT"].Get(), &m_rect, m_hp == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
 }
 
 void HPTextObject::Update(FLOAT deltaTime)
@@ -208,14 +234,14 @@ void HPTextObject::Update(FLOAT deltaTime)
 		m_scaleTimer = 0.0f;
 	}
 
-	// Ã¼·Â ¼öÄ¡°¡ º¯ÇÔ¿¡ µû¶ó »ç°¢Çü ¹üÀ§ Àç°è»ê
+	// ì²´ë ¥ ìˆ˜ì¹˜ê°€ ë³€í•¨ì— ë”°ë¼ ì‚¬ê°í˜• ë²”ìœ„ ì¬ê³„ì‚°
 	m_text = to_wstring(hp);
 	m_format = "BULLETCOUNT";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
 
-	// ½ºÄÉÀÏ
+	// ìŠ¤ì¼€ì¼
 	constexpr float duration{ 0.1f };
 	float angle{ 30.0f + 150.0f * (m_scaleTimer / duration) };
 	m_scale = 1.0f + sinf(XMConvertToRadians(angle)) * 0.2f;

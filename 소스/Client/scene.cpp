@@ -211,7 +211,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
 
 	// 게임오브젝트 관련 로딩
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
+	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
 	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
@@ -425,9 +425,9 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue, 0.8f), &TextObject::s_brushes["BLUE"]));
+
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
+		TEXT("나눔바른고딕OTF"), NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
@@ -451,6 +451,31 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"), NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["HP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXHP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
 	auto bulletText{ make_unique<BulletTextObject>() };
 	bulletText->SetPlayer(m_player);
 	bulletText->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
@@ -458,7 +483,7 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 
 	auto hpText{ make_unique<HPTextObject>() };
 	hpText->SetPlayer(m_player);
-	hpText->SetPosition(XMFLOAT2{ 60.0f, Setting::SCREEN_HEIGHT - 115.0f });
+	hpText->SetPosition(XMFLOAT2{ 50.0f, Setting::SCREEN_HEIGHT - 115.0f });
 	m_textObjects.push_back(move(hpText));
 }
 
@@ -664,7 +689,7 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	// 셰이더에 묶기
 	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle(0));
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));

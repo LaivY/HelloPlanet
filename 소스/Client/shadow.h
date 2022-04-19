@@ -16,10 +16,8 @@ public:
 
 	UINT GetCount() const { return m_count; }
 	ComPtr<ID3D12DescriptorHeap> GetSrvHeap() const;
-	CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuSrvHandle(INT index) const;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE GetGpuSrvHandle(INT index) const;
+	CD3DX12_GPU_DESCRIPTOR_HANDLE GetGpuSrvHandle() const;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE GetCpuDsvHandle() const;
-	//ComPtr<ID3D12Resource> GetShadowMap(INT index) const;
 	ComPtr<ID3D12Resource> GetShadowMap() const;
 
 private:
@@ -30,13 +28,10 @@ private:
 	UINT							m_height;
 	INT								m_count;
 
+	ComPtr<ID3D12Resource>			m_shadowMap;
 	ComPtr<ID3D12DescriptorHeap>	m_srvHeap;
 	ComPtr<ID3D12DescriptorHeap>	m_dsvHeap;
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	m_cpuSrvHandle;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE	m_gpuSrvHandle;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	m_cpuDsvHandle;
-
-	//vector<ComPtr<ID3D12Resource>>	m_shadowMaps;
-	ComPtr<ID3D12Resource>			m_shadowMap;
 };

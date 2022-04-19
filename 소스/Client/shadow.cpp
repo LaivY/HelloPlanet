@@ -50,18 +50,12 @@ void ShadowMap::CreateSrvDsv(const ComPtr<ID3D12Device>& device)
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-	//srvDesc.Texture2D.MostDetailedMip = 0;
-	//srvDesc.Texture2D.MipLevels = 1;
-	//srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	//srvDesc.Texture2D.PlaneSlice = 0;
-
 	srvDesc.Texture2DArray.MostDetailedMip = 0;
 	srvDesc.Texture2DArray.MipLevels = 1;
 	srvDesc.Texture2DArray.FirstArraySlice = 0;
 	srvDesc.Texture2DArray.ArraySize = m_count;
 	srvDesc.Texture2DArray.PlaneSlice = 0;
 	srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
-
 	device->CreateShaderResourceView(m_shadowMap.Get(), &srvDesc, srvDescriptorHandle);
 
 	// Create DSV to resource so we can render to the shadow map.
@@ -81,16 +75,9 @@ ComPtr<ID3D12DescriptorHeap> ShadowMap::GetSrvHeap() const
 	return m_srvHeap;
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE ShadowMap::GetCpuSrvHandle(INT index) const
+CD3DX12_GPU_DESCRIPTOR_HANDLE ShadowMap::GetGpuSrvHandle() const
 {
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuSrvHandle{ m_cpuSrvHandle };
-	return cpuSrvHandle.Offset(g_cbvSrvDescriptorIncrementSize * index);
-}
-
-CD3DX12_GPU_DESCRIPTOR_HANDLE ShadowMap::GetGpuSrvHandle(INT index) const
-{
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuSrvHandle{ m_gpuSrvHandle };
-	return gpuSrvHandle.Offset(g_cbvSrvDescriptorIncrementSize * index);
+	return m_gpuSrvHandle;
 }
 
 CD3DX12_CPU_DESCRIPTOR_HANDLE ShadowMap::GetCpuDsvHandle() const
@@ -102,8 +89,3 @@ ComPtr<ID3D12Resource> ShadowMap::GetShadowMap() const
 {
 	return m_shadowMap;
 }
-
-//ComPtr<ID3D12Resource> ShadowMap::GetShadowMap(INT index) const
-//{
-//	return m_shadowMaps[index];
-//}

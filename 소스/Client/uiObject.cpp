@@ -1,4 +1,4 @@
-#include "uiObject.h"
+ï»¿#include "uiObject.h"
 
 UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }
 {
@@ -94,7 +94,7 @@ void UIObject::SetHeight(FLOAT height)
 
 HpUIObject::HpUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_hp{ -1 }, m_maxHp{}, m_deltaHp{}, m_originWidth{ width }, m_timerState{ FALSE }, m_timer{}
 {
-	// Ã¼·ÂÀÌ ´Ş¸é Å¸ÀÌ¸Ó¸¦ ÀÌ¿ëÇØ Á¶±İ¾¿ ´Ş°ÔÇÏ´Â ¾Ö´Ï¸ŞÀÌ¼ÇÀ» º¸¿©ÁØ´Ù.
+	// ì²´ë ¥ì´ ë‹¬ë©´ íƒ€ì´ë¨¸ë¥¼ ì´ìš©í•´ ì¡°ê¸ˆì”© ë‹¬ê²Œí•˜ëŠ” ì• ë‹ˆë©”ì´ì…˜ì„ ë³´ì—¬ì¤€ë‹¤.
 }
 
 void HpUIObject::Update(FLOAT deltaTime)
@@ -108,8 +108,16 @@ void HpUIObject::Update(FLOAT deltaTime)
 	}
 
 	constexpr float decreseSpeed{ 50.0f };
-	m_deltaHp = max(0.0f, m_deltaHp - decreseSpeed * deltaTime);
-	SetWidth(m_originWidth * static_cast<float>(m_hp + m_deltaHp) / static_cast<float>(m_maxHp));
+	if (m_deltaHp > 0.0f)
+	{
+		m_deltaHp = max(0.0f, m_deltaHp - decreseSpeed * deltaTime);
+		SetWidth(m_originWidth * static_cast<float>(m_hp + m_deltaHp) / static_cast<float>(m_maxHp));
+	}
+	else
+	{
+		m_deltaHp = min(0.0f, m_deltaHp + decreseSpeed * deltaTime);
+		SetWidth(m_originWidth * static_cast<float>(m_hp + m_deltaHp) / static_cast<float>(m_maxHp));
+	}
 }
 
 void HpUIObject::SetPlayer(const shared_ptr<Player>& player)
