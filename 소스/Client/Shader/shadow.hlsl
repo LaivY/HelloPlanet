@@ -1,125 +1,56 @@
 #include "common.hlsl"
 
-PS_INPUT VS_MODEL_S(VS_INPUT input)
+struct GS_INPUT
 {
-    PS_INPUT output;
-    output.positionW = mul(mul(input.position, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[0]), g_shadowLight.lightProjMatrix[0]);
-    return output;
-}
+    float4 positionW : SV_POSITION;
+};
 
-PS_INPUT VS_MODEL_M(VS_INPUT input)
+struct GS_OUTPUT
 {
-    PS_INPUT output;
-    output.positionW = mul(mul(input.position, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[1]), g_shadowLight.lightProjMatrix[1]);
-    return output;
-}
+    float4 positionH : SV_POSITION;
+    uint RTIndex : SV_RenderTargetArrayIndex;
+};
 
-PS_INPUT VS_MODEL_L(VS_INPUT input)
+GS_INPUT VS_ANIMATION(VS_INPUT input)
 {
-    PS_INPUT output;
-    output.positionW = mul(mul(input.position, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[2]), g_shadowLight.lightProjMatrix[2]);
-    return output;
-}
-
-PS_INPUT VS_MODEL_ALL(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.positionW = mul(mul(input.position, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[3]), g_shadowLight.lightProjMatrix[3]);
-    return output;
-}
-
-PS_INPUT VS_LINK_S(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.positionW = mul(input.position, g_meshTransformMatrix);
-    output.positionW = mul(output.positionW, g_boneTransformMatrix[input.boneIndex[0]]);
-    output.positionW = mul(output.positionW, g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[0]), g_shadowLight.lightProjMatrix[0]);
-    return output;
-}
-
-PS_INPUT VS_LINK_M(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.positionW = mul(input.position, g_meshTransformMatrix);
-    output.positionW = mul(output.positionW, g_boneTransformMatrix[input.boneIndex[0]]);
-    output.positionW = mul(output.positionW, g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[1]), g_shadowLight.lightProjMatrix[1]);
-    return output;
-}
-
-PS_INPUT VS_LINK_L(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.positionW = mul(input.position, g_meshTransformMatrix);
-    output.positionW = mul(output.positionW, g_boneTransformMatrix[input.boneIndex[0]]);
-    output.positionW = mul(output.positionW, g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[2]), g_shadowLight.lightProjMatrix[2]);
-    return output;
-}
-
-PS_INPUT VS_LINK_ALL(VS_INPUT input)
-{
-    PS_INPUT output;
-    output.positionW = mul(input.position, g_meshTransformMatrix);
-    output.positionW = mul(output.positionW, g_boneTransformMatrix[input.boneIndex[0]]);
-    output.positionW = mul(output.positionW, g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[3]), g_shadowLight.lightProjMatrix[3]);
-    return output;
-}
-
-PS_INPUT VS_ANIMATION_S(VS_INPUT input)
-{
-    PS_INPUT output;
+    GS_INPUT output;
     float4 posL = float4(0.0f, 0.0f, 0.0f, 1.0f);
     for (int i = 0; i < 4; ++i)
     {
         posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
     }
     output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[0]), g_shadowLight.lightProjMatrix[0]);
     return output;
 }
 
-PS_INPUT VS_ANIMATION_M(VS_INPUT input)
+GS_INPUT VS_MODEL(VS_INPUT input)
 {
-    PS_INPUT output;
-    float4 posL = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    for (int i = 0; i < 4; ++i)
-    {
-        posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
-    }
-    output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[1]), g_shadowLight.lightProjMatrix[1]);
+    GS_INPUT output;
+    output.positionW = mul(mul(input.position, g_meshTransformMatrix), g_worldMatrix);
     return output;
 }
 
-PS_INPUT VS_ANIMATION_L(VS_INPUT input)
+GS_INPUT VS_LINK(VS_INPUT input)
 {
-    PS_INPUT output;
-    float4 posL = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    for (int i = 0; i < 4; ++i)
-    {
-        posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
-    }
-    output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[2]), g_shadowLight.lightProjMatrix[2]);
+    GS_INPUT output;
+    output.positionW = mul(input.position, g_meshTransformMatrix);
+    output.positionW = mul(output.positionW, g_boneTransformMatrix[input.boneIndex[0]]);
+    output.positionW = mul(output.positionW, g_worldMatrix);
     return output;
 }
 
-PS_INPUT VS_ANIMATION_ALL(VS_INPUT input)
+[maxvertexcount(3 * SHADOWMAP_COUNT)]
+void GS(triangle GS_INPUT input[3], inout TriangleStream<GS_OUTPUT> output)
 {
-    PS_INPUT output;
-    float4 posL = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < SHADOWMAP_COUNT; ++i)
     {
-        posL += input.boneWeight[i] * mul(input.position, g_boneTransformMatrix[input.boneIndex[i]]);
+        GS_OUTPUT result;
+        result.RTIndex = i;
+        for (int j = 0; j < 3; ++j)
+        {
+            result.positionH = mul(mul(input[j].positionW, g_shadowLight.lightViewMatrix[i]), g_shadowLight.lightProjMatrix[i]);
+            output.Append(result);
+        }
+        output.RestartStrip();
     }
-    output.positionW = mul(mul(posL, g_meshTransformMatrix), g_worldMatrix);
-    output.positionH = mul(mul(output.positionW, g_shadowLight.lightViewMatrix[3]), g_shadowLight.lightProjMatrix[3]);
-    return output;
 }

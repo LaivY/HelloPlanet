@@ -70,26 +70,26 @@ void NetworkFramework::SendLoginOkPacket(int id)
 	DWORD sentByte;
 
 	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-	int retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend1");
 
-	for (auto& cl:clients)
+	// 모든 클라이언트에게 로그인한 클라이언트의 정보 전송
+	for (const auto& c : clients)
 	{
-		// clients[id](본인) 제외
-		if (cl.data.id == id) continue;
-		// 접속 안한 클라이언트 제외
-		if (!cl.data.isActive) continue;
+		if (!c.data.isActive) continue;
+		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	}
 
-		// clients[id]의 정보를 cl에게 전송
-		retVal = WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend2");
+	// 로그인한 클라이언트에게 이미 접속해있는 클라이언트 정보 전송
+	for (const auto& c : clients)
+	{
+		if (c.data.id == id) continue;
+		if (!c.data.isActive) continue;
 
-		// cl의 정보를 clients[id]에게 전송
-		packet.data = cl.data;
-		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-		wsabuf.buf = buf;
-		retVal = WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "LoginSend3");
+		sc_packet_login_ok p{};
+		p.size = sizeof(p);
+		p.type = SC_PACKET_LOGIN_OK;
+		p.data = c.data;
+		memcpy(buf, reinterpret_cast<char*>(&p), sizeof(p));
+		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
 }
 
@@ -243,7 +243,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			memcpy(sendBuf, &packet, sizeof(packet));
 			DWORD sent_byte;
 
-			// 총알은 수신하자마자 다른 클라이언트들에게 송신
+			// 총알은 수신하자마자 모든 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
 				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);

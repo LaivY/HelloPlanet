@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define BOUNDINGBOX
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -20,6 +20,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -29,10 +30,16 @@ using Microsoft::WRL::ComPtr;
 
 // DirectX 12
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 #include <dxgi1_6.h>
+#include <dwrite.h>
+#include <d2d1_3.h>
+#include <d3d11on12.h>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
 #include <d3dcompiler.h>
@@ -58,6 +65,7 @@ extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
 extern thread               g_networkThread;                    // 네트워크 쓰레드
 extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
+extern mt19937              g_randomEngine;                     // 랜덤 값 생성에 필요한 엔진
 
 namespace DX
 {
@@ -198,6 +206,8 @@ namespace Utile
                                                 const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
     string PATH(const string& file, int type);
     wstring PATH(const wstring& file, int type);
+    int Random(int min, int max);
+    float Random(float min, float max);
 
     template <typename T>
     UINT GetConstantBufferSize()

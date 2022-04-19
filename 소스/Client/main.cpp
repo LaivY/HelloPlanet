@@ -86,7 +86,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
 	// 윈도우 사이즈를 프레임워크 생성할 때 정한 너비와 높이로 설정
-	RECT rect{ 0, 0, static_cast<LONG>(g_gameFramework.GetWindowWidth()), static_cast<LONG>(g_gameFramework.GetWindowHeight()) };
+	RECT rect{ 0, 0, static_cast<LONG>(Setting::SCREEN_WIDTH), static_cast<LONG>(Setting::SCREEN_HEIGHT) };
 	DWORD dwStyle{ WS_OVERLAPPED | WS_SYSMENU | WS_BORDER };
 	AdjustWindowRect(&rect, dwStyle, FALSE);
 

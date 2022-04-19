@@ -26,19 +26,22 @@ public:
 	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 
-	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList, INT shadowShaderIndex);
+	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
+	void Fire();
+	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
 	void SetGunType(eGunType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
-	void SetGunShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader);
+	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 
 	INT GetId() const { return m_id; }
-	XMFLOAT3 GetVelocity() const { return m_velocity; }
+	INT GetBulletCount() const;
+	INT GetMaxBulletCount() const;
 	string GetPureAnimationName(const string& animationName) const;
 	string GetCurrAnimationName() const;
 	string GetAfterAnimationName() const;
@@ -50,18 +53,23 @@ public:
 private:
 	INT								m_id;				// 플레이어 고유 아이디
 	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
+	BOOL							m_isFired;			// 발사 여부
 	eGunType						m_gunType;			// 총 타입
 
+	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
+	FLOAT							m_delayPitch;		// .. x축 회전각
+	FLOAT							m_delayYaw;			// .. y축 회전각
+	FLOAT							m_delayTime;		// 몇 초에 걸쳐 회전할 건지
+	FLOAT							m_delayTimer;		// 타이머
+
 	FLOAT							m_speed;			// 속력(실수)
-	//XMFLOAT3						m_velocity;			// 속도(벡터)
-	//FLOAT							m_maxVelocity;		// 최대속도
-	//FLOAT							m_friction;			// 마찰력
 	FLOAT							m_shotSpeed;		// 공격속도
 	FLOAT							m_shotTimer;		// 공격속도 타이머
+	INT								m_bulletCount;		// 총알 개수
+	INT								m_maxBulletCount;	// 총알 최대 개수
 
 	shared_ptr<Camera>				m_camera;			// 카메라
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
-	array<shared_ptr<Shader>, 
-		  Setting::SHADOWMAP_COUNT>	m_gunShadowShaders;	// 총 그림자 셰이더
+	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
 };

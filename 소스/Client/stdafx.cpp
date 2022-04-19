@@ -9,6 +9,7 @@ SOCKET					g_socket{};
 BOOL					g_isConnected{ FALSE };
 thread                  g_networkThread{};
 mutex                   g_mutex{};
+mt19937                 g_randomEngine{ random_device{}() };
 
 namespace Utile
 {
@@ -129,6 +130,18 @@ namespace Utile
         default:
             return TEXT("");
         }
+    }
+
+    int Random(int min, int max)
+    {
+        uniform_int_distribution<int> dis{ min, max };
+        return dis(g_randomEngine);
+    }
+
+    float Random(float min, float max)
+    {
+        uniform_real_distribution<float> dis{ min, max };
+        return dis(g_randomEngine);
     }
 }
 

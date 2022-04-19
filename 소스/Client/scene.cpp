@@ -14,7 +14,8 @@ Scene::~Scene()
 }
 
 void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
+				   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+				   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	// 셰이더 변수 생성
 	CreateShaderVariable(device, commandList);
@@ -39,6 +40,9 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	// 게임오브젝트 생성
 	CreateGameObjects(device, commandList);
+
+	// 텍스트 오브젝트 생성
+	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 
 	// 조명 생성
 	CreateLights();
@@ -82,20 +86,6 @@ void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
-
-	// 총알 발사 테스트
-	switch (message)
-	{
-	case WM_LBUTTONDOWN:
-	{
-		if (m_player->GetCurrAnimationName() == "RUNNING")
-			break;
-		if (m_player->GetUpperCurrAnimationName() == "RELOAD")
-			break;
-		CreateBullet();
-		break;
-	}
-	}
 }
 
 void Scene::OnKeyboardEvent(FLOAT deltaTime)
@@ -156,6 +146,8 @@ void Scene::OnUpdate(FLOAT deltaTime)
 		m->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
 		ui->Update(deltaTime);
+	for (auto& t : m_textObjects)
+		t->Update(deltaTime);
 }
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -205,7 +197,7 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	// 게임오브젝트 관련 로딩
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.8f, 0.8f, 1.0f });
-	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{}, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
@@ -258,21 +250,12 @@ void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
 	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("ui.hlsl"), Utile::SHADER), "VS", "PS");
 
 	// 그림자 셰이더
-	m_shaders["SHADOW_MODEL_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_S");
-	m_shaders["SHADOW_MODEL_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_M");
-	m_shaders["SHADOW_MODEL_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_L");
-	m_shaders["SHADOW_MODEL_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL_ALL");
-	m_shaders["SHADOW_LINK_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_S");
-	m_shaders["SHADOW_LINK_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_M");
-	m_shaders["SHADOW_LINK_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_L");
-	m_shaders["SHADOW_LINK_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK_ALL");
-	m_shaders["SHADOW_ANIMATION_S"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_S");
-	m_shaders["SHADOW_ANIMATION_M"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_M");
-	m_shaders["SHADOW_ANIMATION_L"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_L");
-	m_shaders["SHADOW_ANIMATION_ALL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION_ALL");
+	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL", "GS");
+	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION", "GS");
+	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK", "GS");
 
 	// 디버그
 	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
@@ -300,6 +283,18 @@ void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	m_textures["OBJECT3"] = make_shared<Texture>();
 	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds"), Utile::RESOURCE));
 	m_textures["OBJECT3"]->CreateTexture(device);
+
+	m_textures["CROSSHAIR"] = make_shared<Texture>();
+	m_textures["CROSSHAIR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/crosshair.dds"), Utile::RESOURCE));
+	m_textures["CROSSHAIR"]->CreateTexture(device);
+
+	m_textures["HPBARBASE"] = make_shared<Texture>();
+	m_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds"), Utile::RESOURCE));
+	m_textures["HPBARBASE"]->CreateTexture(device);
+
+	m_textures["HPBAR"] = make_shared<Texture>();
+	m_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds"), Utile::RESOURCE));
+	m_textures["HPBAR"]->CreateTexture(device);
 }
 
 void Scene::CreateLights() const
@@ -322,13 +317,36 @@ void Scene::CreateLights() const
 
 void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// UI 카메라 생성
+	XMFLOAT4X4 projMatrix{};
+	m_uiCamera = make_unique<Camera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
+	m_uiCamera->SetProjMatrix(projMatrix);
+
+	// 조준점
+	auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
+	crossHair->SetMesh(m_meshes["UI"]);
+	crossHair->SetShader(m_shaders["UI"]);
+	crossHair->SetTexture(m_textures["CROSSHAIR"]);
+	m_uiObjects.push_back(move(crossHair));
+
+	// 체력바 베이스
+	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
+	hpBarBase->SetMesh(m_meshes["UI"]);
+	hpBarBase->SetShader(m_shaders["UI"]);
+	hpBarBase->SetTexture(m_textures["HPBARBASE"]);
+	hpBarBase->SetPivot(ePivot::LEFTBOT);
+	hpBarBase->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	m_uiObjects.push_back(move(hpBarBase));
+
 	// 체력바
-	auto hpBar{ make_unique<UIObject>(300.0f, 40.0f) };
-	hpBar->SetMesh(m_meshes["HPBAR"]);
+	auto hpBar{ make_unique<UIObject>(100.0f, 30.0f) };
+	hpBar->SetMesh(m_meshes["UI"]);
 	hpBar->SetShader(m_shaders["UI"]);
-	hpBar->SetPivot(eUIPivot::LEFTBOT);
-	hpBar->SetPosition(-static_cast<float>(Setting::SCREEN_WIDTH) / 2.0f + 20.0f,
-					   -static_cast<float>(Setting::SCREEN_HEIGHT) / 2.0f + 20.0f);
+	hpBar->SetTexture(m_textures["HPBAR"]);
+	hpBar->SetPivot(ePivot::LEFTBOT);
+	hpBar->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
 	m_uiObjects.push_back(move(hpBar));
 }
 
@@ -349,51 +367,26 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
-	// UI 카메라 생성
-	m_uiCamera = make_unique<Camera>();
-	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
 	// 바운딩박스
 	SharedBoundingBox bbPlayer{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
 	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
 
-	//SharedBoundingBox bbMob{ make_shared<DebugBoundingBox>(XMFLOAT3{}, XMFLOAT3{}, XMFLOAT4{}) };
-	//bbMob->SetMesh(m_meshes["BB_GAROO"]);
-	//bbMob->SetShader(m_shaders["WIREFRAME"]);
-
 	// 플레이어 생성
 	m_player = make_shared<Player>();
 	m_player->SetMesh(m_meshes["ARM"]);
 	m_player->SetShader(m_shaders["ANIMATION"]);
-	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-	m_player->SetGunMesh(m_meshes["SG"]);
+	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
+	m_player->SetGunMesh(m_meshes["AR"]);
 	m_player->SetGunShader(m_shaders["LINK"]);
-	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-	m_player->SetGunType(eGunType::SG);
+	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
+	m_player->SetGunType(eGunType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
 	// 카메라, 플레이어 서로 설정
 	m_camera->SetPlayer(m_player);
 	m_player->SetCamera(m_camera);
-
-	// 멀티플레이어
-	for (unique_ptr<Player>& p : m_multiPlayers)
-	{
-		p = make_unique<Player>(TRUE);
-		p->SetMesh(m_meshes["PLAYER"]);
-		p->SetShader(m_shaders["ANIMATION"]);
-		p->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
-		p->SetGunMesh(m_meshes["SG"]);
-		p->SetGunShader(m_shaders["LINK"]);
-		p->SetGunShadowShader(m_shaders["SHADOW_LINK_S"], m_shaders["SHADOW_LINK_M"], m_shaders["SHADOW_LINK_L"], m_shaders["SHADOW_LINK_ALL"]);
-		p->SetGunType(eGunType::SG);
-		p->PlayAnimation("IDLE");
-		p->AddBoundingBox(bbPlayer);
-	}
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -408,6 +401,44 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	floor->SetShader(m_shaders["DEFAULT"]);
 	floor->SetTexture(m_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
+}
+
+void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+{
+	// Create D2D/DWrite objects for rendering text.
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.8f), &TextObject::s_brushes["LIGHTBLUE"]));
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["BULLETCOUNT"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXBULLETCOUNT"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	auto text{ make_unique<BulletTextObject>() };
+	text->SetPlayer(m_player);
+	text->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
+	m_textObjects.push_back(move(text));
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -436,7 +467,7 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
 		object->SetShader(m_shaders["MODEL"]);
-		object->SetShadowShader(m_shaders["SHADOW_MODEL_S"], m_shaders["SHADOW_MODEL_M"], m_shaders["SHADOW_MODEL_L"], m_shaders["SHADOW_MODEL_ALL"]);
+		object->SetShadowShader(m_shaders["SHADOW_MODEL"]);
 		object->SetWorldMatrix(world);
 
 		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
@@ -448,12 +479,12 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			break;
 		}
 		case eMapObjectType::PLANT:
-			//object->SetMesh(m_meshes["PLANT"]);
-			//object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(m_meshes["PLANT"]);
+			object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::TREE:
-			//object->SetMesh(m_meshes["TREE"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["TREE"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK1:
 		{
@@ -491,20 +522,20 @@ void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 			break;
 		}
 		case eMapObjectType::DROPSHIP:
-			//object->SetMesh(m_meshes["DROPSHIP"]);
-			//object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(m_meshes["DROPSHIP"]);
+			object->SetTexture(m_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::MUSHROOMS:
-			//object->SetMesh(m_meshes["MUSHROOMS"]);
-			//object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(m_meshes["MUSHROOMS"]);
+			object->SetTexture(m_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::SKULL:
-			//object->SetMesh(m_meshes["SKULL"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["SKULL"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::RIBS:
-			//object->SetMesh(m_meshes["RIBS"]);
-			//object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(m_meshes["RIBS"]);
+			object->SetTexture(m_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK4:
 			object->SetMesh(m_meshes["ROCK4"]);
@@ -577,12 +608,18 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
-	//if (m_uiCamera)
-	//{
-	//	m_uiCamera->UpdateShaderVariable(commandList);
-	//	for (const auto& ui : m_uiObjects)
-	//		ui->Render(commandList);
-	//}
+	if (m_uiCamera)
+	{
+		m_uiCamera->UpdateShaderVariable(commandList);
+		for (const auto& ui : m_uiObjects)
+			ui->Render(commandList);
+	}
+}
+
+void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+{
+	for (const auto& t : m_textObjects)
+		t->Render(device);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -607,47 +644,45 @@ void Scene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandLi
 	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle(0));
-	for (int i = 0; i < Setting::SHADOWMAP_COUNT; ++i)
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& object : m_gameObjects)
 	{
-		// 리소스배리어 설정(깊이버퍼쓰기)
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-
-		// 깊이스텐실 버퍼 초기화
-		commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(i), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-		// 렌더타겟 설정
-		commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle(i));
-
-		// 렌더링
-		unique_lock<mutex> lock{ g_mutex };
-		for (const auto& object : m_gameObjects)
-		{
-			auto shadowShader{ object->GetShadowShader(i) };
-			if (shadowShader)
-				object->Render(commandList, shadowShader);
-		}
-		for (const auto& [_, monster] : m_monsters)
-		{
-			auto shadowShader{ monster->GetShadowShader(i) };
-			if (shadowShader)
-				monster->Render(commandList, shadowShader);
-		}
-		lock.unlock();
-		for (const auto& player : m_multiPlayers)
-		{
-			if (!player) continue;
-			player->RenderToShadowMap(commandList, i);
-		}
-		if (m_player)
-		{
-			m_player->SetMesh(m_meshes.at("PLAYER"));
-			m_player->RenderToShadowMap(commandList, i);
-			m_player->SetMesh(m_meshes.at("ARM"));
-		}
-
-		// 리소스배리어 설정(셰이더에서 읽기)
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap(i).Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+		auto shadowShader{ object->GetShadowShader() };
+		if (shadowShader)
+			object->Render(commandList, shadowShader);
 	}
+	for (const auto& [_, monster] : m_monsters)
+	{
+		auto shadowShader{ monster->GetShadowShader() };
+		if (shadowShader)
+			monster->Render(commandList, shadowShader);
+	}
+	lock.unlock();
+	for (const auto& player : m_multiPlayers)
+	{
+		if (!player) continue;
+		player->RenderToShadowMap(commandList);
+	}
+	if (m_player)
+	{
+		m_player->SetMesh(m_meshes.at("PLAYER"));
+		m_player->RenderToShadowMap(commandList);
+		m_player->SetMesh(m_meshes.at("ARM"));
+	}
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 void Scene::PlayerCollisionCheck(FLOAT deltaTime)
@@ -789,10 +824,7 @@ void Scene::CreateBullet()
 	bullet->SetMesh(m_meshes["BULLET"]);
 	bullet->SetShader(m_shaders["DEFAULT"]);
 	bullet->SetPosition(start);
-
-	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
-	lock.unlock();
 
 	// 총알 발사 정보 서버로 송신
 	cs_packet_bullet_fire packet{};
@@ -850,21 +882,36 @@ void Scene::RecvLoginOk()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	// 내 플레이어 id 설정
-	if (m_player)
+	if (!m_player) return;
+
+	PlayerData data;
+	memcpy(&data, subBuf, sizeof(data));
+
+	// 로그인 패킷을 처음 수신했을 경우 자신의 id 설정
+	if (m_player->GetId() == -1)
 	{
-		PlayerData data;
-		memcpy(&data, subBuf, sizeof(data));
 		m_player->SetId(static_cast<int>(data.id));
+		return;
 	}
 
-	// 다른 플레이어 id 설정
-	int id{ 0 };
-	for (auto& p : m_multiPlayers)
-	{
-		if (id == m_player->GetId()) ++id;
-		p->SetId(id++);
-	}
+	// 다른 플레이어들 정보일 경우
+	if (m_player->GetId() != data.id)
+		for (auto& p : m_multiPlayers)
+		{
+			if (p) continue;
+			p = make_unique<Player>(TRUE);
+			p->SetMesh(m_meshes["PLAYER"]);
+			p->SetShader(m_shaders["ANIMATION"]);
+			p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
+			p->SetGunMesh(m_meshes["SG"]);
+			p->SetGunShader(m_shaders["LINK"]);
+			p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
+			p->SetGunType(eGunType::SG);
+			p->PlayAnimation("IDLE");
+			p->SetId(static_cast<int>(data.id));
+			p->ApplyServerData(data);
+			break;
+		}
 }
 
 void Scene::RecvUpdateClient()
@@ -910,12 +957,12 @@ void Scene::RecvUpdateMonster()
 		// 해당 id의 몬스터가 없는 경우엔 생성
 		if (m_monsters.find(m.id) == m_monsters.end())
 		{
-			this_thread::yield();
 			unique_lock<mutex> lock{ g_mutex };
 			m_monsters[m.id] = make_unique<Monster>();
+			lock.unlock();
 			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
 			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
-			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION_S"], m_shaders["SHADOW_ANIMATION_M"], m_shaders["SHADOW_ANIMATION_L"], m_shaders["SHADOW_ANIMATION_ALL"]);
+			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
 			m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
 			m_monsters[m.id]->PlayAnimation("IDLE");
 		}
