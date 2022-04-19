@@ -408,7 +408,7 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	// Create D2D/DWrite objects for rendering text.
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::LightBlue, 0.8f), &TextObject::s_brushes["LIGHTBLUE"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue, 0.8f), &TextObject::s_brushes["BLUE"]));
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 		TEXT("나눔바른고딕OTF"),
 		NULL,
@@ -435,10 +435,15 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
-	auto text{ make_unique<BulletTextObject>() };
-	text->SetPlayer(m_player);
-	text->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
-	m_textObjects.push_back(move(text));
+	auto bulletText{ make_unique<BulletTextObject>() };
+	bulletText->SetPlayer(m_player);
+	bulletText->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
+	m_textObjects.push_back(move(bulletText));
+
+	auto hpText{ make_unique<HPTextObject>() };
+	hpText->SetPlayer(m_player);
+	hpText->SetPosition(XMFLOAT2{ 60.0f, Setting::SCREEN_HEIGHT - 115.0f });
+	m_textObjects.push_back(move(hpText));
 }
 
 void Scene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)

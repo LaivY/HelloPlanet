@@ -250,3 +250,23 @@ private:
 	BOOL				m_timerState;
 	FLOAT				m_scaleTimer;
 };
+
+class HPTextObject : public TextObject
+{
+public:
+	HPTextObject();
+	~HPTextObject() = default;
+
+	void Render(const ComPtr<ID2D1DeviceContext2>&device);
+	void Update(FLOAT deltaTime);
+
+	void SetText(const wstring&) = delete;
+	void SetPlayer(const shared_ptr<Player>&player);
+
+private:
+	shared_ptr<Player>	m_player;
+	INT					m_hp;
+	FLOAT				m_scale;
+	BOOL				m_timerState;
+	FLOAT				m_scaleTimer;
+};
