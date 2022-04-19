@@ -19,7 +19,8 @@ public:
 	void SpawnMonsters(FLOAT deltaTime);
 	void CollisionCheck();
 	void Disconnect(int id);
-	
+	UCHAR DetectPlayer(const DirectX::XMFLOAT3& pos);
+
 	CHAR GetNewId();
 
 public:

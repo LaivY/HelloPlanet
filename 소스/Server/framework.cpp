@@ -246,8 +246,12 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			// 총알은 수신하자마자 모든 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
+				if(c.data.isActive == false) continue;
 				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+				if (retVal == SOCKET_ERROR) {
+					errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+					std::cout << c.data.id << std::endl;;
+				}
 			}
 
 			// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
@@ -286,7 +290,8 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 		m.SetHp(100);
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
-		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, -400.0f });
+		m.SetTarget(DetectPlayer(m.GetPosition()));
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
@@ -295,6 +300,27 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	}
 }
 
+UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos)
+{
+	UCHAR index{ 0 };
+	float length{ FLT_MAX };		// 가까운 플레이어의 거리
+	for (const auto& cl : clients)
+	{
+		const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
+		if (l < length)
+		{
+			length = l;
+			index = cl.data.id;
+		}
+	}
+	return index;
+}
+int Aggro()
+{
+	int index{ 0 };
+
+	return index;
+}
 
 void NetworkFramework::CollisionCheck()
 {
