@@ -64,7 +64,7 @@ public:
 	// 게임루프 함수
 	void Update(FLOAT deltaTime);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
-	void Render2D(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
+	void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
 	
 	// 업데이트 함수
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;

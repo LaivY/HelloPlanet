@@ -388,7 +388,8 @@ void Scene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<I
 void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	// Create D2D/DWrite objects for rendering text.
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &TextObject::s_brushes["RED"]));
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 		TEXT("나눔바른고딕OTF"),
 		NULL,
@@ -397,15 +398,27 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 		DWRITE_FONT_STRETCH_NORMAL,
 		36,
 		TEXT("ko-kr"),
-		&TextObject::s_formats["NANUM"]
+		&TextObject::s_formats["BULLETCOUNT"]
 	));
-	DX::ThrowIfFailed(TextObject::s_formats["NANUM"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
-	DX::ThrowIfFailed(TextObject::s_formats["NANUM"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXBULLETCOUNT"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
 	auto text{ make_unique<BulletTextObject>() };
-	text->SetBrush("BLACK");
-	text->SetFormat("NANUM");
 	text->SetPlayer(m_player);
+	text->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
 	m_textObjects.push_back(move(text));
 }
 
@@ -584,10 +597,10 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 	}
 }
 
-void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect)
+void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	for (const auto& t : m_textObjects)
-		t->Render(device, rect);
+		t->Render(device);
 }
 
 void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const

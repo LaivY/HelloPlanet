@@ -363,19 +363,19 @@ void UIObject::SetHeight(FLOAT height)
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
-TextObject::TextObject() : m_isDeleted{ FALSE }, m_position {}, m_width{}, m_height{}
+TextObject::TextObject() : m_isDeleted{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) }, m_position{}, m_width{}, m_height{}
 {
 
 }
 
-void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect)
+void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->DrawText(
 		m_text.c_str(),
-		m_text.size(),
+		static_cast<UINT32>(m_text.size()),
 		s_formats[m_format].Get(),
-		&rect,
+		&m_rect,
 		s_brushes[m_brush].Get()
 	);
 }
@@ -389,14 +389,19 @@ void TextObject::CalcWidthHeight()
 {
 	if (m_text.empty()) return;
 
-	ComPtr<IDWriteTextLayout> layout, layout2;
-	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), m_text.size() - 1, TextObject::s_formats[m_format].Get(), Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT, &layout);
+	ComPtr<IDWriteTextLayout> layout;
+	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), static_cast<UINT32>(m_text.size()), TextObject::s_formats[m_format].Get(), Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT, &layout);
 
 	DWRITE_TEXT_METRICS metrics;
 	layout->GetMetrics(&metrics);
 
 	m_width = metrics.widthIncludingTrailingWhitespace;
 	m_height = metrics.height;
+}
+
+void TextObject::SetRect(const D2D1_RECT_F& rect)
+{
+	m_rect = rect;
 }
 
 void TextObject::SetBrush(const string& brush)
@@ -444,15 +449,62 @@ FLOAT TextObject::GetHeight() const
 	return m_height;
 }
 
+BulletTextObject::BulletTextObject() : m_bulletCount{ -1 }, m_scale { 1.0f }, m_timerState{ FALSE }, m_scaleTimer{}
+{
+	m_rect = { 0.0f, 0.0f, 100.0f, 0.0f };
+}
+
+void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
+{
+	if (!m_player) return;
+
+	// 플레이어의 총알 수를 표시한다.
+	// 포멧은 좌측 하단 정렬이고, 전체 총알 수를 표시한 후 그 왼쪽에 현재 총알 수를 그린다.
+	wstring maxBulletCount{ TEXT("/") + to_wstring(m_player->GetMaxBulletCount()) };
+	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+
+	m_text = maxBulletCount;
+	m_format = "MAXBULLETCOUNT";
+	CalcWidthHeight();
+	float width{ m_width }; // 전체 총알 수 문자열 길이
+
+	m_text = to_wstring(m_bulletCount);
+	m_format = "BULLETCOUNT";
+	CalcWidthHeight();
+
+	D2D1::Matrix3x2F matrix{};
+	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - width, m_position.y));
+	device->SetTransform(matrix);
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["BULLETCOUNT"].Get(), &m_rect, m_bulletCount == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
+}
+
 void BulletTextObject::Update(FLOAT deltaTime)
 {
 	if (!m_player) return;
-	m_text = to_wstring(m_player->GetBulletCount()) + TEXT(" / ") + to_wstring(m_player->GetMaxBulletCount());
+	int bulletCount{ m_player->GetBulletCount() };
+	if (m_bulletCount != bulletCount)
+	{
+		m_bulletCount = bulletCount;
+		m_timerState = TRUE;
+		m_scaleTimer = 0.0f;
+	}
+
+	// 총알 수 변함에 따라 사각형 범위 재계산
+	m_text = to_wstring(m_player->GetBulletCount());
+	m_format = "BULLETCOUNT";
 	CalcWidthHeight();
-	SetPosition(XMFLOAT2{ 
-		Setting::SCREEN_WIDTH / 2.0f - m_width / 2.0f - 50.0f,
-		Setting::SCREEN_HEIGHT / 2.0f - m_height - 25.0f
-		});
+	float width{ m_width };
+	m_rect.bottom = m_height;
+
+	// 스케일
+	constexpr float duration{ 0.1f };
+	float angle{ 30.0f + 150.0f * (m_scaleTimer / duration) };
+	m_scale = 1.0f + sinf(XMConvertToRadians(angle)) * 0.2f;
+
+	if (m_timerState) m_scaleTimer += deltaTime;
+	if (m_scaleTimer > duration)
+		m_timerState = FALSE;
 }
 
 void BulletTextObject::SetPlayer(const shared_ptr<Player>& player)

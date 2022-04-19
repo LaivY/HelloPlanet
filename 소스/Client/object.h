@@ -197,10 +197,11 @@ public:
 	TextObject();
 	~TextObject() = default;
 
-	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
 	void CalcWidthHeight();
+	void SetRect(const D2D1_RECT_F& rect);
 	void SetBrush(const string& brush);
 	void SetFormat(const string& format);
 	void SetText(const wstring& text);
@@ -218,6 +219,7 @@ public:
 protected:
 	BOOL		m_isDeleted;
 
+	D2D1_RECT_F	m_rect;
 	string		m_brush;
 	string		m_format;
 	wstring		m_text;
@@ -230,14 +232,19 @@ protected:
 class BulletTextObject : public TextObject
 {
 public:
-	BulletTextObject() = default;
+	BulletTextObject();
 	~BulletTextObject() = default;
 
+	void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
 	void SetPlayer(const shared_ptr<Player>& player);
 
 private:
-	shared_ptr<Player> m_player;
+	shared_ptr<Player>	m_player;
+	INT					m_bulletCount;
+	FLOAT				m_scale;
+	BOOL				m_timerState;
+	FLOAT				m_scaleTimer;
 };

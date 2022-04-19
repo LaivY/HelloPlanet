@@ -439,8 +439,8 @@ void GameFramework::CreateShaderVariable()
 
 void GameFramework::Render2D() const
 {
-	D2D1_SIZE_F rtSize{ m_d2dRenderTargets[m_frameIndex]->GetSize() };
-	D2D1_RECT_F textRect{ D2D1::RectF(0, 0, rtSize.width, rtSize.height) };
+	//D2D1_SIZE_F rtSize{ m_d2dRenderTargets[m_frameIndex]->GetSize() };
+	//D2D1_RECT_F textRect{ D2D1::RectF(0, 0, rtSize.width, rtSize.height) };
 
 	// Acquire our wrapped render target resource for the current back buffer.
 	m_d3d11On12Device->AcquireWrappedResources(m_wrappedBackBuffers[m_frameIndex].GetAddressOf(), 1);
@@ -449,7 +449,7 @@ void GameFramework::Render2D() const
 	m_d2dDeviceContext->SetTarget(m_d2dRenderTargets[m_frameIndex].Get());
 	m_d2dDeviceContext->BeginDraw();
 
-	if (m_scene) m_scene->Render2D(m_d2dDeviceContext, textRect);
+	if (m_scene) m_scene->Render2D(m_d2dDeviceContext);
 
 	DX::ThrowIfFailed(m_d2dDeviceContext->EndDraw());
 
