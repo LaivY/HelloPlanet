@@ -49,9 +49,7 @@ void GameFramework::OnRender()
 	PopulateCommandList();
 	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
-
 	Render2D();
-
 	DX::ThrowIfFailed(m_swapChain->Present(1, 0));
 	WaitForPreviousFrame();
 }
@@ -441,9 +439,8 @@ void GameFramework::CreateShaderVariable()
 
 void GameFramework::Render2D() const
 {
-	D2D1_SIZE_F rtSize = m_d2dRenderTargets[m_frameIndex]->GetSize();
-	D2D1_RECT_F textRect = D2D1::RectF(0, 0, rtSize.width, rtSize.height);
-	static const WCHAR text[] = L"안녕하세용";
+	D2D1_SIZE_F rtSize{ m_d2dRenderTargets[m_frameIndex]->GetSize() };
+	D2D1_RECT_F textRect{ D2D1::RectF(0, 0, rtSize.width, rtSize.height) };
 
 	// Acquire our wrapped render target resource for the current back buffer.
 	m_d3d11On12Device->AcquireWrappedResources(m_wrappedBackBuffers[m_frameIndex].GetAddressOf(), 1);
@@ -576,4 +573,9 @@ void GameFramework::SetIsActive(BOOL isActive)
 		ShowCursor(FALSE);
 	else
 		ShowCursor(TRUE);
+}
+
+ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
+{
+	return m_dWriteFactory;
 }

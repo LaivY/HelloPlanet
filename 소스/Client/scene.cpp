@@ -146,6 +146,8 @@ void Scene::OnUpdate(FLOAT deltaTime)
 		m->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
 		ui->Update(deltaTime);
+	for (auto& t : m_textObjects)
+		t->Update(deltaTime);
 }
 
 void Scene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -388,23 +390,22 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	// Create D2D/DWrite objects for rendering text.
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &TextObject::s_brushes["BLACK"]));
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		L"Verdana",
+		TEXT("나눔바른고딕OTF"),
 		NULL,
-		DWRITE_FONT_WEIGHT_NORMAL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
-		50,
-		L"en-us",
-		&TextObject::s_formats["Verdana"]
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["NANUM"]
 	));
-	DX::ThrowIfFailed(TextObject::s_formats["Verdana"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
-	DX::ThrowIfFailed(TextObject::s_formats["Verdana"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
+	DX::ThrowIfFailed(TextObject::s_formats["NANUM"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER));
+	DX::ThrowIfFailed(TextObject::s_formats["NANUM"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER));
 
-	auto text{ make_unique<TextObject>() };
-	text->SetText(TEXT("HELLO, 플래닛!"));
+	auto text{ make_unique<BulletTextObject>() };
 	text->SetBrush("BLACK");
-	text->SetFormat("Verdana");
-	text->SetPosition(XMFLOAT2{ -100.0f, 0.0f });
+	text->SetFormat("NANUM");
+	text->SetPlayer(m_player);
 	m_textObjects.push_back(move(text));
 }
 

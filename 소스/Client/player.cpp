@@ -1,8 +1,9 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player(BOOL isMultiPlayer) : GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-									 m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
+Player::Player(BOOL isMultiPlayer) : 
+	GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
+	m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
 {
 	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	m_boundingBoxes.push_back(bb);
@@ -14,7 +15,7 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	m_shotTimer += deltaTime;
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
-		if (m_shotTimer < m_shotSpeed || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
+		if (m_shotTimer < m_shotSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData();
@@ -207,6 +208,10 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			case eAnimationState::PLAY:
 				m_upperAnimationInfo->state = eAnimationState::SYNC;
 				m_upperAnimationInfo->blendingTimer = 0.0f;
+
+				// 재장전
+				if (GetUpperCurrAnimationName() == "RELOAD")
+					m_bulletCount = m_maxBulletCount;
 				break;
 			case eAnimationState::BLENDING:
 				PlayAnimation(GetUpperAfterAnimationName());
@@ -391,6 +396,7 @@ void Player::Fire()
 	}
 
 	m_isFired = TRUE;
+	--m_bulletCount;
 }
 
 void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)
@@ -497,6 +503,7 @@ void Player::SetGunType(eGunType gunType)
 	{
 	case eGunType::AR:
 		m_shotSpeed = 0.16f;
+		m_bulletCount = m_maxBulletCount = 30;
 		break;
 	case eGunType::SG:
 		m_shotSpeed = 0.8f;
@@ -600,6 +607,16 @@ void Player::ApplyServerData(const PlayerData& playerData)
 void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 {
 	m_gunShadowShader = shadowShader;
+}
+
+INT Player::GetBulletCount() const
+{
+	return m_bulletCount;
+}
+
+INT Player::GetMaxBulletCount() const
+{
+	return m_maxBulletCount;
 }
 
 string Player::GetPureAnimationName(const string& animationName) const

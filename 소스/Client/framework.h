@@ -48,6 +48,8 @@ public:
 	void ProcessClient(LPVOID arg);
 	void SetIsActive(BOOL isActive);
 
+	ComPtr<IDWriteFactory> GetDWriteFactory() const;
+
 private:
 	static constexpr UINT				FrameCount = 3;
 

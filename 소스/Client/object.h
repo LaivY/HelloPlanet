@@ -4,24 +4,8 @@
 #include "shader.h"
 #include "texture.h"
 
-class DebugBoundingBox : public BoundingOrientedBox
-{
-public:
-	DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation);
-	~DebugBoundingBox() = default;
-
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void SetMesh(const shared_ptr<Mesh>& mesh);
-	void SetShader(const shared_ptr<Shader>& shader);
-
-private:
-	shared_ptr<Mesh>	m_mesh;
-	shared_ptr<Shader>	m_shader;
-};
-
-// --------------------------------
-
 class Camera;
+class Player;
 
 enum class eMapObjectType
 {
@@ -56,6 +40,21 @@ struct AnimationInfo
 	FLOAT			blendingTimer;
 	INT				blendingFrame;
 	FLOAT			fps;
+};
+
+class DebugBoundingBox : public BoundingOrientedBox
+{
+public:
+	DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation);
+	~DebugBoundingBox() = default;
+
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void SetMesh(const shared_ptr<Mesh>& mesh);
+	void SetShader(const shared_ptr<Shader>& shader);
+
+private:
+	shared_ptr<Mesh>	m_mesh;
+	shared_ptr<Shader>	m_shader;
 };
 
 typedef shared_ptr<DebugBoundingBox> SharedBoundingBox;
@@ -95,6 +94,7 @@ public:
 	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
 	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
+	XMFLOAT3 GetVelocity() const { return m_velocity; }
 	const vector<SharedBoundingBox>& GetBoundingBox() const { return m_boundingBoxes; }
 	shared_ptr<Shader> GetShadowShader() const { return m_shadowShader; }
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
@@ -166,7 +166,7 @@ private:
 
 // --------------------------------
 
-enum class eUIPivot
+enum class ePivot
 {
 	LEFTTOP,	CENTERTOP,	RIGHTTOP,
 	LEFTCENTER, CENTER,		RIGHTCENTER,
@@ -181,34 +181,63 @@ public:
 
 	void SetPosition(const XMFLOAT3& position);
 	void SetPosition(FLOAT x, FLOAT y);
-	void SetPivot(eUIPivot pivot) { m_pivot = pivot; }
+	void SetPivot(ePivot pivot) { m_pivot = pivot; }
 	void SetWidth(FLOAT width);
 	void SetHeight(FLOAT height);
 
 private:
-	eUIPivot	m_pivot;
-	FLOAT		m_width;
-	FLOAT		m_height;
+	ePivot	m_pivot;
+	FLOAT	m_width;
+	FLOAT	m_height;
 };
 
 class TextObject
 {
 public:
-	TextObject() = default;
+	TextObject();
 	~TextObject() = default;
 
-	void Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect);
+	virtual void Update(FLOAT deltaTime);
+
+	void CalcWidthHeight();
 	void SetBrush(const string& brush);
 	void SetFormat(const string& format);
 	void SetText(const wstring& text);
 	void SetPosition(const XMFLOAT2& position);
 
+	BOOL isDeleted() const;
+	wstring GetText() const;
+	XMFLOAT2 GetPosition() const;
+	FLOAT GetWidth() const;
+	FLOAT GetHeight() const;
+
 	static unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	s_brushes;
 	static unordered_map<string, ComPtr<IDWriteTextFormat>>		s_formats;
 
-private:
+protected:
+	BOOL		m_isDeleted;
+
 	string		m_brush;
 	string		m_format;
 	wstring		m_text;
+
 	XMFLOAT2	m_position;
+	FLOAT		m_width;
+	FLOAT		m_height;
+};
+
+class BulletTextObject : public TextObject
+{
+public:
+	BulletTextObject() = default;
+	~BulletTextObject() = default;
+
+	void Update(FLOAT deltaTime);
+
+	void SetText(const wstring&) = delete;
+	void SetPlayer(const shared_ptr<Player>& player);
+
+private:
+	shared_ptr<Player> m_player;
 };

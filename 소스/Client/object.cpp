@@ -1,5 +1,7 @@
 ﻿#include "object.h"
 #include "camera.h"
+#include "framework.h"
+#include "player.h"
 
 DebugBoundingBox::DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation) : BoundingOrientedBox{ center, extents, orientation }, m_mesh{ nullptr }, m_shader{ nullptr }
 {
@@ -267,7 +269,7 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
-UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }
+UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }
 {
 	m_worldMatrix._11 = width;
 	m_worldMatrix._22 = height;
@@ -282,35 +284,35 @@ void UIObject::SetPosition(FLOAT x, FLOAT y)
 {
 	switch (m_pivot)
 	{
-	case eUIPivot::LEFTTOP:
+	case ePivot::LEFTTOP:
 		m_worldMatrix._41 = x + m_width / 2.0f;
 		m_worldMatrix._42 = y - m_height / 2.0f;
 		break;
-	case eUIPivot::CENTERTOP:
+	case ePivot::CENTERTOP:
 		m_worldMatrix._42 = y - m_height / 2.0f;
 		break;
-	case eUIPivot::RIGHTTOP:
+	case ePivot::RIGHTTOP:
 		m_worldMatrix._41 = x - m_width / 2.0f;
 		m_worldMatrix._42 = y - m_height / 2.0f;
 		break;
-	case eUIPivot::LEFTCENTER:
+	case ePivot::LEFTCENTER:
 		m_worldMatrix._41 = x + m_width / 2.0f;
 		break;
-	case eUIPivot::CENTER:
+	case ePivot::CENTER:
 		m_worldMatrix._41 = x;
 		m_worldMatrix._42 = y;
 		break;
-	case eUIPivot::RIGHTCENTER:
+	case ePivot::RIGHTCENTER:
 		m_worldMatrix._41 = x - m_width / 2.0f;
 		break;
-	case eUIPivot::LEFTBOT:
+	case ePivot::LEFTBOT:
 		m_worldMatrix._41 = x + m_width / 2.0f;
 		m_worldMatrix._42 = y + m_height / 2.0f;
 		break;
-	case eUIPivot::CENTERBOT:
+	case ePivot::CENTERBOT:
 		m_worldMatrix._42 = y + m_height / 2.0f;
 		break;
-	case eUIPivot::RIGHTBOT:
+	case ePivot::RIGHTBOT:
 		m_worldMatrix._41 = x - m_width / 2.0f;
 		m_worldMatrix._42 = y + m_height / 2.0f;
 		break;
@@ -325,14 +327,14 @@ void UIObject::SetWidth(FLOAT width)
 	FLOAT deltaWidth{ width - m_width };
 	switch (m_pivot)
 	{
-	case eUIPivot::LEFTTOP:
-	case eUIPivot::LEFTCENTER:
-	case eUIPivot::LEFTBOT:
+	case ePivot::LEFTTOP:
+	case ePivot::LEFTCENTER:
+	case ePivot::LEFTBOT:
 		m_worldMatrix._41 += deltaWidth / 2.0f;
 		break;
-	case eUIPivot::RIGHTTOP:
-	case eUIPivot::RIGHTCENTER:
-	case eUIPivot::RIGHTBOT:
+	case ePivot::RIGHTTOP:
+	case ePivot::RIGHTCENTER:
+	case ePivot::RIGHTBOT:
 		m_worldMatrix._41 -= deltaWidth / 2.0f;
 		break;
 	}
@@ -346,14 +348,14 @@ void UIObject::SetHeight(FLOAT height)
 	FLOAT deltaHeight{ height - m_height };
 	switch (m_pivot)
 	{
-	case eUIPivot::LEFTTOP:
-	case eUIPivot::RIGHTTOP:
-	case eUIPivot::CENTERTOP:
+	case ePivot::LEFTTOP:
+	case ePivot::RIGHTTOP:
+	case ePivot::CENTERTOP:
 		m_worldMatrix._42 += deltaHeight / 2.0f;
 		break;
-	case eUIPivot::LEFTBOT:
-	case eUIPivot::CENTERBOT:
-	case eUIPivot::RIGHTBOT:
+	case ePivot::LEFTBOT:
+	case ePivot::CENTERBOT:
+	case ePivot::RIGHTBOT:
 		m_worldMatrix._42 -= deltaHeight / 2.0f;
 		break;
 	}
@@ -361,17 +363,40 @@ void UIObject::SetHeight(FLOAT height)
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
+TextObject::TextObject() : m_isDeleted{ FALSE }, m_position {}, m_width{}, m_height{}
+{
+
+}
 
 void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device, const D2D1_RECT_F& rect)
 {
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->DrawText(
 		m_text.c_str(),
-		m_text.size() - 1,
+		m_text.size(),
 		s_formats[m_format].Get(),
 		&rect,
 		s_brushes[m_brush].Get()
 	);
+}
+
+void TextObject::Update(FLOAT deltaTime)
+{
+
+}
+
+void TextObject::CalcWidthHeight()
+{
+	if (m_text.empty()) return;
+
+	ComPtr<IDWriteTextLayout> layout, layout2;
+	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), m_text.size() - 1, TextObject::s_formats[m_format].Get(), Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT, &layout);
+
+	DWRITE_TEXT_METRICS metrics;
+	layout->GetMetrics(&metrics);
+
+	m_width = metrics.widthIncludingTrailingWhitespace;
+	m_height = metrics.height;
 }
 
 void TextObject::SetBrush(const string& brush)
@@ -392,4 +417,45 @@ void TextObject::SetText(const wstring& text)
 void TextObject::SetPosition(const XMFLOAT2& position)
 {
 	m_position = position;
+}
+
+BOOL TextObject::isDeleted() const
+{
+	return m_isDeleted;
+}
+
+wstring TextObject::GetText() const
+{
+	return m_text;
+}
+
+XMFLOAT2 TextObject::GetPosition() const
+{
+	return m_position;
+}
+
+FLOAT TextObject::GetWidth() const
+{
+	return m_width;
+}
+
+FLOAT TextObject::GetHeight() const
+{
+	return m_height;
+}
+
+void BulletTextObject::Update(FLOAT deltaTime)
+{
+	if (!m_player) return;
+	m_text = to_wstring(m_player->GetBulletCount()) + TEXT(" / ") + to_wstring(m_player->GetMaxBulletCount());
+	CalcWidthHeight();
+	SetPosition(XMFLOAT2{ 
+		Setting::SCREEN_WIDTH / 2.0f - m_width / 2.0f - 50.0f,
+		Setting::SCREEN_HEIGHT / 2.0f - m_height - 25.0f
+		});
+}
+
+void BulletTextObject::SetPlayer(const shared_ptr<Player>& player)
+{
+	m_player = player;
 }

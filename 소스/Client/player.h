@@ -40,7 +40,8 @@ public:
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 
 	INT GetId() const { return m_id; }
-	XMFLOAT3 GetVelocity() const { return m_velocity; }
+	INT GetBulletCount() const;
+	INT GetMaxBulletCount() const;
 	string GetPureAnimationName(const string& animationName) const;
 	string GetCurrAnimationName() const;
 	string GetAfterAnimationName() const;
@@ -55,15 +56,17 @@ private:
 	BOOL							m_isFired;			// 발사 여부
 	eGunType						m_gunType;			// 총 타입
 
-	FLOAT							m_delayRoll;
-	FLOAT							m_delayPitch;
-	FLOAT							m_delayYaw;
-	FLOAT							m_delayTime;
-	FLOAT							m_delayTimer;
+	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
+	FLOAT							m_delayPitch;		// .. x축 회전각
+	FLOAT							m_delayYaw;			// .. y축 회전각
+	FLOAT							m_delayTime;		// 몇 초에 걸쳐 회전할 건지
+	FLOAT							m_delayTimer;		// 타이머
 
 	FLOAT							m_speed;			// 속력(실수)
 	FLOAT							m_shotSpeed;		// 공격속도
 	FLOAT							m_shotTimer;		// 공격속도 타이머
+	INT								m_bulletCount;		// 총알 개수
+	INT								m_maxBulletCount;	// 총알 최대 개수
 
 	shared_ptr<Camera>				m_camera;			// 카메라
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
