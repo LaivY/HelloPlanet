@@ -112,6 +112,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_ACTIVATE:
 		g_gameFramework.SetIsActive((BOOL)wParam);
 		break;
+	case WM_SIZE:
+		g_gameFramework.OnResize(hWnd, message, wParam, lParam);
+		break;
 	case WM_MOUSEMOVE:
 	case WM_MOUSEWHEEL:
 	case WM_LBUTTONDOWN:
@@ -119,6 +122,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_KEYUP:
 	case WM_KEYDOWN:
+		if (wParam == '1')
+			SetWindowPos(hWnd, HWND_TOP, 0, 0, 1920, 1080, SWP_SHOWWINDOW);
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:

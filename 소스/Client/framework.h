@@ -18,6 +18,7 @@ public:
 
 	void GameLoop();
 	void OnInit(HINSTANCE hInstance, HWND hWnd);
+	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnUpdate(FLOAT deltaTime);
 	void OnRender();
 	void OnDestroy();

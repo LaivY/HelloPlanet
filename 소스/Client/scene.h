@@ -81,6 +81,10 @@ public:
 	void RecvUpdateClient();
 	void RecvUpdateMonster();
 	void RecvBulletFire();
+
+	// 세터
+	void SetViewport(const D3D12_VIEWPORT& viewport);
+	void SetScissorRect(const D3D12_RECT& scissorRect);
 	
 private:
 	D3D12_VIEWPORT										m_viewport;		// 뷰포트

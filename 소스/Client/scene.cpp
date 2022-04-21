@@ -1010,3 +1010,13 @@ void Scene::RecvBulletFire()
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
 }
+
+void Scene::SetViewport(const D3D12_VIEWPORT& viewport)
+{
+	m_viewport = viewport;
+}
+
+void Scene::SetScissorRect(const D3D12_RECT& scissorRect)
+{
+	m_scissorRect = scissorRect;
+}
