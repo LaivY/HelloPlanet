@@ -29,11 +29,12 @@ public:
 
 	void LoadPipeline();
 	void LoadAssets();
-	void CreateDevice(const ComPtr<IDXGIFactory4>& factory);
+	void CreateFactory();
+	void CreateDevice();
 	void CreateCommandQueue();
 	void CreateD3D11On12Device();
 	void CreateD2DDevice();
-	void CreateSwapChain(const ComPtr<IDXGIFactory4>& factory);
+	void CreateSwapChain();
 	void CreateRtvDsvDescriptorHeap();
 	void CreateRenderTargetView();
 	void CreateDepthStencilView();
@@ -63,6 +64,7 @@ private:
 	BOOL								m_isActive;
 
 	// Pipeline
+	ComPtr<IDXGIFactory4>				m_factory;
 	ComPtr<IDXGISwapChain3>				m_swapChain;
 	INT									m_MSAA4xQualityLevel;
 	ComPtr<ID3D12Device>				m_device;

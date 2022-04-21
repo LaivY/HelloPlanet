@@ -124,6 +124,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_KEYDOWN:
 		if (wParam == '1')
 			SetWindowPos(hWnd, HWND_TOP, 0, 0, 1920, 1080, SWP_SHOWWINDOW);
+		else if (wParam == '2')
+			SetWindowPos(hWnd, HWND_TOP, 0, 0, 1280, 720, SWP_SHOWWINDOW);
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:

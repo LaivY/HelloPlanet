@@ -40,48 +40,28 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	RECT clientRect{};
+	GetWindowRect(hWnd, &clientRect);
+	m_width = static_cast<UINT>(clientRect.right - clientRect.left);
+	m_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
+
 	// GPU명령이 끝날때까지 대기
 	WaitForPreviousFrame();
 
-	// 스왑체인 크기를 변경하기전에 스왑체인과 관련된 모든 리소스를 해제
-	for (int i = 0; i < FrameCount; ++i)
+	for (UINT n = 0; n < FrameCount; n++)
 	{
-		m_renderTargets[i].Reset();
-		m_wrappedBackBuffers[i].Reset();
-		m_d2dRenderTargets[i].Reset();
-		m_commandAllocator[i].Reset();
+		m_renderTargets[n].Reset();
 	}
-	m_depthStencil.Reset();
-	m_rtvHeap.Reset();
-	m_dsvHeap.Reset();
 
-	// 가로, 세로
-	RECT desktop{};
-	HWND hDesktop{ GetDesktopWindow() };
-	GetWindowRect(hDesktop, &desktop);
-	UINT width{ static_cast<UINT>(desktop.right) }, height{ static_cast<UINT>(desktop.bottom) };
-
-	// 스왑체인 크기 변경
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
-	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, width, height, desc.BufferDesc.Format, desc.Flags));
-
-	// 가로, 세로, 종횡비 재설정
-	m_width = width;
-	m_height = height;
-	m_aspectRatio = static_cast<FLOAT>(m_width) / static_cast<FLOAT>(m_height);
-
-	// 씬의 뷰포트, 가위사각형 재설정
-	m_scene->SetViewport(D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f });
-	m_scene->SetScissorRect(D3D12_RECT{ 0, 0, static_cast<long>(m_width), static_cast<long>(m_height) });
-
-	// Reset the frame index to the current back buffer index.
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-
-	// 렌더타겟 재생성
-	CreateRtvDsvDescriptorHeap();
-	CreateRenderTargetView();
-	CreateDepthStencilView();
+	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, m_width, m_height, desc.BufferDesc.Format, desc.Flags));
+	
+	//if (m_scene)
+	//{
+	//	m_scene->SetViewport(D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f });
+	//	m_scene->SetScissorRect(D3D12_RECT{ 0, 0, static_cast<long>(m_width), static_cast<long>(m_height) });
+	//}
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -136,43 +116,33 @@ void GameFramework::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPAR
 void GameFramework::LoadPipeline()
 {
 	// 팩토리 생성
-	UINT dxgiFactoryFlags = 0;
-#if defined(_DEBUG)
-	ComPtr<ID3D12Debug> debugController;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-	{
-		debugController->EnableDebugLayer();
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-	}
-#endif
-	ComPtr<IDXGIFactory4> factory;
-	DX::ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
+	CreateFactory();
 
-	// 디바이스 생성
-	CreateDevice(factory);
+	// 디바이스 생성(팩토리 필요)
+	CreateDevice();
 
-	// 명령큐 생성
+	// 명령큐 생성(디바이스 필요)
 	CreateCommandQueue();
 
-	// 11on12 디바이스 생성
+	// 11on12 디바이스 생성(명령큐 필요)
 	CreateD3D11On12Device();
 
-	// D2D, DWrite 생성
+	// D2D, DWrite 생성(11on12 디바이스 필요)
 	CreateD2DDevice();
 
-	// 스왑체인 생성
-	CreateSwapChain(factory);
+	// 스왑체인 생성(팩토리, 명령큐 필요)
+	CreateSwapChain();
 
-	// 렌더타겟뷰, 깊이스텐실뷰의 서술자힙 생성
+	// 렌더타겟뷰, 깊이스텐실뷰의 서술자힙 생성(디바이스 필요)
 	CreateRtvDsvDescriptorHeap();
 
-	// 렌더타겟뷰 생성
+	// 렌더타겟뷰 생성(디바이스 필요)
 	CreateRenderTargetView();
 
-	// 깊이스텐실뷰 생성
+	// 깊이스텐실뷰 생성(디바이스 필요)
 	CreateDepthStencilView();
 
-	// 루트시그니쳐 생성
+	// 루트시그니쳐 생성(디바이스 필요)
 	CreateRootSignature();
 
 	// 명령리스트 생성
@@ -185,7 +155,7 @@ void GameFramework::LoadPipeline()
 	m_fenceValue = 1;
 
 	// alt + enter 금지
-	//factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
+	m_factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
 }
 
 void GameFramework::LoadAssets()
@@ -215,10 +185,24 @@ void GameFramework::LoadAssets()
 	m_timer.Tick();
 }
 
-void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
+void GameFramework::CreateFactory()
+{
+	UINT dxgiFactoryFlags = 0;
+#if defined(_DEBUG)
+	ComPtr<ID3D12Debug> debugController;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
+		debugController->EnableDebugLayer();
+		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+	}
+#endif
+	DX::ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
+}
+
+void GameFramework::CreateDevice()
 {
 	ComPtr<IDXGIAdapter1> adapter;
-	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
+	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != m_factory->EnumAdapters1(i, &adapter); ++i)
 	{
 		DXGI_ADAPTER_DESC1 adapterDesc;
 		adapter->GetDesc1(&adapterDesc);
@@ -227,7 +211,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 	}
 	if (!m_device)
 	{
-		factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter));
+		m_factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter));
 		DX::ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device)));
 	}
 
@@ -245,7 +229,7 @@ void GameFramework::CreateCommandQueue()
 	DX::ThrowIfFailed(m_device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_commandQueue)));
 }
 
-void GameFramework::CreateSwapChain(const ComPtr<IDXGIFactory4>& factory)
+void GameFramework::CreateSwapChain()
 {
 	// 샘플링 수준 체크
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS multiSampleQualityLevels;
@@ -273,7 +257,7 @@ void GameFramework::CreateSwapChain(const ComPtr<IDXGIFactory4>& factory)
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // 전체화면으로 전환할 때 적합한 디스플레이 모드를 선택
 
 	ComPtr<IDXGISwapChain> swapChain;
-	DX::ThrowIfFailed(factory->CreateSwapChain(m_commandQueue.Get(), &swapChainDesc, &swapChain));
+	DX::ThrowIfFailed(m_factory->CreateSwapChain(m_commandQueue.Get(), &swapChainDesc, &swapChain));
 	DX::ThrowIfFailed(swapChain.As(&m_swapChain));
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
@@ -441,8 +425,7 @@ void GameFramework::CreateRootSignature()
 
 void GameFramework::CreateD3D11On12Device()
 {
-	// Create an 11 device wrapped around the 12 device and share
-	// 12's command queue.
+	// Create an 11 device wrapped around the 12 device and share 12's command queue.
 	ComPtr<ID3D11Device> d3d11Device;
 	DX::ThrowIfFailed(D3D11On12CreateDevice(
 		m_device.Get(),
@@ -546,7 +529,7 @@ void GameFramework::PopulateCommandList() const
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	// 렌더타겟, 깊이스텐실 버퍼 지우기
-	const FLOAT clearColor[]{ 0.15625f, 0.171875f, 0.203125f, 1.0f };
+	constexpr FLOAT clearColor[]{ 0.15625f, 0.171875f, 0.203125f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, NULL);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
