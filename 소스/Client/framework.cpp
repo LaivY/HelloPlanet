@@ -2,7 +2,7 @@
 
 GameFramework::GameFramework(UINT width, UINT height) :
 	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ TRUE },
-	m_frameIndex{ 0 }, m_fenceValue{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
+	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
 }
@@ -40,28 +40,41 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	// GPU명령이 끝날때까지 대기
+	WaitForGpu();
+
+	// 스왑체인과 관련된 리소스 해제
+	for (int i = 0; i < FrameCount; ++i)
+	{
+		m_renderTargets[i].Reset();
+		m_wrappedBackBuffers[i].Reset();
+		m_d2dRenderTargets[i].Reset();
+		m_commandAllocators[i].Reset();
+	}
+	m_d2dDeviceContext->SetTarget(nullptr);
+	m_d2dDeviceContext->Flush();
+
+	m_d3d11DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	m_d3d11DeviceContext->Flush();
+
+	// 가로, 세로, 화면비 계산
 	RECT clientRect{};
 	GetWindowRect(hWnd, &clientRect);
 	m_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	m_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
 
-	// GPU명령이 끝날때까지 대기
-	WaitForPreviousFrame();
-
-	for (UINT n = 0; n < FrameCount; n++)
-	{
-		m_renderTargets[n].Reset();
-	}
-
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
 	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, m_width, m_height, desc.BufferDesc.Format, desc.Flags));
-	
-	//if (m_scene)
-	//{
-	//	m_scene->SetViewport(D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f });
-	//	m_scene->SetScissorRect(D3D12_RECT{ 0, 0, static_cast<long>(m_width), static_cast<long>(m_height) });
-	//}
+
+	CreateRenderTargetView();
+	CreateDepthStencilView();
+
+	if (m_scene)
+	{
+		m_scene->SetViewport(D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f });
+		m_scene->SetScissorRect(D3D12_RECT{ 0, 0, static_cast<long>(m_width), static_cast<long>(m_height) });
+	}
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -146,13 +159,13 @@ void GameFramework::LoadPipeline()
 	CreateRootSignature();
 
 	// 명령리스트 생성
-	DX::ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
+	DX::ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
 	DX::ThrowIfFailed(m_commandList->Close());
 
 	// 펜스 생성
 	DX::ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 	m_fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	m_fenceValue = 1;
+	++m_fenceValues[m_frameIndex];
 
 	// alt + enter 금지
 	m_factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
@@ -161,7 +174,7 @@ void GameFramework::LoadPipeline()
 void GameFramework::LoadAssets()
 {
 	// 명령을 추가할 것이기 때문에 Reset
-	m_commandList->Reset(m_commandAllocator[m_frameIndex].Get(), NULL);
+	m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL);
 
 	// 셰이더 변수 생성
 	CreateShaderVariable();
@@ -332,7 +345,7 @@ void GameFramework::CreateRenderTargetView()
 		rtvHandle.Offset(m_rtvDescriptorSize);
 
 		// 명령할당자 생성
-		DX::ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator[i])));
+		DX::ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i])));
 	}
 }
 
@@ -467,9 +480,6 @@ void GameFramework::CreateShaderVariable()
 
 void GameFramework::Render2D() const
 {
-	//D2D1_SIZE_F rtSize{ m_d2dRenderTargets[m_frameIndex]->GetSize() };
-	//D2D1_RECT_F textRect{ D2D1::RectF(0, 0, rtSize.width, rtSize.height) };
-
 	// Acquire our wrapped render target resource for the current back buffer.
 	m_d3d11On12Device->AcquireWrappedResources(m_wrappedBackBuffers[m_frameIndex].GetAddressOf(), 1);
 
@@ -505,8 +515,8 @@ void GameFramework::UpdateShaderVariable() const
 
 void GameFramework::PopulateCommandList() const
 {
-	DX::ThrowIfFailed(m_commandAllocator[m_frameIndex]->Reset());
-	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocator[m_frameIndex].Get(), NULL));
+	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
 
 	// Set necessary state
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -543,16 +553,35 @@ void GameFramework::PopulateCommandList() const
 
 void GameFramework::WaitForPreviousFrame()
 {
-	const UINT64 fence{ m_fenceValue };
-	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
-	++m_fenceValue;
-
-	if (m_fence->GetCompletedValue() < fence)
+	for (int i = 0; i < FrameCount; ++i)
 	{
-		DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-		WaitForSingleObject(m_fenceEvent, INFINITE);
+		const UINT64 fence{ m_fenceValues[i] };
+		DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+
+		if (m_fence->GetCompletedValue() < m_fenceValues[i])
+		{
+			DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+			WaitForSingleObject(m_fenceEvent, INFINITE);
+		}
 	}
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+	++m_fenceValues[m_frameIndex];
+}
+
+void GameFramework::WaitForGpu()
+{
+	for (int i = 0; i < FrameCount; ++i)
+	{
+		const UINT64 fence{ m_fenceValues[i] };
+		DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+
+		if (m_fence->GetCompletedValue() < m_fenceValues[i])
+		{
+			DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+			WaitForSingleObject(m_fenceEvent, INFINITE);
+		}
+	}
+	m_frameIndex = 0;
 }
 
 void GameFramework::ConnectServer()

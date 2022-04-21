@@ -46,6 +46,7 @@ public:
 	void PopulateCommandList() const;
 	void Render2D() const;
 	void WaitForPreviousFrame();
+	void WaitForGpu();
 	void ConnectServer();
 	void ProcessClient(LPVOID arg);
 	void SetIsActive(BOOL isActive);
@@ -68,7 +69,7 @@ private:
 	ComPtr<IDXGISwapChain3>				m_swapChain;
 	INT									m_MSAA4xQualityLevel;
 	ComPtr<ID3D12Device>				m_device;
-	ComPtr<ID3D12CommandAllocator>		m_commandAllocator[FrameCount];
+	ComPtr<ID3D12CommandAllocator>		m_commandAllocators[FrameCount];
 	ComPtr<ID3D12CommandQueue>			m_commandQueue;
 	ComPtr<ID3D12GraphicsCommandList>	m_commandList;
 	ComPtr<ID3D12Resource>				m_renderTargets[FrameCount];
@@ -92,8 +93,8 @@ private:
 	// Synchronization
 	ComPtr<ID3D12Fence>					m_fence;
 	UINT								m_frameIndex;
-	UINT64								m_fenceValue;
 	HANDLE								m_fenceEvent;
+	UINT64								m_fenceValues[FrameCount];
 
 	// 상수 버퍼
 	ComPtr<ID3D12Resource>				m_cbGameFramework;
