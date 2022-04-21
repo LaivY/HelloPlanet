@@ -48,14 +48,34 @@ void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	CreateLights();
 
 	// 맵 로딩
-	LoadMapObjects(device, commandList, Utile::PATH("map.txt", Utile::RESOURCE));
+	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
+}
+
+void Scene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	UINT width{ g_gameFramework.GetWidth() }, height{ g_gameFramework.GetHeight() };
+	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
+	m_scissorRect = D3D12_RECT{ 0, 0, static_cast<long>(width), static_cast<long>(height) };
+
+	XMFLOAT4X4 projMatrix;
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(width) / static_cast<float>(height), 1.0f, 2500.0f));
+	m_camera->SetProjMatrix(projMatrix);
+
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f));
+	m_uiCamera->SetProjMatrix(projMatrix);
+
+	// UI, 텍스트 오브젝트들 재배치
+	for (auto& ui : m_uiObjects)
+		ui->SetPosition(ui->GetPivotPosition());
+	for (auto& t : m_textObjects)
+		t->SetPosition(t->GetPivotPosition());
 }
 
 void Scene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 	// 화면 가운데 좌표 계산
 	RECT rect; GetWindowRect(hWnd, &rect);
-	POINT oldMousePosition{ static_cast<LONG>(rect.left + Setting::SCREEN_WIDTH / 2), static_cast<LONG>(rect.top + Setting::SCREEN_HEIGHT / 2) };
+	POINT oldMousePosition{ static_cast<LONG>(rect.left + g_gameFramework.GetWidth() / 2), static_cast<LONG>(rect.top + g_gameFramework.GetHeight() / 2) };
 
 	// 움직인 마우스 좌표
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
@@ -181,34 +201,34 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
 	};
 	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin", Utile::RESOURCE));
+	m_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));
 	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
-				m_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".bin", Utile::RESOURCE), weaponName + "/" + animationName);
+				m_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".bin"), weaponName + "/" + animationName);
 
 	m_meshes["ARM"] = make_shared<Mesh>();
-	m_meshes["ARM"]->LoadMeshBinary(device, commandList, Utile::PATH("arm.bin", Utile::RESOURCE));
+	m_meshes["ARM"]->LoadMeshBinary(device, commandList, Utile::PATH("arm.bin"));
 	m_meshes["ARM"]->Link(m_meshes["PLAYER"]);
 	m_meshes["AR"] = make_shared<Mesh>();
-	m_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("AR/AR.bin", Utile::RESOURCE));
+	m_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("AR/AR.bin"));
 	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
 	m_meshes["SG"] = make_shared<Mesh>();
-	m_meshes["SG"]->LoadMeshBinary(device, commandList, Utile::PATH("SG/SG.bin", Utile::RESOURCE));
+	m_meshes["SG"]->LoadMeshBinary(device, commandList, Utile::PATH("SG/SG.bin"));
 	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
 	m_meshes["MG"] = make_shared<Mesh>();
-	m_meshes["MG"]->LoadMeshBinary(device, commandList, Utile::PATH("MG/MG.bin", Utile::RESOURCE));
+	m_meshes["MG"]->LoadMeshBinary(device, commandList, Utile::PATH("MG/MG.bin"));
 	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
 
 	// 몬스터 관련 로딩
 	m_meshes["GAROO"] = make_shared<Mesh>();
-	m_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt", Utile::RESOURCE));
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt", Utile::RESOURCE), "ATTACK");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt", Utile::RESOURCE), "DIE");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt", Utile::RESOURCE), "HIT");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt", Utile::RESOURCE), "IDLE");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/running.txt", Utile::RESOURCE), "RUNNING");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt", Utile::RESOURCE), "WALKBACK");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt", Utile::RESOURCE), "WALKING");
+	m_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt"));
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt"), "ATTACK");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt"), "DIE");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt"), "HIT");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt"), "IDLE");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/running.txt"), "RUNNING");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt"), "WALKBACK");
+	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt"), "WALKING");
 
 	// 게임오브젝트 관련 로딩
 	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
@@ -216,39 +236,39 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 	// 맵 오브젝트 관련 로딩
 	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
-	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt"), Utile::RESOURCE));
+	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt")));
 	m_meshes["PLANT"] = make_shared<Mesh>();
-	m_meshes["PLANT"]->LoadMesh(device, commandList, Utile::PATH(("Object/bigPlant.txt"), Utile::RESOURCE));
+	m_meshes["PLANT"]->LoadMesh(device, commandList, Utile::PATH(("Object/bigPlant.txt")));
 	m_meshes["TREE"] = make_shared<Mesh>();
-	m_meshes["TREE"]->LoadMesh(device, commandList, Utile::PATH(("Object/tree.txt"), Utile::RESOURCE));
+	m_meshes["TREE"]->LoadMesh(device, commandList, Utile::PATH(("Object/tree.txt")));
 	m_meshes["ROCK1"] = make_shared<Mesh>();
-	m_meshes["ROCK1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock1.txt"), Utile::RESOURCE));
+	m_meshes["ROCK1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock1.txt")));
 	m_meshes["ROCK2"] = make_shared<Mesh>();
-	m_meshes["ROCK2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock2.txt"), Utile::RESOURCE));
+	m_meshes["ROCK2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock2.txt")));
 	m_meshes["ROCK3"] = make_shared<Mesh>();
-	m_meshes["ROCK3"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock3.txt"), Utile::RESOURCE));
+	m_meshes["ROCK3"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock3.txt")));
 	m_meshes["SMALLROCK"] = make_shared<Mesh>();
-	m_meshes["SMALLROCK"]->LoadMesh(device, commandList, Utile::PATH(("Object/smallRock.txt"), Utile::RESOURCE));
+	m_meshes["SMALLROCK"]->LoadMesh(device, commandList, Utile::PATH(("Object/smallRock.txt")));
 	m_meshes["ROCKGROUP1"] = make_shared<Mesh>();
-	m_meshes["ROCKGROUP1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup1.txt"), Utile::RESOURCE));
+	m_meshes["ROCKGROUP1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup1.txt")));
 	m_meshes["ROCKGROUP2"] = make_shared<Mesh>();
-	m_meshes["ROCKGROUP2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup2.txt"), Utile::RESOURCE));
+	m_meshes["ROCKGROUP2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup2.txt")));
 	m_meshes["DROPSHIP"] = make_shared<Mesh>();
-	m_meshes["DROPSHIP"]->LoadMesh(device, commandList, Utile::PATH(("Object/dropship.txt"), Utile::RESOURCE));
+	m_meshes["DROPSHIP"]->LoadMesh(device, commandList, Utile::PATH(("Object/dropship.txt")));
 	m_meshes["MUSHROOMS"] = make_shared<Mesh>();
-	m_meshes["MUSHROOMS"]->LoadMesh(device, commandList, Utile::PATH(("Object/mushrooms.txt"), Utile::RESOURCE));
+	m_meshes["MUSHROOMS"]->LoadMesh(device, commandList, Utile::PATH(("Object/mushrooms.txt")));
 	m_meshes["SKULL"] = make_shared<Mesh>();
-	m_meshes["SKULL"]->LoadMesh(device, commandList, Utile::PATH(("Object/skull.txt"), Utile::RESOURCE));
+	m_meshes["SKULL"]->LoadMesh(device, commandList, Utile::PATH(("Object/skull.txt")));
 	m_meshes["RIBS"] = make_shared<Mesh>();
-	m_meshes["RIBS"]->LoadMesh(device, commandList, Utile::PATH(("Object/ribs.txt"), Utile::RESOURCE));
+	m_meshes["RIBS"]->LoadMesh(device, commandList, Utile::PATH(("Object/ribs.txt")));
 	m_meshes["ROCK4"] = make_shared<Mesh>();
-	m_meshes["ROCK4"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock4.txt"), Utile::RESOURCE));
+	m_meshes["ROCK4"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock4.txt")));
 	m_meshes["ROCK5"] = make_shared<Mesh>();
-	m_meshes["ROCK5"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock5.txt"), Utile::RESOURCE));
+	m_meshes["ROCK5"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock5.txt")));
 
 	// 게임 시스템 관련 로딩
 	m_meshes["SKYBOX"] = make_shared<Mesh>();
-	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt", Utile::RESOURCE));
+	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt"));
 	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 	m_meshes["HPBAR"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f }, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.5f });
 
@@ -260,55 +280,55 @@ void Scene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 
 void Scene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
-	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PSSkybox");
-	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("model.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("animation.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("link.hlsl"), Utile::SHADER), "VS", "PS");
-	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("ui.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
+	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PSSkybox");
+	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
+	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS");
+	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/link.hlsl")), "VS", "PS");
+	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
 
 	// 그림자 셰이더
-	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_MODEL", "GS");
-	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_ANIMATION", "GS");
-	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("shadow.hlsl"), Utile::SHADER), "VS_LINK", "GS");
+	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
+	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_ANIMATION", "GS");
+	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_LINK", "GS");
 
 	// 디버그
-	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("default.hlsl"), Utile::SHADER), "VS", "PS");
+	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
 }
 
 void Scene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	m_textures["SKYBOX"] = make_shared<Texture>();
-	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds"), Utile::RESOURCE));
+	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds")));
 	m_textures["SKYBOX"]->CreateTexture(device);
 
 	m_textures["GAROO"] = make_shared<Texture>();
-	m_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds"), Utile::RESOURCE));
+	m_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
 	m_textures["GAROO"]->CreateTexture(device);
 
 	m_textures["FLOOR"] = make_shared<Texture>();
-	m_textures["FLOOR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/floor.dds"), Utile::RESOURCE));
+	m_textures["FLOOR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/floor.dds")));
 	m_textures["FLOOR"]->CreateTexture(device);
 	m_textures["OBJECT1"] = make_shared<Texture>();
-	m_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds"), Utile::RESOURCE));
+	m_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds")));
 	m_textures["OBJECT1"]->CreateTexture(device);
 	m_textures["OBJECT2"] = make_shared<Texture>();
-	m_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds"), Utile::RESOURCE));
+	m_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds")));
 	m_textures["OBJECT2"]->CreateTexture(device);
 	m_textures["OBJECT3"] = make_shared<Texture>();
-	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds"), Utile::RESOURCE));
+	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds")));
 	m_textures["OBJECT3"]->CreateTexture(device);
 
-	m_textures["CROSSHAIR"] = make_shared<Texture>();
-	m_textures["CROSSHAIR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/crosshair.dds"), Utile::RESOURCE));
-	m_textures["CROSSHAIR"]->CreateTexture(device);
+	m_textures["WHITE"] = make_shared<Texture>();
+	m_textures["WHITE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));
+	m_textures["WHITE"]->CreateTexture(device);
 
 	m_textures["HPBARBASE"] = make_shared<Texture>();
-	m_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds"), Utile::RESOURCE));
+	m_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
 	m_textures["HPBARBASE"]->CreateTexture(device);
 
 	m_textures["HPBAR"] = make_shared<Texture>();
-	m_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds"), Utile::RESOURCE));
+	m_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds")));
 	m_textures["HPBAR"]->CreateTexture(device);
 }
 
@@ -340,16 +360,10 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 조준점
-	//auto crossHair{ make_unique<UIObject>(30.0f, 30.0f) };
-	//crossHair->SetMesh(m_meshes["UI"]);
-	//crossHair->SetShader(m_shaders["UI"]);
-	//crossHair->SetTexture(m_textures["CROSSHAIR"]);
-	//m_uiObjects.push_back(move(crossHair));
-
 	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
 	crosshair->SetMesh(m_meshes["UI"]);
 	crosshair->SetShader(m_shaders["UI"]);
-	crosshair->SetTexture(m_textures["HPBAR"]);
+	crosshair->SetTexture(m_textures["WHITE"]);
 	crosshair->SetPlayer(m_player);
 	m_uiObjects.push_back(move(crosshair));
 
@@ -359,7 +373,8 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	hpBarBase->SetShader(m_shaders["UI"]);
 	hpBarBase->SetTexture(m_textures["HPBARBASE"]);
 	hpBarBase->SetPivot(ePivot::LEFTBOT);
-	hpBarBase->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	hpBarBase->SetScreenPivot(ePivot::LEFTBOT);
+	hpBarBase->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
 	m_uiObjects.push_back(move(hpBarBase));
 
 	// 체력바
@@ -368,7 +383,8 @@ void Scene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3
 	hpBar->SetShader(m_shaders["UI"]);
 	hpBar->SetTexture(m_textures["HPBAR"]);
 	hpBar->SetPivot(ePivot::LEFTBOT);
-	hpBar->SetPosition(-Setting::SCREEN_WIDTH / 2.0f + 50.0f, -Setting::SCREEN_HEIGHT / 2.0f + 40.0f);
+	hpBar->SetScreenPivot(ePivot::LEFTBOT);
+	hpBar->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
 	hpBar->SetPlayer(m_player);
 	m_uiObjects.push_back(move(hpBar));
 }
@@ -483,14 +499,20 @@ void Scene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContex
 	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
 	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
+	// 텍스트 오브젝트들의 좌표계는 좌측 상단이 (0, 0), 우측 하단이 (width, height) 이다.
+	
+	// 총알
 	auto bulletText{ make_unique<BulletTextObject>() };
 	bulletText->SetPlayer(m_player);
-	bulletText->SetPosition(XMFLOAT2{ Setting::SCREEN_WIDTH - 150.0f, Setting::SCREEN_HEIGHT - 75.0f });
+	bulletText->SetScreenPivot(ePivot::RIGHTBOT);
+	bulletText->SetPosition(XMFLOAT2{ -160.0f, -80.0f });
 	m_textObjects.push_back(move(bulletText));
 
+	// 체력
 	auto hpText{ make_unique<HPTextObject>() };
 	hpText->SetPlayer(m_player);
-	hpText->SetPosition(XMFLOAT2{ 50.0f, Setting::SCREEN_HEIGHT - 115.0f });
+	hpText->SetScreenPivot(ePivot::LEFTBOT);
+	hpText->SetPosition(XMFLOAT2{ 50.0f, -125.0f });
 	m_textObjects.push_back(move(hpText));
 }
 
@@ -1009,14 +1031,4 @@ void Scene::RecvBulletFire()
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
-}
-
-void Scene::SetViewport(const D3D12_VIEWPORT& viewport)
-{
-	m_viewport = viewport;
-}
-
-void Scene::SetScissorRect(const D3D12_RECT& scissorRect)
-{
-	m_scissorRect = scissorRect;
 }

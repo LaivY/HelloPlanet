@@ -43,6 +43,7 @@ public:
 	void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, 
 				const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 				const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
+	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnKeyboardEvent(FLOAT deltaTime);
@@ -81,10 +82,6 @@ public:
 	void RecvUpdateClient();
 	void RecvUpdateMonster();
 	void RecvBulletFire();
-
-	// 세터
-	void SetViewport(const D3D12_VIEWPORT& viewport);
-	void SetScissorRect(const D3D12_RECT& scissorRect);
 	
 private:
 	D3D12_VIEWPORT										m_viewport;		// 뷰포트

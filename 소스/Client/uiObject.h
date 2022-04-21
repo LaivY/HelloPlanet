@@ -21,15 +21,20 @@ public:
 	virtual void Update(FLOAT /*deltaTime*/) { }
 
 	void SetPosition(const XMFLOAT3& position);
-	void SetPosition(FLOAT x, FLOAT y);
-	void SetPivot(const ePivot& pivot) { m_pivot = pivot; }
+	void SetPosition(const XMFLOAT2& position);
+	void SetPivot(const ePivot& pivot);
+	void SetScreenPivot(const ePivot& pivot);
 	void SetWidth(FLOAT width);
 	void SetHeight(FLOAT height);
 
+	XMFLOAT2 GetPivotPosition() const;
+
 protected:
-	ePivot	m_pivot;
-	FLOAT	m_width;
-	FLOAT	m_height;
+	ePivot		m_pivot;
+	ePivot		m_screenPivot;
+	FLOAT		m_width;
+	FLOAT		m_height;
+	XMFLOAT2	m_pivotPosition;
 };
 
 class CrosshairUIObject : public UIObject

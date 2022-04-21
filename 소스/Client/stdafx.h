@@ -204,8 +204,8 @@ namespace Utile
 
     ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
                                                 const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
-    string PATH(const string& file, int type);
-    wstring PATH(const wstring& file, int type);
+    string PATH(const string& file);
+    wstring PATH(const wstring& file);
     int Random(int min, int max);
     float Random(float min, float max);
 

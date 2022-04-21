@@ -51,6 +51,9 @@ public:
 	void ProcessClient(LPVOID arg);
 	void SetIsActive(BOOL isActive);
 
+	UINT GetWidth() const;
+	UINT GetHeight() const;
+	FLOAT GetAspectRatio() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 
 private:
@@ -59,10 +62,10 @@ private:
 	// Window
 	HINSTANCE							m_hInstance;
 	HWND								m_hWnd;
+	BOOL								m_isActive;
 	UINT								m_width;
 	UINT								m_height;
 	FLOAT								m_aspectRatio;
-	BOOL								m_isActive;
 
 	// Pipeline
 	ComPtr<IDXGIFactory4>				m_factory;

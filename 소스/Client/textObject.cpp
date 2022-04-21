@@ -62,7 +62,53 @@ void TextObject::SetText(const wstring& text)
 
 void TextObject::SetPosition(const XMFLOAT2& position)
 {
-	m_position = position;
+	m_pivotPosition = position;
+	float width{ static_cast<float>(g_gameFramework.GetWidth()) }, height{ static_cast<float>(g_gameFramework.GetHeight()) };
+
+	switch (m_screenPivot)
+	{
+	case ePivot::LEFTTOP:
+		m_position.x = position.x;
+		m_position.y = position.y;
+		break;
+	case ePivot::CENTERTOP:
+		m_position.x = position.x + width / 2.0f;
+		m_position.y = position.y;
+		break;
+	case ePivot::RIGHTTOP:
+		m_position.x = position.x + width;
+		m_position.y = position.y;
+		break;
+	case ePivot::LEFTCENTER:
+		m_position.x = position.x;
+		m_position.y = position.y + height / 2.0f;
+		break;
+	case ePivot::CENTER:
+		m_position.x = position.x + width / 2.0f;
+		m_position.y = position.y + height / 2.0f;
+		break;
+	case ePivot::RIGHTCENTER:
+		m_position.x = position.x + width;
+		m_position.y = position.y + height / 2.0f;
+		break;
+	case ePivot::LEFTBOT:
+		m_position.x = position.x;
+		m_position.y = position.y + height;
+		break;
+	case ePivot::CENTERBOT:
+		m_position.x = position.x + width / 2.0f;
+		m_position.y = position.y + height;
+		break;
+	case ePivot::RIGHTBOT:
+		m_position.x = position.x + width;
+		m_position.y = position.y + height;
+		break;
+	}
+}
+
+void TextObject::SetScreenPivot(const ePivot& pivot)
+{
+	m_screenPivot = pivot;
 }
 
 BOOL TextObject::isDeleted() const
@@ -78,6 +124,11 @@ wstring TextObject::GetText() const
 XMFLOAT2 TextObject::GetPosition() const
 {
 	return m_position;
+}
+
+XMFLOAT2 TextObject::GetPivotPosition() const
+{
+	return m_pivotPosition;
 }
 
 FLOAT TextObject::GetWidth() const

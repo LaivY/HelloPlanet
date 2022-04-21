@@ -106,30 +106,14 @@ namespace Utile
         return NULL;
     }
 
-    string PATH(const string& file, int type)
+    string PATH(const string& file)
     {
-        switch (type)
-        {
-        case RESOURCE:
-            return "Resource/" + file;
-        case SHADER:
-            return "Shader/" + file;
-        default:
-            return "";
-        }
+        return "Resource/" + file;
     }
 
-    wstring PATH(const wstring& file, int type)
+    wstring PATH(const wstring& file)
     {
-        switch (type)
-        {
-        case RESOURCE:
-            return TEXT("Resource/") + file;
-        case SHADER:
-            return TEXT("Shader/") + file;
-        default:
-            return TEXT("");
-        }
+        return TEXT("Resource/") + file;
     }
 
     int Random(int min, int max)

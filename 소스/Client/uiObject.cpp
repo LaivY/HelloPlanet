@@ -1,11 +1,12 @@
 ﻿#include "uiObject.h"
+#include "framework.h"
 
-UIObject::UIObject() : m_width{}, m_height{}, m_pivot{ ePivot::CENTER }
+UIObject::UIObject() : m_width{}, m_height{}, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_pivotPosition{}
 {
 
 }
 
-UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }
+UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }, m_pivotPosition{}
 {
 	m_worldMatrix._11 = width;
 	m_worldMatrix._22 = height;
@@ -18,46 +19,99 @@ void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, cons
 
 void UIObject::SetPosition(const XMFLOAT3& position)
 {
-	SetPosition(position.x, position.y);
+	SetPosition(XMFLOAT2{ position.x, position.y });
 }
 
-void UIObject::SetPosition(FLOAT x, FLOAT y)
+void UIObject::SetPosition(const XMFLOAT2& position)
 {
+	m_pivotPosition = position;
+	float width{ static_cast<float>(g_gameFramework.GetWidth()) }, height{ static_cast<float>(g_gameFramework.GetHeight()) };
+
+	// 화면의 피봇 위치에서 (x, y)만큼 이동
+	switch (m_screenPivot)
+	{
+	case ePivot::LEFTTOP:
+		m_worldMatrix._41 = position.x - width / 2.0f;
+		m_worldMatrix._42 = position.y + height / 2.0f;
+		break;
+	case ePivot::CENTERTOP:
+		m_worldMatrix._41 = position.x;
+		m_worldMatrix._42 = position.y + height / 2.0f;
+		break;
+	case ePivot::RIGHTTOP:
+		m_worldMatrix._41 = position.x + width / 2.0f;
+		m_worldMatrix._42 = position.y + height / 2.0f;
+		break;
+	case ePivot::LEFTCENTER:
+		m_worldMatrix._41 = position.x - width / 2.0f;
+		m_worldMatrix._42 = position.y;
+		break;
+	case ePivot::CENTER:
+		m_worldMatrix._41 = position.x;
+		m_worldMatrix._42 = position.y;
+		break;
+	case ePivot::RIGHTCENTER:
+		m_worldMatrix._41 = position.x + width / 2.0f;
+		m_worldMatrix._42 = position.y;
+		break;
+	case ePivot::LEFTBOT:
+		m_worldMatrix._41 = position.x - width / 2.0f;
+		m_worldMatrix._42 = position.y - height / 2.0f;
+		break;
+	case ePivot::CENTERBOT:
+		m_worldMatrix._41 = position.x;
+		m_worldMatrix._42 = position.y - height / 2.0f;
+		break;
+	case ePivot::RIGHTBOT:
+		m_worldMatrix._41 = position.x + width / 2.0f;
+		m_worldMatrix._42 = position.y - height / 2.0f;
+		break;
+	}
+
+	// 오브젝트 피봇 위치에 따라 자신의 너비, 높이만큼 조정
 	switch (m_pivot)
 	{
 	case ePivot::LEFTTOP:
-		m_worldMatrix._41 = x + m_width / 2.0f;
-		m_worldMatrix._42 = y - m_height / 2.0f;
+		m_worldMatrix._41 += m_width / 2.0f;
+		m_worldMatrix._42 -= m_height / 2.0f;
 		break;
 	case ePivot::CENTERTOP:
-		m_worldMatrix._42 = y - m_height / 2.0f;
+		m_worldMatrix._42 -= m_height / 2.0f;
 		break;
 	case ePivot::RIGHTTOP:
-		m_worldMatrix._41 = x - m_width / 2.0f;
-		m_worldMatrix._42 = y - m_height / 2.0f;
+		m_worldMatrix._41 -= m_width / 2.0f;
+		m_worldMatrix._42 -= m_height / 2.0f;
 		break;
 	case ePivot::LEFTCENTER:
-		m_worldMatrix._41 = x + m_width / 2.0f;
+		m_worldMatrix._41 += m_width / 2.0f;
 		break;
 	case ePivot::CENTER:
-		m_worldMatrix._41 = x;
-		m_worldMatrix._42 = y;
 		break;
 	case ePivot::RIGHTCENTER:
-		m_worldMatrix._41 = x - m_width / 2.0f;
+		m_worldMatrix._41 -= m_width / 2.0f;
 		break;
 	case ePivot::LEFTBOT:
-		m_worldMatrix._41 = x + m_width / 2.0f;
-		m_worldMatrix._42 = y + m_height / 2.0f;
+		m_worldMatrix._41 += m_width / 2.0f;
+		m_worldMatrix._42 += m_height / 2.0f;
 		break;
 	case ePivot::CENTERBOT:
-		m_worldMatrix._42 = y + m_height / 2.0f;
+		m_worldMatrix._42 += m_height / 2.0f;
 		break;
 	case ePivot::RIGHTBOT:
-		m_worldMatrix._41 = x - m_width / 2.0f;
-		m_worldMatrix._42 = y + m_height / 2.0f;
+		m_worldMatrix._41 -= m_width / 2.0f;
+		m_worldMatrix._42 += m_height / 2.0f;
 		break;
 	}
+}
+
+void UIObject::SetPivot(const ePivot& pivot)
+{
+	m_pivot = pivot;
+}
+
+void UIObject::SetScreenPivot(const ePivot& pivot)
+{
+	m_screenPivot = pivot;
 }
 
 void UIObject::SetWidth(FLOAT width)
@@ -100,6 +154,11 @@ void UIObject::SetHeight(FLOAT height)
 		m_worldMatrix._42 -= deltaHeight / 2.0f;
 		break;
 	}
+}
+
+XMFLOAT2 UIObject::GetPivotPosition() const
+{
+	return m_pivotPosition;
 }
 
 HpUIObject::HpUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_hp{ -1 }, m_maxHp{}, m_deltaHp{}, m_originWidth{ width }, m_timerState{ FALSE }, m_timer{}

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "stdafx.h"
 #include "player.h"
+#include "uiObject.h"
 
 class TextObject
 {
@@ -17,10 +18,12 @@ public:
 	void SetFormat(const string& format);
 	void SetText(const wstring& text);
 	void SetPosition(const XMFLOAT2& position);
+	void SetScreenPivot(const ePivot& pivot);
 
 	BOOL isDeleted() const;
 	wstring GetText() const;
 	XMFLOAT2 GetPosition() const;
+	XMFLOAT2 GetPivotPosition() const;
 	FLOAT GetWidth() const;
 	FLOAT GetHeight() const;
 
@@ -36,8 +39,10 @@ protected:
 	wstring		m_text;
 
 	XMFLOAT2	m_position;
+	XMFLOAT2	m_pivotPosition;
 	FLOAT		m_width;
 	FLOAT		m_height;
+	ePivot		m_screenPivot;
 };
 
 class BulletTextObject : public TextObject

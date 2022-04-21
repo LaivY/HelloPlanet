@@ -1,7 +1,7 @@
 ﻿#include "framework.h"
 
 GameFramework::GameFramework(UINT width, UINT height) :
-	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ TRUE },
+	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ FALSE },
 	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
@@ -62,6 +62,7 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	GetWindowRect(hWnd, &clientRect);
 	m_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	m_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
+	m_aspectRatio = static_cast<float>(m_width) / static_cast<float>(m_height);
 
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
@@ -70,11 +71,7 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	CreateRenderTargetView();
 	CreateDepthStencilView();
 
-	if (m_scene)
-	{
-		m_scene->SetViewport(D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f });
-		m_scene->SetScissorRect(D3D12_RECT{ 0, 0, static_cast<long>(m_width), static_cast<long>(m_height) });
-	}
+	if (m_scene) m_scene->OnResize(hWnd, message, wParam, lParam);
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -625,6 +622,11 @@ void GameFramework::ProcessClient(LPVOID arg)
 
 void GameFramework::SetIsActive(BOOL isActive)
 {
+	// 커서 FALSE, TRUE할 때마다 스택이 쌓여서 1 이상일 경우 보이고, 0이하일 경우 안보이는 것이다.
+	// 따라서 값이 같은 경우는 ShowCursor를 호출해주면 안된다.
+	if (m_isActive == isActive)
+		return;
+
 	m_isActive = isActive;
 	if (m_isActive)
 		ShowCursor(FALSE);
@@ -635,4 +637,19 @@ void GameFramework::SetIsActive(BOOL isActive)
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
 {
 	return m_dWriteFactory;
+}
+
+UINT GameFramework::GetWidth() const
+{
+	return m_width;
+}
+
+UINT GameFramework::GetHeight() const
+{
+	return m_height;
+}
+
+FLOAT GameFramework::GetAspectRatio() const
+{
+	return m_aspectRatio;
 }
