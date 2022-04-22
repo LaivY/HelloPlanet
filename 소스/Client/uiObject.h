@@ -28,13 +28,15 @@ public:
 	void SetHeight(FLOAT height);
 
 	XMFLOAT2 GetPivotPosition() const;
+	FLOAT GetWidth() const;
+	FLOAT GetHeight() const;
 
 protected:
 	ePivot		m_pivot;
 	ePivot		m_screenPivot;
+	XMFLOAT2	m_pivotPosition;
 	FLOAT		m_width;
 	FLOAT		m_height;
-	XMFLOAT2	m_pivotPosition;
 };
 
 class CrosshairUIObject : public UIObject

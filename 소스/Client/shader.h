@@ -1,7 +1,5 @@
 ﻿#pragma once
 #include "stdafx.h"
-#include "mesh.h"
-#include "texture.h"
 
 class Shader
 {

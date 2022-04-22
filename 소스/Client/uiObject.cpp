@@ -161,6 +161,16 @@ XMFLOAT2 UIObject::GetPivotPosition() const
 	return m_pivotPosition;
 }
 
+FLOAT UIObject::GetWidth() const
+{
+	return m_width;
+}
+
+FLOAT UIObject::GetHeight() const
+{
+	return m_height;
+}
+
 HpUIObject::HpUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_hp{ -1 }, m_maxHp{}, m_deltaHp{}, m_originWidth{ width }, m_timerState{ FALSE }, m_timer{}
 {
 	// 체력이 달면 타이머를 이용해 조금씩 달게하는 애니메이션을 보여준다.

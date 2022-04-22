@@ -2,7 +2,7 @@
 
 GameFramework::GameFramework(UINT width, UINT height) :
 	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ FALSE },
-	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
+	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
 }
@@ -14,6 +14,9 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
+	if (m_nextScene != eSceneType::NONE)
+		ChangeScene();
+
 	m_timer.Tick();
 	if (m_isActive)
 	{
@@ -50,6 +53,7 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		m_wrappedBackBuffers[i].Reset();
 		m_d2dRenderTargets[i].Reset();
 		m_commandAllocators[i].Reset();
+		m_fenceValues[i] = m_fenceValues[m_frameIndex];
 	}
 	m_d2dDeviceContext->SetTarget(nullptr);
 	m_d2dDeviceContext->Flush();
@@ -68,6 +72,8 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	m_swapChain->GetDesc(&desc);
 	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, m_width, m_height, desc.BufferDesc.Format, desc.Flags));
 
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+
 	CreateRenderTargetView();
 	CreateDepthStencilView();
 
@@ -82,11 +88,20 @@ void GameFramework::OnUpdate(FLOAT deltaTime)
 
 void GameFramework::OnRender()
 {
+	// 씬 렌더링
 	PopulateCommandList();
+
+	// 명령 제출
 	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	// D2D 렌더링
 	Render2D();
+
+	// 출력
 	DX::ThrowIfFailed(m_swapChain->Present(1, 0));
+
+	// GPU 대기
 	WaitForPreviousFrame();
 }
 
@@ -177,7 +192,7 @@ void GameFramework::LoadAssets()
 	CreateShaderVariable();
 
 	// 씬 생성, 초기화
-	m_scene = make_unique<GameScene>();
+	m_scene = make_unique<LoadingScene>();
 	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
 
 	// 명령 제출
@@ -186,7 +201,7 @@ void GameFramework::LoadAssets()
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
 	// 명령들이 완료될 때까지 대기
-	WaitForPreviousFrame();
+	WaitForGpu();
 
 	// 디폴트 버퍼로의 복사가 완료됐으므로 업로드 버퍼를 해제한다.
 	m_scene->OnInitEnd();
@@ -312,7 +327,7 @@ void GameFramework::CreateRenderTargetView()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ m_rtvHeap->GetCPUDescriptorHandleForHeapStart() };
 	for (UINT i = 0; i < FrameCount; ++i)
 	{
-		m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i]));
+		DX::ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
 		m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, rtvHandle);
 
 		// Create a wrapped 11On12 resource of this back buffer. Since we are 
@@ -499,7 +514,7 @@ void GameFramework::Render2D() const
 
 void GameFramework::Update(FLOAT deltaTime)
 {
-	wstring title{ TEXT("DirectX12 (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
+	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
 	SetWindowText(m_hWnd, title.c_str());
 }
 
@@ -550,35 +565,35 @@ void GameFramework::PopulateCommandList() const
 
 void GameFramework::WaitForPreviousFrame()
 {
-	for (int i = 0; i < FrameCount; ++i)
-	{
-		const UINT64 fence{ m_fenceValues[i] };
-		DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+	// Schedule a Signal command in the queue.
+	const UINT64 currentFenceValue = m_fenceValues[m_frameIndex];
+	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), currentFenceValue));
 
-		if (m_fence->GetCompletedValue() < m_fenceValues[i])
-		{
-			DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-			WaitForSingleObject(m_fenceEvent, INFINITE);
-		}
+	// If the next frame is not ready to be rendered yet, wait until it is ready.
+	if (m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
+	{
+		DX::ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+		WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
 	}
+
+	// Update the frame index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
-	++m_fenceValues[m_frameIndex];
+
+	// Set the fence value for the next frame.
+	m_fenceValues[m_frameIndex] = currentFenceValue + 1;
 }
 
 void GameFramework::WaitForGpu()
 {
-	for (int i = 0; i < FrameCount; ++i)
-	{
-		const UINT64 fence{ m_fenceValues[i] };
-		DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+	// Schedule a Signal command in the queue.
+	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValues[m_frameIndex]));
 
-		if (m_fence->GetCompletedValue() < m_fenceValues[i])
-		{
-			DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-			WaitForSingleObject(m_fenceEvent, INFINITE);
-		}
-	}
-	m_frameIndex = 0;
+	// Wait until the fence has been processed.
+	DX::ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+	WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
+
+	// Increment the fence value for the current frame.
+	m_fenceValues[m_frameIndex]++;
 }
 
 void GameFramework::ConnectServer()
@@ -620,6 +635,36 @@ void GameFramework::ProcessClient()
 	if (m_scene) m_scene->ProcessClient();
 }
 
+void GameFramework::ChangeScene()
+{
+	WaitForPreviousFrame();
+
+	m_scene.reset();
+	switch (m_nextScene)
+	{
+	case eSceneType::LOADING:
+		m_scene = make_unique<LoadingScene>();
+		break;
+	case eSceneType::GAME:
+		m_scene = make_unique<GameScene>();
+		break;
+	}
+	m_nextScene = eSceneType::NONE;
+
+	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
+
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
+
+	m_commandList->Close();
+	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	WaitForGpu();
+
+	m_scene->OnInitEnd();
+}
+
 void GameFramework::SetIsActive(BOOL isActive)
 {
 	// 커서 FALSE, TRUE할 때마다 스택이 쌓여서 1 이상일 경우 보이고, 0이하일 경우 안보이는 것이다.
@@ -637,6 +682,11 @@ void GameFramework::SetIsActive(BOOL isActive)
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
 {
 	return m_dWriteFactory;
+}
+
+ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
+{
+	return m_commandQueue;
 }
 
 UINT GameFramework::GetWidth() const

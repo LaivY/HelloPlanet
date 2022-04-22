@@ -1,10 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include "stdafx.h"
 #include "camera.h"
+#include "mesh.h"
 #include "object.h"
 #include "player.h"
 #include "scene.h"
 #include "shadow.h"
+#include "texture.h"
 #include "textObject.h"
 #include "uiObject.h"
 
@@ -40,7 +42,7 @@ public:
 	GameScene();
 	~GameScene();
 
-	// ÀÌº¥Æ® ÇÔ¼ö
+	// ì´ë²¤íŠ¸ í•¨ìˆ˜
 	virtual void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
@@ -52,20 +54,17 @@ public:
 	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnUpdate(FLOAT deltaTime);
 
-	// °ÔÀÓ·çÇÁ ÇÔ¼ö
+	// ê²Œì„ë£¨í”„ í•¨ìˆ˜
 	virtual void Update(FLOAT deltaTime);
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
 
-	// ¼­¹ö Åë½Å ÇÔ¼ö
+	// ì„œë²„ í†µì‹  í•¨ìˆ˜
 	virtual void ProcessClient();
 
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature);
-	void CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
@@ -83,24 +82,19 @@ public:
 	void RecvBulletFire();
 
 private:
-	ComPtr<ID3D12Resource>								m_cbGameScene;		// »ó¼ö ¹öÆÛ
-	cbGameScene*										m_pcbGameScene;		// »ó¼ö ¹öÆÛ Æ÷ÀÎÅÍ
-	unique_ptr<cbGameScene>								m_cbGameSceneData;	// »ó¼ö ¹öÆÛ µ¥ÀÌÅÍ
+	ComPtr<ID3D12Resource>								m_cbGameScene;		// ìƒìˆ˜ ë²„í¼
+	cbGameScene*										m_pcbGameScene;		// ìƒìˆ˜ ë²„í¼ í¬ì¸í„°
+	unique_ptr<cbGameScene>								m_cbGameSceneData;	// ìƒìˆ˜ ë²„í¼ ë°ì´í„°
 
-	unordered_map<string, shared_ptr<Mesh>>				m_meshes;			// ¸Ş½¬
-	unordered_map<string, shared_ptr<Shader>>			m_shaders;			// ¼ÎÀÌ´õ
-	unordered_map<string, shared_ptr<Texture>>			m_textures;			// ÅØ½ºÃÄ
-	unique_ptr<ShadowMap>								m_shadowMap;		// ±×¸²ÀÚ¸Ê
+	unique_ptr<ShadowMap>								m_shadowMap;		// ê·¸ë¦¼ìë§µ
+	unique_ptr<Skybox>									m_skybox;			// ìŠ¤ì¹´ì´ë°•ìŠ¤
+	shared_ptr<Camera>									m_camera;			// ì¹´ë©”ë¼
+	shared_ptr<Player>									m_player;			// í”Œë ˆì´ì–´
+	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;		// ë©€í‹°í”Œë ˆì´ì–´
+	unordered_map<INT, unique_ptr<Monster>>				m_monsters;			// ëª¬ìŠ¤í„°ë“¤
+	vector<unique_ptr<GameObject>>						m_gameObjects;		// ê²Œì„ì˜¤ë¸Œì íŠ¸ë“¤
 
-	unique_ptr<Skybox>									m_skybox;			// ½ºÄ«ÀÌ¹Ú½º
-	shared_ptr<Camera>									m_camera;			// Ä«¸Ş¶ó
-	shared_ptr<Player>									m_player;			// ÇÃ·¹ÀÌ¾î
-	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;		// ¸ÖÆ¼ÇÃ·¹ÀÌ¾î
-	unordered_map<INT, unique_ptr<Monster>>				m_monsters;			// ¸ó½ºÅÍµé
-	vector<unique_ptr<GameObject>>						m_gameObjects;		// °ÔÀÓ¿ÀºêÁ§Æ®µé
-
-	unique_ptr<Camera>									m_uiCamera;			// UI Ä«¸Ş¶ó
-	vector<unique_ptr<UIObject>>						m_uiObjects;		// UI ¿ÀºêÁ§Æ®
-
-	vector<unique_ptr<TextObject>>						m_textObjects;		// ÅØ½ºÆ® ¿ÀºêÁ§Æ®
+	unique_ptr<Camera>									m_uiCamera;			// UI ì¹´ë©”ë¼
+	vector<unique_ptr<UIObject>>						m_uiObjects;		// UI ì˜¤ë¸Œì íŠ¸
+	vector<unique_ptr<TextObject>>						m_textObjects;		// í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸
 };

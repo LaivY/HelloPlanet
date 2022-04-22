@@ -4,7 +4,13 @@
 #include "camera.h"
 #include "timer.h"
 #include "scene.h"
+#include "loadingScene.h"
 #include "gameScene.h"
+
+enum class eSceneType
+{
+	NONE, LOADING, GAME
+};
 
 struct cbGameFramework
 {
@@ -50,14 +56,17 @@ public:
 	void WaitForGpu();
 	void ConnectServer();
 	void ProcessClient();
+	void ChangeScene();
+
 	void SetIsActive(BOOL isActive);
 
 	UINT GetWidth() const;
 	UINT GetHeight() const;
 	FLOAT GetAspectRatio() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
+	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
-private:
+public:
 	static constexpr UINT				FrameCount = 3;
 
 	// Window
@@ -110,4 +119,5 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
+	eSceneType							m_nextScene;
 };

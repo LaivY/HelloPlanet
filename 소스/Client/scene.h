@@ -1,5 +1,8 @@
 ﻿#pragma once
 #include "stdafx.h"
+#include "mesh.h"
+#include "shader.h"
+#include "texture.h"
 
 class Scene
 {
@@ -30,6 +33,10 @@ public:
 	virtual void ProcessClient() = NULL;
 
 protected:
-	D3D12_VIEWPORT	m_viewport;		// 뷰포트
-	D3D12_RECT		m_scissorRect;	// 가위사각형
+	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;
+	static unordered_map<string, shared_ptr<Shader>>	s_shaders;
+	static unordered_map<string, shared_ptr<Texture>>	s_textures;
+
+	D3D12_VIEWPORT	m_viewport;
+	D3D12_RECT		m_scissorRect;
 };

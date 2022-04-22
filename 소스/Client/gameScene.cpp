@@ -1,9 +1,9 @@
-#include "gameScene.h"
+ï»¿#include "gameScene.h"
 #include "framework.h"
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
-
+	
 }
 
 GameScene::~GameScene()
@@ -13,46 +13,34 @@ GameScene::~GameScene()
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-	// ¼ÎÀÌ´õ º¯¼ö »ı¼º
+	// ì…°ì´ë” ë³€ìˆ˜ ìƒì„±
 	CreateShaderVariable(device, commandList);
 
-	// ¸Ş½¬ »ı¼º
-	CreateMeshes(device, commandList);
-
-	// ¼ÎÀÌ´õ »ı¼º
-	CreateShaders(device, rootSignature, postProcessRootSignature);
-
-	// ÅØ½ºÃÄ »ı¼º
-	CreateTextures(device, commandList);
-
-	// ±×¸²ÀÚ¸Ê »ı¼º
+	// ê·¸ë¦¼ìë§µ ìƒì„±
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
-	// ºí·¯ ÇÊÅÍ »ı¼º
+	// ë¸”ëŸ¬ í•„í„° ìƒì„±
 	//m_blurFilter = make_unique<BlurFilter>(device);
 
-	// °ÔÀÓ¿ÀºêÁ§Æ® »ı¼º
+	// ê²Œì„ì˜¤ë¸Œì íŠ¸ ìƒì„±
 	CreateGameObjects(device, commandList);
 
-	// UI ¿ÀºêÁ§Æ® »ı¼º
+	// UI ì˜¤ë¸Œì íŠ¸ ìƒì„±
 	CreateUIObjects(device, commandList);
 
-	// ÅØ½ºÆ® ¿ÀºêÁ§Æ® »ı¼º
+	// í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸ ìƒì„±
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 
-	// Á¶¸í »ı¼º
+	// ì¡°ëª… ìƒì„±
 	CreateLights();
 
-	// ¸Ê ·Îµù
+	// ë§µ ë¡œë”©
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 }
 
 void GameScene::OnInitEnd()
 {
-	for (auto& [_, mesh] : m_meshes)
-		mesh->ReleaseUploadBuffer();
-	for (auto& [_, texture] : m_textures)
-		texture->ReleaseUploadBuffer();
+
 }
 
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -68,7 +56,7 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
-	// UI, ÅØ½ºÆ® ¿ÀºêÁ§Æ®µé Àç¹èÄ¡
+	// UI, í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸ë“¤ ì¬ë°°ì¹˜
 	for (auto& ui : m_uiObjects)
 		ui->SetPosition(ui->GetPivotPosition());
 	for (auto& t : m_textObjects)
@@ -77,14 +65,14 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
-	// È­¸é °¡¿îµ¥ ÁÂÇ¥ °è»ê
+	// í™”ë©´ ê°€ìš´ë° ì¢Œí‘œ ê³„ì‚°
 	RECT rect; GetWindowRect(hWnd, &rect);
 	POINT oldMousePosition{ static_cast<LONG>(rect.left + g_gameFramework.GetWidth() / 2), static_cast<LONG>(rect.top + g_gameFramework.GetHeight() / 2) };
 
-	// ¿òÁ÷ÀÎ ¸¶¿ì½º ÁÂÇ¥
+	// ì›€ì§ì¸ ë§ˆìš°ìŠ¤ ì¢Œí‘œ
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
 
-	// ¿òÁ÷ÀÎ Á¤µµ¿¡ ºñ·ÊÇØ¼­ È¸Àü
+	// ì›€ì§ì¸ ì •ë„ì— ë¹„ë¡€í•´ì„œ íšŒì „
 	float sensitive{ 2.5f };
 	int dx = newMousePosition.x - oldMousePosition.x;
 	int dy = newMousePosition.y - oldMousePosition.y;
@@ -99,7 +87,7 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 #ifdef THIRDVIEW
 		if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 #endif
-		// ¸¶¿ì½º¸¦ È­¸é °¡¿îµ¥·Î ÀÌµ¿
+		// ë§ˆìš°ìŠ¤ë¥¼ í™”ë©´ ê°€ìš´ë°ë¡œ ì´ë™
 		SetCursorPos(oldMousePosition.x, oldMousePosition.y);
 	}
 
@@ -214,35 +202,35 @@ void GameScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) 
 
 void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
 {
-	// ºäÆ÷Æ®, °¡À§»ç°¢Çü, ·»´õÅ¸°Ù ¼³Á¤
+	// ë·°í¬íŠ¸, ê°€ìœ„ì‚¬ê°í˜•, ë Œë”íƒ€ê²Ÿ ì„¤ì •
 	commandList->RSSetViewports(1, &m_viewport);
 	commandList->RSSetScissorRects(1, &m_scissorRect);
 	commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
-	// ½ºÄ«ÀÌ¹Ú½º ·»´õ¸µ
+	// ìŠ¤ì¹´ì´ë°•ìŠ¤ ë Œë”ë§
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// °ÔÀÓ¿ÀºêÁ§Æ® ·»´õ¸µ
+	// ê²Œì„ì˜¤ë¸Œì íŠ¸ ë Œë”ë§
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
 	lock.unlock();
 
-	// ¸ÖÆ¼ÇÃ·¹ÀÌ¾î ·»´õ¸µ
+	// ë©€í‹°í”Œë ˆì´ì–´ ë Œë”ë§
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
 
-	// ¸ó½ºÅÍ ·»´õ¸µ
+	// ëª¬ìŠ¤í„° ë Œë”ë§
 	lock.lock();
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
 	lock.unlock();
 
-	// ÇÃ·¹ÀÌ¾î ·»´õ¸µ
+	// í”Œë ˆì´ì–´ ë Œë”ë§
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
 
-	// UI ·»´õ¸µ
+	// UI ë Œë”ë§
 	if (m_uiCamera)
 	{
 		m_uiCamera->UpdateShaderVariable(commandList);
@@ -270,178 +258,38 @@ void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const C
 	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
-void GameScene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	// ÇÃ·¹ÀÌ¾î °ü·Ã ¸Ş½¬ ·Îµù
-	vector<pair<string, string>> animations
-	{
-		{ "idle", "IDLE" }, { "walking", "WALKING" }, {"walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
-		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
-	};
-	m_meshes["PLAYER"] = make_shared<Mesh>();
-	m_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));
-	for (const string& weaponName : { "AR", "SG", "MG" })
-		for (const auto& [fileName, animationName] : animations)
-			m_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".bin"), weaponName + "/" + animationName);
-
-	m_meshes["ARM"] = make_shared<Mesh>();
-	m_meshes["ARM"]->LoadMeshBinary(device, commandList, Utile::PATH("arm.bin"));
-	m_meshes["ARM"]->Link(m_meshes["PLAYER"]);
-	m_meshes["AR"] = make_shared<Mesh>();
-	m_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("AR/AR.bin"));
-	m_meshes["AR"]->Link(m_meshes["PLAYER"]);
-	m_meshes["SG"] = make_shared<Mesh>();
-	m_meshes["SG"]->LoadMeshBinary(device, commandList, Utile::PATH("SG/SG.bin"));
-	m_meshes["SG"]->Link(m_meshes["PLAYER"]);
-	m_meshes["MG"] = make_shared<Mesh>();
-	m_meshes["MG"]->LoadMeshBinary(device, commandList, Utile::PATH("MG/MG.bin"));
-	m_meshes["MG"]->Link(m_meshes["PLAYER"]);
-
-	// ¸ó½ºÅÍ °ü·Ã ·Îµù
-	m_meshes["GAROO"] = make_shared<Mesh>();
-	m_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt"));
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt"), "ATTACK");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt"), "DIE");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt"), "HIT");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt"), "IDLE");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/running.txt"), "RUNNING");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt"), "WALKBACK");
-	m_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt"), "WALKING");
-
-	// °ÔÀÓ¿ÀºêÁ§Æ® °ü·Ã ·Îµù
-	m_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
-	m_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
-
-	// ¸Ê ¿ÀºêÁ§Æ® °ü·Ã ·Îµù
-	m_meshes["MOUNTAIN"] = make_shared<Mesh>();
-	m_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt")));
-	m_meshes["PLANT"] = make_shared<Mesh>();
-	m_meshes["PLANT"]->LoadMesh(device, commandList, Utile::PATH(("Object/bigPlant.txt")));
-	m_meshes["TREE"] = make_shared<Mesh>();
-	m_meshes["TREE"]->LoadMesh(device, commandList, Utile::PATH(("Object/tree.txt")));
-	m_meshes["ROCK1"] = make_shared<Mesh>();
-	m_meshes["ROCK1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock1.txt")));
-	m_meshes["ROCK2"] = make_shared<Mesh>();
-	m_meshes["ROCK2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock2.txt")));
-	m_meshes["ROCK3"] = make_shared<Mesh>();
-	m_meshes["ROCK3"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock3.txt")));
-	m_meshes["SMALLROCK"] = make_shared<Mesh>();
-	m_meshes["SMALLROCK"]->LoadMesh(device, commandList, Utile::PATH(("Object/smallRock.txt")));
-	m_meshes["ROCKGROUP1"] = make_shared<Mesh>();
-	m_meshes["ROCKGROUP1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup1.txt")));
-	m_meshes["ROCKGROUP2"] = make_shared<Mesh>();
-	m_meshes["ROCKGROUP2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup2.txt")));
-	m_meshes["DROPSHIP"] = make_shared<Mesh>();
-	m_meshes["DROPSHIP"]->LoadMesh(device, commandList, Utile::PATH(("Object/dropship.txt")));
-	m_meshes["MUSHROOMS"] = make_shared<Mesh>();
-	m_meshes["MUSHROOMS"]->LoadMesh(device, commandList, Utile::PATH(("Object/mushrooms.txt")));
-	m_meshes["SKULL"] = make_shared<Mesh>();
-	m_meshes["SKULL"]->LoadMesh(device, commandList, Utile::PATH(("Object/skull.txt")));
-	m_meshes["RIBS"] = make_shared<Mesh>();
-	m_meshes["RIBS"]->LoadMesh(device, commandList, Utile::PATH(("Object/ribs.txt")));
-	m_meshes["ROCK4"] = make_shared<Mesh>();
-	m_meshes["ROCK4"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock4.txt")));
-	m_meshes["ROCK5"] = make_shared<Mesh>();
-	m_meshes["ROCK5"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock5.txt")));
-
-	// °ÔÀÓ ½Ã½ºÅÛ °ü·Ã ·Îµù
-	m_meshes["SKYBOX"] = make_shared<Mesh>();
-	m_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt"));
-	m_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
-	m_meshes["HPBAR"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f }, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 0.5f });
-
-	// µğ¹ö±× ¹Ù¿îµù¹Ú½º ·Îµù
-	m_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
-	m_meshes["BB_GAROO"] = make_shared<CubeMesh>(device, commandList, 7.0f, 7.0f, 10.0f, XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
-	m_meshes["BB_SMALLROCK"] = make_shared<CubeMesh>(device, commandList, 100.0f, 100.0f, 100.0f, XMFLOAT3{}, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
-}
-
-void GameScene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
-{
-	m_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
-	m_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PSSkybox");
-	m_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
-	m_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS");
-	m_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/link.hlsl")), "VS", "PS");
-	m_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
-
-	// ±×¸²ÀÚ ¼ÎÀÌ´õ
-	m_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
-	m_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_ANIMATION", "GS");
-	m_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_LINK", "GS");
-
-	// µğ¹ö±×
-	m_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
-}
-
-void GameScene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	m_textures["SKYBOX"] = make_shared<Texture>();
-	m_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds")));
-	m_textures["SKYBOX"]->CreateTexture(device);
-
-	m_textures["GAROO"] = make_shared<Texture>();
-	m_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
-	m_textures["GAROO"]->CreateTexture(device);
-
-	m_textures["FLOOR"] = make_shared<Texture>();
-	m_textures["FLOOR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/floor.dds")));
-	m_textures["FLOOR"]->CreateTexture(device);
-	m_textures["OBJECT1"] = make_shared<Texture>();
-	m_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds")));
-	m_textures["OBJECT1"]->CreateTexture(device);
-	m_textures["OBJECT2"] = make_shared<Texture>();
-	m_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds")));
-	m_textures["OBJECT2"]->CreateTexture(device);
-	m_textures["OBJECT3"] = make_shared<Texture>();
-	m_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds")));
-	m_textures["OBJECT3"]->CreateTexture(device);
-
-	m_textures["WHITE"] = make_shared<Texture>();
-	m_textures["WHITE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));
-	m_textures["WHITE"]->CreateTexture(device);
-
-	m_textures["HPBARBASE"] = make_shared<Texture>();
-	m_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
-	m_textures["HPBARBASE"]->CreateTexture(device);
-
-	m_textures["HPBAR"] = make_shared<Texture>();
-	m_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds")));
-	m_textures["HPBAR"]->CreateTexture(device);
-}
-
 void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// UI Ä«¸Ş¶ó »ı¼º
+	// UI ì¹´ë©”ë¼ ìƒì„±
 	XMFLOAT4X4 projMatrix{};
 	m_uiCamera = make_unique<Camera>();
 	m_uiCamera->CreateShaderVariable(device, commandList);
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
-	// Á¶ÁØÁ¡
+	// ì¡°ì¤€ì 
 	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
-	crosshair->SetMesh(m_meshes["UI"]);
-	crosshair->SetShader(m_shaders["UI"]);
-	crosshair->SetTexture(m_textures["WHITE"]);
+	crosshair->SetMesh(s_meshes["UI"]);
+	crosshair->SetShader(s_shaders["UI"]);
+	crosshair->SetTexture(s_textures["WHITE"]);
 	crosshair->SetPlayer(m_player);
 	m_uiObjects.push_back(move(crosshair));
 
-	// Ã¼·Â¹Ù º£ÀÌ½º
+	// ì²´ë ¥ë°” ë² ì´ìŠ¤
 	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
-	hpBarBase->SetMesh(m_meshes["UI"]);
-	hpBarBase->SetShader(m_shaders["UI"]);
-	hpBarBase->SetTexture(m_textures["HPBARBASE"]);
+	hpBarBase->SetMesh(s_meshes["UI"]);
+	hpBarBase->SetShader(s_shaders["UI"]);
+	hpBarBase->SetTexture(s_textures["HPBARBASE"]);
 	hpBarBase->SetPivot(ePivot::LEFTBOT);
 	hpBarBase->SetScreenPivot(ePivot::LEFTBOT);
 	hpBarBase->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
 	m_uiObjects.push_back(move(hpBarBase));
 
-	// Ã¼·Â¹Ù
+	// ì²´ë ¥ë°”
 	auto hpBar{ make_unique<HpUIObject>(200.0f, 30.0f) };
-	hpBar->SetMesh(m_meshes["UI"]);
-	hpBar->SetShader(m_shaders["UI"]);
-	hpBar->SetTexture(m_textures["HPBAR"]);
+	hpBar->SetMesh(s_meshes["UI"]);
+	hpBar->SetShader(s_shaders["UI"]);
+	hpBar->SetTexture(s_textures["HPBAR"]);
 	hpBar->SetPivot(ePivot::LEFTBOT);
 	hpBar->SetScreenPivot(ePivot::LEFTBOT);
 	hpBar->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
@@ -451,7 +299,7 @@ void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 
 void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// Ä«¸Ş¶ó »ı¼º
+	// ì¹´ë©”ë¼ ìƒì„±
 #ifdef FREEVIEW
 	m_camera = make_shared<Camera>();
 #endif
@@ -466,39 +314,40 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(Setting::SCREEN_WIDTH) / static_cast<float>(Setting::SCREEN_HEIGHT), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
-	// ¹Ù¿îµù¹Ú½º
+	// ë°”ìš´ë”©ë°•ìŠ¤
 	SharedBoundingBox bbPlayer{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-	bbPlayer->SetMesh(m_meshes["BB_PLAYER"]);
-	bbPlayer->SetShader(m_shaders["WIREFRAME"]);
+	bbPlayer->SetMesh(s_meshes["BB_PLAYER"]);
+	bbPlayer->SetShader(s_shaders["WIREFRAME"]);
 
-	// ÇÃ·¹ÀÌ¾î »ı¼º
+	// í”Œë ˆì´ì–´ ìƒì„±
 	m_player = make_shared<Player>();
-	m_player->SetMesh(m_meshes["ARM"]);
-	m_player->SetShader(m_shaders["ANIMATION"]);
-	m_player->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
-	m_player->SetGunMesh(m_meshes["AR"]);
-	m_player->SetGunShader(m_shaders["LINK"]);
-	m_player->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
+	m_player->SetMesh(s_meshes["ARM"]);
+	m_player->SetShader(s_shaders["ANIMATION"]);
+	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+	m_player->SetGunMesh(s_meshes["AR"]);
+	m_player->SetGunShader(s_shaders["LINK"]);
+	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 	m_player->SetGunType(eGunType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
-	// Ä«¸Ş¶ó, ÇÃ·¹ÀÌ¾î ¼­·Î ¼³Á¤
+	// ì¹´ë©”ë¼, í”Œë ˆì´ì–´ ì„œë¡œ ì„¤ì •
 	m_camera->SetPlayer(m_player);
 	m_player->SetCamera(m_camera);
 
-	// ½ºÄ«ÀÌ¹Ú½º
+	// ìŠ¤ì¹´ì´ë°•ìŠ¤
 	m_skybox = make_unique<Skybox>();
-	m_skybox->SetMesh(m_meshes["SKYBOX"]);
-	m_skybox->SetShader(m_shaders["SKYBOX"]);
-	m_skybox->SetTexture(m_textures["SKYBOX"]);
+	m_skybox->SetMesh(s_meshes["SKYBOX"]);
+	m_skybox->SetShader(s_shaders["SKYBOX"]);
+	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
+	m_gameObjects.push_back(move(m_skybox));
 
-	// ¹Ù´Ú
+	// ë°”ë‹¥
 	auto floor{ make_unique<GameObject>() };
-	floor->SetMesh(m_meshes["FLOOR"]);
-	floor->SetShader(m_shaders["DEFAULT"]);
-	floor->SetTexture(m_textures["FLOOR"]);
+	floor->SetMesh(s_meshes["FLOOR"]);
+	floor->SetShader(s_shaders["DEFAULT"]);
+	floor->SetTexture(s_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
 }
 
@@ -510,7 +359,7 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue, 0.8f), &TextObject::s_brushes["BLUE"]));
 
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("³ª´®¹Ù¸¥°íµñOTF"), NULL,
+		TEXT("ë‚˜ëˆ”ë°”ë¥¸ê³ ë”•OTF"), NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
@@ -522,7 +371,7 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("³ª´®¹Ù¸¥°íµñOTF"),
+		TEXT("ë‚˜ëˆ”ë°”ë¥¸ê³ ë”•OTF"),
 		NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
@@ -535,7 +384,7 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("³ª´®¹Ù¸¥°íµñOTF"), NULL,
+		TEXT("ë‚˜ëˆ”ë°”ë¥¸ê³ ë”•OTF"), NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
 		DWRITE_FONT_STRETCH_NORMAL,
@@ -547,7 +396,7 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("³ª´®¹Ù¸¥°íµñOTF"),
+		TEXT("ë‚˜ëˆ”ë°”ë¥¸ê³ ë”•OTF"),
 		NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
 		DWRITE_FONT_STYLE_NORMAL,
@@ -559,16 +408,16 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
 	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
-	// ÅØ½ºÆ® ¿ÀºêÁ§Æ®µéÀÇ ÁÂÇ¥°è´Â ÁÂÃø »ó´ÜÀÌ (0, 0), ¿ìÃø ÇÏ´ÜÀÌ (width, height) ÀÌ´Ù.
+	// í…ìŠ¤íŠ¸ ì˜¤ë¸Œì íŠ¸ë“¤ì˜ ì¢Œí‘œê³„ëŠ” ì¢Œì¸¡ ìƒë‹¨ì´ (0, 0), ìš°ì¸¡ í•˜ë‹¨ì´ (width, height) ì´ë‹¤.
 
-	// ÃÑ¾Ë
+	// ì´ì•Œ
 	auto bulletText{ make_unique<BulletTextObject>() };
 	bulletText->SetPlayer(m_player);
 	bulletText->SetScreenPivot(ePivot::RIGHTBOT);
 	bulletText->SetPosition(XMFLOAT2{ -160.0f, -80.0f });
 	m_textObjects.push_back(move(bulletText));
 
-	// Ã¼·Â
+	// ì²´ë ¥
 	auto hpText{ make_unique<HPTextObject>() };
 	hpText->SetPlayer(m_player);
 	hpText->SetScreenPivot(ePivot::LEFTBOT);
@@ -581,7 +430,7 @@ void GameScene::CreateLights() const
 	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
 	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
 
-	// ±×¸²ÀÚ¸¦ ¸¸µå´Â Á¶¸íÀÇ ¸¶Áö¸· ºä, Åõ¿µ º¯È¯ Çà·ÄÀÇ °æ¿ì ¾ÀÀ» µ¤´Â ¿µ¿ªÀ¸·Î, ¾÷µ¥ÀÌÆ®ÇÒ ÇÊ¿ä ¾øÀ½
+	// ê·¸ë¦¼ìë¥¼ ë§Œë“œëŠ” ì¡°ëª…ì˜ ë§ˆì§€ë§‰ ë·°, íˆ¬ì˜ ë³€í™˜ í–‰ë ¬ì˜ ê²½ìš° ì”¬ì„ ë®ëŠ” ì˜ì—­ìœ¼ë¡œ, ì—…ë°ì´íŠ¸í•  í•„ìš” ì—†ìŒ
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };
 	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
@@ -598,12 +447,12 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 {
 	ifstream map{ mapFile };
 
-	// ¿ÀºêÁ§Æ® °³¼ö
+	// ì˜¤ë¸Œì íŠ¸ ê°œìˆ˜
 	int count{ 0 }; map >> count;
 
 	for (int i = 0; i < count; ++i)
 	{
-		// Å¸ÀÔ, ½ºÄÉÀÏ, È¸Àü, ÀÌµ¿
+		// íƒ€ì…, ìŠ¤ì¼€ì¼, íšŒì „, ì´ë™
 		int type{}; map >> type;
 		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
 		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
@@ -619,8 +468,8 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMStoreFloat4x4(&world, worldMatrix);
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
-		object->SetShader(m_shaders["MODEL"]);
-		object->SetShadowShader(m_shaders["SHADOW_MODEL"]);
+		object->SetShader(s_shaders["MODEL"]);
+		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
 		object->SetWorldMatrix(world);
 
 		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
@@ -628,75 +477,75 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		{
 		case eMapObjectType::MOUNTAIN:
 		{
-			object->SetMesh(m_meshes["MOUNTAIN"]);
+			object->SetMesh(s_meshes["MOUNTAIN"]);
 			break;
 		}
 		case eMapObjectType::PLANT:
-			object->SetMesh(m_meshes["PLANT"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(s_meshes["PLANT"]);
+			object->SetTexture(s_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::TREE:
-			object->SetMesh(m_meshes["TREE"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(s_meshes["TREE"]);
+			object->SetTexture(s_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK1:
 		{
-			object->SetMesh(m_meshes["ROCK1"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["ROCK1"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		}
 		case eMapObjectType::ROCK2:
-			object->SetMesh(m_meshes["ROCK2"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["ROCK2"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::ROCK3:
-			object->SetMesh(m_meshes["ROCK3"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["ROCK3"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::SMALLROCK:
-			object->SetMesh(m_meshes["SMALLROCK"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["SMALLROCK"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::ROCKGROUP1:
 		{
-			object->SetMesh(m_meshes["ROCKGROUP1"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["ROCKGROUP1"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 
 			SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 50.0f, 0.0f }, XMFLOAT3{ 50.0f, 50.0f, 50.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-			bb->SetMesh(m_meshes["BB_SMALLROCK"]);
-			bb->SetShader(m_shaders["WIREFRAME"]);
+			bb->SetMesh(s_meshes["BB_SMALLROCK"]);
+			bb->SetShader(s_shaders["WIREFRAME"]);
 			object->AddBoundingBox(bb);
 			break;
 		}
 		case eMapObjectType::ROCKGROUP2:
 		{
-			object->SetMesh(m_meshes["ROCKGROUP2"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["ROCKGROUP2"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		}
 		case eMapObjectType::DROPSHIP:
-			object->SetMesh(m_meshes["DROPSHIP"]);
-			object->SetTexture(m_textures["OBJECT3"]);
+			object->SetMesh(s_meshes["DROPSHIP"]);
+			object->SetTexture(s_textures["OBJECT3"]);
 			break;
 		case eMapObjectType::MUSHROOMS:
-			object->SetMesh(m_meshes["MUSHROOMS"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(s_meshes["MUSHROOMS"]);
+			object->SetTexture(s_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::SKULL:
-			object->SetMesh(m_meshes["SKULL"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(s_meshes["SKULL"]);
+			object->SetTexture(s_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::RIBS:
-			object->SetMesh(m_meshes["RIBS"]);
-			object->SetTexture(m_textures["OBJECT2"]);
+			object->SetMesh(s_meshes["RIBS"]);
+			object->SetTexture(s_textures["OBJECT2"]);
 			break;
 		case eMapObjectType::ROCK4:
-			object->SetMesh(m_meshes["ROCK4"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(s_meshes["ROCK4"]);
+			object->SetTexture(s_textures["OBJECT1"]);
 			break;
 		case eMapObjectType::ROCK5:
-			object->SetMesh(m_meshes["ROCK5"]);
-			object->SetTexture(m_textures["OBJECT1"]);
+			object->SetMesh(s_meshes["ROCK5"]);
+			object->SetTexture(s_textures["OBJECT1"]);
 			break;
 		}
 		m_gameObjects.push_back(move(object));
@@ -707,25 +556,25 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 {
 	if (!m_shadowMap) return;
 
-	// ºäÆ÷Æ®, °¡À§»ç°¢Çü ¼³Á¤
+	// ë·°í¬íŠ¸, ê°€ìœ„ì‚¬ê°í˜• ì„¤ì •
 	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
 	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
 
-	// ¼ÎÀÌ´õ¿¡ ¹­±â
+	// ì…°ì´ë”ì— ë¬¶ê¸°
 	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
 	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 
-	// ¸®¼Ò½º¹è¸®¾î ¼³Á¤(±íÀÌ¹öÆÛ¾²±â)
+	// ë¦¬ì†ŒìŠ¤ë°°ë¦¬ì–´ ì„¤ì •(ê¹Šì´ë²„í¼ì“°ê¸°)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
-	// ±íÀÌ½ºÅÙ½Ç ¹öÆÛ ÃÊ±âÈ­
+	// ê¹Šì´ìŠ¤í…ì‹¤ ë²„í¼ ì´ˆê¸°í™”
 	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
-	// ·»´õÅ¸°Ù ¼³Á¤
+	// ë Œë”íƒ€ê²Ÿ ì„¤ì •
 	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
 
-	// ·»´õ¸µ
+	// ë Œë”ë§
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& object : m_gameObjects)
 	{
@@ -747,23 +596,23 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	}
 	if (m_player)
 	{
-		m_player->SetMesh(m_meshes.at("PLAYER"));
+		m_player->SetMesh(s_meshes.at("PLAYER"));
 		m_player->RenderToShadowMap(commandList);
-		m_player->SetMesh(m_meshes.at("ARM"));
+		m_player->SetMesh(s_meshes.at("ARM"));
 	}
 
-	// ¸®¼Ò½º¹è¸®¾î ¼³Á¤(¼ÎÀÌ´õ¿¡¼­ ÀĞ±â)
+	// ë¦¬ì†ŒìŠ¤ë°°ë¦¬ì–´ ì„¤ì •(ì…°ì´ë”ì—ì„œ ì½ê¸°)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 {
-	// ÇÃ·¹ÀÌ¾îÀÇ ¹Ù¿îµù¹Ú½º
+	// í”Œë ˆì´ì–´ì˜ ë°”ìš´ë”©ë°•ìŠ¤
 	const auto& pPbb{ m_player->GetBoundingBox().front() };
 	BoundingOrientedBox pbb;
 	pPbb->Transform(pbb, XMLoadFloat4x4(&m_player->GetWorldMatrix()));
 
-	// ÇÃ·¹ÀÌ¾î¿Í °ÔÀÓ¿ÀºêÁ§Æ® Ãæµ¹ÆÇÁ¤
+	// í”Œë ˆì´ì–´ì™€ ê²Œì„ì˜¤ë¸Œì íŠ¸ ì¶©ëŒíŒì •
 	for (const auto& object : m_gameObjects)
 	{
 		const auto& boundingBoxes{ object->GetBoundingBox() };
@@ -781,7 +630,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 		}
 	}
 
-	// ÇÃ·¹ÀÌ¾î¿Í ¸ÖÆ¼ÇÃ·¹ÀÌ¾î Ãæµ¹ÆÇÁ¤
+	// í”Œë ˆì´ì–´ì™€ ë©€í‹°í”Œë ˆì´ì–´ ì¶©ëŒíŒì •
 	for (const auto& p : m_multiPlayers)
 	{
 		if (!p) continue;
@@ -799,32 +648,32 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 
 void GameScene::UpdateShadowMatrix()
 {
-	// ÄÉ½ºÄÉÀÌµå ¹üÀ§¸¦ ³ª´®
+	// ì¼€ìŠ¤ì¼€ì´ë“œ ë²”ìœ„ë¥¼ ë‚˜ëˆ”
 	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.05f, 0.2f, 0.4f };
 
-	// NDCÁÂÇ¥°è¿¡¼­ÀÇ ÇÑ º¯ÀÇ ±æÀÌ°¡ 1ÀÎ Á¤À°¸éÃ¼ÀÇ ²ÀÁşÁ¡ 8°³
+	// NDCì¢Œí‘œê³„ì—ì„œì˜ í•œ ë³€ì˜ ê¸¸ì´ê°€ 1ì¸ ì •ìœ¡ë©´ì²´ì˜ ê¼­ì§“ì  8ê°œ
 	XMFLOAT3 frustum[]{
-		// ¾ÕÂÊ
-		{ -1.0f, 1.0f, 0.0f },	// ¿ŞÂÊÀ§
-		{ 1.0f, 1.0f, 0.0f },	// ¿À¸¥ÂÊÀ§
-		{ 1.0f, -1.0f, 0.0f },	// ¿À¸¥ÂÊ¾Æ·¡
-		{ -1.0f, -1.0f, 0.0f },	// ¿ŞÂÊ¾Æ·¡
+		// ì•ìª½
+		{ -1.0f, 1.0f, 0.0f },	// ì™¼ìª½ìœ„
+		{ 1.0f, 1.0f, 0.0f },	// ì˜¤ë¥¸ìª½ìœ„
+		{ 1.0f, -1.0f, 0.0f },	// ì˜¤ë¥¸ìª½ì•„ë˜
+		{ -1.0f, -1.0f, 0.0f },	// ì™¼ìª½ì•„ë˜
 
-		// µÚÂÊ
-		{ -1.0f, 1.0f, 1.0f },	// ¿ŞÂÊÀ§
-		{ 1.0f, 1.0f, 1.0f },	// ¿À¸¥ÂÊÀ§
-		{ 1.0f, -1.0f, 1.0f },	// ¿À¸¥ÂÊ¾Æ·¡
-		{ -1.0f, -1.0f, 1.0f }	// ¿ŞÂÊ¾Æ·¡
+		// ë’¤ìª½
+		{ -1.0f, 1.0f, 1.0f },	// ì™¼ìª½ìœ„
+		{ 1.0f, 1.0f, 1.0f },	// ì˜¤ë¥¸ìª½ìœ„
+		{ 1.0f, -1.0f, 1.0f },	// ì˜¤ë¥¸ìª½ì•„ë˜
+		{ -1.0f, -1.0f, 1.0f }	// ì™¼ìª½ì•„ë˜
 	};
 
-	// NDCÁÂÇ¥°è -> ¿ùµåÁÂÇ¥°è º¯È¯ Çà·Ä
+	// NDCì¢Œí‘œê³„ -> ì›”ë“œì¢Œí‘œê³„ ë³€í™˜ í–‰ë ¬
 	XMFLOAT4X4 toWorldMatrix{ Matrix::Inverse(Matrix::Mul(m_camera->GetViewMatrix(), m_camera->GetProjMatrix())) };
 
-	// NDCÁÂÇ¥°èÀÇ Å¥ºê¸¦ ¿ùµåÁÂÇ¥°è·Î º¯°æ(½Ã¾ßÀıµÎÃ¼)
+	// NDCì¢Œí‘œê³„ì˜ íë¸Œë¥¼ ì›”ë“œì¢Œí‘œê³„ë¡œ ë³€ê²½(ì‹œì•¼ì ˆë‘ì²´)
 	for (auto& v : frustum)
 		v = Vector3::TransformCoord(v, toWorldMatrix);
 
-	// Å¥ºêÀÇ Á¤Á¡À» ½Ã¾ßÀıµÎÃ¼ ±¸°£À¸·Î º¯°æ
+	// íë¸Œì˜ ì •ì ì„ ì‹œì•¼ì ˆë‘ì²´ êµ¬ê°„ìœ¼ë¡œ ë³€ê²½
 	for (int i = 0; i < casecade.size() - 1; ++i)
 	{
 		XMFLOAT3 tFrustum[8];
@@ -833,31 +682,31 @@ void GameScene::UpdateShadowMatrix()
 
 		for (int j = 0; j < 4; ++j)
 		{
-			// ¾ÕÂÊ¿¡¼­ µÚÂÊÀ¸·Î ÇâÇÏ´Â º¤ÅÍ
+			// ì•ìª½ì—ì„œ ë’¤ìª½ìœ¼ë¡œ í–¥í•˜ëŠ” ë²¡í„°
 			XMFLOAT3 v{ Vector3::Sub(tFrustum[j + 4], tFrustum[j]) };
 
-			// ±¸°£ ½ÃÀÛ, ³¡À¸·Î ¸¸µé¾îÁÖ´Â º¤ÅÍ
+			// êµ¬ê°„ ì‹œì‘, ëìœ¼ë¡œ ë§Œë“¤ì–´ì£¼ëŠ” ë²¡í„°
 			XMFLOAT3 n{ Vector3::Mul(v, casecade[i]) };
 			XMFLOAT3 f{ Vector3::Mul(v, casecade[i + 1]) };
 
-			// ±¸°£ ½ÃÀÛ, ³¡À¸·Î ¼³Á¤
+			// êµ¬ê°„ ì‹œì‘, ëìœ¼ë¡œ ì„¤ì •
 			tFrustum[j + 4] = Vector3::Add(tFrustum[j], f);
 			tFrustum[j] = Vector3::Add(tFrustum[j], n);
 		}
 
-		// ÇØ´ç ±¸°£À» Æ÷ÇÔÇÒ ¹Ù¿îµù±¸ÀÇ Áß½ÉÀ» °è»ê
+		// í•´ë‹¹ êµ¬ê°„ì„ í¬í•¨í•  ë°”ìš´ë”©êµ¬ì˜ ì¤‘ì‹¬ì„ ê³„ì‚°
 		XMFLOAT3 center{};
 		for (const auto& v : tFrustum)
 			center = Vector3::Add(center, v);
 		center = Vector3::Mul(center, 1.0f / 8.0f);
 
-		// ¹Ù¿îµù±¸ÀÇ ¹İÁö¸§À» °è»ê
+		// ë°”ìš´ë”©êµ¬ì˜ ë°˜ì§€ë¦„ì„ ê³„ì‚°
 		float radius{};
 		for (const auto& v : tFrustum)
 			radius = max(radius, Vector3::Length(Vector3::Sub(v, center)));
 
-		// ±×¸²ÀÚ¸¦ ¸¸µé Á¶¸íÀÇ ÁÂÇ¥¸¦ ¹Ù¿îµù±¸ÀÇ Áß½É¿¡¼­ ºûÀÇ ¹İ´ë¹æÇâÀ¸·Î Àû´çÈ÷ ¿òÁ÷ÀÌ¿©¾ßÇÔ
-		// ÀÌ°Ç ¾ÀÀÇ ¿ÀºêÁ§Æ®¸¦ °í·ÁÇØ¼­ Á¤¸» Àû´çÇÑ ¼öÄ¡¸¸Å­ ¿òÁ÷¿©Áà¾ßÇÔ
+		// ê·¸ë¦¼ìë¥¼ ë§Œë“¤ ì¡°ëª…ì˜ ì¢Œí‘œë¥¼ ë°”ìš´ë”©êµ¬ì˜ ì¤‘ì‹¬ì—ì„œ ë¹›ì˜ ë°˜ëŒ€ë°©í–¥ìœ¼ë¡œ ì ë‹¹íˆ ì›€ì§ì´ì—¬ì•¼í•¨
+		// ì´ê±´ ì”¬ì˜ ì˜¤ë¸Œì íŠ¸ë¥¼ ê³ ë ¤í•´ì„œ ì •ë§ ì ë‹¹í•œ ìˆ˜ì¹˜ë§Œí¼ ì›€ì§ì—¬ì¤˜ì•¼í•¨
 		float value{ max(750.0f, radius * 2.5f) };
 		XMFLOAT3 shadowLightPos{ Vector3::Add(center, Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -value)) };
 
@@ -919,25 +768,25 @@ void GameScene::RecvLoginOk()
 	PlayerData data;
 	memcpy(&data, subBuf, sizeof(data));
 
-	// ·Î±×ÀÎ ÆĞÅ¶À» Ã³À½ ¼ö½ÅÇßÀ» °æ¿ì ÀÚ½ÅÀÇ id ¼³Á¤
+	// ë¡œê·¸ì¸ íŒ¨í‚·ì„ ì²˜ìŒ ìˆ˜ì‹ í–ˆì„ ê²½ìš° ìì‹ ì˜ id ì„¤ì •
 	if (m_player->GetId() == -1)
 	{
 		m_player->SetId(static_cast<int>(data.id));
 		return;
 	}
 
-	// ´Ù¸¥ ÇÃ·¹ÀÌ¾îµé Á¤º¸ÀÏ °æ¿ì
+	// ë‹¤ë¥¸ í”Œë ˆì´ì–´ë“¤ ì •ë³´ì¼ ê²½ìš°
 	if (m_player->GetId() != data.id)
 		for (auto& p : m_multiPlayers)
 		{
 			if (p) continue;
 			p = make_unique<Player>(TRUE);
-			p->SetMesh(m_meshes["PLAYER"]);
-			p->SetShader(m_shaders["ANIMATION"]);
-			p->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
-			p->SetGunMesh(m_meshes["SG"]);
-			p->SetGunShader(m_shaders["LINK"]);
-			p->SetGunShadowShader(m_shaders["SHADOW_LINK"]);
+			p->SetMesh(s_meshes["PLAYER"]);
+			p->SetShader(s_shaders["ANIMATION"]);
+			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			p->SetGunMesh(s_meshes["SG"]);
+			p->SetGunShader(s_shaders["LINK"]);
+			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 			p->SetGunType(eGunType::SG);
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
@@ -953,11 +802,11 @@ void GameScene::RecvUpdateClient()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	// ¸ğµç ÇÃ·¹ÀÌ¾îÀÇ µ¥ÀÌÅÍ
+	// ëª¨ë“  í”Œë ˆì´ì–´ì˜ ë°ì´í„°
 	array<PlayerData, MAX_USER> data;
 	memcpy(&data, subBuf, sizeof(PlayerData) * MAX_USER);
 
-	// ¸ÖÆ¼ÇÃ·¹ÀÌ¾î ¾÷µ¥ÀÌÆ®
+	// ë©€í‹°í”Œë ˆì´ì–´ ì—…ë°ì´íŠ¸
 	for (auto& p : m_multiPlayers)
 	{
 		if (!p) continue;
@@ -972,7 +821,7 @@ void GameScene::RecvUpdateClient()
 
 void GameScene::RecvUpdateMonster()
 {
-	// ¸ğµç ¸ó½ºÅÍÀÇ Á¤º¸¸¦ ¼ö½ÅÇÔ
+	// ëª¨ë“  ëª¬ìŠ¤í„°ì˜ ì •ë³´ë¥¼ ìˆ˜ì‹ í•¨
 	char subBuf[sizeof(MonsterData) * MAX_MONSTER]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
@@ -983,19 +832,19 @@ void GameScene::RecvUpdateMonster()
 
 	for (const MonsterData& m : monsters)
 	{
-		// id°¡ 0º¸´Ù ÀÛÀ¸¸é À¯È¿ÇÏÁö ¾ÊÀ½
+		// idê°€ 0ë³´ë‹¤ ì‘ìœ¼ë©´ ìœ íš¨í•˜ì§€ ì•ŠìŒ
 		if (m.id < 0) continue;
 
-		// ÇØ´ç idÀÇ ¸ó½ºÅÍ°¡ ¾ø´Â °æ¿ì¿£ »ı¼º
+		// í•´ë‹¹ idì˜ ëª¬ìŠ¤í„°ê°€ ì—†ëŠ” ê²½ìš°ì—” ìƒì„±
 		if (m_monsters.find(m.id) == m_monsters.end())
 		{
 			unique_lock<mutex> lock{ g_mutex };
 			m_monsters[m.id] = make_unique<Monster>();
 			lock.unlock();
-			m_monsters[m.id]->SetMesh(m_meshes["GAROO"]);
-			m_monsters[m.id]->SetShader(m_shaders["ANIMATION"]);
-			m_monsters[m.id]->SetShadowShader(m_shaders["SHADOW_ANIMATION"]);
-			m_monsters[m.id]->SetTexture(m_textures["GAROO"]);
+			m_monsters[m.id]->SetMesh(s_meshes["GAROO"]);
+			m_monsters[m.id]->SetShader(s_shaders["ANIMATION"]);
+			m_monsters[m.id]->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			m_monsters[m.id]->SetTexture(s_textures["GAROO"]);
 			m_monsters[m.id]->PlayAnimation("IDLE");
 		}
 		m_monsters[m.id]->ApplyServerData(m);
@@ -1015,8 +864,8 @@ void GameScene::RecvBulletFire()
 	memcpy(&dir, &subBuf[12], sizeof(dir));
 
 	auto bullet{ make_unique<Bullet>(dir) };
-	bullet->SetMesh(m_meshes["BULLET"]);
-	bullet->SetShader(m_shaders["DEFAULT"]);
+	bullet->SetMesh(s_meshes["BULLET"]);
+	bullet->SetShader(s_shaders["DEFAULT"]);
 	bullet->SetPosition(pos);
 
 	unique_lock<mutex> lock{ g_mutex };

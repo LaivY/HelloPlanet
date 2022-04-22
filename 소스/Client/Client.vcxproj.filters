@@ -103,6 +103,9 @@
     <ClInclude Include="gameScene.h">
       <Filter>헤더 파일\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="loadingScene.h">
+      <Filter>헤더 파일\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp">
@@ -151,6 +154,9 @@
       <Filter>소스 파일\Scene</Filter>
     </ClCompile>
     <ClCompile Include="gameScene.cpp">
+      <Filter>소스 파일\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="loadingScene.cpp">
       <Filter>소스 파일\Scene</Filter>
     </ClCompile>
   </ItemGroup>
