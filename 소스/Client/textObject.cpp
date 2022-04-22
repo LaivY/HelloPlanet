@@ -4,7 +4,9 @@
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
-TextObject::TextObject() : m_isDeleted{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) }, m_position{}, m_width{}, m_height{}
+TextObject::TextObject() 
+	: m_isDeleted{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) },
+	  m_position{}, m_pivotPosition{}, m_screenPivot{}, m_width{}, m_height{}
 {
 
 }
