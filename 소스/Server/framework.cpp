@@ -43,7 +43,8 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		player.data.aniType = eAnimationType::IDLE;
 		player.data.upperAniType = eUpperAnimationType::NONE;
 		player.socket = cSocket;
-		SendLoginOkPacket(id);
+		const char* name = "TestName123"; //name test
+		SendLoginOkPacket(id, name);
 		player.lock.unlock();
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
@@ -53,7 +54,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	}
 }
 
-void NetworkFramework::SendLoginOkPacket(int id)
+void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 {
 	sc_packet_login_ok packet{};
 	packet.size = sizeof(packet);
@@ -63,6 +64,7 @@ void NetworkFramework::SendLoginOkPacket(int id)
 	packet.data.aniType = eAnimationType::IDLE;
 	packet.data.upperAniType = eUpperAnimationType::NONE;
 	packet.data.pos = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+	strcpy_s(packet.name, sizeof(packet.name), name);
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -180,7 +182,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
 }
 
-void NetworkFramework::ProcessRecvPacket(int id)
+void NetworkFramework::ProcessRecvPacket(const int id)
 {
 	Session& cl = clients[id];
 	for (;;)
@@ -228,7 +230,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		case CS_PACKET_BULLET_FIRE:
 		{
 			// pos, dir, playerId
-			char subBuf[12 + 12 + 1];
+			char subBuf[12 + 12 + 1]{};
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
@@ -263,7 +265,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 	}
 }
 
-void NetworkFramework::Update(FLOAT deltaTime)
+void NetworkFramework::Update(const FLOAT deltaTime)
 {
 	// 몬스터 스폰
 	if (monsters.size() < MAX_MONSTER)
@@ -277,7 +279,7 @@ void NetworkFramework::Update(FLOAT deltaTime)
 	CollisionCheck();
 }
 
-void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
+void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 {
 	// 쿨타임 때마다 생성
 	m_spawnCooldown -= deltaTime;
@@ -298,7 +300,7 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	}
 }
 
-UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos)
+UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
 {
 	UCHAR index{ 0 };
 	float length{ FLT_MAX };		// 가까운 플레이어의 거리
@@ -351,7 +353,7 @@ void NetworkFramework::CollisionCheck()
 	bullets.clear();
 }
 
-void NetworkFramework::Disconnect(int id)
+void NetworkFramework::Disconnect(const int id)
 {
 	Session& cl = clients[id];
 	cl.lock.lock();
@@ -366,7 +368,7 @@ void NetworkFramework::Disconnect(int id)
 	cl.lock.unlock();
 }
 
-CHAR NetworkFramework::GetNewId()
+CHAR NetworkFramework::GetNewId() const
 {
 	for (int i = 0; i < MAX_USER; ++i) {
 		if (false == clients[i].data.isActive)

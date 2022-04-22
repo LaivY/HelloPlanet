@@ -11,17 +11,17 @@ public:
 
 	int OnInit(SOCKET socket);
 	void AcceptThread(SOCKET socket);
-	void SendLoginOkPacket(int id);
+	void SendLoginOkPacket(const int id, const char* name) const;
 	void SendPlayerDataPacket();
 	void SendMonsterDataPacket();
-	void ProcessRecvPacket(int id);
+	void ProcessRecvPacket(const int id);
 	void Update(FLOAT deltaTime);
 	void SpawnMonsters(FLOAT deltaTime);
 	void CollisionCheck();
-	void Disconnect(int id);
+	void Disconnect(const int id);
 
-	UCHAR DetectPlayer(const DirectX::XMFLOAT3& pos);
-	CHAR GetNewId();
+	UCHAR DetectPlayer(const DirectX::XMFLOAT3& pos) const;
+	CHAR GetNewId() const;
 
 public:
 	bool							isAccept;			// 1명이라도 서버에 들어왔는지
