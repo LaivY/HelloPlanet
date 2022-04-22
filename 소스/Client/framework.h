@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "timer.h"
 #include "scene.h"
+#include "gameScene.h"
 
 struct cbGameFramework
 {
@@ -48,7 +49,7 @@ public:
 	void WaitForPreviousFrame();
 	void WaitForGpu();
 	void ConnectServer();
-	void ProcessClient(LPVOID arg);
+	void ProcessClient();
 	void SetIsActive(BOOL isActive);
 
 	UINT GetWidth() const;

@@ -22,6 +22,12 @@
     <Filter Include="헤더 파일\Object">
       <UniqueIdentifier>{86514e68-c7b7-4c9f-9040-7cddfb6bb5ba}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Scene">
+      <UniqueIdentifier>{4e58a1b6-f4e1-4874-b848-a45ac094794b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\Scene">
+      <UniqueIdentifier>{93a1e674-2e1f-477a-9597-9c40917c4ffa}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Client.rc">
@@ -58,9 +64,6 @@
     <ClInclude Include="Resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="scene.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="shader.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -94,6 +97,12 @@
     <ClInclude Include="player.h">
       <Filter>헤더 파일\Object</Filter>
     </ClInclude>
+    <ClInclude Include="scene.h">
+      <Filter>헤더 파일\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="gameScene.h">
+      <Filter>헤더 파일\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp">
@@ -109,9 +118,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="mesh.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="scene.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="shader.cpp">
@@ -140,6 +146,12 @@
     </ClCompile>
     <ClCompile Include="player.cpp">
       <Filter>소스 파일\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="scene.cpp">
+      <Filter>소스 파일\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="gameScene.cpp">
+      <Filter>소스 파일\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -34,7 +34,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 #ifdef NETWORK
 	ConnectServer();
-	g_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_socket) };
+	g_networkThread = thread{ &GameFramework::ProcessClient, this };
 #endif
 }
 
@@ -177,7 +177,7 @@ void GameFramework::LoadAssets()
 	CreateShaderVariable();
 
 	// 씬 생성, 초기화
-	m_scene = make_unique<Scene>();
+	m_scene = make_unique<GameScene>();
 	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
 
 	// 명령 제출
@@ -189,7 +189,7 @@ void GameFramework::LoadAssets()
 	WaitForPreviousFrame();
 
 	// 디폴트 버퍼로의 복사가 완료됐으므로 업로드 버퍼를 해제한다.
-	m_scene->ReleaseUploadBuffer();
+	m_scene->OnInitEnd();
 
 	// 타이머 초기화
 	m_timer.Tick();
@@ -525,7 +525,7 @@ void GameFramework::PopulateCommandList() const
 	if (m_scene) m_scene->UpdateShaderVariable(m_commandList);
 
 	// 그림자맵에 씬 렌더링
-	if (m_scene) m_scene->RenderToShadowMap(m_commandList);
+	if (m_scene) m_scene->PreRender(m_commandList);
 
 	// Indicate that the back buffer will be used as a render target
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
@@ -615,9 +615,9 @@ void GameFramework::ConnectServer()
 	g_isConnected = TRUE;
 }
 
-void GameFramework::ProcessClient(LPVOID arg)
+void GameFramework::ProcessClient()
 {
-	if (m_scene) m_scene->ProcessClient(arg);
+	if (m_scene) m_scene->ProcessClient();
 }
 
 void GameFramework::SetIsActive(BOOL isActive)
