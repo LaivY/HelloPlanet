@@ -9,6 +9,9 @@ public:
 	TextObject();
 	~TextObject() = default;
 
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
@@ -17,8 +20,8 @@ public:
 	void SetBrush(const string& brush);
 	void SetFormat(const string& format);
 	void SetText(const wstring& text);
-	void SetPosition(const XMFLOAT2& position);
 	void SetScreenPivot(const ePivot& pivot);
+	void SetPosition(const XMFLOAT2& position);
 
 	BOOL isDeleted() const;
 	wstring GetText() const;
@@ -32,17 +35,18 @@ public:
 
 protected:
 	BOOL		m_isDeleted;
+	BOOL		m_isMouseOver;
 
 	D2D1_RECT_F	m_rect;
 	string		m_brush;
 	string		m_format;
 	wstring		m_text;
 
+	ePivot		m_screenPivot;
 	XMFLOAT2	m_position;
 	XMFLOAT2	m_pivotPosition;
 	FLOAT		m_width;
 	FLOAT		m_height;
-	ePivot		m_screenPivot;
 };
 
 class BulletTextObject : public TextObject
@@ -83,4 +87,25 @@ private:
 	FLOAT				m_scale;
 	BOOL				m_timerState;
 	FLOAT				m_scaleTimer;
+};
+
+class MenuTextObject : public TextObject
+{
+public:
+	MenuTextObject();
+	~MenuTextObject() = default;
+
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+
+	void Render(const ComPtr<ID2D1DeviceContext2>& device);
+	void Update(FLOAT deltaTime);
+
+	void SetMouseOverBrush(const string& brush);
+
+private:
+	BOOL	m_isMouseOver;
+	FLOAT	m_scale;
+	FLOAT	m_scaleTimer;
+	string	m_mouseOverBrush;
 };

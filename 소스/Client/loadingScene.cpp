@@ -1,5 +1,6 @@
 ﻿#include "loadingScene.h"
 #include "framework.h"
+#include "textObject.h"
 
 LoadingScene::LoadingScene() : m_isDone{ FALSE }
 {
@@ -14,7 +15,9 @@ LoadingScene::~LoadingScene()
 		t->ReleaseUploadBuffer();
 }
 
-void LoadingScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+void LoadingScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, 
+						  const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+						  const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateMeshes(device, commandList);
 	CreateShaders(device, rootSignature, postProcessRootSignature);
@@ -25,24 +28,9 @@ void LoadingScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D1
 	DX::ThrowIfFailed(g_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
 	DX::ThrowIfFailed(g_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
 
-	// 로딩 쓰레드 시작	
-	m_thread = thread{ &LoadingScene::LoadResources, this, device, m_commandList, rootSignature, postProcessRootSignature };
+	// 로딩 쓰레드 시작
+	m_thread = thread{ &LoadingScene::LoadResources, this, device, m_commandList, rootSignature, postProcessRootSignature, d2dDeivceContext, dWriteFactory };
 }
-
-void LoadingScene::OnInitEnd()
-{
-
-}
-
-void LoadingScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-
-void LoadingScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
-
-void LoadingScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-
-void LoadingScene::OnKeyboardEvent(FLOAT deltaTime) { }
-
-void LoadingScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
 
 void LoadingScene::OnUpdate(FLOAT deltaTime)
 {
@@ -51,14 +39,13 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	float width{ 200.0f * static_cast<float>(s_meshes.size() + s_shaders.size() + s_textures.size()) / static_cast<float>(28 + 10 + 9) };
-	for (auto& ui : m_uiObjects)
-		ui->SetWidth(width);
+	float width{ 200.0f * static_cast<float>(s_meshes.size() + s_shaders.size() + s_textures.size() + TextObject::s_brushes.size() + TextObject::s_formats.size()) / static_cast<float>(28 + 10 + 8 + 3 + 4) };
+	m_loadingBarObject->SetWidth(width);
 
 	if (m_isDone && m_thread.joinable())
 	{
 		m_thread.join();
-		g_gameFramework.m_nextScene = eSceneType::GAME;
+		g_gameFramework.SetNextScene(eScene::MAIN);
 	}
 }
 
@@ -66,8 +53,6 @@ void LoadingScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>&
 {
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);
 }
-
-void LoadingScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const { }
 
 void LoadingScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
 {
@@ -77,11 +62,8 @@ void LoadingScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, 
 
 	for (const auto& ui : m_uiObjects)
 		ui->Render(commandList);
+	m_loadingBarObject->Render(commandList);
 }
-
-void LoadingScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) { }
-
-void LoadingScene::ProcessClient() { }
 
 void LoadingScene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
@@ -113,35 +95,38 @@ void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 로딩바 베이스
-	auto loadingBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
+	auto loadingBarBase{ make_unique<UIObject>(200.0f, 10.0f) };
 	loadingBarBase->SetMesh(s_meshes["UI"]);
 	loadingBarBase->SetShader(s_shaders["UI"]);
 	loadingBarBase->SetTexture(s_textures["HPBARBASE"]);
 	loadingBarBase->SetPivot(ePivot::LEFTCENTER);
-	loadingBarBase->SetScreenPivot(ePivot::CENTER);
-	loadingBarBase->SetPosition(XMFLOAT2{ -100.0f, 0.0f });
+	loadingBarBase->SetScreenPivot(ePivot::RIGHTBOT);
+	loadingBarBase->SetPosition(XMFLOAT2{ -250.0f, 50.0f });
 	m_uiObjects.push_back(move(loadingBarBase));
 
 	// 로딩바
-	auto loadingBar{ make_unique<UIObject>(200.0f, 30.0f) };
-	loadingBar->SetMesh(s_meshes["UI"]);
-	loadingBar->SetShader(s_shaders["UI"]);
-	loadingBar->SetTexture(s_textures["HPBAR"]);
-	loadingBar->SetPivot(ePivot::LEFTCENTER);
-	loadingBar->SetScreenPivot(ePivot::CENTER);
-	loadingBar->SetPosition(XMFLOAT2{ -100.0f, 0.0f });
-	m_uiObjects.push_back(move(loadingBar));
+	m_loadingBarObject = make_unique<UIObject>(200.0f, 10.0f);
+	m_loadingBarObject->SetMesh(s_meshes["UI"]);
+	m_loadingBarObject->SetShader(s_shaders["UI"]);
+	m_loadingBarObject->SetTexture(s_textures["HPBAR"]);
+	m_loadingBarObject->SetPivot(ePivot::LEFTCENTER);
+	m_loadingBarObject->SetScreenPivot(ePivot::RIGHTBOT);
+	m_loadingBarObject->SetPosition(XMFLOAT2{ -250.0f, 50.0f });
 }
 
-void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
+void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, 
+								 const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+								 const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	LoadMeshes(device, commandList);
 	LoadShaders(device, rootSignature, postProcessRootSignature);
 	LoadTextures(device, commandList);
+	LoadTextBurshes(d2dDeivceContext);
+	LoadTextFormats(dWriteFactory);
 
 	commandList->Close();
 	ID3D12CommandList* ppCommandList[] = { commandList.Get() };
-	g_gameFramework.m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+	g_gameFramework.GetCommandQueue()->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 	g_gameFramework.WaitForPreviousFrame();
 
 	m_isDone = TRUE;
@@ -260,9 +245,6 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
 	s_textures["GAROO"]->CreateTexture(device);
 
-	s_textures["FLOOR"] = make_shared<Texture>();
-	s_textures["FLOOR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/floor.dds")));
-	s_textures["FLOOR"]->CreateTexture(device);
 	s_textures["OBJECT1"] = make_shared<Texture>();
 	s_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds")));
 	s_textures["OBJECT1"]->CreateTexture(device);
@@ -284,4 +266,65 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	//s_textures["HPBAR"] = make_shared<Texture>();
 	//s_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds")));
 	//s_textures["HPBAR"]->CreateTexture(device);
+}
+
+void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext)
+{
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &TextObject::s_brushes["RED"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue), &TextObject::s_brushes["BLUE"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &TextObject::s_brushes["WHITE"]));
+}
+
+void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
+{
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"), NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["BULLETCOUNT"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXBULLETCOUNT"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"), NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		36,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["HP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"),
+		NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		24,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MAXHP"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
+	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 }

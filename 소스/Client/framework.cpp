@@ -1,8 +1,11 @@
 ﻿#include "framework.h"
+#include "gameScene.h"
+#include "loadingScene.h"
+#include "mainScene.h"
 
 GameFramework::GameFramework(UINT width, UINT height) :
 	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ FALSE },
-	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }
+	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
 }
@@ -14,11 +17,11 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
-	if (m_nextScene != eSceneType::NONE)
+	if (m_nextScene != eScene::NONE)
 		ChangeScene();
 
 	m_timer.Tick();
-	if (m_isActive)
+	//if (m_isActive)
 	{
 		OnMouseEvent();
 		OnKeyboardEvent();
@@ -642,14 +645,17 @@ void GameFramework::ChangeScene()
 	m_scene.reset();
 	switch (m_nextScene)
 	{
-	case eSceneType::LOADING:
+	case eScene::LOADING:
 		m_scene = make_unique<LoadingScene>();
 		break;
-	case eSceneType::GAME:
+	case eScene::MAIN:
+		m_scene = make_unique<MainScene>();
+		break;
+	case eScene::GAME:
 		m_scene = make_unique<GameScene>();
 		break;
 	}
-	m_nextScene = eSceneType::NONE;
+	m_nextScene = eScene::NONE;
 
 	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
 	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
@@ -667,16 +673,21 @@ void GameFramework::ChangeScene()
 
 void GameFramework::SetIsActive(BOOL isActive)
 {
-	// 커서 FALSE, TRUE할 때마다 스택이 쌓여서 1 이상일 경우 보이고, 0이하일 경우 안보이는 것이다.
-	// 따라서 값이 같은 경우는 ShowCursor를 호출해주면 안된다.
-	if (m_isActive == isActive)
-		return;
+	//// 커서 FALSE, TRUE할 때마다 스택이 쌓여서 1 이상일 경우 보이고, 0이하일 경우 안보이는 것이다.
+	//// 따라서 값이 같은 경우는 ShowCursor를 호출해주면 안된다.
+	//if (m_isActive == isActive)
+	//	return;
 
-	m_isActive = isActive;
-	if (m_isActive)
-		ShowCursor(FALSE);
-	else
-		ShowCursor(TRUE);
+	//m_isActive = isActive;
+	//if (m_isActive)
+	//	ShowCursor(FALSE);
+	//else
+	//	ShowCursor(TRUE);
+}
+
+void GameFramework::SetNextScene(eScene scene)
+{
+	m_nextScene = scene;
 }
 
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const

@@ -5,8 +5,18 @@ unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
 TextObject::TextObject() 
-	: m_isDeleted{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) },
-	  m_position{}, m_pivotPosition{}, m_screenPivot{}, m_width{}, m_height{}
+	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) },
+	  m_position{}, m_pivotPosition{}, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
+{
+
+}
+
+void TextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+}
+
+void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 
 }
@@ -60,6 +70,11 @@ void TextObject::SetFormat(const string& format)
 void TextObject::SetText(const wstring& text)
 {
 	m_text = text;
+	if (!m_brush.empty() && !m_format.empty())
+	{
+		CalcWidthHeight();
+		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width, m_height };
+	}
 }
 
 void TextObject::SetPosition(const XMFLOAT2& position)
@@ -280,4 +295,56 @@ void HPTextObject::Update(FLOAT deltaTime)
 void HPTextObject::SetPlayer(const shared_ptr<Player>& player)
 {
 	m_player = player;
+}
+
+MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale { 1.0f }, m_scaleTimer{}
+{
+
+}
+
+void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+}
+
+void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
+{
+	RECT c{};
+	GetWindowRect(hWnd, &c);
+
+	POINT p{}; GetCursorPos(&p);
+	p.x -= c.left;
+	p.y -= c.top;
+
+	RECT r{ m_position.x, m_position.y, m_position.x + m_rect.right, m_position.y + m_rect.bottom };
+
+	if (r.left <= p.x && p.x <= r.right &&
+		r.top <= p.y && p.y <= r.bottom)
+		m_isMouseOver = TRUE;
+	else
+		m_isMouseOver = FALSE;
+}
+
+void MenuTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
+{
+	D2D1::Matrix3x2F matrix{ D2D1::Matrix3x2F::Identity() };
+	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right / 2.0f, m_rect.bottom / 2.0f }));
+	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Skew(0.0f, -5.0f));
+	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	device->SetTransform(matrix);
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_isMouseOver ? m_mouseOverBrush : m_brush].Get());
+}
+
+void MenuTextObject::Update(FLOAT deltaTime)
+{
+	constexpr float maxScale{ 1.2f }, minScale{ 1.0f }, speed{ 1.0f };
+	if (m_isMouseOver)
+		m_scale = min(maxScale, m_scale + speed * deltaTime);
+	else
+		m_scale = max(minScale, m_scale - speed * deltaTime);
+}
+
+void MenuTextObject::SetMouseOverBrush(const string& brush)
+{
+	m_mouseOverBrush = brush;
 }

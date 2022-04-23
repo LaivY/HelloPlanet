@@ -157,6 +157,7 @@
     <ClInclude Include="gameScene.h" />
     <ClInclude Include="loadingScene.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="mainScene.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="object.h" />
     <ClInclude Include="player.h" />
@@ -178,6 +179,7 @@
     <ClCompile Include="gameScene.cpp" />
     <ClCompile Include="loadingScene.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mainScene.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="object.cpp" />
     <ClCompile Include="player.cpp" />
@@ -223,6 +225,9 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".editorconfig" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

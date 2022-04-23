@@ -38,11 +38,6 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 }
 
-void GameScene::OnInitEnd()
-{
-
-}
-
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	UINT width{ g_gameFramework.GetWidth() }, height{ g_gameFramework.GetHeight() };
@@ -65,6 +60,20 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	static bool isCursorHide{ true };
+	if (GetAsyncKeyState(VK_TAB) & 0x8000)
+	{
+		ShowCursor(TRUE);
+		isCursorHide = false;
+		return;
+	}
+
+	if (!isCursorHide)
+	{
+		ShowCursor(FALSE);
+		isCursorHide = true;
+	}
+
 	// 화면 가운데 좌표 계산
 	RECT rect; GetWindowRect(hWnd, &rect);
 	POINT oldMousePosition{ static_cast<LONG>(rect.left + g_gameFramework.GetWidth() / 2), static_cast<LONG>(rect.top + g_gameFramework.GetHeight() / 2) };
@@ -347,69 +356,12 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	auto floor{ make_unique<GameObject>() };
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
-	floor->SetTexture(s_textures["FLOOR"]);
 	m_gameObjects.push_back(move(floor));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-	// Create D2D/DWrite objects for rendering text.
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black, 0.8f), &TextObject::s_brushes["BLACK"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red, 0.8f), &TextObject::s_brushes["RED"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue, 0.8f), &TextObject::s_brushes["BLUE"]));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"), NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		36,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["BULLETCOUNT"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		24,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["MAXBULLETCOUNT"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"), NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		36,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["HP"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
-	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		24,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["MAXHP"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
 	// 텍스트 오브젝트들의 좌표계는 좌측 상단이 (0, 0), 우측 하단이 (width, height) 이다.
-
 	// 총알
 	auto bulletText{ make_unique<BulletTextObject>() };
 	bulletText->SetPlayer(m_player);
