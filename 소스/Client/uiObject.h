@@ -20,10 +20,12 @@ public:
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT /*deltaTime*/) { }
 
+	void SetFitToScreen(BOOL fitToScreen);
 	void SetPosition(const XMFLOAT3& position);
 	void SetPosition(const XMFLOAT2& position);
 	void SetPivot(const ePivot& pivot);
 	void SetScreenPivot(const ePivot& pivot);
+	void SetScale(const XMFLOAT2& scale);
 	void SetWidth(FLOAT width);
 	void SetHeight(FLOAT height);
 
@@ -32,9 +34,11 @@ public:
 	FLOAT GetHeight() const;
 
 protected:
+	BOOL		m_isFitToScreen;
 	ePivot		m_pivot;
 	ePivot		m_screenPivot;
 	XMFLOAT2	m_pivotPosition;
+	XMFLOAT2	m_scale;
 	FLOAT		m_width;
 	FLOAT		m_height;
 };

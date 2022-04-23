@@ -2,14 +2,16 @@
 #include "framework.h"
 
 GameFramework           g_gameFramework{ Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT };
-ComPtr<ID3D12Device>	g_device{ nullptr };
-UINT					g_cbvSrvDescriptorIncrementSize{ 0 };
-UINT					g_dsvDescriptorIncrementSize{ 0 };
+UINT                    g_maxWidth{};
+UINT                    g_maxHeight{};
+ComPtr<ID3D12Device>	g_device{};
+UINT					g_cbvSrvDescriptorIncrementSize{};
+UINT					g_dsvDescriptorIncrementSize{};
+mt19937                 g_randomEngine{ random_device{}() };
 SOCKET					g_socket{};
 BOOL					g_isConnected{ FALSE };
 thread                  g_networkThread{};
 mutex                   g_mutex{};
-mt19937                 g_randomEngine{ random_device{}() };
 
 namespace Utile
 {

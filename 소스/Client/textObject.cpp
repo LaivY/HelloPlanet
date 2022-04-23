@@ -299,12 +299,13 @@ void HPTextObject::SetPlayer(const shared_ptr<Player>& player)
 
 MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale { 1.0f }, m_scaleTimer{}
 {
-
+	m_mouseClickCallBack = []() {};
 }
 
 void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-
+	if (message == WM_LBUTTONDOWN && m_isMouseOver)
+		m_mouseClickCallBack();
 }
 
 void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -346,4 +347,9 @@ void MenuTextObject::Update(FLOAT deltaTime)
 void MenuTextObject::SetMouseOverBrush(const string& brush)
 {
 	m_mouseOverBrush = brush;
+}
+
+void MenuTextObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
+{
+	m_mouseClickCallBack = callBackFunc;
 }

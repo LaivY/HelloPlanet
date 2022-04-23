@@ -39,7 +39,15 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	float width{ 200.0f * static_cast<float>(s_meshes.size() + s_shaders.size() + s_textures.size() + TextObject::s_brushes.size() + TextObject::s_formats.size()) / static_cast<float>(28 + 10 + 8 + 3 + 5) };
+	constexpr size_t allResourceCount{ 28 + 10 + 9 + 3 + 5 };
+	size_t currResourceCount{};
+	currResourceCount += s_meshes.size();
+	currResourceCount += s_shaders.size();
+	currResourceCount += s_textures.size();
+	currResourceCount += TextObject::s_brushes.size();
+	currResourceCount += TextObject::s_formats.size();
+
+	float width{ 200.0f * static_cast<float>(currResourceCount) / static_cast<float>(allResourceCount) };
 	m_loadingBarObject->SetWidth(width);
 
 	if (m_isDone && m_thread.joinable())
@@ -258,6 +266,10 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["WHITE"] = make_shared<Texture>();
 	s_textures["WHITE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));
 	s_textures["WHITE"]->CreateTexture(device);
+
+	s_textures["TITLE"] = make_shared<Texture>();
+	s_textures["TITLE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/title.dds")));
+	s_textures["TITLE"]->CreateTexture(device);
 
 	//s_textures["HPBARBASE"] = make_shared<Texture>();
 	//s_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));

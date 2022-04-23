@@ -26,18 +26,17 @@ void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	// UI, 텍스트 오브젝트들 재배치
 	for (auto& ui : m_uiObjects)
+	{
 		ui->SetPosition(ui->GetPivotPosition());
+	}
 	for (auto& t : m_textObjects)
 		t->SetPosition(t->GetPivotPosition());
 }
 
 void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch (message)
-	{
-	case WM_LBUTTONDOWN:
-		break;
-	}
+	for (auto& t : m_textObjects)
+		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -187,6 +186,17 @@ void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	m_uiCamera->CreateShaderVariable(device, commandList);
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
+
+	auto title{ make_unique<UIObject>(801.0f, 377.0f) };
+	title->SetMesh(s_meshes["UI"]);
+	title->SetShader(s_shaders["UI"]);
+	title->SetTexture(s_textures["TITLE"]);
+	title->SetPivot(ePivot::LEFTCENTER);
+	title->SetScreenPivot(ePivot::LEFTCENTER);
+	title->SetPosition(XMFLOAT2{ 50.0f, 0.0f });
+	title->SetScale(XMFLOAT2{ 0.5f, 0.5f });
+	title->SetFitToScreen(TRUE);
+	m_uiObjects.push_back(move(title));
 }
 
 void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -198,6 +208,10 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
 	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -200.0f });
+	gameStartText->SetMouseClickCallBack(
+		[]() {
+			g_gameFramework.SetNextScene(eScene::GAME);
+		});
 	m_textObjects.push_back(move(gameStartText));
 
 	auto settingText{ make_unique<MenuTextObject>() };
@@ -207,6 +221,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	settingText->SetText(TEXT("설정"));
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
 	settingText->SetPosition(XMFLOAT2{ 50.0f, -140.0f });
+	settingText->SetMouseClickCallBack(bind(&MainScene::temp, this));
 	m_textObjects.push_back(move(settingText));
 
 	auto exitText{ make_unique<MenuTextObject>() };
@@ -216,6 +231,11 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	exitText->SetText(TEXT("종료"));
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
 	exitText->SetPosition(XMFLOAT2{ 50.0f, -80.0f });
+	exitText->SetMouseClickCallBack(
+		[]() {
+			PostMessage(NULL, WM_QUIT, 0, 0);
+		}
+	);
 	m_textObjects.push_back(move(exitText));
 }
 
@@ -270,6 +290,12 @@ void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void MainScene::temp()
+{
+	static int i = 0;
+	OutputDebugStringA((to_string(i++) + "isClicked!").c_str());
 }
 
 void MainScene::UpdateShadowMatrix()

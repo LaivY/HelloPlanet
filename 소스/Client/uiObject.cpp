@@ -1,12 +1,12 @@
 ﻿#include "uiObject.h"
 #include "framework.h"
 
-UIObject::UIObject() : m_width{}, m_height{}, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_pivotPosition{}
+UIObject::UIObject() : m_isFitToScreen{ FALSE }, m_pivot { ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
 {
 
 }
 
-UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }, m_pivotPosition{}
+UIObject::UIObject(FLOAT width, FLOAT height) : m_isFitToScreen{ FALSE }, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
 {
 	m_worldMatrix._11 = width;
 	m_worldMatrix._22 = height;
@@ -14,7 +14,28 @@ UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ ePivot::CENTER }, m_scr
 
 void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	GameObject::Render(commandList, shader);
+	if (m_isFitToScreen)
+	{
+		float width{ m_width }, height{ m_height };
+		m_width *= g_gameFramework.GetWidth() / static_cast<float>(g_maxWidth);
+		m_height *= g_gameFramework.GetHeight() / static_cast<float>(g_maxHeight);
+		m_worldMatrix._11 = m_width;
+		m_worldMatrix._22 = m_height;
+		SetPosition(m_pivotPosition);
+
+		GameObject::Render(commandList, shader);
+
+		m_width = width;
+		m_height = height;
+		m_worldMatrix._11 = width;
+		m_worldMatrix._22 = height;
+	}
+	else GameObject::Render(commandList, shader);
+}
+
+void UIObject::SetFitToScreen(BOOL fitToScreen)
+{
+	m_isFitToScreen = fitToScreen;
 }
 
 void UIObject::SetPosition(const XMFLOAT3& position)
@@ -112,6 +133,11 @@ void UIObject::SetPivot(const ePivot& pivot)
 void UIObject::SetScreenPivot(const ePivot& pivot)
 {
 	m_screenPivot = pivot;
+}
+
+void UIObject::SetScale(const XMFLOAT2& scale)
+{
+	m_scale = scale;
 }
 
 void UIObject::SetWidth(FLOAT width)

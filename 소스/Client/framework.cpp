@@ -32,6 +32,11 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 
+	RECT rect{};
+	GetWindowRect(GetDesktopWindow(), &rect);
+	g_maxWidth = rect.right;
+	g_maxHeight = rect.bottom;
+
 	LoadPipeline();
 	LoadAssets();
 

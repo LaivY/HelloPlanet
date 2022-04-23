@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "player.h"
 #include "uiObject.h"
+#include <functional>
 
 class TextObject
 {
@@ -102,10 +103,12 @@ public:
 	void Update(FLOAT deltaTime);
 
 	void SetMouseOverBrush(const string& brush);
+	void SetMouseClickCallBack(const function<void()>& callBackFunc);
 
 private:
-	BOOL	m_isMouseOver;
-	FLOAT	m_scale;
-	FLOAT	m_scaleTimer;
-	string	m_mouseOverBrush;
+	BOOL				m_isMouseOver;
+	FLOAT				m_scale;
+	FLOAT				m_scaleTimer;
+	string				m_mouseOverBrush;
+	function<void()>	m_mouseClickCallBack;
 };
