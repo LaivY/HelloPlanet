@@ -167,32 +167,32 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader\common.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\lighting.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\default.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\animation.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\model.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\link.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\shadow.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
-    <FxCompile Include="Shader\ui.hlsl">
-      <Filter>셰이더 파일</Filter>
-    </FxCompile>
+    <None Include=".editorconfig" />
   </ItemGroup>
   <ItemGroup>
-    <None Include=".editorconfig" />
+    <FxCompile Include="Resource\Shader\animation.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\common.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\default.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\lighting.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\link.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\model.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\shadow.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\ui.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

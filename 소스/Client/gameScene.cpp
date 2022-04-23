@@ -3,7 +3,7 @@
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
-	
+	ShowCursor(FALSE);
 }
 
 GameScene::~GameScene()
@@ -60,10 +60,14 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	if (!g_gameFramework.isActive())
+		return;
+
 	static bool isCursorHide{ true };
-	if (GetAsyncKeyState(VK_TAB) & 0x8000)
+	if ((GetAsyncKeyState(VK_TAB) & 0x8000))
 	{
-		ShowCursor(TRUE);
+		if (isCursorHide)
+			ShowCursor(TRUE);
 		isCursorHide = false;
 		return;
 	}
@@ -99,7 +103,6 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		// 마우스를 화면 가운데로 이동
 		SetCursorPos(oldMousePosition.x, oldMousePosition.y);
 	}
-
 	if (m_player) m_player->OnMouseEvent(hWnd, deltaTime);
 }
 

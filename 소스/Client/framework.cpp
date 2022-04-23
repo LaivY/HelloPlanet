@@ -4,7 +4,7 @@
 #include "mainScene.h"
 
 GameFramework::GameFramework(UINT width, UINT height) :
-	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ FALSE },
+	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ TRUE },
 	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
 {
 	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
@@ -673,16 +673,7 @@ void GameFramework::ChangeScene()
 
 void GameFramework::SetIsActive(BOOL isActive)
 {
-	//// 커서 FALSE, TRUE할 때마다 스택이 쌓여서 1 이상일 경우 보이고, 0이하일 경우 안보이는 것이다.
-	//// 따라서 값이 같은 경우는 ShowCursor를 호출해주면 안된다.
-	//if (m_isActive == isActive)
-	//	return;
-
-	//m_isActive = isActive;
-	//if (m_isActive)
-	//	ShowCursor(FALSE);
-	//else
-	//	ShowCursor(TRUE);
+	m_isActive = isActive;
 }
 
 void GameFramework::SetNextScene(eScene scene)
@@ -698,6 +689,11 @@ ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
 ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
 {
 	return m_commandQueue;
+}
+
+BOOL GameFramework::isActive() const
+{
+	return m_isActive;
 }
 
 UINT GameFramework::GetWidth() const

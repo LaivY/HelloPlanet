@@ -59,6 +59,7 @@ public:
 	void SetIsActive(BOOL isActive);
 	void SetNextScene(eScene sceneType);
 
+	BOOL isActive() const;
 	UINT GetWidth() const;
 	UINT GetHeight() const;
 	FLOAT GetAspectRatio() const;

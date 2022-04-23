@@ -45,7 +45,8 @@ void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 void MainScene::OnKeyboardEvent(FLOAT deltaTime)
 {
-
+	if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+		g_gameFramework.SetNextScene(eScene::GAME);
 }
 
 void MainScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -161,15 +162,6 @@ void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	m_uiCamera->CreateShaderVariable(device, commandList);
 	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
-
-	// 테스트
-	//auto testObject{ make_unique<UIObject>(150.0f, 50.0f) };
-	//testObject->SetMesh(s_meshes["UI"]);
-	//testObject->SetShader(s_shaders["UI"]);
-	//testObject->SetTexture(s_textures["WHITE"]);
-	//testObject->SetPivot(ePivot::CENTER);
-	//testObject->SetScreenPivot(ePivot::CENTER);
-	//m_uiObjects.push_back(move(testObject));
 }
 
 void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)

@@ -154,13 +154,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			SetWindowLong(hWnd, GWL_STYLE, style);
 			SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 		}
-		else if (wParam == VK_TAB)
-		{
-			if (message == WM_KEYDOWN)
-				g_gameFramework.SetIsActive(FALSE);
-			else if (message == WM_KEYUP)
-				g_gameFramework.SetIsActive(TRUE);
-		}
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:
