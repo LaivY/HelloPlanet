@@ -10,32 +10,6 @@
 #include "textObject.h"
 #include "uiObject.h"
 
-struct Light
-{
-	XMFLOAT4X4	lightViewMatrix;
-	XMFLOAT4X4	lightProjMatrix;
-	XMFLOAT3	color;
-	FLOAT		padding1;
-	XMFLOAT3	direction;
-	FLOAT		padding2;
-};
-
-struct ShadowLight
-{
-	XMFLOAT4X4	lightViewMatrix[Setting::SHADOWMAP_COUNT];
-	XMFLOAT4X4	lightProjMatrix[Setting::SHADOWMAP_COUNT];
-	XMFLOAT3	color;
-	FLOAT		padding1;
-	XMFLOAT3	direction;
-	FLOAT		padding2;
-};
-
-struct cbGameScene
-{
-	ShadowLight shadowLight;
-	Light		ligths[Setting::MAX_LIGHTS];
-};
-
 class GameScene : public Scene
 {
 public:

@@ -39,7 +39,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	float width{ 200.0f * static_cast<float>(s_meshes.size() + s_shaders.size() + s_textures.size() + TextObject::s_brushes.size() + TextObject::s_formats.size()) / static_cast<float>(28 + 10 + 8 + 3 + 4) };
+	float width{ 200.0f * static_cast<float>(s_meshes.size() + s_shaders.size() + s_textures.size() + TextObject::s_brushes.size() + TextObject::s_formats.size()) / static_cast<float>(28 + 10 + 8 + 3 + 5) };
 	m_loadingBarObject->SetWidth(width);
 
 	if (m_isDone && m_thread.joinable())
@@ -278,6 +278,18 @@ void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 {
+	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+		TEXT("나눔바른고딕OTF"), NULL,
+		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+		DWRITE_FONT_STYLE_NORMAL,
+		DWRITE_FONT_STRETCH_NORMAL,
+		48,
+		TEXT("ko-kr"),
+		&TextObject::s_formats["MENU"]
+	));
+	DX::ThrowIfFailed(TextObject::s_formats["MENU"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+	DX::ThrowIfFailed(TextObject::s_formats["MENU"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+
 	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 		TEXT("나눔바른고딕OTF"), NULL,
 		DWRITE_FONT_WEIGHT_ULTRA_BOLD,

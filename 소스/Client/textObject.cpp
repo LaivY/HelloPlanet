@@ -73,7 +73,7 @@ void TextObject::SetText(const wstring& text)
 	if (!m_brush.empty() && !m_format.empty())
 	{
 		CalcWidthHeight();
-		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width, m_height };
+		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
 	}
 }
 
@@ -329,7 +329,6 @@ void MenuTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	D2D1::Matrix3x2F matrix{ D2D1::Matrix3x2F::Identity() };
 	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right / 2.0f, m_rect.bottom / 2.0f }));
-	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Skew(0.0f, -5.0f));
 	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->SetTransform(matrix);
 	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_isMouseOver ? m_mouseOverBrush : m_brush].Get());

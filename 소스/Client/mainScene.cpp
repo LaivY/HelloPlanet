@@ -3,9 +3,12 @@
 
 void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
+	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
 	CreateUIObjects(device, commandList);
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
+	CreateLights();
+	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 }
 
 void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -69,7 +72,14 @@ void MainScene::OnUpdate(FLOAT deltaTime)
 
 void MainScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
+	memcpy(m_pcbGameScene, m_cbGameSceneData.get(), sizeof(cbGameScene));
+	commandList->SetGraphicsRootConstantBufferView(3, m_cbGameScene->GetGPUVirtualAddress());
 	if (m_camera) m_camera->UpdateShaderVariable(commandList);
+}
+
+void MainScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	RenderToShadowMap(commandList);
 }
 
 void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
@@ -79,10 +89,10 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	if (m_skybox) m_skybox->Render(commandList);
-
+	for (const auto& p : m_players)
+		p->Render(commandList);
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
-
 	if (m_uiCamera)
 	{
 		m_uiCamera->UpdateShaderVariable(commandList);
@@ -99,6 +109,12 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 
 void MainScene::Update(FLOAT deltaTime)
 {
+	UpdateCameraPosition(deltaTime);
+	UpdateShadowMatrix();
+}
+
+void MainScene::UpdateCameraPosition(FLOAT deltaTime)
+{
 	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
 	constexpr float speed{ 10.0f };
 	constexpr float radius{ 200.0f };
@@ -113,6 +129,13 @@ void MainScene::Update(FLOAT deltaTime)
 	m_camera->SetAt(at);
 
 	angle += XMConvertToRadians(speed * deltaTime);
+}
+
+void MainScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
+	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
 void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -147,11 +170,13 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	auto player{ make_unique<Player>(TRUE) };
 	player->SetMesh(s_meshes["PLAYER"]);
 	player->SetShader(s_shaders["ANIMATION"]);
+	player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
 	player->SetGunMesh(s_meshes["AR"]);
 	player->SetGunShader(s_shaders["LINK"]);
+	player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 	player->SetGunType(eGunType::AR);
 	player->PlayAnimation("IDLE");
-	m_gameObjects.push_back(move(player));
+	m_players.push_back(move(player));
 }
 
 void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -168,28 +193,140 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 {
 	auto gameStartText{ make_unique<MenuTextObject>() };
 	gameStartText->SetBrush("BLACK");
-	gameStartText->SetMouseOverBrush("BLUE");
-	gameStartText->SetFormat("HP");
+	gameStartText->SetMouseOverBrush("WHITE");
+	gameStartText->SetFormat("MENU");
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
-	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -180.0f });
+	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -200.0f });
 	m_textObjects.push_back(move(gameStartText));
 
 	auto settingText{ make_unique<MenuTextObject>() };
 	settingText->SetBrush("BLACK");
-	settingText->SetMouseOverBrush("BLUE");
-	settingText->SetFormat("HP");
+	settingText->SetMouseOverBrush("WHITE");
+	settingText->SetFormat("MENU");
 	settingText->SetText(TEXT("설정"));
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
-	settingText->SetPosition(XMFLOAT2{ 50.0f, -130.0f });
+	settingText->SetPosition(XMFLOAT2{ 50.0f, -140.0f });
 	m_textObjects.push_back(move(settingText));
 
 	auto exitText{ make_unique<MenuTextObject>() };
 	exitText->SetBrush("BLACK");
-	exitText->SetMouseOverBrush("BLUE");
-	exitText->SetFormat("HP");
+	exitText->SetMouseOverBrush("WHITE");
+	exitText->SetFormat("MENU");
 	exitText->SetText(TEXT("종료"));
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
 	exitText->SetPosition(XMFLOAT2{ 50.0f, -80.0f });
 	m_textObjects.push_back(move(exitText));
+}
+
+void MainScene::CreateLights() const
+{
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
+
+	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
+	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };
+	XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
+	XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&shadowLightPos), XMLoadFloat3(&m_cbGameSceneData->shadowLight.direction), XMLoadFloat3(&up)));
+	XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(3000.0f, 3000.0f, 0.0f, 5000.0f));
+	m_cbGameSceneData->shadowLight.lightViewMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightViewMatrix);
+	m_cbGameSceneData->shadowLight.lightProjMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightProjMatrix);
+
+	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
+	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+}
+
+void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	if (!m_shadowMap) return;
+
+	// 뷰포트, 가위사각형 설정
+	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
+	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+
+	// 셰이더에 묶기
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	for (const auto& o : m_gameObjects)
+	{
+		auto shadowShader{ o->GetShadowShader() };
+		if (shadowShader)
+			o->Render(commandList, shadowShader);
+	}
+	for (const auto& p : m_players)
+		p->RenderToShadowMap(commandList);
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void MainScene::UpdateShadowMatrix()
+{
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.05f, 0.2f, 0.4f };
+	XMFLOAT3 frustum[]{
+		// 앞쪽
+		{ -1.0f, 1.0f, 0.0f },	// 왼쪽위
+		{ 1.0f, 1.0f, 0.0f },	// 오른쪽위
+		{ 1.0f, -1.0f, 0.0f },	// 오른쪽아래
+		{ -1.0f, -1.0f, 0.0f },	// 왼쪽아래
+
+		// 뒤쪽
+		{ -1.0f, 1.0f, 1.0f },	// 왼쪽위
+		{ 1.0f, 1.0f, 1.0f },	// 오른쪽위
+		{ 1.0f, -1.0f, 1.0f },	// 오른쪽아래
+		{ -1.0f, -1.0f, 1.0f }	// 왼쪽아래
+	};
+
+	XMFLOAT4X4 toWorldMatrix{ Matrix::Inverse(Matrix::Mul(m_camera->GetViewMatrix(), m_camera->GetProjMatrix())) };
+	for (auto& v : frustum)
+		v = Vector3::TransformCoord(v, toWorldMatrix);
+
+	for (int i = 0; i < casecade.size() - 1; ++i)
+	{
+		XMFLOAT3 tFrustum[8];
+		for (int j = 0; j < 8; ++j)
+			tFrustum[j] = frustum[j];
+
+		for (int j = 0; j < 4; ++j)
+		{
+			XMFLOAT3 v{ Vector3::Sub(tFrustum[j + 4], tFrustum[j]) };
+			XMFLOAT3 n{ Vector3::Mul(v, casecade[i]) };
+			XMFLOAT3 f{ Vector3::Mul(v, casecade[i + 1]) };
+
+			tFrustum[j + 4] = Vector3::Add(tFrustum[j], f);
+			tFrustum[j] = Vector3::Add(tFrustum[j], n);
+		}
+
+		XMFLOAT3 center{};
+		for (const auto& v : tFrustum)
+			center = Vector3::Add(center, v);
+		center = Vector3::Mul(center, 1.0f / 8.0f);
+
+		float radius{};
+		for (const auto& v : tFrustum)
+			radius = max(radius, Vector3::Length(Vector3::Sub(v, center)));
+
+		float value{ max(750.0f, radius * 2.5f) };
+		XMFLOAT3 shadowLightPos{ Vector3::Add(center, Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -value)) };
+
+		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
+		XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
+		XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&shadowLightPos), XMLoadFloat3(&center), XMLoadFloat3(&up)));
+		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
+
+		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
+		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
+	}
 }

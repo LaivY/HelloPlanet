@@ -21,11 +21,8 @@ void GameFramework::GameLoop()
 		ChangeScene();
 
 	m_timer.Tick();
-	//if (m_isActive)
-	{
-		OnMouseEvent();
-		OnKeyboardEvent();
-	}
+	OnMouseEvent();
+	OnKeyboardEvent();
 	OnUpdate(m_timer.GetDeltaTime());
 	OnRender();
 }
@@ -642,7 +639,6 @@ void GameFramework::ChangeScene()
 {
 	WaitForPreviousFrame();
 
-	m_scene.reset();
 	switch (m_nextScene)
 	{
 	case eScene::LOADING:
