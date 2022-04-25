@@ -3,11 +3,11 @@
 #include "loadingScene.h"
 #include "mainScene.h"
 
-GameFramework::GameFramework(UINT width, UINT height) :
-	m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_width{ width }, m_height{ height }, m_isActive{ TRUE },
-	m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
+GameFramework::GameFramework() 
+	: m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_isActive{ TRUE },
+	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
 {
-	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
+	m_aspectRatio = static_cast<FLOAT>(g_width) / static_cast<FLOAT>(g_height);
 }
 
 GameFramework::~GameFramework()
@@ -69,13 +69,13 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	// 가로, 세로, 화면비 계산
 	RECT clientRect{};
 	GetWindowRect(hWnd, &clientRect);
-	m_width = static_cast<UINT>(clientRect.right - clientRect.left);
-	m_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
-	m_aspectRatio = static_cast<float>(m_width) / static_cast<float>(m_height);
+	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
+	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
+	m_aspectRatio = static_cast<float>(g_width) / static_cast<float>(g_height);
 
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
-	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, m_width, m_height, desc.BufferDesc.Format, desc.Flags));
+	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, g_width, g_height, desc.BufferDesc.Format, desc.Flags));
 
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
@@ -272,8 +272,8 @@ void GameFramework::CreateSwapChain()
 
 	// 스왑체인 생성
 	DXGI_SWAP_CHAIN_DESC swapChainDesc{};
-	swapChainDesc.BufferDesc.Width = m_width;
-	swapChainDesc.BufferDesc.Height = m_height;
+	swapChainDesc.BufferDesc.Width = g_width;
+	swapChainDesc.BufferDesc.Height = g_height;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
 	swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
@@ -371,8 +371,8 @@ void GameFramework::CreateDepthStencilView()
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	resourceDesc.Alignment = 0;
-	resourceDesc.Width = m_width;
-	resourceDesc.Height = m_height;
+	resourceDesc.Width = g_width;
+	resourceDesc.Height = g_height;
 	resourceDesc.DepthOrArraySize = 1;
 	resourceDesc.MipLevels = 1;
 	resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -695,19 +695,4 @@ ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
 BOOL GameFramework::isActive() const
 {
 	return m_isActive;
-}
-
-UINT GameFramework::GetWidth() const
-{
-	return m_width;
-}
-
-UINT GameFramework::GetHeight() const
-{
-	return m_height;
-}
-
-FLOAT GameFramework::GetAspectRatio() const
-{
-	return m_aspectRatio;
 }

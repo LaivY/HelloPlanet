@@ -80,7 +80,7 @@ void TextObject::SetText(const wstring& text)
 void TextObject::SetPosition(const XMFLOAT2& position)
 {
 	m_pivotPosition = position;
-	float width{ static_cast<float>(g_gameFramework.GetWidth()) }, height{ static_cast<float>(g_gameFramework.GetHeight()) };
+	float width{ static_cast<float>(g_width) }, height{ static_cast<float>(g_height) };
 
 	switch (m_screenPivot)
 	{

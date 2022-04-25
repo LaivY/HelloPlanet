@@ -17,8 +17,8 @@ void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, cons
 	if (m_isFitToScreen)
 	{
 		float width{ m_width }, height{ m_height };
-		m_width *= g_gameFramework.GetWidth() / static_cast<float>(g_maxWidth);
-		m_height *= g_gameFramework.GetHeight() / static_cast<float>(g_maxHeight);
+		m_width *= g_width / static_cast<float>(g_maxWidth);
+		m_height *= g_height / static_cast<float>(g_maxHeight);
 		m_worldMatrix._11 = m_width;
 		m_worldMatrix._22 = m_height;
 		SetPosition(m_pivotPosition);
@@ -46,7 +46,7 @@ void UIObject::SetPosition(const XMFLOAT3& position)
 void UIObject::SetPosition(const XMFLOAT2& position)
 {
 	m_pivotPosition = position;
-	float width{ static_cast<float>(g_gameFramework.GetWidth()) }, height{ static_cast<float>(g_gameFramework.GetHeight()) };
+	float width{ static_cast<float>(g_width) }, height{ static_cast<float>(g_height) };
 
 	// 화면의 피봇 위치에서 (x, y)만큼 이동
 	switch (m_screenPivot)

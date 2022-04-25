@@ -9,7 +9,7 @@
 class MainScene : public Scene
 {
 public:
-	MainScene() = default;
+	MainScene();
 	~MainScene() = default;
 
 	virtual void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,

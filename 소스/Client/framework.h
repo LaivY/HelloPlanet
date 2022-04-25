@@ -18,7 +18,7 @@ struct cbGameFramework
 class GameFramework
 {
 public:
-	GameFramework(UINT width, UINT height);
+	GameFramework();
 	~GameFramework();
 
 	void GameLoop();
@@ -60,9 +60,6 @@ public:
 	void SetNextScene(eScene sceneType);
 
 	BOOL isActive() const;
-	UINT GetWidth() const;
-	UINT GetHeight() const;
-	FLOAT GetAspectRatio() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
@@ -73,8 +70,6 @@ private:
 	HINSTANCE							m_hInstance;
 	HWND								m_hWnd;
 	BOOL								m_isActive;
-	UINT								m_width;
-	UINT								m_height;
 	FLOAT								m_aspectRatio;
 
 	// Pipeline

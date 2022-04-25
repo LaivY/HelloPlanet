@@ -60,6 +60,9 @@ class GameFramework;
 extern GameFramework        g_gameFramework;                    // 게임프레임워크
 extern UINT                 g_maxWidth;                         // 화면 전체 너비
 extern UINT                 g_maxHeight;                        // 화면 전체 높이
+extern UINT                 g_width;                            // 현재 화면 너비
+extern UINT                 g_height;                           // 현재 화면 높이
+
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
 extern UINT                 g_dsvDescriptorIncrementSize;       // 깊이스텐실뷰 서술자 힙 크기

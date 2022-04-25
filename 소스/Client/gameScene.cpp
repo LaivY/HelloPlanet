@@ -42,15 +42,14 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	UINT width{ g_gameFramework.GetWidth() }, height{ g_gameFramework.GetHeight() };
-	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
-	m_scissorRect = D3D12_RECT{ 0, 0, static_cast<long>(width), static_cast<long>(height) };
+	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f };
+	m_scissorRect = D3D12_RECT{ 0, 0, static_cast<long>(g_width), static_cast<long>(g_height) };
 
 	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(width) / static_cast<float>(height), 1.0f, 2500.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// UI, 텍스트 오브젝트들 재배치
@@ -82,7 +81,7 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 	// 화면 가운데 좌표 계산
 	RECT rect; GetWindowRect(hWnd, &rect);
-	POINT oldMousePosition{ static_cast<LONG>(rect.left + g_gameFramework.GetWidth() / 2), static_cast<LONG>(rect.top + g_gameFramework.GetHeight() / 2) };
+	POINT oldMousePosition{ static_cast<LONG>(rect.left + g_width / 2), static_cast<LONG>(rect.top + g_height / 2) };
 
 	// 움직인 마우스 좌표
 	POINT newMousePosition; GetCursorPos(&newMousePosition);

@@ -106,6 +106,7 @@ BlendingShader::BlendingShader(const ComPtr<ID3D12Device>& device, const ComPtr<
 
 	// 블렌딩 설정
 	CD3DX12_BLEND_DESC blendState{ D3D12_DEFAULT };
+	blendState.AlphaToCoverageEnable = TRUE;
 	blendState.RenderTarget[0].BlendEnable = TRUE;
 	blendState.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	blendState.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
