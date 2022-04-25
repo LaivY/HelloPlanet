@@ -77,6 +77,7 @@ public:
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 
+	void Delete() { m_isDeleted = TRUE; }
 	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_worldMatrix = worldMatrix; }
 	virtual void SetPosition(const XMFLOAT3& position);
 	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }

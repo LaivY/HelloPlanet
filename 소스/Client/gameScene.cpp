@@ -38,6 +38,11 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 
 	// 맵 로딩
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
+
+#ifdef NETWORK
+	g_gameFramework.ConnectServer();
+	g_networkThread = thread{ &GameScene::ProcessClient, this };
+#endif
 }
 
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -109,12 +114,17 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 void GameScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (!g_gameFramework.isActive())
+		return;
+
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void GameScene::OnKeyboardEvent(FLOAT deltaTime)
 {
+	if (!g_gameFramework.isActive())
+		return;
 #ifdef FREEVIEW
 	const float speed{ 100.0f * deltaTime };
 	if (GetAsyncKeyState('W') & 0x8000)
@@ -150,6 +160,9 @@ void GameScene::OnKeyboardEvent(FLOAT deltaTime)
 
 void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (!g_gameFramework.isActive())
+		return;
+
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	switch (message)
 	{
@@ -194,6 +207,8 @@ void GameScene::Update(FLOAT deltaTime)
 {
 	unique_lock<mutex> lock{ g_mutex };
 	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
+	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
+	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
 	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
 	lock.unlock();
 
@@ -702,6 +717,9 @@ void GameScene::RecvPacket()
 	case SC_PACKET_BULLET_FIRE:
 		RecvBulletFire();
 		break;
+	case SC_PACKET_BULLET_HIT:
+		RecvBulletHit();
+		break;
 	default:
 	{
 		string debug{};
@@ -717,6 +735,10 @@ void GameScene::RecvLoginOk()
 	char subBuf[sizeof(PlayerData)]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	char nameBuf[20]{};
+	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
 	if (!m_player) return;
@@ -809,15 +831,16 @@ void GameScene::RecvUpdateMonster()
 
 void GameScene::RecvBulletFire()
 {
-	// pos, dir
-	char subBuf[12 + 12]{};
+	// pos, dir, playerId
+	char subBuf[12 + 12 + 1]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	XMFLOAT3 pos{}, dir{};
+	XMFLOAT3 pos{}, dir{}; char playerId{};
 	memcpy(&pos, &subBuf[0], sizeof(pos));
 	memcpy(&dir, &subBuf[12], sizeof(dir));
+	memcpy(&playerId, &subBuf[24], sizeof(playerId));
 
 	auto bullet{ make_unique<Bullet>(dir) };
 	bullet->SetMesh(s_meshes["BULLET"]);
@@ -826,4 +849,27 @@ void GameScene::RecvBulletFire()
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
+}
+
+void GameScene::RecvBulletHit()
+{
+	char buf[sizeof(BulletHitData)]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	BulletHitData data{};
+	memcpy(&data, buf, sizeof(data));
+
+	auto textureInfo{ make_unique<TextureInfo>() };
+	textureInfo->doRepeat = FALSE;
+
+	auto hitEffect{ make_unique<UIObject>(50.0f, 50.0f) };
+	hitEffect->SetMesh(s_meshes["UI"]);
+	hitEffect->SetShader(s_shaders["UI"]);
+	hitEffect->SetTexture(s_textures["HIT"]);
+	hitEffect->SetTextureInfo(move(textureInfo));
+
+	unique_lock<mutex> lock{ g_mutex };
+	m_uiObjects.push_back(move(hitEffect));
 }

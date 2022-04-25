@@ -26,6 +26,7 @@ public:
 
 	BOOL isDeleted() const;
 	wstring GetText() const;
+	ePivot GetPivot() const;
 	ePivot GetScreenPivot() const;
 	XMFLOAT2 GetPosition() const;
 	XMFLOAT2 GetPivotPosition() const;

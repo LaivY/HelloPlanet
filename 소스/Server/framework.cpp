@@ -1,6 +1,11 @@
 ﻿#include "framework.h"
 using namespace DirectX;
 
+NetworkFramework::NetworkFramework() : isAccept{ false }, bulletHits{}, m_spawnCooldown{ 5.0f }, m_lastMobId{ 0 }
+{
+
+}
+
 int NetworkFramework::OnInit(SOCKET socket)
 {
 	WSADATA WSAData;
@@ -119,6 +124,11 @@ void NetworkFramework::SendPlayerDataPacket()
 			else errorDisplay(WSAGetLastError(), "SendPlayerData");
 		}
 	}
+
+	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
+	for (auto& c : clients)
+		c.data.upperAniType = eUpperAnimationType::NONE;
+
 	/*
 	for (const auto& player : clients)
 	{
@@ -146,9 +156,31 @@ void NetworkFramework::SendPlayerDataPacket()
 			}
 		}
 	}*/
-	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
-	for (auto& c : clients)
-		c.data.upperAniType = eUpperAnimationType::NONE;
+}
+
+void NetworkFramework::SendBulletHitPacket()
+{
+	sc_packet_bullet_hit packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_BULLET_HIT;
+
+	char buf[sizeof(packet)]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sent_byte;
+
+	for (const auto& data : bulletHits)
+	{
+		packet.data = data;
+		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+		const int retVal = WSASend(clients[static_cast<int>(data.bullet.playerId)].socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " SESSION] Disconnect" << std::endl;
+			else errorDisplay(WSAGetLastError(), "SendBulletHitData");
+		}
+	}
+	bulletHits.clear();
 }
 
 void NetworkFramework::SendMonsterDataPacket()
@@ -344,6 +376,12 @@ void NetworkFramework::CollisionCheck()
 					length = l;
 					std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
+
+				// 해당 플레이어가 총알을 맞췄다는 것을 저장
+				BulletHitData hitData{};
+				hitData.bullet = b;
+				hitData.mobId = m.GetId();
+				bulletHits.push_back(std::move(hitData));
 			}
 		}
 		if (hitMonster) hitMonster->OnHit(b);

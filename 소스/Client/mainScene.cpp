@@ -52,7 +52,10 @@ void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 	if (!m_windowObjects.empty())
+	{
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
+		return;
+	}
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, deltaTime);
 }
@@ -126,6 +129,7 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 
 void MainScene::Update(FLOAT deltaTime)
 {
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
 	UpdateCameraPosition(deltaTime);
 	UpdateShadowMatrix();
 }
@@ -226,7 +230,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
-	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -200.0f });
+	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -170.0f });
 	gameStartText->SetMouseClickCallBack(
 		[]()
 		{
@@ -241,7 +245,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	settingText->SetText(TEXT("설정"));
 	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
-	settingText->SetPosition(XMFLOAT2{ 50.0f, -140.0f });
+	settingText->SetPosition(XMFLOAT2{ 50.0f, -110.0f });
 	settingText->SetMouseClickCallBack(bind(&MainScene::CreateSettingWindow, this));
 	m_textObjects.push_back(move(settingText));
 
@@ -252,7 +256,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	exitText->SetText(TEXT("종료"));
 	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
-	exitText->SetPosition(XMFLOAT2{ 50.0f, -80.0f });
+	exitText->SetPosition(XMFLOAT2{ 50.0f, -50.0f });
 	exitText->SetMouseClickCallBack(
 		[]()
 		{
@@ -285,10 +289,15 @@ void MainScene::CreateSettingWindow()
 	close->SetMesh(s_meshes["UI"]);
 	close->SetShader(s_shaders["UI"]);
 	close->SetTexture(s_textures["HPBAR"]);
-	close->SetScreenPivot(ePivot::LEFTTOP);
-	close->SetPivot(ePivot::LEFTTOP);
-	close->SetPosition(XMFLOAT2{ 25.0f, -25.0f });
-	close->SetMouseClickCallBack(bind(&MainScene::CloseWindow, this));
+	close->SetScreenPivot(ePivot::RIGHTTOP);
+	close->SetPivot(ePivot::RIGHTTOP);
+	close->SetPosition(XMFLOAT2{ -25.0f, -25.0f });
+	close->SetMouseClickCallBack(
+		[&]()
+		{
+			m_windowObjects.back()->Delete();
+		}
+	);
 
 	auto text{ make_unique<TextObject>() };
 	text->SetBrush("BLACK");
@@ -305,7 +314,7 @@ void MainScene::CreateSettingWindow()
 	windowSizeText1->SetText(TEXT("1280x720"));
 	windowSizeText1->SetPivot(ePivot::CENTER);
 	windowSizeText1->SetScreenPivot(ePivot::CENTER);
-	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, -75.0f });
+	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, 60.0f });
 	windowSizeText1->SetMouseClickCallBack(
 		[]()
 		{
@@ -339,7 +348,7 @@ void MainScene::CreateSettingWindow()
 	windowSizeText3->SetText(TEXT("전체화면"));
 	windowSizeText3->SetPivot(ePivot::CENTER);
 	windowSizeText3->SetScreenPivot(ePivot::CENTER);
-	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, 75.0f });
+	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, -60.0f });
 	windowSizeText3->SetMouseClickCallBack(
 		[]()
 		{
@@ -357,6 +366,7 @@ void MainScene::CreateSettingWindow()
 	setting->SetMesh(s_meshes["UI"]);
 	setting->SetShader(s_shaders["UI"]);
 	setting->SetTexture(s_textures["WHITE"]);
+	setting->SetPosition(XMFLOAT2{});
 	setting->Add(close);
 	setting->Add(text);
 	setting->Add(windowSizeText1);

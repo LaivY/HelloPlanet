@@ -142,35 +142,35 @@ void WindowObject::Add(unique_ptr<TextObject>& textObject)
 
 	XMFLOAT2 textPos{ textObject->GetPivotPosition() };
 	ePivot textScreenPivot{ textObject->GetScreenPivot() };
-	textObject->SetScreenPivot(m_screenPivot);
+	textObject->SetScreenPivot(ePivot::CENTER);
 	switch (textScreenPivot)
 	{
 	case ePivot::LEFTTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::CENTERTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::RIGHTTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + textPos.y + hh });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::LEFTCENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::CENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::RIGHTCENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::LEFTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	case ePivot::CENTERBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	case ePivot::RIGHTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	}
 	m_textObjects.push_back(move(textObject));
@@ -184,35 +184,35 @@ void WindowObject::Add(unique_ptr<MenuTextObject>& textObject)
 
 	XMFLOAT2 textPos{ textObject->GetPivotPosition() };
 	ePivot textScreenPivot{ textObject->GetScreenPivot() };
-	textObject->SetScreenPivot(m_screenPivot);
+	textObject->SetScreenPivot(ePivot::CENTER);
 	switch (textScreenPivot)
 	{
 	case ePivot::LEFTTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::CENTERTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::RIGHTTOP:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + textPos.y + hh });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - hh - textPos.y });
 		break;
 	case ePivot::LEFTCENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::CENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::RIGHTCENTER:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::LEFTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	case ePivot::CENTERBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	case ePivot::RIGHTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - hh + textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + hh - textPos.y });
 		break;
 	}
 	m_textObjects.push_back(move(textObject));

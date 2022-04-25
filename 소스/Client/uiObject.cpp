@@ -43,6 +43,28 @@ void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, cons
 	else GameObject::Render(commandList, shader);
 }
 
+void UIObject::Update(FLOAT deltaTime)
+{
+	if (!m_texture || !m_textureInfo) return;
+
+	m_textureInfo->timer += deltaTime;
+	if (m_textureInfo->timer > m_textureInfo->interver)
+	{
+		m_textureInfo->frame += static_cast<int>(m_textureInfo->timer / m_textureInfo->interver);
+		m_textureInfo->timer = fmod(m_textureInfo->timer, m_textureInfo->interver);
+	}
+	if (m_textureInfo->frame >= m_texture->GetTextureCount())
+	{
+		if (m_textureInfo->doRepeat)
+			m_textureInfo->frame = 0;
+		else
+		{
+			m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
+			m_isDeleted = true;
+		}
+	}
+}
+
 void UIObject::SetFitToScreen(BOOL fitToScreen)
 {
 	m_isFitToScreen = fitToScreen;

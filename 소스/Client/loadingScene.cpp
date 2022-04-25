@@ -276,6 +276,13 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["TITLE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/title.dds")));
 	s_textures["TITLE"]->CreateTexture(device);
 
+	s_textures["HIT"] = make_shared<Texture>();
+	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit1.dds")));
+	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit2.dds")));
+	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit3.dds")));
+	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit4.dds")));
+	s_textures["HIT"]->CreateTexture(device);
+
 	//s_textures["HPBARBASE"] = make_shared<Texture>();
 	//s_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
 	//s_textures["HPBARBASE"]->CreateTexture(device);

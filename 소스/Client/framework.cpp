@@ -40,11 +40,6 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 
 	LoadPipeline();
 	LoadAssets();
-
-#ifdef NETWORK
-	ConnectServer();
-	g_networkThread = thread{ &GameFramework::ProcessClient, this };
-#endif
 }
 
 void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

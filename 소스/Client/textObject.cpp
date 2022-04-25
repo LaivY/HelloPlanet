@@ -137,34 +137,34 @@ void TextObject::SetPosition(const XMFLOAT2& position)
 	switch (m_pivot)
 	{
 	case ePivot::LEFTTOP:
-		m_position.y += m_height;
 		break;
 	case ePivot::CENTERTOP:
 		m_position.x -= m_width / 2.0f;
-		m_position.y += m_height;
 		break;
 	case ePivot::RIGHTTOP:
 		m_position.x -= m_width;
-		m_position.y += m_height;
 		break;
 	case ePivot::LEFTCENTER:
-		m_position.y += m_height / 2.0f;
+		m_position.y -= m_height / 2.0f;
 		break;
 	case ePivot::CENTER:
 		m_position.x -= m_width / 2.0f;
-		m_position.y += m_height / 2.0f;
+		m_position.y -= m_height / 2.0f;
 		break;
 	case ePivot::RIGHTCENTER:
 		m_position.x -= m_width;
-		m_position.y += m_height / 2.0f;
+		m_position.y -= m_height / 2.0f;
 		break;
 	case ePivot::LEFTBOT:
+		m_position.y -= m_height;
 		break;
 	case ePivot::CENTERBOT:
 		m_position.x -= m_width / 2.0f;
+		m_position.y -= m_height;
 		break;
 	case ePivot::RIGHTBOT:
 		m_position.x -= m_width;
+		m_position.y -= m_height;
 		break;
 	}
 }
@@ -182,6 +182,11 @@ BOOL TextObject::isDeleted() const
 wstring TextObject::GetText() const
 {
 	return m_text;
+}
+
+ePivot TextObject::GetPivot() const
+{
+	return m_pivot;
 }
 
 ePivot TextObject::GetScreenPivot() const
@@ -356,7 +361,10 @@ MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale { 1.0f }, m_s
 void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
+	{
+		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
+	}
 }
 
 void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)

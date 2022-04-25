@@ -11,11 +11,13 @@ constexpr int  MAX_MONSTER = 10;
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_UPDATE_LEGS = 2;
 constexpr char CS_PACKET_BULLET_FIRE = 3;
+constexpr char CS_PACKET_BULLET_HIT = 4;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_UPDATE_CLIENT = 2;
 constexpr char SC_PACKET_BULLET_FIRE = 3;
-constexpr char SC_PACKET_UPDATE_MONSTER = 4;
+constexpr char SC_PACKET_BULLET_HIT = 4;
+constexpr char SC_PACKET_UPDATE_MONSTER = 5;
 
 enum class eAnimationType : char
 {
@@ -62,6 +64,12 @@ struct BulletData
 	DirectX::XMFLOAT3 pos;		// 위치
 	DirectX::XMFLOAT3 dir;		// 방향
 	CHAR			  playerId; // 쏜 사람
+};
+
+struct BulletHitData
+{
+	BulletData		bullet;		// 총알
+	CHAR			mobId;		// 맞춘 몬스터
 };
 
 struct MonsterData
@@ -121,6 +129,13 @@ struct sc_packet_bullet_fire
 	UCHAR		size;
 	UCHAR		type;
 	BulletData	data;
+};
+
+struct sc_packet_bullet_hit
+{
+	UCHAR			size;
+	UCHAR			type;
+	BulletHitData	data;
 };
 
 struct sc_packet_update_monsters

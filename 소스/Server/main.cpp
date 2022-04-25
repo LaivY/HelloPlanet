@@ -33,6 +33,7 @@ int main()
 		{
 			// playerData Send
 			g_networkFramework.SendPlayerDataPacket();
+			g_networkFramework.SendBulletHitPacket();
 		}
 		else // odd FrameNumber
 		{
