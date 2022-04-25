@@ -340,7 +340,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = { start, Vector3::Normalize(Vector3::Sub(center, start)) };
+		packet.data = { start, Vector3::Normalize(Vector3::Sub(center, start)), static_cast<char>(GetId())};
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -383,7 +383,7 @@ void Player::Fire()
 			cs_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_BULLET_FIRE;
-			packet.data = { start, Vector3::Normalize(Vector3::Sub(t, start)) };
+			packet.data = { start, Vector3::Normalize(Vector3::Sub(t, start)), static_cast<char>(GetId()) };
 			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 

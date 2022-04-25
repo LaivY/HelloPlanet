@@ -17,12 +17,14 @@ public:
 	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
 	void SetHp(INT hp);
+	void SetTargetId(UCHAR id);
 
 	MonsterData GetData() const;
 	DirectX::XMFLOAT3 GetPosition() const;
 	DirectX::BoundingOrientedBox GetBoundingBox() const;
 	INT GetHp() const;
 	CHAR GetId() const;
+	UCHAR GetTargetId() const;
 
 private:
 	// 클라이언트로 보낼 데이터들
@@ -38,4 +40,5 @@ private:
 	DirectX::BoundingOrientedBox	m_boundingBox;	// 바운딩박스
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
 	INT								m_hp;			// 체력
+	UCHAR							m_target;		// 타겟
 };
