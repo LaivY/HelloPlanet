@@ -186,12 +186,12 @@ void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	XMFLOAT4X4 projMatrix{};
 	m_uiCamera = make_unique<Camera>();
 	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	auto title{ make_unique<UIObject>(801.0f, 377.0f) };
 	title->SetMesh(s_meshes["UI"]);
-	title->SetShader(s_shaders["UI"]);
+	title->SetShader(s_shaders["UI_ATC"]);
 	title->SetTexture(s_textures["TITLE"]);
 	title->SetPivot(ePivot::LEFTCENTER);
 	title->SetScreenPivot(ePivot::LEFTCENTER);

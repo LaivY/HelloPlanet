@@ -39,7 +39,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 28 + 10 + 9 + 3 + 5 };
+	constexpr size_t allResourceCount{ 28 + 11 + 9 + 3 + 5 };
 	size_t currResourceCount{};
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -47,8 +47,11 @@ void LoadingScene::Update(FLOAT deltaTime)
 	currResourceCount += TextObject::s_brushes.size();
 	currResourceCount += TextObject::s_formats.size();
 
-	float width{ 200.0f * static_cast<float>(currResourceCount) / static_cast<float>(allResourceCount) };
-	m_loadingBarObject->SetWidth(width);
+	if (m_loadingBarObject)
+	{
+		float width{ 200.0f * static_cast<float>(currResourceCount) / static_cast<float>(allResourceCount) };
+		m_loadingBarObject->SetWidth(width);
+	}
 
 	if (m_isDone && m_thread.joinable())
 	{
@@ -70,7 +73,8 @@ void LoadingScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, 
 
 	for (const auto& ui : m_uiObjects)
 		ui->Render(commandList);
-	m_loadingBarObject->Render(commandList);
+	if (m_loadingBarObject)
+		m_loadingBarObject->Render(commandList);
 }
 
 void LoadingScene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -233,6 +237,7 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["ANIMATION"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS");
 	s_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/link.hlsl")), "VS", "PS");
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
+	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true);
 
 	// 그림자 셰이더
 	s_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");

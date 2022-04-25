@@ -317,7 +317,12 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	p.x -= c.left;
 	p.y -= c.top;
 
-	RECT r{ m_position.x, m_position.y, m_position.x + m_rect.right, m_position.y + m_rect.bottom };
+	RECT r{ 
+		static_cast<LONG>(m_position.x), 
+		static_cast<LONG>(m_position.y),
+		static_cast<LONG>(m_position.x + m_rect.right),
+		static_cast<LONG>(m_position.y + m_rect.bottom)
+	};
 
 	if (r.left <= p.x && p.x <= r.right &&
 		r.top <= p.y && p.y <= r.bottom)
