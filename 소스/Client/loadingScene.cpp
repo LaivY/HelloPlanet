@@ -103,7 +103,7 @@ void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const Com
 	XMFLOAT4X4 projMatrix{};
 	m_camera = make_unique<Camera>();
 	m_camera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT), 0.0f, 1.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 로딩바 베이스

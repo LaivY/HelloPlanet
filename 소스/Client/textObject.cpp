@@ -5,7 +5,7 @@ unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
 TextObject::TextObject() 
-	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(Setting::SCREEN_WIDTH), static_cast<float>(Setting::SCREEN_HEIGHT) },
+	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
 	  m_position{}, m_pivotPosition{}, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
 {
 
@@ -43,7 +43,7 @@ void TextObject::CalcWidthHeight()
 	if (m_text.empty()) return;
 
 	ComPtr<IDWriteTextLayout> layout;
-	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), static_cast<UINT32>(m_text.size()), TextObject::s_formats[m_format].Get(), Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT, &layout);
+	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), static_cast<UINT32>(m_text.size()), TextObject::s_formats[m_format].Get(), g_width, g_height, &layout);
 
 	DWRITE_TEXT_METRICS metrics;
 	layout->GetMetrics(&metrics);
