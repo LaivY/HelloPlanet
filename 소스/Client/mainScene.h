@@ -5,6 +5,7 @@
 #include "shadow.h"
 #include "textObject.h"
 #include "uiObject.h"
+#include "windowObject.h"
 
 class MainScene : public Scene
 {
@@ -34,13 +35,14 @@ public:
 	void CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
 	void CreateLights() const;
 
+	void CreateSettingWindow();
+	void CloseWindow();
+
 	void Update(FLOAT deltaTime);
 	void UpdateCameraPosition(FLOAT deltaTime);
 	void UpdateShadowMatrix();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	
-	void temp();
 
 private:
 	ComPtr<ID3D12Resource>			m_cbGameScene;
@@ -55,4 +57,5 @@ private:
 	vector<unique_ptr<GameObject>>	m_gameObjects;
 	vector<unique_ptr<UIObject>>	m_uiObjects;
 	vector<unique_ptr<TextObject>>	m_textObjects;
+	vector<unique_ptr<WindowObject>> m_windowObjects;
 };

@@ -12,6 +12,16 @@ UIObject::UIObject(FLOAT width, FLOAT height) : m_isFitToScreen{ FALSE }, m_pivo
 	m_worldMatrix._22 = height;
 }
 
+void UIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+}
+
+void UIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
+{
+
+}
+
 void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	if (m_isFitToScreen)
@@ -182,6 +192,16 @@ void UIObject::SetHeight(FLOAT height)
 	}
 }
 
+ePivot UIObject::GetPivot() const
+{
+	return m_pivot;
+}
+
+ePivot UIObject::GetScreenPivot() const
+{
+	return m_screenPivot;
+}
+
 XMFLOAT2 UIObject::GetPivotPosition() const
 {
 	return m_pivotPosition;
@@ -316,4 +336,54 @@ void CrosshairUIObject::SetMesh(shared_ptr<Mesh>& mesh)
 void CrosshairUIObject::SetPlayer(const shared_ptr<Player>& player)
 {
 	m_player = player;
+}
+
+MenuUIObject::MenuUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_isMouseOver{ FALSE }
+{
+
+}
+
+void MenuUIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (message == WM_LBUTTONDOWN && m_isMouseOver)
+		m_mouseClickCallBack();
+}
+
+void MenuUIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
+{
+	RECT c{};
+	GetWindowRect(hWnd, &c);
+
+	POINT p{}; GetCursorPos(&p);
+	ScreenToClient(hWnd, &p);
+
+	XMFLOAT3 pos{ GetPosition() };
+	float hw{ m_width / 2.0f };
+	float hh{ m_height / 2.0f };
+
+	float left{ pos.x - hw + g_width / 2.0f };
+	float right{ pos.x + hw + g_width / 2.0f };
+	float top{ g_height / 2.0f - (pos.y - hh)  };
+	float bottom{ g_height / 2.0f - (pos.y + hh) };
+
+	if (left <= p.x && p.x <= right &&
+		bottom <= p.y && p.y <= top)
+		m_isMouseOver = TRUE;
+	else
+		m_isMouseOver = FALSE;
+}
+
+void MenuUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	UIObject::Render(commandList, shader);
+}
+
+void MenuUIObject::Update(FLOAT deltaTime)
+{
+
+}
+
+void MenuUIObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
+{
+	m_mouseClickCallBack = callBackFunc;
 }

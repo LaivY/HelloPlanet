@@ -2,7 +2,6 @@
 #include "stdafx.h"
 #include "player.h"
 #include "uiObject.h"
-#include <functional>
 
 class TextObject
 {
@@ -21,11 +20,13 @@ public:
 	void SetBrush(const string& brush);
 	void SetFormat(const string& format);
 	void SetText(const wstring& text);
+	void SetPivot(const ePivot& pivot);
 	void SetScreenPivot(const ePivot& pivot);
 	void SetPosition(const XMFLOAT2& position);
 
 	BOOL isDeleted() const;
 	wstring GetText() const;
+	ePivot GetScreenPivot() const;
 	XMFLOAT2 GetPosition() const;
 	XMFLOAT2 GetPivotPosition() const;
 	FLOAT GetWidth() const;
@@ -43,6 +44,7 @@ protected:
 	string		m_format;
 	wstring		m_text;
 
+	ePivot		m_pivot;
 	ePivot		m_screenPivot;
 	XMFLOAT2	m_position;
 	XMFLOAT2	m_pivotPosition;

@@ -33,16 +33,26 @@ void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		ui->SetPosition(ui->GetPivotPosition());
 	for (auto& t : m_textObjects)
 		t->SetPosition(t->GetPivotPosition());
+	for (auto& w : m_windowObjects)
+		w->OnResize(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
+		return;
+	}
+
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	if (!m_windowObjects.empty())
+		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, deltaTime);
 }
@@ -69,6 +79,8 @@ void MainScene::OnUpdate(FLOAT deltaTime)
 		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
+	for (auto& w : m_windowObjects)
+		w->Update(deltaTime);
 }
 
 void MainScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -99,6 +111,8 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
+		for (const auto& w : m_windowObjects)
+			w->Render(commandList);
 	}
 }
 
@@ -106,6 +120,8 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);
+	for (const auto& w : m_windowObjects)
+		w->Render2D(device);
 }
 
 void MainScene::Update(FLOAT deltaTime)
@@ -208,10 +224,12 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetMouseOverBrush("WHITE");
 	gameStartText->SetFormat("MENU");
 	gameStartText->SetText(TEXT("게임시작"));
+	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
 	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -200.0f });
 	gameStartText->SetMouseClickCallBack(
-		[]() {
+		[]()
+		{
 			g_gameFramework.SetNextScene(eScene::GAME);
 		});
 	m_textObjects.push_back(move(gameStartText));
@@ -221,9 +239,10 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	settingText->SetMouseOverBrush("WHITE");
 	settingText->SetFormat("MENU");
 	settingText->SetText(TEXT("설정"));
+	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
 	settingText->SetPosition(XMFLOAT2{ 50.0f, -140.0f });
-	settingText->SetMouseClickCallBack(bind(&MainScene::temp, this));
+	settingText->SetMouseClickCallBack(bind(&MainScene::CreateSettingWindow, this));
 	m_textObjects.push_back(move(settingText));
 
 	auto exitText{ make_unique<MenuTextObject>() };
@@ -231,10 +250,12 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	exitText->SetMouseOverBrush("WHITE");
 	exitText->SetFormat("MENU");
 	exitText->SetText(TEXT("종료"));
+	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
 	exitText->SetPosition(XMFLOAT2{ 50.0f, -80.0f });
 	exitText->SetMouseClickCallBack(
-		[]() {
+		[]()
+		{
 			PostMessage(NULL, WM_QUIT, 0, 0);
 		}
 	);
@@ -256,6 +277,98 @@ void MainScene::CreateLights() const
 
 	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
 	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+}
+
+void MainScene::CreateSettingWindow()
+{
+	auto close{ make_unique<MenuUIObject>(25.0f, 25.0f) };
+	close->SetMesh(s_meshes["UI"]);
+	close->SetShader(s_shaders["UI"]);
+	close->SetTexture(s_textures["HPBAR"]);
+	close->SetScreenPivot(ePivot::LEFTTOP);
+	close->SetPivot(ePivot::LEFTTOP);
+	close->SetPosition(XMFLOAT2{ 25.0f, -25.0f });
+	close->SetMouseClickCallBack(bind(&MainScene::CloseWindow, this));
+
+	auto text{ make_unique<TextObject>() };
+	text->SetBrush("BLACK");
+	text->SetFormat("MENU");
+	text->SetText(TEXT("설정"));
+	text->SetPivot(ePivot::CENTERTOP);
+	text->SetScreenPivot(ePivot::CENTERTOP);
+	text->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
+
+	auto windowSizeText1{ make_unique<MenuTextObject>() };
+	windowSizeText1->SetBrush("BLACK");
+	windowSizeText1->SetMouseOverBrush("BLUE");
+	windowSizeText1->SetFormat("MENU");
+	windowSizeText1->SetText(TEXT("1280x720"));
+	windowSizeText1->SetPivot(ePivot::CENTER);
+	windowSizeText1->SetScreenPivot(ePivot::CENTER);
+	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, -75.0f });
+	windowSizeText1->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(FALSE);
+			RECT lastWindowRect{ g_gameFramework.GetLastWindowRect() };
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1280, 720, SWP_SHOWWINDOW);
+		});
+
+	auto windowSizeText2{ make_unique<MenuTextObject>() };
+	windowSizeText2->SetBrush("BLACK");
+	windowSizeText2->SetMouseOverBrush("BLUE");
+	windowSizeText2->SetFormat("MENU");
+	windowSizeText2->SetText(TEXT("1680x1050"));
+	windowSizeText2->SetPivot(ePivot::CENTER);
+	windowSizeText2->SetScreenPivot(ePivot::CENTER);
+	windowSizeText2->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+	windowSizeText2->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(FALSE);
+			RECT lastWindowRect{ g_gameFramework.GetLastWindowRect() };
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1680, 1050, SWP_SHOWWINDOW);
+		});
+
+	auto windowSizeText3{ make_unique<MenuTextObject>() };
+	windowSizeText3->SetBrush("BLACK");
+	windowSizeText3->SetMouseOverBrush("BLUE");
+	windowSizeText3->SetFormat("MENU");
+	windowSizeText3->SetText(TEXT("전체화면"));
+	windowSizeText3->SetPivot(ePivot::CENTER);
+	windowSizeText3->SetScreenPivot(ePivot::CENTER);
+	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, 75.0f });
+	windowSizeText3->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(TRUE);
+			RECT fullScreenRect{ g_gameFramework.GetFullScreenRect() };
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, 0, 0, fullScreenRect.right, fullScreenRect.bottom, SWP_SHOWWINDOW);
+
+			LONG style = GetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE);
+			style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, style);
+			SetWindowPos(g_gameFramework.GetWindow(), NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+		});
+
+	auto setting{ make_unique<WindowObject>(500.0f, 500.0f) };
+	setting->SetMesh(s_meshes["UI"]);
+	setting->SetShader(s_shaders["UI"]);
+	setting->SetTexture(s_textures["WHITE"]);
+	setting->Add(close);
+	setting->Add(text);
+	setting->Add(windowSizeText1);
+	setting->Add(windowSizeText2);
+	setting->Add(windowSizeText3);
+	m_windowObjects.push_back(move(setting));
+}
+
+void MainScene::CloseWindow()
+{
+	if (!m_windowObjects.empty())
+		m_windowObjects.pop_back();
 }
 
 void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -292,12 +405,6 @@ void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
-}
-
-void MainScene::temp()
-{
-	static int i = 0;
-	OutputDebugStringA((to_string(i++) + "isClicked!").c_str());
 }
 
 void MainScene::UpdateShadowMatrix()

@@ -7,7 +7,8 @@ GameFramework::GameFramework()
 	: m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_isActive{ TRUE },
 	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
 {
-	m_aspectRatio = static_cast<FLOAT>(g_width) / static_cast<FLOAT>(g_height);
+	HWND desktop{ GetDesktopWindow() };
+	GetWindowRect(desktop, &m_fullScreenRect);
 }
 
 GameFramework::~GameFramework()
@@ -71,7 +72,6 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	GetWindowRect(hWnd, &clientRect);
 	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
-	m_aspectRatio = static_cast<float>(g_width) / static_cast<float>(g_height);
 
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
@@ -83,6 +83,12 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	CreateDepthStencilView();
 
 	if (m_scene) m_scene->OnResize(hWnd, message, wParam, lParam);
+}
+
+void GameFramework::OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (!m_isFullScreen)
+		GetWindowRect(hWnd, &m_lastWindowRect);
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -677,6 +683,11 @@ void GameFramework::SetIsActive(BOOL isActive)
 	m_isActive = isActive;
 }
 
+void GameFramework::SetIsFullScreen(BOOL isFullScreen)
+{
+	m_isFullScreen = isFullScreen;
+}
+
 void GameFramework::SetNextScene(eScene scene)
 {
 	m_nextScene = scene;
@@ -692,7 +703,27 @@ ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
 	return m_commandQueue;
 }
 
+HWND GameFramework::GetWindow() const
+{
+	return m_hWnd;
+}
+
 BOOL GameFramework::isActive() const
 {
 	return m_isActive;
+}
+
+BOOL GameFramework::isFullScreen() const
+{
+	return m_isFullScreen;
+}
+
+RECT GameFramework::GetLastWindowRect() const
+{
+	return m_lastWindowRect;
+}
+
+RECT GameFramework::GetFullScreenRect() const
+{
+	return m_fullScreenRect;
 }

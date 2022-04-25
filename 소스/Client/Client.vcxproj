@@ -171,6 +171,7 @@
     <ClInclude Include="texture.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="uiObject.h" />
+    <ClInclude Include="windowObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp" />
@@ -191,6 +192,7 @@
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="timer.cpp" />
     <ClCompile Include="uiObject.cpp" />
+    <ClCompile Include="windowObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
