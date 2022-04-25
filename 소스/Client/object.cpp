@@ -31,13 +31,12 @@ GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_vel
 
 void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 {
-	//if (currFrame >= endFrame)
-	//	PlayAnimation(m_animationInfo->currAnimationName);
+
 }
 
 void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	if (!m_mesh || (!m_shader && !shader)) return;
+	//if (!m_mesh || (!m_shader && !shader)) return;
 
 	// 셰이더 변수 최신화
 	UpdateShaderVariable(commandList);
@@ -143,12 +142,9 @@ void GameObject::SetShader(const shared_ptr<Shader>& shader)
 	m_shader = shader;
 }
 
-void GameObject::SetShadowShader(const shared_ptr<Shader>& sShader, const shared_ptr<Shader>& mShader, const shared_ptr<Shader>& lShader, const shared_ptr<Shader>& allShader)
+void GameObject::SetShadowShader(const shared_ptr<Shader>& shadowShader)
 {
-	m_shadowShaders[0] = sShader;
-	m_shadowShaders[1] = mShader;
-	m_shadowShaders[2] = lShader;
-	m_shadowShaders[3] = allShader;
+	m_shadowShader = shadowShader;
 }
 
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
@@ -268,96 +264,4 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	SetPosition(monsterData.pos);
 	SetVelocity(monsterData.velocity);
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
-}
-
-UIObject::UIObject(FLOAT width, FLOAT height) : m_pivot{ eUIPivot::CENTER }, m_width{ width }, m_height{ height }
-{
-	m_worldMatrix._11 = width;
-	m_worldMatrix._22 = height;
-}
-
-void UIObject::SetPosition(const XMFLOAT3& position)
-{
-	SetPosition(position.x, position.y);
-}
-
-void UIObject::SetPosition(FLOAT x, FLOAT y)
-{
-	switch (m_pivot)
-	{
-	case eUIPivot::LEFTTOP:
-		m_worldMatrix._41 = x + m_width / 2.0f;
-		m_worldMatrix._42 = y - m_height / 2.0f;
-		break;
-	case eUIPivot::CENTERTOP:
-		m_worldMatrix._42 = y - m_height / 2.0f;
-		break;
-	case eUIPivot::RIGHTTOP:
-		m_worldMatrix._41 = x - m_width / 2.0f;
-		m_worldMatrix._42 = y - m_height / 2.0f;
-		break;
-	case eUIPivot::LEFTCENTER:
-		m_worldMatrix._41 = x + m_width / 2.0f;
-		break;
-	case eUIPivot::CENTER:
-		m_worldMatrix._41 = x;
-		m_worldMatrix._42 = y;
-		break;
-	case eUIPivot::RIGHTCENTER:
-		m_worldMatrix._41 = x - m_width / 2.0f;
-		break;
-	case eUIPivot::LEFTBOT:
-		m_worldMatrix._41 = x + m_width / 2.0f;
-		m_worldMatrix._42 = y + m_height / 2.0f;
-		break;
-	case eUIPivot::CENTERBOT:
-		m_worldMatrix._42 = y + m_height / 2.0f;
-		break;
-	case eUIPivot::RIGHTBOT:
-		m_worldMatrix._41 = x - m_width / 2.0f;
-		m_worldMatrix._42 = y + m_height / 2.0f;
-		break;
-	}
-}
-
-void UIObject::SetWidth(FLOAT width)
-{
-	m_width = width;
-	m_worldMatrix._11 = width;
-
-	FLOAT deltaWidth{ width - m_width };
-	switch (m_pivot)
-	{
-	case eUIPivot::LEFTTOP:
-	case eUIPivot::LEFTCENTER:
-	case eUIPivot::LEFTBOT:
-		m_worldMatrix._41 += deltaWidth / 2.0f;
-		break;
-	case eUIPivot::RIGHTTOP:
-	case eUIPivot::RIGHTCENTER:
-	case eUIPivot::RIGHTBOT:
-		m_worldMatrix._41 -= deltaWidth / 2.0f;
-		break;
-	}
-}
-
-void UIObject::SetHeight(FLOAT height)
-{
-	m_height = height;
-	m_worldMatrix._22 = height;
-
-	FLOAT deltaHeight{ height - m_height };
-	switch (m_pivot)
-	{
-	case eUIPivot::LEFTTOP:
-	case eUIPivot::RIGHTTOP:
-	case eUIPivot::CENTERTOP:
-		m_worldMatrix._42 += deltaHeight / 2.0f;
-		break;
-	case eUIPivot::LEFTBOT:
-	case eUIPivot::CENTERBOT:
-	case eUIPivot::RIGHTBOT:
-		m_worldMatrix._42 -= deltaHeight / 2.0f;
-		break;
-	}
 }

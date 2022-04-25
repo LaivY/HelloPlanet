@@ -1,9 +1,13 @@
 ﻿#include "framework.h"
+#include "gameScene.h"
+#include "loadingScene.h"
+#include "mainScene.h"
 
-GameFramework::GameFramework(UINT width, UINT height) :
-	m_width{ width }, m_height{ height }, m_isActive{ TRUE }, m_frameIndex{ 0 }, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }
+GameFramework::GameFramework() 
+	: m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_isActive{ TRUE },
+	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
 {
-	m_aspectRatio = static_cast<FLOAT>(width) / static_cast<FLOAT>(height);
+	m_aspectRatio = static_cast<FLOAT>(g_width) / static_cast<FLOAT>(g_height);
 }
 
 GameFramework::~GameFramework()
@@ -13,12 +17,12 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
+	if (m_nextScene != eScene::NONE)
+		ChangeScene();
+
 	m_timer.Tick();
-	if (m_isActive)
-	{
-		OnMouseEvent();
-		OnKeyboardEvent();
-	}
+	OnMouseEvent();
+	OnKeyboardEvent();
 	OnUpdate(m_timer.GetDeltaTime());
 	OnRender();
 }
@@ -28,13 +32,57 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 
+	RECT rect{};
+	GetWindowRect(GetDesktopWindow(), &rect);
+	g_maxWidth = rect.right;
+	g_maxHeight = rect.bottom;
+
 	LoadPipeline();
 	LoadAssets();
 
 #ifdef NETWORK
 	ConnectServer();
-	g_networkThread = thread{ &GameFramework::ProcessClient, this, reinterpret_cast<LPVOID>(g_socket) };
+	g_networkThread = thread{ &GameFramework::ProcessClient, this };
 #endif
+}
+
+void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	// GPU명령이 끝날때까지 대기
+	WaitForGpu();
+
+	// 스왑체인과 관련된 리소스 해제
+	for (int i = 0; i < FrameCount; ++i)
+	{
+		m_renderTargets[i].Reset();
+		m_wrappedBackBuffers[i].Reset();
+		m_d2dRenderTargets[i].Reset();
+		m_commandAllocators[i].Reset();
+		m_fenceValues[i] = m_fenceValues[m_frameIndex];
+	}
+	m_d2dDeviceContext->SetTarget(nullptr);
+	m_d2dDeviceContext->Flush();
+
+	m_d3d11DeviceContext->OMSetRenderTargets(0, nullptr, nullptr);
+	m_d3d11DeviceContext->Flush();
+
+	// 가로, 세로, 화면비 계산
+	RECT clientRect{};
+	GetWindowRect(hWnd, &clientRect);
+	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
+	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
+	m_aspectRatio = static_cast<float>(g_width) / static_cast<float>(g_height);
+
+	DXGI_SWAP_CHAIN_DESC desc{};
+	m_swapChain->GetDesc(&desc);
+	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, g_width, g_height, desc.BufferDesc.Format, desc.Flags));
+
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+	CreateRenderTargetView();
+	CreateDepthStencilView();
+
+	if (m_scene) m_scene->OnResize(hWnd, message, wParam, lParam);
 }
 
 void GameFramework::OnUpdate(FLOAT deltaTime)
@@ -45,10 +93,20 @@ void GameFramework::OnUpdate(FLOAT deltaTime)
 
 void GameFramework::OnRender()
 {
+	// 씬 렌더링
 	PopulateCommandList();
+
+	// 명령 제출
 	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	// D2D 렌더링
+	Render2D();
+
+	// 출력
 	DX::ThrowIfFailed(m_swapChain->Present(1, 0));
+
+	// GPU 대기
 	WaitForPreviousFrame();
 }
 
@@ -85,16 +143,96 @@ void GameFramework::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPAR
 	if (m_scene) m_scene->OnKeyboardEvent(hWnd, message, wParam, lParam);
 }
 
-void GameFramework::Update(FLOAT deltaTime)
+void GameFramework::LoadPipeline()
 {
-	wstring title{ TEXT("DirectX12 (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
-	SetWindowText(m_hWnd, title.c_str());
+	// 팩토리 생성
+	CreateFactory();
+
+	// 디바이스 생성(팩토리 필요)
+	CreateDevice();
+
+	// 명령큐 생성(디바이스 필요)
+	CreateCommandQueue();
+
+	// 11on12 디바이스 생성(명령큐 필요)
+	CreateD3D11On12Device();
+
+	// D2D, DWrite 생성(11on12 디바이스 필요)
+	CreateD2DDevice();
+
+	// 스왑체인 생성(팩토리, 명령큐 필요)
+	CreateSwapChain();
+
+	// 렌더타겟뷰, 깊이스텐실뷰의 서술자힙 생성(디바이스 필요)
+	CreateRtvDsvDescriptorHeap();
+
+	// 렌더타겟뷰 생성(디바이스 필요)
+	CreateRenderTargetView();
+
+	// 깊이스텐실뷰 생성(디바이스 필요)
+	CreateDepthStencilView();
+
+	// 루트시그니쳐 생성(디바이스 필요)
+	CreateRootSignature();
+
+	// 명령리스트 생성
+	DX::ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
+	DX::ThrowIfFailed(m_commandList->Close());
+
+	// 펜스 생성
+	DX::ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+	m_fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+	++m_fenceValues[m_frameIndex];
+
+	// alt + enter 금지
+	m_factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
 }
 
-void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
+void GameFramework::LoadAssets()
+{
+	// 명령을 추가할 것이기 때문에 Reset
+	m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL);
+
+	// 셰이더 변수 생성
+	CreateShaderVariable();
+
+	// 씬 생성, 초기화
+	m_scene = make_unique<LoadingScene>();
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
+
+	// 명령 제출
+	m_commandList->Close();
+	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	// 명령들이 완료될 때까지 대기
+	WaitForGpu();
+
+	// 디폴트 버퍼로의 복사가 완료됐으므로 업로드 버퍼를 해제한다.
+	m_scene->OnInitEnd();
+
+	// 타이머 초기화
+	m_timer.Tick();
+}
+
+void GameFramework::CreateFactory()
+{
+	UINT dxgiFactoryFlags = 0;
+#if defined(_DEBUG)
+	ComPtr<ID3D12Debug> debugController;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
+		debugController->EnableDebugLayer();
+		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+	}
+#endif
+	DX::ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
+}
+
+void GameFramework::CreateDevice()
 {
 	ComPtr<IDXGIAdapter1> adapter;
-	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
+	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != m_factory->EnumAdapters1(i, &adapter); ++i)
 	{
 		DXGI_ADAPTER_DESC1 adapterDesc;
 		adapter->GetDesc1(&adapterDesc);
@@ -103,7 +241,7 @@ void GameFramework::CreateDevice(const ComPtr<IDXGIFactory4>& factory)
 	}
 	if (!m_device)
 	{
-		factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter));
+		m_factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter));
 		DX::ThrowIfFailed(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&m_device)));
 	}
 
@@ -121,7 +259,7 @@ void GameFramework::CreateCommandQueue()
 	DX::ThrowIfFailed(m_device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&m_commandQueue)));
 }
 
-void GameFramework::CreateSwapChain(const ComPtr<IDXGIFactory4>& factory)
+void GameFramework::CreateSwapChain()
 {
 	// 샘플링 수준 체크
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS multiSampleQualityLevels;
@@ -134,8 +272,8 @@ void GameFramework::CreateSwapChain(const ComPtr<IDXGIFactory4>& factory)
 
 	// 스왑체인 생성
 	DXGI_SWAP_CHAIN_DESC swapChainDesc{};
-	swapChainDesc.BufferDesc.Width = m_width;
-	swapChainDesc.BufferDesc.Height = m_height;
+	swapChainDesc.BufferDesc.Width = g_width;
+	swapChainDesc.BufferDesc.Height = g_height;
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
 	swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
@@ -149,7 +287,7 @@ void GameFramework::CreateSwapChain(const ComPtr<IDXGIFactory4>& factory)
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH; // 전체화면으로 전환할 때 적합한 디스플레이 모드를 선택
 
 	ComPtr<IDXGISwapChain> swapChain;
-	DX::ThrowIfFailed(factory->CreateSwapChain(m_commandQueue.Get(), &swapChainDesc, &swapChain));
+	DX::ThrowIfFailed(m_factory->CreateSwapChain(m_commandQueue.Get(), &swapChainDesc, &swapChain));
 	DX::ThrowIfFailed(swapChain.As(&m_swapChain));
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
@@ -176,12 +314,55 @@ void GameFramework::CreateRtvDsvDescriptorHeap()
 
 void GameFramework::CreateRenderTargetView()
 {
+	// Query the desktop's dpi settings, which will be used to create D2D's render targets.
+	float dpiX;
+	float dpiY;
+#pragma warning(push)
+#pragma warning(disable : 4996) // GetDesktopDpi is deprecated.
+	m_d2dFactory->GetDesktopDpi(&dpiX, &dpiY);
+#pragma warning(pop)
+
+	D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+		D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+		D2D1::PixelFormat(DXGI_FORMAT_UNKNOWN, D2D1_ALPHA_MODE_PREMULTIPLIED),
+		dpiX,
+		dpiY
+	);
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle{ m_rtvHeap->GetCPUDescriptorHandleForHeapStart() };
 	for (UINT i = 0; i < FrameCount; ++i)
 	{
-		m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i]));
+		DX::ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
 		m_device->CreateRenderTargetView(m_renderTargets[i].Get(), NULL, rtvHandle);
+
+		// Create a wrapped 11On12 resource of this back buffer. Since we are 
+		// rendering all D3D12 content first and then all D2D content, we specify 
+		// the In resource state as RENDER_TARGET - because D3D12 will have last 
+		// used it in this state - and the Out resource state as PRESENT. When 
+		// ReleaseWrappedResources() is called on the 11On12 device, the resource 
+		// will be transitioned to the PRESENT state.
+		D3D11_RESOURCE_FLAGS d3d11Flags = { D3D11_BIND_RENDER_TARGET };
+		DX::ThrowIfFailed(m_d3d11On12Device->CreateWrappedResource(
+			m_renderTargets[i].Get(),
+			&d3d11Flags,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT,
+			IID_PPV_ARGS(&m_wrappedBackBuffers[i])
+		));
+
+		// Create a render target for D2D to draw directly to this back buffer.
+		ComPtr<IDXGISurface> surface;
+		DX::ThrowIfFailed(m_wrappedBackBuffers[i].As(&surface));
+		DX::ThrowIfFailed(m_d2dDeviceContext->CreateBitmapFromDxgiSurface(
+			surface.Get(),
+			&bitmapProperties,
+			&m_d2dRenderTargets[i]
+		));
+
 		rtvHandle.Offset(m_rtvDescriptorSize);
+
+		// 명령할당자 생성
+		DX::ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i])));
 	}
 }
 
@@ -190,8 +371,8 @@ void GameFramework::CreateDepthStencilView()
 	D3D12_RESOURCE_DESC resourceDesc{};
 	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	resourceDesc.Alignment = 0;
-	resourceDesc.Width = Setting::SCREEN_WIDTH;
-	resourceDesc.Height = Setting::SCREEN_HEIGHT;
+	resourceDesc.Width = g_width;
+	resourceDesc.Height = g_height;
 	resourceDesc.DepthOrArraySize = 1;
 	resourceDesc.MipLevels = 1;
 	resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -272,12 +453,74 @@ void GameFramework::CreateRootSignature()
 	DX::ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 }
 
+void GameFramework::CreateD3D11On12Device()
+{
+	// Create an 11 device wrapped around the 12 device and share 12's command queue.
+	ComPtr<ID3D11Device> d3d11Device;
+	DX::ThrowIfFailed(D3D11On12CreateDevice(
+		m_device.Get(),
+		D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+		nullptr,
+		0,
+		reinterpret_cast<IUnknown**>(m_commandQueue.GetAddressOf()),
+		1,
+		0,
+		&d3d11Device,
+		&m_d3d11DeviceContext,
+		nullptr
+	));
+
+	// Query the 11On12 device from the 11 device.
+	DX::ThrowIfFailed(d3d11Device.As(&m_d3d11On12Device));
+}
+
+void GameFramework::CreateD2DDevice()
+{
+	// Create D2D/DWrite components.
+	D2D1_FACTORY_OPTIONS d2dFactoryOptions{};
+	D2D1_DEVICE_CONTEXT_OPTIONS deviceOptions = D2D1_DEVICE_CONTEXT_OPTIONS_NONE;
+	DX::ThrowIfFailed(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory3), &d2dFactoryOptions, &m_d2dFactory));
+	ComPtr<IDXGIDevice> dxgiDevice;
+	DX::ThrowIfFailed(m_d3d11On12Device.As(&dxgiDevice));
+	DX::ThrowIfFailed(m_d2dFactory->CreateDevice(dxgiDevice.Get(), &m_d2dDevice));
+	DX::ThrowIfFailed(m_d2dDevice->CreateDeviceContext(deviceOptions, &m_d2dDeviceContext));
+	DX::ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), &m_dWriteFactory));
+}
+
 void GameFramework::CreateShaderVariable()
 {
 	ComPtr<ID3D12Resource> dummy;
 	m_cbGameFramework = Utile::CreateBufferResource(m_device, m_commandList, NULL, Utile::GetConstantBufferSize<cbGameFramework>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbGameFramework->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameFramework));
 	m_cbGameFrameworkData = make_unique<cbGameFramework>();
+}
+
+void GameFramework::Render2D() const
+{
+	// Acquire our wrapped render target resource for the current back buffer.
+	m_d3d11On12Device->AcquireWrappedResources(m_wrappedBackBuffers[m_frameIndex].GetAddressOf(), 1);
+
+	// Render text directly to the back buffer.
+	m_d2dDeviceContext->SetTarget(m_d2dRenderTargets[m_frameIndex].Get());
+	m_d2dDeviceContext->BeginDraw();
+
+	if (m_scene) m_scene->Render2D(m_d2dDeviceContext);
+
+	DX::ThrowIfFailed(m_d2dDeviceContext->EndDraw());
+
+	// Release our wrapped render target resource. Releasing 
+	// transitions the back buffer resource to the state specified
+	// as the OutState when the wrapped resource was created.
+	m_d3d11On12Device->ReleaseWrappedResources(m_wrappedBackBuffers[m_frameIndex].GetAddressOf(), 1);
+
+	// Flush to submit the 11 command list to the shared command queue.
+	m_d3d11DeviceContext->Flush();
+}
+
+void GameFramework::Update(FLOAT deltaTime)
+{
+	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
+	SetWindowText(m_hWnd, title.c_str());
 }
 
 void GameFramework::UpdateShaderVariable() const
@@ -287,89 +530,10 @@ void GameFramework::UpdateShaderVariable() const
 	m_commandList->SetGraphicsRootConstantBufferView(4, m_cbGameFramework->GetGPUVirtualAddress());
 }
 
-void GameFramework::LoadPipeline()
-{
-	// 팩토리 생성
-	UINT dxgiFactoryFlags = 0;
-#if defined(_DEBUG)
-	ComPtr<ID3D12Debug> debugController;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-	{
-		debugController->EnableDebugLayer();
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-	}
-#endif
-	ComPtr<IDXGIFactory4> factory;
-	DX::ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
-
-	// 디바이스 생성
-	CreateDevice(factory);
-
-	// 명령큐 생성
-	CreateCommandQueue();
-
-	// 스왑체인 생성
-	CreateSwapChain(factory);
-
-	// 렌더타겟뷰, 깊이스텐실뷰의 서술자힙 생성
-	CreateRtvDsvDescriptorHeap();
-
-	// 렌더타겟뷰 생성
-	CreateRenderTargetView();
-
-	// 깊이스텐실뷰 생성
-	CreateDepthStencilView();
-
-	// 루트시그니쳐 생성
-	CreateRootSignature();
-
-	// 명령할당자 생성
-	DX::ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
-
-	// 명령리스트 생성
-	DX::ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
-	DX::ThrowIfFailed(m_commandList->Close());
-
-	// 펜스 생성
-	DX::ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-	m_fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	m_fenceValue = 1;
-
-	// alt + enter 금지
-	factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
-}
-
-void GameFramework::LoadAssets()
-{
-	// 명령을 추가할 것이기 때문에 Reset
-	m_commandList->Reset(m_commandAllocator.Get(), NULL);
-
-	// 셰이더 변수 생성
-	CreateShaderVariable();
-
-	// 씬 생성, 초기화
-	m_scene = make_unique<Scene>();
-	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature);
-
-	// 명령 제출
-	m_commandList->Close();
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
-
-	// 명령들이 완료될 때까지 대기
-	WaitForPreviousFrame();
-
-	// 디폴트 버퍼로의 복사가 완료됐으므로 업로드 버퍼를 해제한다.
-	m_scene->ReleaseUploadBuffer();
-
-	// 타이머 초기화
-	m_timer.Tick();
-}
-
 void GameFramework::PopulateCommandList() const
 {
-	DX::ThrowIfFailed(m_commandAllocator->Reset());
-	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), NULL));
+	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
 
 	// Set necessary state
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -381,7 +545,7 @@ void GameFramework::PopulateCommandList() const
 	if (m_scene) m_scene->UpdateShaderVariable(m_commandList);
 
 	// 그림자맵에 씬 렌더링
-	if (m_scene) m_scene->RenderToShadowMap(m_commandList);
+	if (m_scene) m_scene->PreRender(m_commandList);
 
 	// Indicate that the back buffer will be used as a render target
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
@@ -392,30 +556,49 @@ void GameFramework::PopulateCommandList() const
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	// 렌더타겟, 깊이스텐실 버퍼 지우기
-	const FLOAT clearColor[]{ 0.15625f, 0.171875f, 0.203125f, 1.0f };
+	constexpr FLOAT clearColor[]{ 0.15625f, 0.171875f, 0.203125f, 1.0f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, NULL);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	// 씬 렌더링
 	if (m_scene) m_scene->Render(m_commandList, rtvHandle, dsvHandle);
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	DX::ThrowIfFailed(m_commandList->Close());
 }
 
 void GameFramework::WaitForPreviousFrame()
 {
-	const UINT64 fence{ m_fenceValue };
-	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
-	++m_fenceValue;
+	// Schedule a Signal command in the queue.
+	const UINT64 currentFenceValue = m_fenceValues[m_frameIndex];
+	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), currentFenceValue));
 
-	if (m_fence->GetCompletedValue() < fence)
+	// If the next frame is not ready to be rendered yet, wait until it is ready.
+	if (m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
 	{
-		DX::ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
-		WaitForSingleObject(m_fenceEvent, INFINITE);
+		DX::ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+		WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
 	}
+
+	// Update the frame index.
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+	// Set the fence value for the next frame.
+	m_fenceValues[m_frameIndex] = currentFenceValue + 1;
+}
+
+void GameFramework::WaitForGpu()
+{
+	// Schedule a Signal command in the queue.
+	DX::ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValues[m_frameIndex]));
+
+	// Wait until the fence has been processed.
+	DX::ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent));
+	WaitForSingleObjectEx(m_fenceEvent, INFINITE, FALSE);
+
+	// Increment the fence value for the current frame.
+	m_fenceValues[m_frameIndex]++;
 }
 
 void GameFramework::ConnectServer()
@@ -452,16 +635,64 @@ void GameFramework::ConnectServer()
 	g_isConnected = TRUE;
 }
 
-void GameFramework::ProcessClient(LPVOID arg)
+void GameFramework::ProcessClient()
 {
-	if (m_scene) m_scene->ProcessClient(arg);
+	if (m_scene) m_scene->ProcessClient();
+}
+
+void GameFramework::ChangeScene()
+{
+	WaitForPreviousFrame();
+
+	switch (m_nextScene)
+	{
+	case eScene::LOADING:
+		m_scene = make_unique<LoadingScene>();
+		break;
+	case eScene::MAIN:
+		m_scene = make_unique<MainScene>();
+		break;
+	case eScene::GAME:
+		m_scene = make_unique<GameScene>();
+		break;
+	}
+	m_nextScene = eScene::NONE;
+
+	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
+
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
+
+	m_commandList->Close();
+	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	WaitForGpu();
+
+	m_scene->OnInitEnd();
 }
 
 void GameFramework::SetIsActive(BOOL isActive)
 {
 	m_isActive = isActive;
-	if (m_isActive)
-		ShowCursor(FALSE);
-	else
-		ShowCursor(TRUE);
+}
+
+void GameFramework::SetNextScene(eScene scene)
+{
+	m_nextScene = scene;
+}
+
+ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
+{
+	return m_dWriteFactory;
+}
+
+ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
+{
+	return m_commandQueue;
+}
+
+BOOL GameFramework::isActive() const
+{
+	return m_isActive;
 }

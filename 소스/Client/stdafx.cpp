@@ -1,12 +1,18 @@
 ﻿#include "stdafx.h"
 #include "framework.h"
 
-GameFramework           g_gameFramework{ Setting::SCREEN_WIDTH, Setting::SCREEN_HEIGHT };
-ComPtr<ID3D12Device>	g_device{ nullptr };
-UINT					g_cbvSrvDescriptorIncrementSize{ 0 };
-UINT					g_dsvDescriptorIncrementSize{ 0 };
-SOCKET					g_socket{};
-BOOL					g_isConnected{ FALSE };
+GameFramework           g_gameFramework{};
+UINT                    g_maxWidth{};
+UINT                    g_maxHeight{};
+UINT                    g_width{ Setting::SCREEN_WIDTH };
+UINT                    g_height{ Setting::SCREEN_HEIGHT };
+
+ComPtr<ID3D12Device>	g_device{};
+UINT                    g_cbvSrvDescriptorIncrementSize{};
+UINT                    g_dsvDescriptorIncrementSize{};
+mt19937                 g_randomEngine{ random_device{}() };
+SOCKET                  g_socket{};
+BOOL                    g_isConnected{ FALSE };
 thread                  g_networkThread{};
 mutex                   g_mutex{};
 
@@ -105,54 +111,50 @@ namespace Utile
         return NULL;
     }
 
-    string PATH(const string& file, int type)
+    string PATH(const string& file)
     {
-        switch (type)
-        {
-        case RESOURCE:
-            return "Resource/" + file;
-        case SHADER:
-            return "Shader/" + file;
-        default:
-            return "";
-        }
+        return "Resource/" + file;
     }
 
-    wstring PATH(const wstring& file, int type)
+    wstring PATH(const wstring& file)
     {
-        switch (type)
-        {
-        case RESOURCE:
-            return TEXT("Resource/") + file;
-        case SHADER:
-            return TEXT("Shader/") + file;
-        default:
-            return TEXT("");
-        }
+        return TEXT("Resource/") + file;
+    }
+
+    int Random(int min, int max)
+    {
+        uniform_int_distribution<int> dis{ min, max };
+        return dis(g_randomEngine);
+    }
+
+    float Random(float min, float max)
+    {
+        uniform_real_distribution<float> dis{ min, max };
+        return dis(g_randomEngine);
     }
 }
 
 void error_quit(const char* msg)
 {
-	WCHAR* lp_msg_buf;
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		nullptr, WSAGetLastError(),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPTSTR>(&lp_msg_buf), 0, nullptr);
-	MessageBox(nullptr, reinterpret_cast<LPCTSTR>(lp_msg_buf), reinterpret_cast<LPCWSTR>(msg), MB_ICONERROR);
-	LocalFree(lp_msg_buf);
-	exit(1);
+    WCHAR* lp_msg_buf;
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        nullptr, WSAGetLastError(),
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        reinterpret_cast<LPTSTR>(&lp_msg_buf), 0, nullptr);
+    MessageBox(nullptr, reinterpret_cast<LPCTSTR>(lp_msg_buf), reinterpret_cast<LPCWSTR>(msg), MB_ICONERROR);
+    LocalFree(lp_msg_buf);
+    exit(1);
 }
 
 void error_display(const char* msg)
 {
-	WCHAR* lp_msg_buf;
-	FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-		nullptr, WSAGetLastError(),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPTSTR>(&lp_msg_buf), 0, nullptr);
-	wcout << "[" << msg << "] " << lp_msg_buf << endl;
-	LocalFree(lp_msg_buf);
+    WCHAR* lp_msg_buf;
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        nullptr, WSAGetLastError(),
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        reinterpret_cast<LPTSTR>(&lp_msg_buf), 0, nullptr);
+    wcout << "[" << msg << "] " << lp_msg_buf << endl;
+    LocalFree(lp_msg_buf);
 }

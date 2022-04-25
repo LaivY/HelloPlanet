@@ -43,7 +43,8 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		player.data.aniType = eAnimationType::IDLE;
 		player.data.upperAniType = eUpperAnimationType::NONE;
 		player.socket = cSocket;
-		SendLoginOkPacket(id);
+		const char* name = "TestName123"; //name test
+		SendLoginOkPacket(id, name);
 		player.lock.unlock();
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
@@ -53,7 +54,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	}
 }
 
-void NetworkFramework::SendLoginOkPacket(int id)
+void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 {
 	sc_packet_login_ok packet{};
 	packet.size = sizeof(packet);
@@ -63,6 +64,7 @@ void NetworkFramework::SendLoginOkPacket(int id)
 	packet.data.aniType = eAnimationType::IDLE;
 	packet.data.upperAniType = eUpperAnimationType::NONE;
 	packet.data.pos = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+	strcpy_s(packet.name, sizeof(packet.name), name);
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -180,7 +182,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
 }
 
-void NetworkFramework::ProcessRecvPacket(int id)
+void NetworkFramework::ProcessRecvPacket(const int id)
 {
 	Session& cl = clients[id];
 	for (;;)
@@ -227,8 +229,8 @@ void NetworkFramework::ProcessRecvPacket(int id)
 		}
 		case CS_PACKET_BULLET_FIRE:
 		{
-			// pos, dir
-			char subBuf[12 + 12];
+			// pos, dir, playerId
+			char subBuf[12 + 12 + 1]{};
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
@@ -237,6 +239,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			packet.type = SC_PACKET_BULLET_FIRE;
 			memcpy(&packet.data.pos, &subBuf[0], sizeof(packet.data.pos));
 			memcpy(&packet.data.dir, &subBuf[12], sizeof(packet.data.dir));
+			memcpy(&packet.data.playerId, &subBuf[24], sizeof(packet.data.playerId));
 
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };
@@ -246,6 +249,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 			// 총알은 수신하자마자 모든 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
+				if(c.data.isActive == false) continue;
 				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
 			}
@@ -261,7 +265,7 @@ void NetworkFramework::ProcessRecvPacket(int id)
 	}
 }
 
-void NetworkFramework::Update(FLOAT deltaTime)
+void NetworkFramework::Update(const FLOAT deltaTime)
 {
 	// 몬스터 스폰
 	if (monsters.size() < MAX_MONSTER)
@@ -275,7 +279,7 @@ void NetworkFramework::Update(FLOAT deltaTime)
 	CollisionCheck();
 }
 
-void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
+void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 {
 	// 쿨타임 때마다 생성
 	m_spawnCooldown -= deltaTime;
@@ -286,7 +290,8 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 		m.SetHp(100);
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
-		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, 400.0f });
+		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, -400.0f });
+		m.SetTargetId(DetectPlayer(m.GetPosition()));
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
@@ -295,6 +300,21 @@ void NetworkFramework::SpawnMonsters(FLOAT deltaTime)
 	}
 }
 
+UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
+{
+	UCHAR index{ 0 };
+	float length{ FLT_MAX };		// 가까운 플레이어의 거리
+	for (const auto& cl : clients)
+	{
+		const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
+		if (l < length)
+		{
+			length = l;
+			index = cl.data.id;
+		}
+	}
+	return index;
+}
 
 void NetworkFramework::CollisionCheck()
 {
@@ -333,7 +353,7 @@ void NetworkFramework::CollisionCheck()
 	bullets.clear();
 }
 
-void NetworkFramework::Disconnect(int id)
+void NetworkFramework::Disconnect(const int id)
 {
 	Session& cl = clients[id];
 	cl.lock.lock();
@@ -348,7 +368,7 @@ void NetworkFramework::Disconnect(int id)
 	cl.lock.unlock();
 }
 
-CHAR NetworkFramework::GetNewId()
+CHAR NetworkFramework::GetNewId() const
 {
 	for (int i = 0; i < MAX_USER; ++i) {
 		if (false == clients[i].data.isActive)

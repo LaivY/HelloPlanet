@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define BOUNDINGBOX
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -20,6 +20,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -29,10 +30,16 @@ using Microsoft::WRL::ComPtr;
 
 // DirectX 12
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxguid.lib")
 #include <dxgi1_6.h>
+#include <dwrite.h>
+#include <d2d1_3.h>
+#include <d3d11on12.h>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
 #include <d3dcompiler.h>
@@ -51,9 +58,15 @@ using namespace DirectX;
 class GameFramework;
 
 extern GameFramework        g_gameFramework;                    // 게임프레임워크
+extern UINT                 g_maxWidth;                         // 화면 전체 너비
+extern UINT                 g_maxHeight;                        // 화면 전체 높이
+extern UINT                 g_width;                            // 현재 화면 너비
+extern UINT                 g_height;                           // 현재 화면 높이
+
 extern ComPtr<ID3D12Device> g_device;                           // DirectX 디바이스
 extern UINT                 g_cbvSrvDescriptorIncrementSize;    // 상수버퍼뷰, 셰이더리소스뷰 서술자 힙 크기
 extern UINT                 g_dsvDescriptorIncrementSize;       // 깊이스텐실뷰 서술자 힙 크기
+extern mt19937              g_randomEngine;                     // 랜덤 값 생성에 필요한 엔진
 extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
 extern thread               g_networkThread;                    // 네트워크 쓰레드
@@ -196,8 +209,10 @@ namespace Utile
 
     ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
                                                 const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer = nullptr);
-    string PATH(const string& file, int type);
-    wstring PATH(const wstring& file, int type);
+    string PATH(const string& file);
+    wstring PATH(const wstring& file);
+    int Random(int min, int max);
+    float Random(float min, float max);
 
     template <typename T>
     UINT GetConstantBufferSize()

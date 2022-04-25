@@ -2,7 +2,7 @@
 
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
-//constexpr const char* SERVER_IP = "59.16.199.246";
+//constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
@@ -59,8 +59,9 @@ struct PlayerData
 
 struct BulletData
 {
-	DirectX::XMFLOAT3 pos; // 위치
-	DirectX::XMFLOAT3 dir; // 방향
+	DirectX::XMFLOAT3 pos;		// 위치
+	DirectX::XMFLOAT3 dir;		// 방향
+	CHAR			  playerId; // 쏜 사람
 };
 
 struct MonsterData
@@ -75,8 +76,9 @@ struct MonsterData
 
 struct cs_packet_login
 {
-	UCHAR size;
-	UCHAR type;
+	UCHAR	size;
+	UCHAR	type;
+	CHAR	name[20];
 };
 
 struct cs_packet_update_legs
@@ -104,6 +106,7 @@ struct sc_packet_login_ok
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
+	CHAR		name[20];
 };
 
 struct sc_packet_update_client

@@ -5,6 +5,11 @@
 #include "timer.h"
 #include "scene.h"
 
+enum class eScene
+{
+	NONE, LOADING, MAIN, GAME
+};
+
 struct cbGameFramework
 {
 	FLOAT deltaTime;
@@ -13,11 +18,12 @@ struct cbGameFramework
 class GameFramework
 {
 public:
-	GameFramework(UINT width, UINT height);
+	GameFramework();
 	~GameFramework();
 
 	void GameLoop();
 	void OnInit(HINSTANCE hInstance, HWND hWnd);
+	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnUpdate(FLOAT deltaTime);
 	void OnRender();
 	void OnDestroy();
@@ -26,47 +32,52 @@ public:
 	void OnKeyboardEvent();
 	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	void Update(FLOAT deltaTime);
-
-	void CreateDevice(const ComPtr<IDXGIFactory4>& factory);
+	void LoadPipeline();
+	void LoadAssets();
+	void CreateFactory();
+	void CreateDevice();
 	void CreateCommandQueue();
-	void CreateSwapChain(const ComPtr<IDXGIFactory4>& factory);
+	void CreateD3D11On12Device();
+	void CreateD2DDevice();
+	void CreateSwapChain();
 	void CreateRtvDsvDescriptorHeap();
 	void CreateRenderTargetView();
 	void CreateDepthStencilView();
 	void CreateRootSignature();
 	void CreateShaderVariable();
+
+	void Update(FLOAT deltaTime);
 	void UpdateShaderVariable() const;
-	void LoadPipeline();
-	void LoadAssets();
-
 	void PopulateCommandList() const;
+	void Render2D() const;
 	void WaitForPreviousFrame();
-
+	void WaitForGpu();
 	void ConnectServer();
-	void ProcessClient(LPVOID arg);
+	void ProcessClient();
+	void ChangeScene();
 
 	void SetIsActive(BOOL isActive);
+	void SetNextScene(eScene sceneType);
 
-	UINT GetWindowWidth() const { return m_width; }
-	UINT GetWindowHeight() const { return m_height; }
+	BOOL isActive() const;
+	ComPtr<IDWriteFactory> GetDWriteFactory() const;
+	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
 private:
-	static constexpr UINT				FrameCount = 2;
+	static constexpr UINT				FrameCount = 3;
 
 	// Window
 	HINSTANCE							m_hInstance;
 	HWND								m_hWnd;
-	UINT								m_width;
-	UINT								m_height;
-	FLOAT								m_aspectRatio;
 	BOOL								m_isActive;
+	FLOAT								m_aspectRatio;
 
 	// Pipeline
+	ComPtr<IDXGIFactory4>				m_factory;
 	ComPtr<IDXGISwapChain3>				m_swapChain;
 	INT									m_MSAA4xQualityLevel;
 	ComPtr<ID3D12Device>				m_device;
-	ComPtr<ID3D12CommandAllocator>		m_commandAllocator;
+	ComPtr<ID3D12CommandAllocator>		m_commandAllocators[FrameCount];
 	ComPtr<ID3D12CommandQueue>			m_commandQueue;
 	ComPtr<ID3D12GraphicsCommandList>	m_commandList;
 	ComPtr<ID3D12Resource>				m_renderTargets[FrameCount];
@@ -77,11 +88,21 @@ private:
 	ComPtr<ID3D12RootSignature>			m_rootSignature;
 	ComPtr<ID3D12RootSignature>			m_postProcessRootSignature;
 
+	// Direct11, 2D
+	ComPtr<ID3D11DeviceContext>			m_d3d11DeviceContext;
+	ComPtr<ID3D11On12Device>			m_d3d11On12Device;
+	ComPtr<IDWriteFactory>				m_dWriteFactory;
+	ComPtr<ID2D1Factory3>				m_d2dFactory;
+	ComPtr<ID2D1Device2>				m_d2dDevice;
+	ComPtr<ID2D1DeviceContext2>			m_d2dDeviceContext;
+	ComPtr<ID3D11Resource>				m_wrappedBackBuffers[FrameCount];
+	ComPtr<ID2D1Bitmap1>				m_d2dRenderTargets[FrameCount];
+
 	// Synchronization
 	ComPtr<ID3D12Fence>					m_fence;
 	UINT								m_frameIndex;
-	UINT64								m_fenceValue;
 	HANDLE								m_fenceEvent;
+	UINT64								m_fenceValues[FrameCount];
 
 	// 상수 버퍼
 	ComPtr<ID3D12Resource>				m_cbGameFramework;
@@ -93,7 +114,5 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
-
-	// 서버 통신 쓰레드
-	//thread								m_networkThread;
+	eScene								m_nextScene;
 };
