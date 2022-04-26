@@ -6,7 +6,9 @@ MainScene::MainScene() : m_pcbGameScene{ nullptr }
 
 }
 
-void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
@@ -234,6 +236,11 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetMouseClickCallBack(
 		[]()
 		{
+			if (!g_gameFramework.ConnectServer())
+			{
+				MessageBox(NULL, TEXT("서버와 연결할 수 없습니다."), TEXT("알림"), MB_OK);
+				return;
+			}
 			g_gameFramework.SetNextScene(eScene::GAME);
 		});
 	m_textObjects.push_back(move(gameStartText));

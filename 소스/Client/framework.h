@@ -53,7 +53,7 @@ public:
 	void Render2D() const;
 	void WaitForPreviousFrame();
 	void WaitForGpu();
-	void ConnectServer();
+	BOOL ConnectServer();
 	void ProcessClient();
 	void ChangeScene();
 

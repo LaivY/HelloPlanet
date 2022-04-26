@@ -140,7 +140,6 @@ void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPt
 	ID3D12CommandList* ppCommandList[] = { commandList.Get() };
 	g_gameFramework.GetCommandQueue()->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 	g_gameFramework.WaitForPreviousFrame();
-
 	m_isDone = TRUE;
 }
 

@@ -245,6 +245,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
 			{
 				PlayAnimation(currPureAnimationName, TRUE);
+				m_animationInfo->blendingFrame = 2;
 				return;
 			}
 
@@ -261,6 +262,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		}
 		case eAnimationState::BLENDING:
 			PlayAnimation(GetAfterAnimationName());
+			m_animationInfo->blendingFrame = 5;
 			break;
 		}
 	}
