@@ -64,7 +64,9 @@ void Camera::UpdateShaderVariableByPlayer(const ComPtr<ID3D12GraphicsCommandList
 	m_eye = m_player->GetPosition();
 	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetRight(), gunOffset.x));
 	m_eye.y += gunOffset.y;
+	m_eye.y += -2.0f * m_player->GetGunOffsetTimer() / 0.5f;
 	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetLook(), gunOffset.z));
+	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetLook(), -2.0f * m_player->GetGunOffsetTimer() / 0.5f));
 
 	m_at = m_player->GetLook();
 	m_up = m_player->GetUp();

@@ -433,6 +433,8 @@ void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)
 
 void Player::Update(FLOAT deltaTime)
 {
+	GameObject::Update(deltaTime);
+
 	// 상체 애니메이션 타이머 진행
 	if (m_upperAnimationInfo)
 		switch (m_upperAnimationInfo->state)
@@ -445,9 +447,8 @@ void Player::Update(FLOAT deltaTime)
 			m_upperAnimationInfo->blendingTimer += deltaTime;
 			break;
 		}
-	GameObject::Update(deltaTime);
 
-	// 회전해야되면 회전
+	// 회전해야되면 회전(반동)
 	if (m_delayTimer > 0.0f)
 	{
 		Rotate(m_delayRoll * deltaTime / m_delayTime,
@@ -455,6 +456,12 @@ void Player::Update(FLOAT deltaTime)
 			   m_delayYaw * deltaTime / m_delayTime);
 		m_delayTimer = max(0.0f, m_delayTimer - deltaTime);
 	}
+
+	// 달리고 있을 때 총 오프셋 변경
+	if (GetCurrAnimationName() == "RUNNING" && GetAfterAnimationName().empty() && !m_upperAnimationInfo)
+		m_gunOffsetTimer = min(0.5f, m_gunOffsetTimer + deltaTime);
+	else
+		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -540,6 +547,7 @@ void Player::SetGunType(eGunType gunType)
 		m_hp = m_maxHp = 175;
 		m_shotSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
+		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
 	case eGunType::MG:
 		m_hp = m_maxHp = 200;
@@ -650,6 +658,11 @@ INT Player::GetId() const
 	return m_id;
 }
 
+eGunType Player::GetGunType() const
+{
+	return m_gunType;
+}
+
 INT Player::GetHp() const
 {
 	return m_hp;
@@ -744,4 +757,9 @@ eUpperAnimationType Player::GetUpperAnimationType() const
 XMFLOAT3 Player::GetGunOffset() const
 {
 	return m_gunOffset;
+}
+
+FLOAT Player::GetGunOffsetTimer() const
+{
+	return m_gunOffsetTimer;
 }

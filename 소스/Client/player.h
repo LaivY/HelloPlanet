@@ -42,6 +42,7 @@ public:
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	INT GetId() const;
+	eGunType GetGunType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
 	INT GetBulletCount() const;
@@ -54,6 +55,7 @@ public:
 	eAnimationType GetAnimationType() const;
 	eUpperAnimationType GetUpperAnimationType() const;
 	XMFLOAT3 GetGunOffset() const;
+	FLOAT GetGunOffsetTimer() const;
 
 private:
 	INT								m_id;				// 플레이어 고유 아이디
@@ -80,4 +82,5 @@ private:
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
 	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
 	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
+	FLOAT							m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
 };

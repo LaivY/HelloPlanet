@@ -274,7 +274,7 @@ void HpUIObject::SetPlayer(const shared_ptr<Player>& player)
 	m_maxHp = player->GetMaxHp();
 }
 
-CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_radius{ 11.0f }, m_timer{}
+CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_gunType{ eGunType::NONE }, m_bulletCount{}, m_radius{ 11.0f }, m_timer{}
 {
 	// width, height는 선 하나의 너비와 높이를 나타낸다.
 	// 반지름은 각 선이 중심으로부터 떨어져있는 거리이다.
@@ -316,24 +316,30 @@ void CrosshairUIObject::Update(FLOAT deltaTime)
 
 	constexpr float walkingMaxRadius{ 16.0f }, walkingRadiusSpeed{ 75.0f };
 	constexpr float firingRadiusSpeed{ 51.0f };
-	constexpr float minRadius{ 11.0f }, defaultRadiusSeed{ 50.0f };
-
-	float r{ 0.0f };
-	if (m_player->GetCurrAnimationName() != "IDLE")
+	constexpr float minRadius{ 11.0f }, defaultRadiusSeed{ 20.0f };
+	
+	if (INT bulletCount{ m_player->GetBulletCount() }; m_bulletCount != bulletCount)
 	{
-		// 움직이면서 쏘면 더 많이 벌어짐
-		if (m_player->GetUpperCurrAnimationName() == "FIRING")
-			r = Utile::Random(0.0f, 7.0f);
-		m_radius = min(walkingMaxRadius + r, m_radius + walkingRadiusSpeed * deltaTime);
+		m_bulletCount = bulletCount;
+		if (m_bulletCount != m_player->GetMaxBulletCount())
+			switch (m_gunType)
+			{
+			case eGunType::AR:
+				m_radius = 14.0f;
+				break;
+			case eGunType::SG:
+				m_radius = 16.0f;
+				break;
+			case eGunType::MG:
+				m_radius = 15.0f;
+				break;
+			}
 	}
 	else
 	{
-		// 제자리에서 쏘면 조금 벌어짐
-		if (m_player->GetUpperCurrAnimationName() == "FIRING")
-			r = Utile::Random(0.0f, 3.0f);
-		m_radius = max(minRadius + r, m_radius - defaultRadiusSeed * deltaTime);
+		m_radius = max(minRadius, m_radius - defaultRadiusSeed * deltaTime);
 	}
-	
+
 	for (int i = 0; i < m_lines.size(); ++i)
 	{
 		XMFLOAT4X4 worldMatrix{ m_lines[i]->GetWorldMatrix() };
@@ -358,6 +364,8 @@ void CrosshairUIObject::SetMesh(shared_ptr<Mesh>& mesh)
 void CrosshairUIObject::SetPlayer(const shared_ptr<Player>& player)
 {
 	m_player = player;
+	m_gunType = player->GetGunType();
+	m_bulletCount = player->GetBulletCount();
 }
 
 MenuUIObject::MenuUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_isMouseOver{ FALSE }
