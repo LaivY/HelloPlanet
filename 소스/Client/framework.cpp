@@ -113,15 +113,15 @@ void GameFramework::OnRender()
 
 void GameFramework::OnDestroy()
 {
-	WaitForPreviousFrame();
-	CloseHandle(m_fenceEvent);
-
 #ifdef NETWORK
 	g_isConnected = FALSE;
 	g_networkThread.join();
 	closesocket(g_socket);
 	WSACleanup();
 #endif
+
+	WaitForPreviousFrame();
+	CloseHandle(m_fenceEvent);
 }
 
 void GameFramework::OnMouseEvent()

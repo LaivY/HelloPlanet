@@ -8,7 +8,7 @@ GameScene::GameScene() : m_pcbGameScene{ nullptr }
 
 GameScene::~GameScene()
 {
-	
+
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
@@ -349,6 +349,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 플레이어 생성
 	m_player = make_shared<Player>();
+	
 	m_player->SetMesh(s_meshes["ARM"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
 	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
@@ -359,9 +360,9 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
-	// 카메라, 플레이어 서로 설정
-	m_camera->SetPlayer(m_player);
+	// 카메라, 플레이어 설정
 	m_player->SetCamera(m_camera);
+	m_camera->SetPlayer(m_player);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();

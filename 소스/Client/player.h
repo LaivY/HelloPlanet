@@ -39,6 +39,7 @@ public:
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
+	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	INT GetId() const;
 	INT GetHp() const;
@@ -52,6 +53,7 @@ public:
 	string GetUpperAfterAnimationName() const;
 	eAnimationType GetAnimationType() const;
 	eUpperAnimationType GetUpperAnimationType() const;
+	XMFLOAT3 GetGunOffset() const;
 
 private:
 	INT								m_id;				// 플레이어 고유 아이디
@@ -77,4 +79,5 @@ private:
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
 	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
+	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
 };
