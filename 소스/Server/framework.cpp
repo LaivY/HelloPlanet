@@ -54,7 +54,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
 		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
-		isAccept = true;
+		//isAccept = true;
 	}
 }
 
@@ -99,7 +99,7 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	}
 }
 
-void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType) const
+void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
 {
 	sc_packet_ready_to_play packet{};
 	packet.size = sizeof(packet);
@@ -119,6 +119,9 @@ void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType wea
 		if (!c.data.isActive) continue;
 		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
+	// readyCount가 3명일때 시작
+	readyCount++;
+	if (readyCount >= MAX_USER) isAccept = true;
 }
 
 void NetworkFramework::SendPlayerDataPacket()
