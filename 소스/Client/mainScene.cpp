@@ -236,11 +236,13 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetMouseClickCallBack(
 		[]()
 		{
+#ifdef NETWORK
 			if (!g_gameFramework.ConnectServer())
 			{
 				MessageBox(NULL, TEXT("서버와 연결할 수 없습니다."), TEXT("알림"), MB_OK);
 				return;
 			}
+#endif
 			g_gameFramework.SetNextScene(eScene::GAME);
 		});
 	m_textObjects.push_back(move(gameStartText));

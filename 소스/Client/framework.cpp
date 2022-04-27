@@ -614,7 +614,8 @@ BOOL GameFramework::ConnectServer()
 		return FALSE;
 
 	// socket 생성
-	if (socket(AF_INET, SOCK_STREAM, 0) == INVALID_SOCKET)
+	g_socket = socket(AF_INET, SOCK_STREAM, 0);
+	if (g_socket == INVALID_SOCKET)
 		return FALSE;
 
 	// connect
