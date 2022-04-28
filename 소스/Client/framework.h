@@ -7,7 +7,7 @@
 
 enum class eScene
 {
-	NONE, LOADING, MAIN, GAME
+	NONE, LOADING, MAIN, LOBBY, GAME
 };
 
 struct cbGameFramework

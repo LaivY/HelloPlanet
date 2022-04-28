@@ -49,10 +49,19 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	static bool isCursorHide{ true };
+
 	if (!g_gameFramework.isActive())
 		return;
+	if (!m_windowObjects.empty())
+	{
+		if (isCursorHide)
+			ShowCursor(TRUE);
+		isCursorHide = false;
+		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
+		return;
+	}
 
-	static bool isCursorHide{ true };
 	if ((GetAsyncKeyState(VK_TAB) & 0x8000))
 	{
 		if (isCursorHide)
@@ -99,6 +108,11 @@ void GameScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 {
 	if (!g_gameFramework.isActive())
 		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
+		return;
+	}
 
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
@@ -108,6 +122,11 @@ void GameScene::OnKeyboardEvent(FLOAT deltaTime)
 {
 	if (!g_gameFramework.isActive())
 		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnKeyboardEvent(deltaTime);
+		return;
+	}
 #ifdef FREEVIEW
 	const float speed{ 100.0f * deltaTime };
 	if (GetAsyncKeyState('W') & 0x8000)
@@ -145,6 +164,11 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 {
 	if (!g_gameFramework.isActive())
 		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnKeyboardEvent(hWnd, message, wParam, lParam);
+		return;
+	}
 
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	switch (message)
@@ -161,7 +185,8 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 				m_player->SetHp(m_player->GetHp() + 5);
 			break;
 		case VK_ESCAPE:
-			PostMessage(hWnd, WM_QUIT, 0, 0);
+			CreateExitWindow();
+			//PostMessage(hWnd, WM_QUIT, 0, 0);
 			break;
 		}
 		break;
@@ -184,6 +209,8 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
+	for (auto& w : m_windowObjects)
+		w->Update(deltaTime);
 }
 
 void GameScene::Update(FLOAT deltaTime)
@@ -248,6 +275,8 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
+		for (const auto& w : m_windowObjects)
+			w->Render(commandList);
 		lock.unlock();
 	}
 }
@@ -257,6 +286,8 @@ void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& t : m_textObjects)
 		t->Render(device);
+	for (const auto& w : m_windowObjects)
+		w->Render2D(device);
 }
 
 void GameScene::ProcessClient()
@@ -338,10 +369,25 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->SetMesh(s_meshes["ARM"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
 	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-	m_player->SetGunMesh(s_meshes["SG"]);
 	m_player->SetGunShader(s_shaders["LINK"]);
 	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	m_player->SetGunType(eGunType::SG);
+
+	switch (g_playerGunType)
+	{
+	case eGunType::AR:
+		m_player->SetGunMesh(s_meshes["AR"]);
+		m_player->SetGunType(eGunType::AR);
+		break;
+	case eGunType::SG:
+		m_player->SetGunMesh(s_meshes["SG"]);
+		m_player->SetGunType(eGunType::SG);
+		break;
+	case eGunType::MG:
+		m_player->SetGunMesh(s_meshes["MG"]);
+		m_player->SetGunType(eGunType::MG);
+		break;
+	}
+
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
@@ -436,6 +482,58 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 	}
 }
 
+void GameScene::CreateExitWindow()
+{
+	auto text{ make_unique<TextObject>() };
+	text->SetBrush("BLACK");
+	text->SetFormat("HP");
+	text->SetText(TEXT("메인 화면으로\n돌아갈까요?"));
+	text->SetPivot(ePivot::CENTER);
+	text->SetScreenPivot(ePivot::CENTER);
+	text->SetPosition(XMFLOAT2{});
+
+	auto okText{ make_unique<MenuTextObject>() };
+	okText->SetBrush("BLACK");
+	okText->SetMouseOverBrush("BLUE");
+	okText->SetFormat("MENU");
+	okText->SetText(TEXT("확인"));
+	okText->SetPivot(ePivot::CENTERBOT);
+	okText->SetScreenPivot(ePivot::CENTERBOT);
+	okText->SetPosition(XMFLOAT2{ -65.0f, -25.0f });
+	okText->SetMouseClickCallBack(
+		[]()
+		{
+			ShowCursor(TRUE);
+			g_gameFramework.SetNextScene(eScene::MAIN);
+		}
+	);
+
+	auto cancleText{ make_unique<MenuTextObject>() };
+	cancleText->SetBrush("BLACK");
+	cancleText->SetMouseOverBrush("BLUE");
+	cancleText->SetFormat("MENU");
+	cancleText->SetText(TEXT("취소"));
+	cancleText->SetPivot(ePivot::CENTERBOT);
+	cancleText->SetScreenPivot(ePivot::CENTERBOT);
+	cancleText->SetPosition(XMFLOAT2{ 65.0f, -25.0f });
+	cancleText->SetMouseClickCallBack(bind(&GameScene::CloseWindow, this));
+
+	auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
+	window->SetMesh(s_meshes["UI"]);
+	window->SetShader(s_shaders["UI"]);
+	window->SetTexture(s_textures["WHITE"]);
+	window->Add(text);
+	window->Add(okText);
+	window->Add(cancleText);
+	m_windowObjects.push_back(move(window));
+}
+
+void GameScene::CloseWindow()
+{
+	if (!m_windowObjects.empty())
+		m_windowObjects.pop_back();
+}
+
 void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
 	if (!m_shadowMap) return;
@@ -480,9 +578,9 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	}
 	if (m_player)
 	{
-		m_player->SetMesh(s_meshes.at("PLAYER"));
+		m_player->SetMesh(s_meshes["PLAYER"]);
 		m_player->RenderToShadowMap(commandList);
-		m_player->SetMesh(s_meshes.at("ARM"));
+		m_player->SetMesh(s_meshes["ARM"]);
 	}
 
 	// 리소스배리어 설정(셰이더에서 읽기)

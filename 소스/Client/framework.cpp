@@ -1,6 +1,7 @@
 ﻿#include "framework.h"
 #include "gameScene.h"
 #include "loadingScene.h"
+#include "lobbyScene.h"
 #include "mainScene.h"
 
 GameFramework::GameFramework() 
@@ -647,6 +648,9 @@ void GameFramework::ChangeScene()
 		break;
 	case eScene::MAIN:
 		m_scene = make_unique<MainScene>();
+		break;
+	case eScene::LOBBY:
+		m_scene = make_unique<LobbyScene>();
 		break;
 	case eScene::GAME:
 		m_scene = make_unique<GameScene>();

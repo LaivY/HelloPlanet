@@ -11,7 +11,7 @@ class MainScene : public Scene
 {
 public:
 	MainScene();
-	~MainScene() = default;
+	~MainScene();
 
 	virtual void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
@@ -19,8 +19,6 @@ public:
 	virtual void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	virtual void OnKeyboardEvent(FLOAT deltaTime);
-	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnUpdate(FLOAT deltaTime);
 
 	// 게임루프 함수
