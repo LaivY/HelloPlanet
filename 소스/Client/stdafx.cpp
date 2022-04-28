@@ -1,20 +1,24 @@
 ﻿#include "stdafx.h"
 #include "framework.h"
+#include "object.h"
 
 GameFramework           g_gameFramework{};
 UINT                    g_maxWidth{};
 UINT                    g_maxHeight{};
 UINT                    g_width{ Setting::SCREEN_WIDTH };
 UINT                    g_height{ Setting::SCREEN_HEIGHT };
+mt19937                 g_randomEngine{ random_device{}() };
 
 ComPtr<ID3D12Device>	g_device{};
 UINT                    g_cbvSrvDescriptorIncrementSize{};
 UINT                    g_dsvDescriptorIncrementSize{};
-mt19937                 g_randomEngine{ random_device{}() };
+
 SOCKET                  g_socket{};
-BOOL                    g_isConnected{ FALSE };
+BOOL                    g_isConnected{};
 thread                  g_networkThread{};
 mutex                   g_mutex{};
+
+eGunType                g_playerGunType{ eGunType::NONE };
 
 namespace Utile
 {

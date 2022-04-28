@@ -59,8 +59,8 @@ public:
 	BulletTextObject();
 	~BulletTextObject() = default;
 
-	void Render(const ComPtr<ID2D1DeviceContext2>& device);
-	void Update(FLOAT deltaTime);
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
 	void SetPlayer(const shared_ptr<Player>& player);
@@ -79,8 +79,8 @@ public:
 	HPTextObject();
 	~HPTextObject() = default;
 
-	void Render(const ComPtr<ID2D1DeviceContext2>& device);
-	void Update(FLOAT deltaTime);
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
 	void SetPlayer(const shared_ptr<Player>& player);
@@ -102,8 +102,8 @@ public:
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 
-	void Render(const ComPtr<ID2D1DeviceContext2>& device);
-	void Update(FLOAT deltaTime);
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void Update(FLOAT deltaTime);
 
 	void SetMouseOverBrush(const string& brush);
 	void SetMouseClickCallBack(const function<void()>& callBackFunc);
@@ -114,4 +114,24 @@ private:
 	FLOAT				m_scaleTimer;
 	string				m_mouseOverBrush;
 	function<void()>	m_mouseClickCallBack;
+};
+
+class DamageTextObject : public TextObject
+{
+public:
+	DamageTextObject(const wstring& damage);
+	~DamageTextObject() = default;
+
+	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void Update(FLOAT deltaTime);
+
+	void SetCamera(const shared_ptr<Camera>& camera);
+	void SetStartPosition(const XMFLOAT3& position);
+
+private:
+	shared_ptr<Camera>	m_camera;
+	BOOL				m_isOnScreen;
+	BOOL				m_direction;
+	XMFLOAT3			m_startPosition;
+	FLOAT				m_timer;
 };

@@ -1,9 +1,13 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player(BOOL isMultiPlayer) : 
-	GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }, m_gunOffset{}
+Player::Player(BOOL isMultiPlayer) : GameObject{},
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE },
+	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f },
+	m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
+	m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr },
+	m_gunOffset{}, m_gunOffsetTimer{}
 {
 	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	m_boundingBoxes.push_back(bb);
@@ -245,6 +249,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
 			{
 				PlayAnimation(currPureAnimationName, TRUE);
+				m_animationInfo->blendingFrame = 2;
 				return;
 			}
 
@@ -261,6 +266,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		}
 		case eAnimationState::BLENDING:
 			PlayAnimation(GetAfterAnimationName());
+			m_animationInfo->blendingFrame = 5;
 			break;
 		}
 	}
@@ -286,7 +292,7 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 		m_camera->UpdateShaderVariableByPlayer(commandList); // 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
 #endif
-		if (m_gunType == eGunType::MG)
+		if (m_gunType == eGunType::MG) // 머신건은 팔을 렌더링하지 않음
 			UpdateShaderVariable(commandList);
 		else
 			GameObject::Render(commandList, shader);
@@ -558,6 +564,7 @@ void Player::SetGunType(eGunType gunType)
 	}
 	m_shotTimer = 0.0f;
 	m_gunType = gunType;
+	g_playerGunType = gunType;
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)

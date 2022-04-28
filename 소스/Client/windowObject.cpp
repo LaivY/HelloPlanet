@@ -206,13 +206,13 @@ void WindowObject::Add(unique_ptr<MenuTextObject>& textObject)
 		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y - textPos.y });
 		break;
 	case ePivot::LEFTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh - textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x - hw + textPos.x, winPos.y + hh - textPos.y - textObject->GetHeight() / 2.0f });
 		break;
 	case ePivot::CENTERBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + hh - textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + textPos.x, winPos.y + hh - textPos.y - textObject->GetHeight() / 2.0f });
 		break;
 	case ePivot::RIGHTBOT:
-		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + hh - textPos.y });
+		textObject->SetPosition(XMFLOAT2{ winPos.x + hw + textPos.x, winPos.y + hh - textPos.y - textObject->GetHeight() / 2.0f });
 		break;
 	}
 	m_textObjects.push_back(move(textObject));

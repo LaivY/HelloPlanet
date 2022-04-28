@@ -417,3 +417,58 @@ void MenuTextObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 {
 	m_mouseClickCallBack = callBackFunc;
 }
+
+DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }
+{
+	m_brush = "BLUE";
+	m_format = "MAXHP";
+	SetText(damage);
+	m_screenPivot = ePivot::LEFTTOP;
+
+	m_direction = Utile::Random(0, 1);
+}
+
+void DamageTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
+{
+	if (m_isOnScreen)
+		TextObject::Render(device);
+}
+
+void DamageTextObject::Update(FLOAT deltaTime)
+{
+	constexpr float lifeTime{ 0.5f };
+
+	XMFLOAT3 screenPosition{ m_startPosition };
+	screenPosition = Vector3::TransformCoord(screenPosition, m_camera->GetViewMatrix());
+	screenPosition = Vector3::TransformCoord(screenPosition, m_camera->GetProjMatrix());
+
+	if (screenPosition.x < -1.0f || screenPosition.x > 1.0f ||
+		screenPosition.y < -1.0f || screenPosition.y > 1.0f ||
+		screenPosition.z < 0.0f || screenPosition.z > 1.0f)
+		m_isOnScreen = FALSE;
+	else
+	{
+		// NDC -> 텍스트 좌표계
+		screenPosition.x = g_width * (screenPosition.x + 1.0f) / 2.0f;
+		screenPosition.y = g_height * (-screenPosition.y + 1.0f) / 2.0f;
+		screenPosition.y -= g_height / 50.0f * m_timer;
+
+		SetPosition(XMFLOAT2{ screenPosition.x, screenPosition.y });
+		m_isOnScreen = TRUE;
+	}
+
+	m_timer += deltaTime;
+	if (m_timer >= lifeTime)
+		m_isDeleted = TRUE;
+}
+
+void DamageTextObject::SetCamera(const shared_ptr<Camera>& camera)
+{
+	m_camera = camera;
+}
+
+void DamageTextObject::SetStartPosition(const XMFLOAT3& position)
+{
+	m_startPosition = position;
+	m_startPosition.y += 20.0f;
+}

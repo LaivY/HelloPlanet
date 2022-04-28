@@ -7,7 +7,7 @@
 
 enum class eScene
 {
-	NONE, LOADING, MAIN, GAME
+	NONE, LOADING, MAIN, LOBBY, GAME
 };
 
 struct cbGameFramework
@@ -53,7 +53,7 @@ public:
 	void Render2D() const;
 	void WaitForPreviousFrame();
 	void WaitForGpu();
-	void ConnectServer();
+	BOOL ConnectServer();
 	void ProcessClient();
 	void ChangeScene();
 

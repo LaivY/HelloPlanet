@@ -140,7 +140,6 @@ void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPt
 	ID3D12CommandList* ppCommandList[] = { commandList.Get() };
 	g_gameFramework.GetCommandQueue()->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 	g_gameFramework.WaitForPreviousFrame();
-
 	m_isDone = TRUE;
 }
 
@@ -187,41 +186,16 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
-	s_meshes["MOUNTAIN"] = make_shared<Mesh>();
-	s_meshes["MOUNTAIN"]->LoadMesh(device, commandList, Utile::PATH(("Object/mountain.txt")));
-	s_meshes["PLANT"] = make_shared<Mesh>();
-	s_meshes["PLANT"]->LoadMesh(device, commandList, Utile::PATH(("Object/bigPlant.txt")));
-	s_meshes["TREE"] = make_shared<Mesh>();
-	s_meshes["TREE"]->LoadMesh(device, commandList, Utile::PATH(("Object/tree.txt")));
-	s_meshes["ROCK1"] = make_shared<Mesh>();
-	s_meshes["ROCK1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock1.txt")));
-	s_meshes["ROCK2"] = make_shared<Mesh>();
-	s_meshes["ROCK2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock2.txt")));
-	s_meshes["ROCK3"] = make_shared<Mesh>();
-	s_meshes["ROCK3"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock3.txt")));
-	s_meshes["SMALLROCK"] = make_shared<Mesh>();
-	s_meshes["SMALLROCK"]->LoadMesh(device, commandList, Utile::PATH(("Object/smallRock.txt")));
-	s_meshes["ROCKGROUP1"] = make_shared<Mesh>();
-	s_meshes["ROCKGROUP1"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup1.txt")));
-	s_meshes["ROCKGROUP2"] = make_shared<Mesh>();
-	s_meshes["ROCKGROUP2"]->LoadMesh(device, commandList, Utile::PATH(("Object/rockGroup2.txt")));
-	s_meshes["DROPSHIP"] = make_shared<Mesh>();
-	s_meshes["DROPSHIP"]->LoadMesh(device, commandList, Utile::PATH(("Object/dropship.txt")));
-	s_meshes["MUSHROOMS"] = make_shared<Mesh>();
-	s_meshes["MUSHROOMS"]->LoadMesh(device, commandList, Utile::PATH(("Object/mushrooms.txt")));
-	s_meshes["SKULL"] = make_shared<Mesh>();
-	s_meshes["SKULL"]->LoadMesh(device, commandList, Utile::PATH(("Object/skull.txt")));
-	s_meshes["RIBS"] = make_shared<Mesh>();
-	s_meshes["RIBS"]->LoadMesh(device, commandList, Utile::PATH(("Object/ribs.txt")));
-	s_meshes["ROCK4"] = make_shared<Mesh>();
-	s_meshes["ROCK4"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock4.txt")));
-	s_meshes["ROCK5"] = make_shared<Mesh>();
-	s_meshes["ROCK5"]->LoadMesh(device, commandList, Utile::PATH(("Object/rock5.txt")));
+	for (int i = 0; i <= 11; ++i)
+	{
+		string n{ to_string(i) };
+		s_meshes["OBJECT" + n] = make_shared<Mesh>();
+		s_meshes["OBJECT" + n]->LoadMeshBinary(device, commandList, Utile::PATH("Object/object" + n + ".bin"));
+	}
 
 	// 게임 시스템 관련 로딩
 	s_meshes["SKYBOX"] = make_shared<Mesh>();
 	s_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt"));
-	//s_meshes["UI"] = make_shared<RectMesh>(device, commandList, 1.0f, 1.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 
 	// 디버그 바운딩박스 로딩
 	s_meshes["BB_PLAYER"] = make_shared<CubeMesh>(device, commandList, 8.0f, 32.5f, 8.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.0f, 0.8f, 0.0f, 1.0f });
@@ -258,15 +232,15 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
 	s_textures["GAROO"]->CreateTexture(device);
 
+	s_textures["OBJECT0"] = make_shared<Texture>();
+	s_textures["OBJECT0"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture0.dds")));
+	s_textures["OBJECT0"]->CreateTexture(device);
 	s_textures["OBJECT1"] = make_shared<Texture>();
 	s_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds")));
 	s_textures["OBJECT1"]->CreateTexture(device);
 	s_textures["OBJECT2"] = make_shared<Texture>();
 	s_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds")));
 	s_textures["OBJECT2"]->CreateTexture(device);
-	s_textures["OBJECT3"] = make_shared<Texture>();
-	s_textures["OBJECT3"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture3.dds")));
-	s_textures["OBJECT3"]->CreateTexture(device);
 
 	s_textures["WHITE"] = make_shared<Texture>();
 	s_textures["WHITE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));

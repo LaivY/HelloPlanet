@@ -1,6 +1,7 @@
 ﻿#include "framework.h"
 #include "gameScene.h"
 #include "loadingScene.h"
+#include "lobbyScene.h"
 #include "mainScene.h"
 
 GameFramework::GameFramework() 
@@ -114,10 +115,14 @@ void GameFramework::OnRender()
 void GameFramework::OnDestroy()
 {
 #ifdef NETWORK
-	g_isConnected = FALSE;
-	g_networkThread.join();
-	closesocket(g_socket);
-	WSACleanup();
+	if (g_isConnected)
+	{
+		g_isConnected = FALSE;
+		if (g_networkThread.joinable())
+			g_networkThread.join();
+		closesocket(g_socket);
+		WSACleanup();
+	}
 #endif
 
 	WaitForPreviousFrame();
@@ -602,38 +607,29 @@ void GameFramework::WaitForGpu()
 	m_fenceValues[m_frameIndex]++;
 }
 
-void GameFramework::ConnectServer()
+BOOL GameFramework::ConnectServer()
 {
 	wcout.imbue(locale("korean"));
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-		return;
+		return FALSE;
 
 	// socket 생성
 	g_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (g_socket == INVALID_SOCKET) error_quit("socket()");
-	LINGER optVal;
-	optVal.l_onoff = 1;
-	optVal.l_linger = 0;
-	//int retVal = setsockopt(g_c_socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&optVal), sizeof(optVal));
-	//if (retVal == SOCKET_ERROR) error_quit("setsockopt()");
+	if (g_socket == INVALID_SOCKET)
+		return FALSE;
 
 	// connect
-	SOCKADDR_IN server_address;
-	ZeroMemory(&server_address, sizeof(server_address));
+	SOCKADDR_IN server_address{};
 	server_address.sin_family = AF_INET;
-	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
 	server_address.sin_port = htons(SERVER_PORT);
-	const int return_value = connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address));
-	if (return_value == SOCKET_ERROR) error_quit("connect()");
+	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
 
-	// non blocking socket setting (test)
-	//unsigned long noblock = 1;
-	//int retval = ioctlsocket(g_c_socket, FIONBIO, &noblock);
-	//if (retval == SOCKET_ERROR) { error_display("ioctlsocket"); }
-	//cout << "non blocking socket is ok" << endl;
+	if (connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address)) == SOCKET_ERROR)
+		return FALSE;
 
 	g_isConnected = TRUE;
+	return TRUE;
 }
 
 void GameFramework::ProcessClient()
@@ -652,6 +648,9 @@ void GameFramework::ChangeScene()
 		break;
 	case eScene::MAIN:
 		m_scene = make_unique<MainScene>();
+		break;
+	case eScene::LOBBY:
+		m_scene = make_unique<LobbyScene>();
 		break;
 	case eScene::GAME:
 		m_scene = make_unique<GameScene>();

@@ -6,7 +6,14 @@ MainScene::MainScene() : m_pcbGameScene{ nullptr }
 
 }
 
-void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+MainScene::~MainScene()
+{
+	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
+}
+
+void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
@@ -37,18 +44,6 @@ void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		w->OnResize(hWnd, message, wParam, lParam);
 }
 
-void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	if (!m_windowObjects.empty())
-	{
-		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
-		return;
-	}
-
-	for (auto& t : m_textObjects)
-		t->OnMouseEvent(hWnd, message, wParam, lParam);
-}
-
 void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 	if (!m_windowObjects.empty())
@@ -60,15 +55,16 @@ void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		t->OnMouseEvent(hWnd, deltaTime);
 }
 
-void MainScene::OnKeyboardEvent(FLOAT deltaTime)
+void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (GetAsyncKeyState(VK_SPACE) & 0x8000)
-		g_gameFramework.SetNextScene(eScene::GAME);
-}
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
+		return;
+	}
 
-void MainScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
+	for (auto& t : m_textObjects)
+		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnUpdate(FLOAT deltaTime)
@@ -132,31 +128,6 @@ void MainScene::Update(FLOAT deltaTime)
 	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
 	UpdateCameraPosition(deltaTime);
 	UpdateShadowMatrix();
-}
-
-void MainScene::UpdateCameraPosition(FLOAT deltaTime)
-{
-	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
-	constexpr float speed{ 10.0f };
-	constexpr float radius{ 200.0f };
-	static float angle{ 0.0f };
-
-	XMFLOAT3 eye{ 0.0f, 100.0f, 0.0f };
-	eye.x = cosf(angle) * radius;
-	eye.z = sinf(angle) * radius;
-
-	XMFLOAT3 at{ Vector3::Normalize(Vector3::Sub(target, eye)) };
-	m_camera->SetEye(eye);
-	m_camera->SetAt(at);
-
-	angle += XMConvertToRadians(speed * deltaTime);
-}
-
-void MainScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
-	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
-	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
 void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -234,7 +205,14 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetMouseClickCallBack(
 		[]()
 		{
-			g_gameFramework.SetNextScene(eScene::GAME);
+#ifdef NETWORK
+			if (!g_gameFramework.ConnectServer())
+			{
+				MessageBox(NULL, TEXT("서버와 연결할 수 없습니다."), TEXT("알림"), MB_OK);
+				return;
+			}
+#endif
+			g_gameFramework.SetNextScene(eScene::LOBBY);
 		});
 	m_textObjects.push_back(move(gameStartText));
 
@@ -381,40 +359,29 @@ void MainScene::CloseWindow()
 		m_windowObjects.pop_back();
 }
 
-void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void MainScene::UpdateCameraPosition(FLOAT deltaTime)
 {
-	if (!m_shadowMap) return;
+	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
+	constexpr float speed{ 10.0f };
+	constexpr float radius{ 200.0f };
+	static float angle{ 0.0f };
 
-	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	XMFLOAT3 eye{ 0.0f, 100.0f, 0.0f };
+	eye.x = cosf(angle) * radius;
+	eye.z = sinf(angle) * radius;
 
-	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	XMFLOAT3 at{ Vector3::Normalize(Vector3::Sub(target, eye)) };
+	m_camera->SetEye(eye);
+	m_camera->SetAt(at);
 
-	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	angle += XMConvertToRadians(speed * deltaTime);
+}
 
-	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
-
-	// 렌더링
-	for (const auto& o : m_gameObjects)
-	{
-		auto shadowShader{ o->GetShadowShader() };
-		if (shadowShader)
-			o->Render(commandList, shadowShader);
-	}
-	for (const auto& p : m_players)
-		p->RenderToShadowMap(commandList);
-
-	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+void MainScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
+	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
 void MainScene::UpdateShadowMatrix()
@@ -474,4 +441,40 @@ void MainScene::UpdateShadowMatrix()
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
+}
+
+void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	if (!m_shadowMap) return;
+
+	// 뷰포트, 가위사각형 설정
+	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
+	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+
+	// 셰이더에 묶기
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	for (const auto& o : m_gameObjects)
+	{
+		auto shadowShader{ o->GetShadowShader() };
+		if (shadowShader)
+			o->Render(commandList, shadowShader);
+	}
+	for (const auto& p : m_players)
+		p->RenderToShadowMap(commandList);
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }

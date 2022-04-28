@@ -144,7 +144,7 @@ ShadowShader::ShadowShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 
 	// 깊이값 바이어스 설정
 	CD3DX12_RASTERIZER_DESC rasterizerState{ D3D12_DEFAULT };
-	rasterizerState.DepthBias = 10'000;
+	rasterizerState.DepthBias = 1'000;
 	rasterizerState.DepthBiasClamp = 0.0f;
 	rasterizerState.SlopeScaledDepthBias = 1.0f;
 

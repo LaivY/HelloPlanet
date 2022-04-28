@@ -7,12 +7,6 @@
 class Camera;
 class Player;
 
-enum class eMapObjectType
-{
-	MOUNTAIN, PLANT, TREE, ROCK1, ROCK2, ROCK3, SMALLROCK, ROCKGROUP1, ROCKGROUP2, DROPSHIP,
-	MUSHROOMS, SKULL, RIBS, ROCK4, ROCK5
-};
-
 enum class eAnimationState
 {
 	NONE, PLAY, BLENDING, SYNC

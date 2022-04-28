@@ -156,6 +156,7 @@
     <ClInclude Include="framework.h" />
     <ClInclude Include="gameScene.h" />
     <ClInclude Include="loadingScene.h" />
+    <ClInclude Include="lobbyScene.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="mainScene.h" />
     <ClInclude Include="mesh.h" />
@@ -179,6 +180,7 @@
     <ClCompile Include="framework.cpp" />
     <ClCompile Include="gameScene.cpp" />
     <ClCompile Include="loadingScene.cpp" />
+    <ClCompile Include="lobbyScene.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mainScene.cpp" />
     <ClCompile Include="mesh.cpp" />
