@@ -119,9 +119,6 @@ void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType wea
 		if (!c.data.isActive) continue;
 		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
-	// readyCount가 3명일때 시작
-	readyCount++;
-	if (readyCount >= MAX_USER) isAccept = true;
 }
 
 void NetworkFramework::SendPlayerDataPacket()
@@ -288,7 +285,15 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
 			cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
-			SendReadyToPlayPacket(id, cl.weaponType);
+			// readyCount가 3명일때 시작
+			readyCount++;
+			if (readyCount >= MAX_USER)
+			{
+				isAccept = true;
+				for(const auto & pl:clients)
+					SendReadyToPlayPacket(id, pl.weaponType);
+				readyCount = 0;
+			}
 			break;
 		}
 		case CS_PACKET_UPDATE_LEGS:
