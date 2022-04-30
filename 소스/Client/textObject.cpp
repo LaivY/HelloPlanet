@@ -6,7 +6,7 @@ unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
 TextObject::TextObject() 
 	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
-	  m_position{}, m_pivotPosition{}, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
+	  m_position{}, m_pivotPosition{}, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
 {
 
 }
@@ -43,7 +43,14 @@ void TextObject::CalcWidthHeight()
 	if (m_text.empty()) return;
 
 	ComPtr<IDWriteTextLayout> layout;
-	g_gameFramework.GetDWriteFactory()->CreateTextLayout(m_text.c_str(), static_cast<UINT32>(m_text.size()), TextObject::s_formats[m_format].Get(), g_width, g_height, &layout);
+	g_gameFramework.GetDWriteFactory()->CreateTextLayout(
+		m_text.c_str(),
+		static_cast<UINT32>(m_text.size()),
+		TextObject::s_formats[m_format].Get(),
+		static_cast<float>(g_width),
+		static_cast<float>(g_height),
+		&layout
+	);
 
 	DWRITE_TEXT_METRICS metrics;
 	layout->GetMetrics(&metrics);
@@ -75,6 +82,11 @@ void TextObject::SetText(const wstring& text)
 		CalcWidthHeight();
 		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
 	}
+}
+
+void TextObject::SetPivot(const ePivot& pivot)
+{
+	m_pivot = pivot;
 }
 
 void TextObject::SetPosition(const XMFLOAT2& position)
@@ -121,6 +133,40 @@ void TextObject::SetPosition(const XMFLOAT2& position)
 		m_position.y = position.y + height;
 		break;
 	}
+
+	switch (m_pivot)
+	{
+	case ePivot::LEFTTOP:
+		break;
+	case ePivot::CENTERTOP:
+		m_position.x -= m_width / 2.0f;
+		break;
+	case ePivot::RIGHTTOP:
+		m_position.x -= m_width;
+		break;
+	case ePivot::LEFTCENTER:
+		m_position.y -= m_height / 2.0f;
+		break;
+	case ePivot::CENTER:
+		m_position.x -= m_width / 2.0f;
+		m_position.y -= m_height / 2.0f;
+		break;
+	case ePivot::RIGHTCENTER:
+		m_position.x -= m_width;
+		m_position.y -= m_height / 2.0f;
+		break;
+	case ePivot::LEFTBOT:
+		m_position.y -= m_height;
+		break;
+	case ePivot::CENTERBOT:
+		m_position.x -= m_width / 2.0f;
+		m_position.y -= m_height;
+		break;
+	case ePivot::RIGHTBOT:
+		m_position.x -= m_width;
+		m_position.y -= m_height;
+		break;
+	}
 }
 
 void TextObject::SetScreenPivot(const ePivot& pivot)
@@ -136,6 +182,16 @@ BOOL TextObject::isDeleted() const
 wstring TextObject::GetText() const
 {
 	return m_text;
+}
+
+ePivot TextObject::GetPivot() const
+{
+	return m_pivot;
+}
+
+ePivot TextObject::GetScreenPivot() const
+{
+	return m_screenPivot;
 }
 
 XMFLOAT2 TextObject::GetPosition() const
@@ -305,7 +361,10 @@ MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale { 1.0f }, m_s
 void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
+	{
+		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
+	}
 }
 
 void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -357,4 +416,59 @@ void MenuTextObject::SetMouseOverBrush(const string& brush)
 void MenuTextObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 {
 	m_mouseClickCallBack = callBackFunc;
+}
+
+DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }
+{
+	m_brush = "BLUE";
+	m_format = "MAXHP";
+	SetText(damage);
+	m_screenPivot = ePivot::LEFTTOP;
+
+	m_direction = Utile::Random(0, 1);
+}
+
+void DamageTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
+{
+	if (m_isOnScreen)
+		TextObject::Render(device);
+}
+
+void DamageTextObject::Update(FLOAT deltaTime)
+{
+	constexpr float lifeTime{ 0.5f };
+
+	XMFLOAT3 screenPosition{ m_startPosition };
+	screenPosition = Vector3::TransformCoord(screenPosition, m_camera->GetViewMatrix());
+	screenPosition = Vector3::TransformCoord(screenPosition, m_camera->GetProjMatrix());
+
+	if (screenPosition.x < -1.0f || screenPosition.x > 1.0f ||
+		screenPosition.y < -1.0f || screenPosition.y > 1.0f ||
+		screenPosition.z < 0.0f || screenPosition.z > 1.0f)
+		m_isOnScreen = FALSE;
+	else
+	{
+		// NDC -> 텍스트 좌표계
+		screenPosition.x = g_width * (screenPosition.x + 1.0f) / 2.0f;
+		screenPosition.y = g_height * (-screenPosition.y + 1.0f) / 2.0f;
+		screenPosition.y -= g_height / 50.0f * m_timer;
+
+		SetPosition(XMFLOAT2{ screenPosition.x, screenPosition.y });
+		m_isOnScreen = TRUE;
+	}
+
+	m_timer += deltaTime;
+	if (m_timer >= lifeTime)
+		m_isDeleted = TRUE;
+}
+
+void DamageTextObject::SetCamera(const shared_ptr<Camera>& camera)
+{
+	m_camera = camera;
+}
+
+void DamageTextObject::SetStartPosition(const XMFLOAT3& position)
+{
+	m_startPosition = position;
+	m_startPosition.y += 20.0f;
 }

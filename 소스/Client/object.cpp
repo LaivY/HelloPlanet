@@ -46,7 +46,7 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
 
 	// 메쉬 렌더링
-	m_mesh->Render(commandList);
+	if (m_mesh) m_mesh->Render(commandList);
 
 #ifdef BOUNDINGBOX
 	for (const auto& bb : m_boundingBoxes)
@@ -147,6 +147,11 @@ void GameObject::SetShadowShader(const shared_ptr<Shader>& shadowShader)
 	m_shadowShader = shadowShader;
 }
 
+void GameObject::SetOutlineShader(const shared_ptr<Shader>& outlineShader)
+{
+	m_outlineShader = outlineShader;
+}
+
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 {
 	m_texture = texture;
@@ -180,6 +185,18 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 		m_animationInfo->state = eAnimationState::PLAY;
 	}
 	m_animationInfo->blendingTimer = 0.0f;
+}
+
+void GameObject::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	if (!m_outlineShader) return;
+
+	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
+	XMFLOAT4X4 scale{};
+	XMStoreFloat4x4(&scale, XMMatrixScaling(1.02f, 1.02f, 1.02f));
+	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
+	Render(commandList, m_outlineShader);
+	m_worldMatrix = worldMatrix;
 }
 
 void Skybox::Update(FLOAT deltaTime)

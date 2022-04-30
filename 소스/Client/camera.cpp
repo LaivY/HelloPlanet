@@ -1,7 +1,7 @@
 ﻿#include "camera.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_pcbCamera2{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 29.5f, -2.0f }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 29.5f, 0.0f }
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());
@@ -26,27 +26,9 @@ void Camera::Update(FLOAT deltaTime)
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetRight(), m_offset.x));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), m_offset.y));
 		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), m_offset.z));
-
-		static float offsetTimer{ 0.0f };
-		if (AnimationInfo* aniInfo{ m_player->GetAnimationInfo() };
-			m_player->GetCurrAnimationName() == "RUNNING" && m_player->GetAfterAnimationName().empty() && !m_player->GetUpperAnimationInfo())
-		{
-			offsetTimer += deltaTime * 5.0f;
-			offsetTimer = min(offsetTimer, 1.0f);
-		}
-		else
-		{
-			offsetTimer -= deltaTime * 10.0f;
-			offsetTimer = max(0.0f, offsetTimer);
-		}
-		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetUp(), -offsetTimer * 2.0f));
-		offset = Vector3::Add(offset, Vector3::Mul(m_player->GetLook(), -offsetTimer * 3.0f));
-
 		SetEye(Vector3::Add(m_player->GetPosition(), offset));
 	}
 #endif
-	// 카메라 뷰 변환 행렬 최신화
-	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
 }
 
 void Camera::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -60,6 +42,9 @@ void Camera::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComP
 
 void Camera::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// 카메라 뷰 변환 행렬 최신화
+	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
+
 	// DirectX는 행우선(row-major), HLSL는 열우선(column-major)
 	// 행렬이 셰이더로 넘어갈 때 자동으로 전치 행렬로 변환된다.
 	// 그래서 셰이더에 전치 행렬을 넘겨주면 DirectX의 곱셈 순서와 동일하게 계산할 수 있다.
@@ -75,10 +60,18 @@ void Camera::UpdateShaderVariableByPlayer(const ComPtr<ID3D12GraphicsCommandList
 	
 	// 이 함수는 1인칭 플레이어를 렌더링할 때만 호출된다.
 	// 1인칭 렌더링할 경우 eye는 항상 맞춰져있으므로 여기선 at, up만 플레이어 것으로 바꿔주면된다.
+	XMFLOAT3 gunOffset{ m_player->GetGunOffset() };
+	m_eye = m_player->GetPosition();
+	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetRight(), gunOffset.x));
+	m_eye.y += gunOffset.y;
+	m_eye.y += -2.0f * m_player->GetGunOffsetTimer() / 0.5f;
+	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetLook(), gunOffset.z));
+	m_eye = Vector3::Add(m_eye, Vector3::Mul(m_player->GetLook(), -2.0f * m_player->GetGunOffsetTimer() / 0.5f));
+
 	m_at = m_player->GetLook();
 	m_up = m_player->GetUp();
-	Update(0.0f);
 
+	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
 	m_pcbCamera2->viewMatrix = Matrix::Transpose(m_viewMatrix);
 	m_pcbCamera2->projMatrix = Matrix::Transpose(m_projMatrix);
 	m_pcbCamera2->eye = m_eye;

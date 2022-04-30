@@ -7,7 +7,7 @@
 
 enum class eScene
 {
-	NONE, LOADING, MAIN, GAME
+	NONE, LOADING, MAIN, LOBBY, GAME
 };
 
 struct cbGameFramework
@@ -24,6 +24,7 @@ public:
 	void GameLoop();
 	void OnInit(HINSTANCE hInstance, HWND hWnd);
 	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	void OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnUpdate(FLOAT deltaTime);
 	void OnRender();
 	void OnDestroy();
@@ -52,14 +53,19 @@ public:
 	void Render2D() const;
 	void WaitForPreviousFrame();
 	void WaitForGpu();
-	void ConnectServer();
+	BOOL ConnectServer();
 	void ProcessClient();
 	void ChangeScene();
 
 	void SetIsActive(BOOL isActive);
+	void SetIsFullScreen(BOOL isFullScreen);
 	void SetNextScene(eScene sceneType);
 
+	HWND GetWindow() const;
 	BOOL isActive() const;
+	BOOL isFullScreen() const;
+	RECT GetLastWindowRect() const;
+	RECT GetFullScreenRect() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
@@ -70,7 +76,9 @@ private:
 	HINSTANCE							m_hInstance;
 	HWND								m_hWnd;
 	BOOL								m_isActive;
-	FLOAT								m_aspectRatio;
+	BOOL								m_isFullScreen;
+	RECT								m_lastWindowRect;
+	RECT								m_fullScreenRect;
 
 	// Pipeline
 	ComPtr<IDXGIFactory4>				m_factory;

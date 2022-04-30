@@ -9,6 +9,7 @@
 #include "texture.h"
 #include "textObject.h"
 #include "uiObject.h"
+#include "windowObject.h"
 
 class GameScene : public Scene
 {
@@ -44,6 +45,9 @@ public:
 	void CreateLights() const;
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
+	void CreateExitWindow();
+	void CloseWindow();
+
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
@@ -53,21 +57,23 @@ public:
 	void RecvUpdateClient();
 	void RecvUpdateMonster();
 	void RecvBulletFire();
+	void RecvBulletHit();
 
 private:
-	ComPtr<ID3D12Resource>								m_cbGameScene;		// 상수 버퍼
-	cbGameScene*										m_pcbGameScene;		// 상수 버퍼 포인터
-	unique_ptr<cbGameScene>								m_cbGameSceneData;	// 상수 버퍼 데이터
+	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
+	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
+	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
 
-	unique_ptr<ShadowMap>								m_shadowMap;		// 그림자맵
-	unique_ptr<Skybox>									m_skybox;			// 스카이박스
-	shared_ptr<Camera>									m_camera;			// 카메라
-	shared_ptr<Player>									m_player;			// 플레이어
-	array<unique_ptr<Player>, Setting::MAX_PLAYERS>		m_multiPlayers;		// 멀티플레이어
-	unordered_map<INT, unique_ptr<Monster>>				m_monsters;			// 몬스터들
-	vector<unique_ptr<GameObject>>						m_gameObjects;		// 게임오브젝트들
-
-	unique_ptr<Camera>									m_uiCamera;			// UI 카메라
-	vector<unique_ptr<UIObject>>						m_uiObjects;		// UI 오브젝트
-	vector<unique_ptr<TextObject>>						m_textObjects;		// 텍스트 오브젝트
+	unique_ptr<ShadowMap>					m_shadowMap;		// 그림자맵
+	unique_ptr<Skybox>						m_skybox;			// 스카이박스
+	shared_ptr<Camera>						m_camera;			// 카메라
+	unique_ptr<Camera>						m_uiCamera;			// UI 카메라
+	shared_ptr<Player>						m_player;			// 플레이어
+	array<unique_ptr<Player>,
+		  Setting::MAX_PLAYERS>				m_multiPlayers;		// 멀티플레이어
+	vector<unique_ptr<GameObject>>			m_gameObjects;		// 게임오브젝트들
+	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
+	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
+	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
+	unordered_map<INT, unique_ptr<Monster>>	m_monsters;			// 몬스터들
 };

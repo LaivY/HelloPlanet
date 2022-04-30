@@ -17,8 +17,11 @@ public:
 	UIObject(FLOAT width, FLOAT height);
 	virtual ~UIObject() = default;
 
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	virtual void Update(FLOAT /*deltaTime*/) { }
+	virtual void Update(FLOAT deltaTime);
 
 	void SetFitToScreen(BOOL fitToScreen);
 	void SetPosition(const XMFLOAT3& position);
@@ -29,6 +32,8 @@ public:
 	void SetWidth(FLOAT width);
 	void SetHeight(FLOAT height);
 
+	ePivot GetPivot() const;
+	ePivot GetScreenPivot() const;
 	XMFLOAT2 GetPivotPosition() const;
 	FLOAT GetWidth() const;
 	FLOAT GetHeight() const;
@@ -49,8 +54,8 @@ public:
 	CrosshairUIObject(FLOAT width, FLOAT height);
 	~CrosshairUIObject() = default;
 
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	void Update(FLOAT deltaTime);
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
 
 	void SetMesh(shared_ptr<Mesh>& mesh);
 	void SetPlayer(const shared_ptr<Player>& player);
@@ -58,6 +63,8 @@ public:
 private:
 	shared_ptr<Player>				m_player;
 	array<unique_ptr<UIObject>, 4>	m_lines;
+	eGunType						m_gunType;
+	INT								m_bulletCount;
 	FLOAT							m_radius;
 	FLOAT							m_timer;
 };
@@ -68,7 +75,7 @@ public:
 	HpUIObject(FLOAT width, FLOAT height);
 	~HpUIObject() = default;
 
-	void Update(FLOAT deltaTime);
+	virtual void Update(FLOAT deltaTime);
 
 	void SetPlayer(const shared_ptr<Player>& player);
 
@@ -80,4 +87,23 @@ private:
 	FLOAT				m_originWidth;
 	BOOL				m_timerState;
 	FLOAT				m_timer;
+};
+
+class MenuUIObject : public UIObject
+{
+public:
+	MenuUIObject(FLOAT width, FLOAT height);
+	~MenuUIObject() = default;
+
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+
+	void SetMouseClickCallBack(const function<void()>& callBackFunc);
+
+private:
+	BOOL				m_isMouseOver;
+	function<void()>	m_mouseClickCallBack;
 };

@@ -8,36 +8,24 @@ GameScene::GameScene() : m_pcbGameScene{ nullptr }
 
 GameScene::~GameScene()
 {
-	
+
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-	// 셰이더 변수 생성
 	CreateShaderVariable(device, commandList);
-
-	// 그림자맵 생성
+	CreateGameObjects(device, commandList);
+	CreateUIObjects(device, commandList);
+	CreateTextObjects(d2dDeivceContext, dWriteFactory);
+	CreateLights();
+	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
-	// 블러 필터 생성
-	//m_blurFilter = make_unique<BlurFilter>(device);
-
-	// 게임오브젝트 생성
-	CreateGameObjects(device, commandList);
-
-	// UI 오브젝트 생성
-	CreateUIObjects(device, commandList);
-
-	// 텍스트 오브젝트 생성
-	CreateTextObjects(d2dDeivceContext, dWriteFactory);
-
-	// 조명 생성
-	CreateLights();
-
-	// 맵 로딩
-	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
+#ifdef NETWORK
+	g_networkThread = thread{ &GameScene::ProcessClient, this };
+#endif
 }
 
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -61,10 +49,19 @@ void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	static bool isCursorHide{ true };
+
 	if (!g_gameFramework.isActive())
 		return;
+	if (!m_windowObjects.empty())
+	{
+		if (isCursorHide)
+			ShowCursor(TRUE);
+		isCursorHide = false;
+		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
+		return;
+	}
 
-	static bool isCursorHide{ true };
 	if ((GetAsyncKeyState(VK_TAB) & 0x8000))
 	{
 		if (isCursorHide)
@@ -109,12 +106,27 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 void GameScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (!g_gameFramework.isActive())
+		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
+		return;
+	}
+
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void GameScene::OnKeyboardEvent(FLOAT deltaTime)
 {
+	if (!g_gameFramework.isActive())
+		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnKeyboardEvent(deltaTime);
+		return;
+	}
 #ifdef FREEVIEW
 	const float speed{ 100.0f * deltaTime };
 	if (GetAsyncKeyState('W') & 0x8000)
@@ -150,6 +162,14 @@ void GameScene::OnKeyboardEvent(FLOAT deltaTime)
 
 void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (!g_gameFramework.isActive())
+		return;
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnKeyboardEvent(hWnd, message, wParam, lParam);
+		return;
+	}
+
 	if (m_player) m_player->OnKeyboardEvent(hWnd, message, wParam, lParam);
 	switch (message)
 	{
@@ -165,7 +185,8 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 				m_player->SetHp(m_player->GetHp() + 5);
 			break;
 		case VK_ESCAPE:
-			PostMessage(hWnd, WM_QUIT, 0, 0);
+			CreateExitWindow();
+			//PostMessage(hWnd, WM_QUIT, 0, 0);
 			break;
 		}
 		break;
@@ -188,12 +209,16 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
+	for (auto& w : m_windowObjects)
+		w->Update(deltaTime);
 }
 
 void GameScene::Update(FLOAT deltaTime)
 {
 	unique_lock<mutex> lock{ g_mutex };
 	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
+	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
+	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
 	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
 	lock.unlock();
 
@@ -224,9 +249,13 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	if (m_skybox) m_skybox->Render(commandList);
 
 	// 게임오브젝트 렌더링
+	UINT stencilRef{ 1 };
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
 		o->Render(commandList);
+	}
 	lock.unlock();
 
 	// 멀티플레이어 렌더링
@@ -239,6 +268,17 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		m->Render(commandList);
 	lock.unlock();
 
+	// 테두리 렌더링
+	stencilRef = 1;
+	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		o->RenderOutline(commandList);
+	}
+	commandList->OMSetStencilRef(0);
+	for (const auto& p : m_multiPlayers)
+		if (p) p->RenderOutline(commandList);
+
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
@@ -246,16 +286,23 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// UI 렌더링
 	if (m_uiCamera)
 	{
+		unique_lock<mutex> lock{ g_mutex };
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
+		for (const auto& w : m_windowObjects)
+			w->Render(commandList);
+		lock.unlock();
 	}
 }
 
 void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 {
+	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& t : m_textObjects)
 		t->Render(device);
+	for (const auto& w : m_windowObjects)
+		w->Render2D(device);
 }
 
 void GameScene::ProcessClient()
@@ -337,16 +384,32 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->SetMesh(s_meshes["ARM"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
 	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-	m_player->SetGunMesh(s_meshes["AR"]);
+	m_player->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
 	m_player->SetGunShader(s_shaders["LINK"]);
 	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	m_player->SetGunType(eGunType::AR);
+
+	switch (g_playerGunType)
+	{
+	case eGunType::AR:
+		m_player->SetGunMesh(s_meshes["AR"]);
+		m_player->SetGunType(eGunType::AR);
+		break;
+	case eGunType::SG:
+		m_player->SetGunMesh(s_meshes["SG"]);
+		m_player->SetGunType(eGunType::SG);
+		break;
+	case eGunType::MG:
+		m_player->SetGunMesh(s_meshes["MG"]);
+		m_player->SetGunType(eGunType::MG);
+		break;
+	}
+
 	m_player->PlayAnimation("IDLE");
 	m_player->AddBoundingBox(bbPlayer);
 
-	// 카메라, 플레이어 서로 설정
-	m_camera->SetPlayer(m_player);
+	// 카메라, 플레이어 설정
 	m_player->SetCamera(m_camera);
+	m_camera->SetPlayer(m_player);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -361,6 +424,8 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
+
+	
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -383,8 +448,8 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 
 void GameScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
 
 	// 그림자를 만드는 조명의 마지막 뷰, 투영 변환 행렬의 경우 씬을 덮는 영역으로, 업데이트할 필요 없음
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
@@ -395,17 +460,20 @@ void GameScene::CreateLights() const
 	m_cbGameSceneData->shadowLight.lightViewMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightViewMatrix);
 	m_cbGameSceneData->shadowLight.lightProjMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightProjMatrix);
 
-	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
-	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[0].direction = Vector3::Normalize(XMFLOAT3{ 0.0f, -1.0f, 0.0f });
+
+	m_cbGameSceneData->ligths[1].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[1].direction = Vector3::Normalize(XMFLOAT3{ 1.0f, -1.0f, -1.0f });
+
+	m_cbGameSceneData->ligths[2].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[2].direction = Vector3::Normalize(XMFLOAT3{ -1.0f, -2.0f, 2.0f });
 }
 
 void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
 {
 	ifstream map{ mapFile };
-
-	// 오브젝트 개수
 	int count{ 0 }; map >> count;
-
 	for (int i = 0; i < count; ++i)
 	{
 		// 타입, 스케일, 회전, 이동
@@ -413,10 +481,13 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
 		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
 		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
+		trans = Vector3::Mul(trans, 100.0f);
 
 		XMMATRIX worldMatrix{ XMMatrixIdentity() };
 		XMMATRIX scaleMatrix{ XMMatrixScaling(scale.x, scale.y, scale.z) };
-		XMMATRIX rotateMatrix{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat.x), XMConvertToRadians(rotat.y), XMConvertToRadians(rotat.z)) };
+		XMMATRIX rotateMatrix{ XMMatrixRotationX(XMConvertToRadians(rotat.x)) * 
+							   XMMatrixRotationY(XMConvertToRadians(rotat.y)) *
+							   XMMatrixRotationZ(XMConvertToRadians(rotat.z)) };
 		XMMATRIX transMatrix{ XMMatrixTranslation(trans.x, trans.y, trans.z) };
 		worldMatrix = worldMatrix * scaleMatrix * rotateMatrix * transMatrix;
 
@@ -424,88 +495,90 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMStoreFloat4x4(&world, worldMatrix);
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
-		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
+		if (type == 0 || type == 1)
+		{
+			object->SetShader(s_shaders["MODEL"]);
+			//object->SetShader(s_shaders["STENCIL_MODEL"]);
+			//object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
+		}
+		else
+		{
+			object->SetShader(s_shaders["STENCIL_MODEL"]);
+			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
+		}
 		object->SetWorldMatrix(world);
-
-		eMapObjectType mot{ static_cast<eMapObjectType>(type) };
-		switch (mot)
-		{
-		case eMapObjectType::MOUNTAIN:
-		{
-			object->SetMesh(s_meshes["MOUNTAIN"]);
-			break;
-		}
-		case eMapObjectType::PLANT:
-			object->SetMesh(s_meshes["PLANT"]);
+		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		if (0 <= type && type <= 1)
+			object->SetTexture(s_textures["OBJECT0"]);
+		else if (2 <= type && type <= 8)
 			object->SetTexture(s_textures["OBJECT1"]);
-			break;
-		case eMapObjectType::TREE:
-			object->SetMesh(s_meshes["TREE"]);
+		else if (10 <= type && type <= 11)
 			object->SetTexture(s_textures["OBJECT2"]);
-			break;
-		case eMapObjectType::ROCK1:
-		{
-			object->SetMesh(s_meshes["ROCK1"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		}
-		case eMapObjectType::ROCK2:
-			object->SetMesh(s_meshes["ROCK2"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		case eMapObjectType::ROCK3:
-			object->SetMesh(s_meshes["ROCK3"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		case eMapObjectType::SMALLROCK:
-			object->SetMesh(s_meshes["SMALLROCK"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		case eMapObjectType::ROCKGROUP1:
-		{
-			object->SetMesh(s_meshes["ROCKGROUP1"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-
-			SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 50.0f, 0.0f }, XMFLOAT3{ 50.0f, 50.0f, 50.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-			bb->SetMesh(s_meshes["BB_SMALLROCK"]);
-			bb->SetShader(s_shaders["WIREFRAME"]);
-			object->AddBoundingBox(bb);
-			break;
-		}
-		case eMapObjectType::ROCKGROUP2:
-		{
-			object->SetMesh(s_meshes["ROCKGROUP2"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		}
-		case eMapObjectType::DROPSHIP:
-			object->SetMesh(s_meshes["DROPSHIP"]);
-			object->SetTexture(s_textures["OBJECT3"]);
-			break;
-		case eMapObjectType::MUSHROOMS:
-			object->SetMesh(s_meshes["MUSHROOMS"]);
-			object->SetTexture(s_textures["OBJECT1"]);
-			break;
-		case eMapObjectType::SKULL:
-			object->SetMesh(s_meshes["SKULL"]);
-			object->SetTexture(s_textures["OBJECT2"]);
-			break;
-		case eMapObjectType::RIBS:
-			object->SetMesh(s_meshes["RIBS"]);
-			object->SetTexture(s_textures["OBJECT2"]);
-			break;
-		case eMapObjectType::ROCK4:
-			object->SetMesh(s_meshes["ROCK4"]);
-			object->SetTexture(s_textures["OBJECT1"]);
-			break;
-		case eMapObjectType::ROCK5:
-			object->SetMesh(s_meshes["ROCK5"]);
-			object->SetTexture(s_textures["OBJECT1"]);
-			break;
-		}
 		m_gameObjects.push_back(move(object));
 	}
+}
+
+void GameScene::CreateExitWindow()
+{
+	auto text{ make_unique<TextObject>() };
+	text->SetBrush("BLACK");
+	text->SetFormat("HP");
+	text->SetText(TEXT("메인 화면으로\n돌아갈까요?"));
+	text->SetPivot(ePivot::CENTER);
+	text->SetScreenPivot(ePivot::CENTER);
+	text->SetPosition(XMFLOAT2{});
+
+	auto okText{ make_unique<MenuTextObject>() };
+	okText->SetBrush("BLACK");
+	okText->SetMouseOverBrush("BLUE");
+	okText->SetFormat("MENU");
+	okText->SetText(TEXT("확인"));
+	okText->SetPivot(ePivot::CENTERBOT);
+	okText->SetScreenPivot(ePivot::CENTERBOT);
+	okText->SetPosition(XMFLOAT2{ -65.0f, -25.0f });
+	okText->SetMouseClickCallBack(
+		[]()
+		{
+			// 서버와의 연결을 끊음
+			if (g_isConnected)
+			{
+				g_isConnected = FALSE;
+				if (g_networkThread.joinable())
+					g_networkThread.join();
+				closesocket(g_socket);
+				WSACleanup();
+			}
+
+			ShowCursor(TRUE);
+			g_gameFramework.SetNextScene(eScene::MAIN);
+		}
+	);
+
+	auto cancleText{ make_unique<MenuTextObject>() };
+	cancleText->SetBrush("BLACK");
+	cancleText->SetMouseOverBrush("BLUE");
+	cancleText->SetFormat("MENU");
+	cancleText->SetText(TEXT("취소"));
+	cancleText->SetPivot(ePivot::CENTERBOT);
+	cancleText->SetScreenPivot(ePivot::CENTERBOT);
+	cancleText->SetPosition(XMFLOAT2{ 65.0f, -25.0f });
+	cancleText->SetMouseClickCallBack(bind(&GameScene::CloseWindow, this));
+
+	auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
+	window->SetMesh(s_meshes["UI"]);
+	window->SetShader(s_shaders["UI"]);
+	window->SetTexture(s_textures["WHITE"]);
+	window->Add(text);
+	window->Add(okText);
+	window->Add(cancleText);
+	m_windowObjects.push_back(move(window));
+}
+
+void GameScene::CloseWindow()
+{
+	if (!m_windowObjects.empty())
+		m_windowObjects.pop_back();
 }
 
 void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -552,9 +625,9 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	}
 	if (m_player)
 	{
-		m_player->SetMesh(s_meshes.at("PLAYER"));
+		m_player->SetMesh(s_meshes["PLAYER"]);
 		m_player->RenderToShadowMap(commandList);
-		m_player->SetMesh(s_meshes.at("ARM"));
+		m_player->SetMesh(s_meshes["ARM"]);
 	}
 
 	// 리소스배리어 설정(셰이더에서 읽기)
@@ -605,7 +678,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 void GameScene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.05f, 0.2f, 0.4f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.08f, 0.2f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
 	XMFLOAT3 frustum[]{
@@ -670,8 +743,6 @@ void GameScene::UpdateShadowMatrix()
 		XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 		XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&shadowLightPos), XMLoadFloat3(&center), XMLoadFloat3(&up)));
 		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
-		//XMMatrixOrthographicOffCenterLH(-radius, radius, -radius, radius, 0.0f, radius * 2.0f);
-
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
@@ -702,6 +773,9 @@ void GameScene::RecvPacket()
 	case SC_PACKET_BULLET_FIRE:
 		RecvBulletFire();
 		break;
+	case SC_PACKET_BULLET_HIT:
+		RecvBulletHit();
+		break;
 	default:
 	{
 		string debug{};
@@ -717,6 +791,10 @@ void GameScene::RecvLoginOk()
 	char subBuf[sizeof(PlayerData)]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	char nameBuf[20]{};
+	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
 	if (!m_player) return;
@@ -740,6 +818,7 @@ void GameScene::RecvLoginOk()
 			p->SetMesh(s_meshes["PLAYER"]);
 			p->SetShader(s_shaders["ANIMATION"]);
 			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			//p->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
 			p->SetGunMesh(s_meshes["SG"]);
 			p->SetGunShader(s_shaders["LINK"]);
 			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
@@ -809,15 +888,16 @@ void GameScene::RecvUpdateMonster()
 
 void GameScene::RecvBulletFire()
 {
-	// pos, dir
-	char subBuf[12 + 12]{};
+	// pos, dir, playerId
+	char subBuf[12 + 12 + 1]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	XMFLOAT3 pos{}, dir{};
+	XMFLOAT3 pos{}, dir{}; char playerId{};
 	memcpy(&pos, &subBuf[0], sizeof(pos));
 	memcpy(&dir, &subBuf[12], sizeof(dir));
+	memcpy(&playerId, &subBuf[24], sizeof(playerId));
 
 	auto bullet{ make_unique<Bullet>(dir) };
 	bullet->SetMesh(s_meshes["BULLET"]);
@@ -826,4 +906,32 @@ void GameScene::RecvBulletFire()
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
+}
+
+void GameScene::RecvBulletHit()
+{
+	char buf[sizeof(BulletHitData)]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	BulletHitData data{};
+	memcpy(&data, buf, sizeof(data));
+
+	auto textureInfo{ make_unique<TextureInfo>() };
+	textureInfo->doRepeat = FALSE;
+
+	auto hitEffect{ make_unique<UIObject>(50.0f, 50.0f) };
+	hitEffect->SetMesh(s_meshes["UI"]);
+	hitEffect->SetShader(s_shaders["UI"]);
+	hitEffect->SetTexture(s_textures["HIT"]);
+	hitEffect->SetTextureInfo(move(textureInfo));
+
+	unique_lock<mutex> lock{ g_mutex };
+	m_uiObjects.push_back(move(hitEffect));
+
+	auto dmgText{ make_unique<DamageTextObject>(TEXT("999"))};
+	dmgText->SetCamera(m_camera);
+	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
+	m_textObjects.push_back(move(dmgText));
 }

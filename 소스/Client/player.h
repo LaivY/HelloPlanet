@@ -21,6 +21,7 @@ public:
 	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void Update(FLOAT deltaTime);
 	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
@@ -39,8 +40,10 @@ public:
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
+	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	INT GetId() const;
+	eGunType GetGunType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
 	INT GetBulletCount() const;
@@ -52,6 +55,8 @@ public:
 	string GetUpperAfterAnimationName() const;
 	eAnimationType GetAnimationType() const;
 	eUpperAnimationType GetUpperAnimationType() const;
+	XMFLOAT3 GetGunOffset() const;
+	FLOAT GetGunOffsetTimer() const;
 
 private:
 	INT								m_id;				// 플레이어 고유 아이디
@@ -77,4 +82,6 @@ private:
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
 	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
+	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
+	FLOAT							m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
 };

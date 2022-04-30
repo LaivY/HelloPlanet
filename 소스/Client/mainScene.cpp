@@ -6,7 +6,14 @@ MainScene::MainScene() : m_pcbGameScene{ nullptr }
 
 }
 
-void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+MainScene::~MainScene()
+{
+	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
+}
+
+void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
@@ -33,29 +40,31 @@ void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		ui->SetPosition(ui->GetPivotPosition());
 	for (auto& t : m_textObjects)
 		t->SetPosition(t->GetPivotPosition());
-}
-
-void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	for (auto& t : m_textObjects)
-		t->OnMouseEvent(hWnd, message, wParam, lParam);
+	for (auto& w : m_windowObjects)
+		w->OnResize(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
+		return;
+	}
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, deltaTime);
 }
 
-void MainScene::OnKeyboardEvent(FLOAT deltaTime)
+void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	if (GetAsyncKeyState(VK_SPACE) & 0x8000)
-		g_gameFramework.SetNextScene(eScene::GAME);
-}
+	if (!m_windowObjects.empty())
+	{
+		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
+		return;
+	}
 
-void MainScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
+	for (auto& t : m_textObjects)
+		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
 
 void MainScene::OnUpdate(FLOAT deltaTime)
@@ -69,6 +78,8 @@ void MainScene::OnUpdate(FLOAT deltaTime)
 		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
+	for (auto& w : m_windowObjects)
+		w->Update(deltaTime);
 }
 
 void MainScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -99,6 +110,8 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
+		for (const auto& w : m_windowObjects)
+			w->Render(commandList);
 	}
 }
 
@@ -106,37 +119,15 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);
+	for (const auto& w : m_windowObjects)
+		w->Render2D(device);
 }
 
 void MainScene::Update(FLOAT deltaTime)
 {
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
 	UpdateCameraPosition(deltaTime);
 	UpdateShadowMatrix();
-}
-
-void MainScene::UpdateCameraPosition(FLOAT deltaTime)
-{
-	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
-	constexpr float speed{ 10.0f };
-	constexpr float radius{ 200.0f };
-	static float angle{ 0.0f };
-
-	XMFLOAT3 eye{ 0.0f, 100.0f, 0.0f };
-	eye.x = cosf(angle) * radius;
-	eye.z = sinf(angle) * radius;
-
-	XMFLOAT3 at{ Vector3::Normalize(Vector3::Sub(target, eye)) };
-	m_camera->SetEye(eye);
-	m_camera->SetAt(at);
-
-	angle += XMConvertToRadians(speed * deltaTime);
-}
-
-void MainScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
-	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
-	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
 void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -208,11 +199,20 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetMouseOverBrush("WHITE");
 	gameStartText->SetFormat("MENU");
 	gameStartText->SetText(TEXT("게임시작"));
+	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
-	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -200.0f });
+	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -170.0f });
 	gameStartText->SetMouseClickCallBack(
-		[]() {
-			g_gameFramework.SetNextScene(eScene::GAME);
+		[]()
+		{
+#ifdef NETWORK
+			if (!g_gameFramework.ConnectServer())
+			{
+				MessageBox(NULL, TEXT("서버와 연결할 수 없습니다."), TEXT("알림"), MB_OK);
+				return;
+			}
+#endif
+			g_gameFramework.SetNextScene(eScene::LOBBY);
 		});
 	m_textObjects.push_back(move(gameStartText));
 
@@ -221,9 +221,10 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	settingText->SetMouseOverBrush("WHITE");
 	settingText->SetFormat("MENU");
 	settingText->SetText(TEXT("설정"));
+	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
-	settingText->SetPosition(XMFLOAT2{ 50.0f, -140.0f });
-	settingText->SetMouseClickCallBack(bind(&MainScene::temp, this));
+	settingText->SetPosition(XMFLOAT2{ 50.0f, -110.0f });
+	settingText->SetMouseClickCallBack(bind(&MainScene::CreateSettingWindow, this));
 	m_textObjects.push_back(move(settingText));
 
 	auto exitText{ make_unique<MenuTextObject>() };
@@ -231,10 +232,12 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	exitText->SetMouseOverBrush("WHITE");
 	exitText->SetFormat("MENU");
 	exitText->SetText(TEXT("종료"));
+	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
-	exitText->SetPosition(XMFLOAT2{ 50.0f, -80.0f });
+	exitText->SetPosition(XMFLOAT2{ 50.0f, -50.0f });
 	exitText->SetMouseClickCallBack(
-		[]() {
+		[]()
+		{
 			PostMessage(NULL, WM_QUIT, 0, 0);
 		}
 	);
@@ -258,46 +261,128 @@ void MainScene::CreateLights() const
 	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
 }
 
-void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void MainScene::CreateSettingWindow()
 {
-	if (!m_shadowMap) return;
+	auto close{ make_unique<MenuTextObject>() };
+	close->SetBrush("BLACK");
+	close->SetMouseOverBrush("BLUE");
+	close->SetFormat("MENU");
+	close->SetText(TEXT("확인"));
+	close->SetScreenPivot(ePivot::CENTERBOT);
+	close->SetPivot(ePivot::CENTERBOT);
+	close->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
+	close->SetMouseClickCallBack(
+		[&]()
+		{
+			m_windowObjects.back()->Delete();
+		}
+	);
 
-	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	auto text{ make_unique<TextObject>() };
+	text->SetBrush("BLACK");
+	text->SetFormat("MENU");
+	text->SetText(TEXT("설정"));
+	text->SetPivot(ePivot::CENTERTOP);
+	text->SetScreenPivot(ePivot::CENTERTOP);
+	text->SetPosition(XMFLOAT2{ 0.0f, -10.0f });
 
-	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	auto windowSizeText1{ make_unique<MenuTextObject>() };
+	windowSizeText1->SetBrush("BLACK");
+	windowSizeText1->SetMouseOverBrush("BLUE");
+	windowSizeText1->SetFormat("MENU");
+	windowSizeText1->SetText(TEXT("1280x720"));
+	windowSizeText1->SetPivot(ePivot::CENTER);
+	windowSizeText1->SetScreenPivot(ePivot::CENTER);
+	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, 60.0f });
+	windowSizeText1->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(FALSE);
+			RECT lastWindowRect{ g_gameFramework.GetLastWindowRect() };
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1280, 720, SWP_SHOWWINDOW);
+		});
 
-	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	auto windowSizeText2{ make_unique<MenuTextObject>() };
+	windowSizeText2->SetBrush("BLACK");
+	windowSizeText2->SetMouseOverBrush("BLUE");
+	windowSizeText2->SetFormat("MENU");
+	windowSizeText2->SetText(TEXT("1680x1050"));
+	windowSizeText2->SetPivot(ePivot::CENTER);
+	windowSizeText2->SetScreenPivot(ePivot::CENTER);
+	windowSizeText2->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+	windowSizeText2->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(FALSE);
+			RECT lastWindowRect{ g_gameFramework.GetLastWindowRect() };
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1680, 1050, SWP_SHOWWINDOW);
+		});
 
-	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	auto windowSizeText3{ make_unique<MenuTextObject>() };
+	windowSizeText3->SetBrush("BLACK");
+	windowSizeText3->SetMouseOverBrush("BLUE");
+	windowSizeText3->SetFormat("MENU");
+	windowSizeText3->SetText(TEXT("전체화면"));
+	windowSizeText3->SetPivot(ePivot::CENTER);
+	windowSizeText3->SetScreenPivot(ePivot::CENTER);
+	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, -60.0f });
+	windowSizeText3->SetMouseClickCallBack(
+		[]()
+		{
+			g_gameFramework.SetIsFullScreen(TRUE);
+			RECT fullScreenRect{ g_gameFramework.GetFullScreenRect() };
+			SetWindowPos(g_gameFramework.GetWindow(), HWND_TOP, 0, 0, fullScreenRect.right, fullScreenRect.bottom, SWP_SHOWWINDOW);
 
-	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+			LONG style = GetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE);
+			style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+			SetWindowLong(g_gameFramework.GetWindow(), GWL_STYLE, style);
+			SetWindowPos(g_gameFramework.GetWindow(), NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+		});
 
-	// 렌더링
-	for (const auto& o : m_gameObjects)
-	{
-		auto shadowShader{ o->GetShadowShader() };
-		if (shadowShader)
-			o->Render(commandList, shadowShader);
-	}
-	for (const auto& p : m_players)
-		p->RenderToShadowMap(commandList);
-
-	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	auto setting{ make_unique<WindowObject>(500.0f, 500.0f) };
+	setting->SetMesh(s_meshes["UI"]);
+	setting->SetShader(s_shaders["UI"]);
+	setting->SetTexture(s_textures["WHITE"]);
+	setting->SetPosition(XMFLOAT2{});
+	setting->Add(close);
+	setting->Add(text);
+	setting->Add(windowSizeText1);
+	setting->Add(windowSizeText2);
+	setting->Add(windowSizeText3);
+	m_windowObjects.push_back(move(setting));
 }
 
-void MainScene::temp()
+void MainScene::CloseWindow()
 {
-	static int i = 0;
-	OutputDebugStringA((to_string(i++) + "isClicked!").c_str());
+	if (!m_windowObjects.empty())
+		m_windowObjects.pop_back();
+}
+
+void MainScene::UpdateCameraPosition(FLOAT deltaTime)
+{
+	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
+	constexpr float speed{ 10.0f };
+	constexpr float radius{ 200.0f };
+	static float angle{ 0.0f };
+
+	XMFLOAT3 eye{ 0.0f, 100.0f, 0.0f };
+	eye.x = cosf(angle) * radius;
+	eye.z = sinf(angle) * radius;
+
+	XMFLOAT3 at{ Vector3::Normalize(Vector3::Sub(target, eye)) };
+	m_camera->SetEye(eye);
+	m_camera->SetAt(at);
+
+	angle += XMConvertToRadians(speed * deltaTime);
+}
+
+void MainScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
+	m_cbGameSceneData = make_unique<cbGameScene>();
 }
 
 void MainScene::UpdateShadowMatrix()
@@ -357,4 +442,40 @@ void MainScene::UpdateShadowMatrix()
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
+}
+
+void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	if (!m_shadowMap) return;
+
+	// 뷰포트, 가위사각형 설정
+	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
+	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+
+	// 셰이더에 묶기
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	for (const auto& o : m_gameObjects)
+	{
+		auto shadowShader{ o->GetShadowShader() };
+		if (shadowShader)
+			o->Render(commandList, shadowShader);
+	}
+	for (const auto& p : m_players)
+		p->RenderToShadowMap(commandList);
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }

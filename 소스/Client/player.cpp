@@ -1,9 +1,13 @@
 ﻿#include "player.h"
 #include "camera.h"
 
-Player::Player(BOOL isMultiPlayer) : 
-	GameObject{}, m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr }
+Player::Player(BOOL isMultiPlayer) : GameObject{},
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE },
+	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f },
+	m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
+	m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr },
+	m_gunOffset{}, m_gunOffsetTimer{}
 {
 	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
 	m_boundingBoxes.push_back(bb);
@@ -195,7 +199,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 					Fire();
 				break;
 			case eGunType::MG:
-				if (currFrame > 3.0f)
+				if (currFrame > 0.1f)
 					Fire();
 				break;
 			}
@@ -245,6 +249,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
 			{
 				PlayAnimation(currPureAnimationName, TRUE);
+				m_animationInfo->blendingFrame = 2;
 				return;
 			}
 
@@ -261,6 +266,7 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		}
 		case eAnimationState::BLENDING:
 			PlayAnimation(GetAfterAnimationName());
+			m_animationInfo->blendingFrame = 5;
 			break;
 		}
 	}
@@ -286,8 +292,10 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 		m_camera->UpdateShaderVariableByPlayer(commandList); // 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
 #endif
-		// 렌더링
-		GameObject::Render(commandList, shader);
+		if (m_gunType == eGunType::MG) // 머신건은 팔을 렌더링하지 않음
+			UpdateShaderVariable(commandList);
+		else
+			GameObject::Render(commandList, shader);
 		if (m_gunMesh)
 		{
 			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
@@ -303,6 +311,18 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		m_camera->UpdateShaderVariable(commandList);
 #endif
 	}
+}
+
+void Player::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	if (!m_outlineShader) return;
+
+	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
+	XMFLOAT4X4 scale{};
+	XMStoreFloat4x4(&scale, XMMatrixScaling(1.05f, 1.05f, 1.05f));
+	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
+	Player::Render(commandList, m_outlineShader);
+	m_worldMatrix = worldMatrix;
 }
 
 void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -392,6 +412,27 @@ void Player::Fire()
 		break;
 	}
 	case eGunType::MG:
+		// 총구에서 나오도록
+		start = Vector3::Add(start, GetRight());
+		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1.0f));
+
+		// 총알 방향을 살짝 흔듬
+		XMFLOAT3 up{ Vector3::Normalize(Vector3::Cross(m_camera->GetAt(), GetRight())) };
+		XMFLOAT3 right{ GetRight() };
+		XMFLOAT3 target{ center };
+		target = Vector3::Add(target, Vector3::Mul(right, Utile::Random(-15.0f, 15.0f)));
+		target = Vector3::Add(target, Vector3::Mul(up, Utile::Random(-15.0f, 15.0f)));
+
+		// 총알 발사 정보 서버로 송신
+		cs_packet_bullet_fire packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_BULLET_FIRE;
+		packet.data = { start, Vector3::Normalize(Vector3::Sub(target, start)), static_cast<char>(GetId()) };
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+
+		// 반동
+		DelayRotate(0.0f, -0.4f, Utile::Random(-0.1f, 0.1f), 0.1f);
 		break;
 	}
 
@@ -410,6 +451,8 @@ void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)
 
 void Player::Update(FLOAT deltaTime)
 {
+	GameObject::Update(deltaTime);
+
 	// 상체 애니메이션 타이머 진행
 	if (m_upperAnimationInfo)
 		switch (m_upperAnimationInfo->state)
@@ -422,9 +465,8 @@ void Player::Update(FLOAT deltaTime)
 			m_upperAnimationInfo->blendingTimer += deltaTime;
 			break;
 		}
-	GameObject::Update(deltaTime);
 
-	// 회전해야되면 회전
+	// 회전해야되면 회전(반동)
 	if (m_delayTimer > 0.0f)
 	{
 		Rotate(m_delayRoll * deltaTime / m_delayTime,
@@ -432,6 +474,12 @@ void Player::Update(FLOAT deltaTime)
 			   m_delayYaw * deltaTime / m_delayTime);
 		m_delayTimer = max(0.0f, m_delayTimer - deltaTime);
 	}
+
+	// 달리고 있을 때 총 오프셋 변경
+	if (GetCurrAnimationName() == "RUNNING" && GetAfterAnimationName().empty() && !m_upperAnimationInfo)
+		m_gunOffsetTimer = min(0.5f, m_gunOffsetTimer + deltaTime);
+	else
+		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -486,6 +534,12 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			break;
 		case eGunType::MG:
 			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+			if (pureAnimationName == "FIRING")
+			{
+				m_upperAnimationInfo->blendingFrame = 3;
+				m_upperAnimationInfo->fps = 1.0f / 30.0f;
+				m_isFired = FALSE;
+			}
 			break;
 		}
 		return;
@@ -505,18 +559,24 @@ void Player::SetGunType(eGunType gunType)
 		m_hp = m_maxHp = 150;
 		m_shotSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
+		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
 	case eGunType::SG:
 		m_hp = m_maxHp = 175;
 		m_shotSpeed = 0.8f;
+		m_bulletCount = m_maxBulletCount = 8;
+		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
 	case eGunType::MG:
 		m_hp = m_maxHp = 200;
 		m_shotSpeed = 0.1f;
+		m_bulletCount = m_maxBulletCount = 100;
+		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
 		break;
 	}
 	m_shotTimer = 0.0f;
 	m_gunType = gunType;
+	g_playerGunType = gunType;
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
@@ -617,6 +677,11 @@ INT Player::GetId() const
 	return m_id;
 }
 
+eGunType Player::GetGunType() const
+{
+	return m_gunType;
+}
+
 INT Player::GetHp() const
 {
 	return m_hp;
@@ -706,4 +771,14 @@ eUpperAnimationType Player::GetUpperAnimationType() const
 		return pred(GetUpperCurrAnimationName());
 	else
 		return pred(GetUpperAfterAnimationName());
+}
+
+XMFLOAT3 Player::GetGunOffset() const
+{
+	return m_gunOffset;
+}
+
+FLOAT Player::GetGunOffsetTimer() const
+{
+	return m_gunOffsetTimer;
 }

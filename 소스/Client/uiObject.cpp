@@ -12,6 +12,16 @@ UIObject::UIObject(FLOAT width, FLOAT height) : m_isFitToScreen{ FALSE }, m_pivo
 	m_worldMatrix._22 = height;
 }
 
+void UIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+
+}
+
+void UIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
+{
+
+}
+
 void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	if (m_isFitToScreen)
@@ -31,6 +41,28 @@ void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, cons
 		m_worldMatrix._22 = height;
 	}
 	else GameObject::Render(commandList, shader);
+}
+
+void UIObject::Update(FLOAT deltaTime)
+{
+	if (!m_texture || !m_textureInfo) return;
+
+	m_textureInfo->timer += deltaTime;
+	if (m_textureInfo->timer > m_textureInfo->interver)
+	{
+		m_textureInfo->frame += static_cast<int>(m_textureInfo->timer / m_textureInfo->interver);
+		m_textureInfo->timer = fmod(m_textureInfo->timer, m_textureInfo->interver);
+	}
+	if (m_textureInfo->frame >= m_texture->GetTextureCount())
+	{
+		if (m_textureInfo->doRepeat)
+			m_textureInfo->frame = 0;
+		else
+		{
+			m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
+			m_isDeleted = true;
+		}
+	}
 }
 
 void UIObject::SetFitToScreen(BOOL fitToScreen)
@@ -182,6 +214,16 @@ void UIObject::SetHeight(FLOAT height)
 	}
 }
 
+ePivot UIObject::GetPivot() const
+{
+	return m_pivot;
+}
+
+ePivot UIObject::GetScreenPivot() const
+{
+	return m_screenPivot;
+}
+
 XMFLOAT2 UIObject::GetPivotPosition() const
 {
 	return m_pivotPosition;
@@ -232,7 +274,7 @@ void HpUIObject::SetPlayer(const shared_ptr<Player>& player)
 	m_maxHp = player->GetMaxHp();
 }
 
-CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_radius{ 11.0f }, m_timer{}
+CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_gunType{ eGunType::NONE }, m_bulletCount{}, m_radius{ 11.0f }, m_timer{}
 {
 	// width, height는 선 하나의 너비와 높이를 나타낸다.
 	// 반지름은 각 선이 중심으로부터 떨어져있는 거리이다.
@@ -274,24 +316,30 @@ void CrosshairUIObject::Update(FLOAT deltaTime)
 
 	constexpr float walkingMaxRadius{ 16.0f }, walkingRadiusSpeed{ 75.0f };
 	constexpr float firingRadiusSpeed{ 51.0f };
-	constexpr float minRadius{ 11.0f }, defaultRadiusSeed{ 50.0f };
-
-	float r{ 0.0f };
-	if (m_player->GetCurrAnimationName() != "IDLE")
+	constexpr float minRadius{ 11.0f }, defaultRadiusSeed{ 20.0f };
+	
+	if (INT bulletCount{ m_player->GetBulletCount() }; m_bulletCount != bulletCount)
 	{
-		// 움직이면서 쏘면 더 많이 벌어짐
-		if (m_player->GetUpperCurrAnimationName() == "FIRING")
-			r = Utile::Random(0.0f, 7.0f);
-		m_radius = min(walkingMaxRadius + r, m_radius + walkingRadiusSpeed * deltaTime);
+		m_bulletCount = bulletCount;
+		if (m_bulletCount != m_player->GetMaxBulletCount())
+			switch (m_gunType)
+			{
+			case eGunType::AR:
+				m_radius = 14.0f;
+				break;
+			case eGunType::SG:
+				m_radius = 16.0f;
+				break;
+			case eGunType::MG:
+				m_radius = 15.0f;
+				break;
+			}
 	}
 	else
 	{
-		// 제자리에서 쏘면 조금 벌어짐
-		if (m_player->GetUpperCurrAnimationName() == "FIRING")
-			r = Utile::Random(0.0f, 3.0f);
-		m_radius = max(minRadius + r, m_radius - defaultRadiusSeed * deltaTime);
+		m_radius = max(minRadius, m_radius - defaultRadiusSeed * deltaTime);
 	}
-	
+
 	for (int i = 0; i < m_lines.size(); ++i)
 	{
 		XMFLOAT4X4 worldMatrix{ m_lines[i]->GetWorldMatrix() };
@@ -316,4 +364,56 @@ void CrosshairUIObject::SetMesh(shared_ptr<Mesh>& mesh)
 void CrosshairUIObject::SetPlayer(const shared_ptr<Player>& player)
 {
 	m_player = player;
+	m_gunType = player->GetGunType();
+	m_bulletCount = player->GetBulletCount();
+}
+
+MenuUIObject::MenuUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_isMouseOver{ FALSE }
+{
+
+}
+
+void MenuUIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (message == WM_LBUTTONDOWN && m_isMouseOver)
+		m_mouseClickCallBack();
+}
+
+void MenuUIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
+{
+	RECT c{};
+	GetWindowRect(hWnd, &c);
+
+	POINT p{}; GetCursorPos(&p);
+	ScreenToClient(hWnd, &p);
+
+	XMFLOAT3 pos{ GetPosition() };
+	float hw{ m_width / 2.0f };
+	float hh{ m_height / 2.0f };
+
+	float left{ pos.x - hw + g_width / 2.0f };
+	float right{ pos.x + hw + g_width / 2.0f };
+	float top{ g_height / 2.0f - (pos.y - hh)  };
+	float bottom{ g_height / 2.0f - (pos.y + hh) };
+
+	if (left <= p.x && p.x <= right &&
+		bottom <= p.y && p.y <= top)
+		m_isMouseOver = TRUE;
+	else
+		m_isMouseOver = FALSE;
+}
+
+void MenuUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	UIObject::Render(commandList, shader);
+}
+
+void MenuUIObject::Update(FLOAT deltaTime)
+{
+
+}
+
+void MenuUIObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
+{
+	m_mouseClickCallBack = callBackFunc;
 }
