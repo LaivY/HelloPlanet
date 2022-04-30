@@ -263,13 +263,14 @@ void MainScene::CreateLights() const
 
 void MainScene::CreateSettingWindow()
 {
-	auto close{ make_unique<MenuUIObject>(25.0f, 25.0f) };
-	close->SetMesh(s_meshes["UI"]);
-	close->SetShader(s_shaders["UI"]);
-	close->SetTexture(s_textures["HPBAR"]);
-	close->SetScreenPivot(ePivot::RIGHTTOP);
-	close->SetPivot(ePivot::RIGHTTOP);
-	close->SetPosition(XMFLOAT2{ -25.0f, -25.0f });
+	auto close{ make_unique<MenuTextObject>() };
+	close->SetBrush("BLACK");
+	close->SetMouseOverBrush("BLUE");
+	close->SetFormat("MENU");
+	close->SetText(TEXT("확인"));
+	close->SetScreenPivot(ePivot::CENTERBOT);
+	close->SetPivot(ePivot::CENTERBOT);
+	close->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
 	close->SetMouseClickCallBack(
 		[&]()
 		{
@@ -283,7 +284,7 @@ void MainScene::CreateSettingWindow()
 	text->SetText(TEXT("설정"));
 	text->SetPivot(ePivot::CENTERTOP);
 	text->SetScreenPivot(ePivot::CENTERTOP);
-	text->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
+	text->SetPosition(XMFLOAT2{ 0.0f, -10.0f });
 
 	auto windowSizeText1{ make_unique<MenuTextObject>() };
 	windowSizeText1->SetBrush("BLACK");

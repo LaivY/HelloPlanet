@@ -249,9 +249,13 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	if (m_skybox) m_skybox->Render(commandList);
 
 	// 게임오브젝트 렌더링
+	UINT stencilRef{ 1 };
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
 		o->Render(commandList);
+	}
 	lock.unlock();
 
 	// 멀티플레이어 렌더링
@@ -263,6 +267,17 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
 	lock.unlock();
+
+	// 테두리 렌더링
+	stencilRef = 1;
+	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		o->RenderOutline(commandList);
+	}
+	commandList->OMSetStencilRef(0);
+	for (const auto& p : m_multiPlayers)
+		if (p) p->RenderOutline(commandList);
 
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
@@ -369,6 +384,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->SetMesh(s_meshes["ARM"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
 	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+	m_player->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
 	m_player->SetGunShader(s_shaders["LINK"]);
 	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 
@@ -408,6 +424,8 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
+
+	
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -430,8 +448,8 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 
 void GameScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
 
 	// 그림자를 만드는 조명의 마지막 뷰, 투영 변환 행렬의 경우 씬을 덮는 영역으로, 업데이트할 필요 없음
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
@@ -442,8 +460,14 @@ void GameScene::CreateLights() const
 	m_cbGameSceneData->shadowLight.lightViewMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightViewMatrix);
 	m_cbGameSceneData->shadowLight.lightProjMatrix[Setting::SHADOWMAP_COUNT - 1] = Matrix::Transpose(lightProjMatrix);
 
-	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
-	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[0].direction = Vector3::Normalize(XMFLOAT3{ 0.0f, -1.0f, 0.0f });
+
+	m_cbGameSceneData->ligths[1].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[1].direction = Vector3::Normalize(XMFLOAT3{ 1.0f, -1.0f, -1.0f });
+
+	m_cbGameSceneData->ligths[2].color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->ligths[2].direction = Vector3::Normalize(XMFLOAT3{ -1.0f, -2.0f, 2.0f });
 }
 
 void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
@@ -457,10 +481,13 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
 		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
 		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
+		trans = Vector3::Mul(trans, 100.0f);
 
 		XMMATRIX worldMatrix{ XMMatrixIdentity() };
 		XMMATRIX scaleMatrix{ XMMatrixScaling(scale.x, scale.y, scale.z) };
-		XMMATRIX rotateMatrix{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat.x), XMConvertToRadians(rotat.y), XMConvertToRadians(rotat.z)) };
+		XMMATRIX rotateMatrix{ XMMatrixRotationX(XMConvertToRadians(rotat.x)) * 
+							   XMMatrixRotationY(XMConvertToRadians(rotat.y)) *
+							   XMMatrixRotationZ(XMConvertToRadians(rotat.z)) };
 		XMMATRIX transMatrix{ XMMatrixTranslation(trans.x, trans.y, trans.z) };
 		worldMatrix = worldMatrix * scaleMatrix * rotateMatrix * transMatrix;
 
@@ -468,8 +495,18 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMStoreFloat4x4(&world, worldMatrix);
 
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
-		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
+		if (type == 0 || type == 1)
+		{
+			object->SetShader(s_shaders["MODEL"]);
+			//object->SetShader(s_shaders["STENCIL_MODEL"]);
+			//object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
+		}
+		else
+		{
+			object->SetShader(s_shaders["STENCIL_MODEL"]);
+			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
+		}
 		object->SetWorldMatrix(world);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
 		if (0 <= type && type <= 1)
@@ -503,6 +540,16 @@ void GameScene::CreateExitWindow()
 	okText->SetMouseClickCallBack(
 		[]()
 		{
+			// 서버와의 연결을 끊음
+			if (g_isConnected)
+			{
+				g_isConnected = FALSE;
+				if (g_networkThread.joinable())
+					g_networkThread.join();
+				closesocket(g_socket);
+				WSACleanup();
+			}
+
 			ShowCursor(TRUE);
 			g_gameFramework.SetNextScene(eScene::MAIN);
 		}
@@ -689,7 +736,7 @@ void GameScene::UpdateShadowMatrix()
 
 		// 그림자를 만들 조명의 좌표를 바운딩구의 중심에서 빛의 반대방향으로 적당히 움직이여야함
 		// 이건 씬의 오브젝트를 고려해서 정말 적당한 수치만큼 움직여줘야함
-		float value{ radius };
+		float value{ max(750.0f, radius * 2.5f) };
 		XMFLOAT3 shadowLightPos{ Vector3::Add(center, Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -value)) };
 
 		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
@@ -771,6 +818,7 @@ void GameScene::RecvLoginOk()
 			p->SetMesh(s_meshes["PLAYER"]);
 			p->SetShader(s_shaders["ANIMATION"]);
 			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			//p->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
 			p->SetGunMesh(s_meshes["SG"]);
 			p->SetGunShader(s_shaders["LINK"]);
 			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);

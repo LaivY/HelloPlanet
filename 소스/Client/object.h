@@ -65,6 +65,7 @@ public:
 	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
 	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	virtual void Update(FLOAT deltaTime);
 	virtual void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
@@ -78,6 +79,7 @@ public:
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetShadowShader(const shared_ptr<Shader>& shadowShader);
+	void SetOutlineShader(const shared_ptr<Shader>& outlineShader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void AddBoundingBox(const SharedBoundingBox& boundingBox);
@@ -108,6 +110,7 @@ protected:
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더
 	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
+	shared_ptr<Shader>				m_outlineShader;		// 테두리 셰이더
 	shared_ptr<Texture>				m_texture;				// 텍스쳐
 	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
 	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체

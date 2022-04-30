@@ -39,7 +39,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 28 + 11 + 9 + 3 + 5 };
+	constexpr size_t allResourceCount{ 25 + 11 + 10 + 4 + 5 };
 	size_t currResourceCount{};
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -183,6 +183,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 게임오브젝트 관련 로딩
 	s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
+	//s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f });
 	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
@@ -212,6 +213,11 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["LINK"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/link.hlsl")), "VS", "PS");
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
 	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true);
+
+	// 테두리 셰이더
+	s_shaders["STENCIL_MODEL"] = make_shared<StencilShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
+	s_shaders["OUTLINE_MODEL"] = make_shared<OutlineShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS_OUTLINE");
+	s_shaders["OUTLINE_ANIMATION"] = make_shared<OutlineShader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS_OUTLINE");
 
 	// 그림자 셰이더
 	s_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
