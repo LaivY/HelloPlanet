@@ -12,7 +12,7 @@ public:
 	int OnInit(SOCKET socket);
 	void AcceptThread(SOCKET socket);
 	void SendLoginOkPacket(const int id, const char* name) const;
-	void SendReadyToPlayPacket(const int id, const eWeaponType weaponType);
+	void SendReadyToPlayPacket(const int id, const eWeaponType weaponType) const;
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();

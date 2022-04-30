@@ -98,7 +98,7 @@ struct cs_packet_login
 {
 	UCHAR	size;
 	UCHAR	type;
-	CHAR	name[MAX_NAME_SIZE];
+	//CHAR	name[MAX_NAME_SIZE];
 };
 
 struct cs_packet_select_weapon
@@ -133,13 +133,14 @@ struct sc_packet_login_ok
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
-	CHAR		name[MAX_NAME_SIZE];
+	//CHAR		name[MAX_NAME_SIZE];
 };
 
 struct sc_packet_ready_to_play
 {
 	UCHAR		size;
 	UCHAR		type;
+	UCHAR		id;
 	eWeaponType	weaponType;
 };
 

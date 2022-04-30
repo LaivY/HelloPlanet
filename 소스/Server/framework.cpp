@@ -68,7 +68,7 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	packet.data.aniType = eAnimationType::IDLE;
 	packet.data.upperAniType = eUpperAnimationType::NONE;
 	packet.data.pos = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
-	strcpy_s(packet.name, sizeof(packet.name), name);
+	//strcpy_s(packet.name, sizeof(packet.name), name);
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -78,32 +78,33 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
 
 	// 모든 클라이언트에게 로그인한 클라이언트의 정보 전송
-	for (const auto& c : clients)
+	for (const auto& cl : clients)
 	{
-		if (!c.data.isActive) continue;
-		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (!cl.data.isActive) continue;
+		WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
 
 	// 로그인한 클라이언트에게 이미 접속해있는 클라이언트 정보 전송
-	for (const auto& c : clients)
+	for (const auto& cl : clients)
 	{
-		if (c.data.id == id) continue;
-		if (!c.data.isActive) continue;
+		if (cl.data.id == id) continue;
+		if (!cl.data.isActive) continue;
 
 		sc_packet_login_ok p{};
 		p.size = sizeof(p);
 		p.type = SC_PACKET_LOGIN_OK;
-		p.data = c.data;
+		p.data = cl.data;
 		memcpy(buf, reinterpret_cast<char*>(&p), sizeof(p));
 		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
 }
 
-void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
+void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType) const
 {
 	sc_packet_ready_to_play packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_READY_TO_PLAY;
+	packet.id = id;
 	packet.weaponType = weaponType;
 
 	char buf[sizeof(packet)];
@@ -111,13 +112,27 @@ void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType wea
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
 
-	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
+	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Ready Packet Received" << std::endl;
 
 	// 모든 클라이언트에게 클라이언트의 무기 정보 전송
-	for (const auto& c : clients)
+	for (const auto& cl : clients)
 	{
-		if (!c.data.isActive) continue;
-		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (!cl.data.isActive) continue;
+		WSASend(cl.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	}
+	// 무기 선택한 클라이언트에게 이미 접속해있는 클라이언트 정보 전송
+	for (const auto& cl : clients)
+	{
+		if (cl.data.id == id) continue;
+		if (!cl.data.isActive) continue;
+
+		sc_packet_ready_to_play p{};
+		p.size = sizeof(p);
+		p.type = SC_PACKET_LOGIN_OK;
+		packet.id = id;
+		packet.weaponType = weaponType;
+		memcpy(buf, reinterpret_cast<char*>(&p), sizeof(p));
+		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
 }
 
@@ -269,11 +284,12 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		case CS_PACKET_LOGIN:
 		{
 			// name[MAX_NAME_SIZE]
-			char subBuf[1 + 1 + MAX_NAME_SIZE];
+			//char subBuf[1 + 1 + MAX_NAME_SIZE];
+			char subBuf[1 + 1];
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_LOGIN)");
-			memcpy(&cl.name, &subBuf[2], sizeof(cl.name));
+			//memcpy(&cl.name, &subBuf[2], sizeof(cl.name));
 			SendLoginOkPacket(id, cl.name);
 			break;
 		}
@@ -285,6 +301,8 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
 			cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
+			SendReadyToPlayPacket(id, cl.weaponType);
+
 			// readyCount가 3명일때 시작
 			readyCount++;
 			if (readyCount >= MAX_USER)
