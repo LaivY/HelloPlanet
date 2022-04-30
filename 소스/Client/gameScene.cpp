@@ -305,6 +305,11 @@ void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 		w->Render2D(device);
 }
 
+void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget)
+{
+
+}
+
 void GameScene::ProcessClient()
 {
 	while (g_isConnected)
@@ -371,7 +376,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 #endif
 	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2000.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 바운딩박스
@@ -678,7 +683,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 void GameScene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.08f, 0.2f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.08f, 0.1f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
 	XMFLOAT3 frustum[]{
