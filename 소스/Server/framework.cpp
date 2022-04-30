@@ -48,14 +48,13 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		player.data.aniType = eAnimationType::IDLE;
 		player.data.upperAniType = eUpperAnimationType::NONE;
 		player.socket = cSocket;
-		const char* name = "TestName123"; //name test
-		SendLoginOkPacket(id, name);
 		player.lock.unlock();
+
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
 		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
-		isAccept = true;
+		//isAccept = true;
 	}
 }
 
@@ -97,6 +96,28 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 		p.data = c.data;
 		memcpy(buf, reinterpret_cast<char*>(&p), sizeof(p));
 		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	}
+}
+
+void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
+{
+	sc_packet_ready_to_play packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_READY_TO_PLAY;
+	packet.weaponType = weaponType;
+
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sentByte;
+
+	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
+
+	// 모든 클라이언트에게 클라이언트의 무기 정보 전송
+	for (const auto& c : clients)
+	{
+		if (!c.data.isActive) continue;
+		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
 }
 
@@ -245,6 +266,36 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 
 		switch (type)
 		{
+		case CS_PACKET_LOGIN:
+		{
+			// name[MAX_NAME_SIZE]
+			char subBuf[1 + 1 + MAX_NAME_SIZE];
+			wsabuf = { sizeof(subBuf), subBuf };
+			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_LOGIN)");
+			memcpy(&cl.name, &subBuf[2], sizeof(cl.name));
+			SendLoginOkPacket(id, cl.name);
+			break;
+		}
+		case CS_PACKET_SELECT_WEAPON:
+		{
+			// weaponType
+			char subBuf[1 + 1 + 1];
+			wsabuf = { sizeof(subBuf), subBuf };
+			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
+			cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
+			// readyCount가 3명일때 시작
+			readyCount++;
+			if (readyCount >= MAX_USER)
+			{
+				isAccept = true;
+				for(const auto & pl:clients)
+					SendReadyToPlayPacket(id, pl.weaponType);
+				readyCount = 0;
+			}
+			break;
+		}
 		case CS_PACKET_UPDATE_LEGS:
 		{
 			// aniType, upperAniType, pos, velocity, yaw

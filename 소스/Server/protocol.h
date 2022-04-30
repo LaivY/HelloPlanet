@@ -7,17 +7,20 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
 constexpr int  MAX_MONSTER = 10;
+constexpr int  MAX_NAME_SIZE = 10;
 
 constexpr char CS_PACKET_LOGIN = 1;
-constexpr char CS_PACKET_UPDATE_LEGS = 2;
-constexpr char CS_PACKET_BULLET_FIRE = 3;
-constexpr char CS_PACKET_BULLET_HIT = 4;
+constexpr char CS_PACKET_SELECT_WEAPON = 2;
+constexpr char CS_PACKET_UPDATE_LEGS = 3;
+constexpr char CS_PACKET_BULLET_FIRE = 4;
+constexpr char CS_PACKET_BULLET_HIT = 5;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
-constexpr char SC_PACKET_UPDATE_CLIENT = 2;
-constexpr char SC_PACKET_BULLET_FIRE = 3;
-constexpr char SC_PACKET_BULLET_HIT = 4;
-constexpr char SC_PACKET_UPDATE_MONSTER = 5;
+constexpr char SC_PACKET_READY_TO_PLAY = 2;
+constexpr char SC_PACKET_UPDATE_CLIENT = 3;
+constexpr char SC_PACKET_BULLET_FIRE = 4;
+constexpr char SC_PACKET_BULLET_HIT = 5;
+constexpr char SC_PACKET_UPDATE_MONSTER = 6;
 
 enum class eAnimationType : char
 {
@@ -45,6 +48,13 @@ enum class eMobAnimationType : char
 	ATTACK,
 	HIT,
 	DIE
+};
+
+enum class eWeaponType : char
+{
+	AR,
+	SG,
+	MG
 };
 
 #pragma pack (push, 1)
@@ -82,11 +92,20 @@ struct MonsterData
 	FLOAT				yaw;		// 회전각
 };
 
+// ---------------------------------
+
 struct cs_packet_login
 {
 	UCHAR	size;
 	UCHAR	type;
-	CHAR	name[20];
+	CHAR	name[MAX_NAME_SIZE];
+};
+
+struct cs_packet_select_weapon
+{
+	UCHAR		size;
+	UCHAR		type;
+	eWeaponType	weaponType;
 };
 
 struct cs_packet_update_legs
@@ -114,7 +133,14 @@ struct sc_packet_login_ok
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
-	CHAR		name[20];
+	CHAR		name[MAX_NAME_SIZE];
+};
+
+struct sc_packet_ready_to_play
+{
+	UCHAR		size;
+	UCHAR		type;
+	eWeaponType	weaponType;
 };
 
 struct sc_packet_update_client
