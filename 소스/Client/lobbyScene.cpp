@@ -10,14 +10,17 @@ LobbyScene::~LobbyScene()
 {
 	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
 #ifdef NETWORK
-	if (!m_isReadyToPlay)
-	{
-		m_isReadyToPlay = TRUE;
-		closesocket(g_socket);
-		WSACleanup();
-		if (g_networkThread.joinable())
-			g_networkThread.join();
-	}
+	// 클라이언트 강제 종료 시
+	//if (!m_isReadyToPlay)
+	//{
+	//	m_isReadyToPlay = TRUE;
+	//	closesocket(g_socket);
+	//	WSACleanup();
+	//}
+
+	// 다음 씬으로 넘어갈 경우
+	//if (g_networkThread.joinable())
+	//	g_networkThread.join();
 #endif
 }
 
@@ -31,7 +34,7 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
 #ifdef NETWORK
-	g_networkThread = thread{ &LobbyScene::RecvPacket, this };
+	//g_networkThread = thread{ &LobbyScene::RecvPacket, this };
 #endif
 }
 
@@ -217,27 +220,28 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	[](MenuTextObject* readyTextObject)
 	{
 #ifdef NETWORK
-		cs_packet_ready packet{};
-		packet.size = sizeof(packet);
-		packet.type = CS_PACKET_READY;
+		//cs_packet_ready packet{};
+		//packet.size = sizeof(packet);
+		//packet.type = CS_PACKET_READY;
 
-		wstring text{ readyTextObject->GetText() };
-		if (text == readyText)
-		{
-			readyTextObject->SetBrush("BLUE");
-			readyTextObject->SetMouseOverBrush("BLUE");
-			readyTextObject->SetText(readyOkText);
-			packet.state = true;
-		}
-		else
-		{
-			readyTextObject->SetBrush("BLACK");
-			readyTextObject->SetMouseOverBrush("BLACK");
-			readyTextObject->SetText(readyText);
-			packet.state = false;
-		}
-		readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
-		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+		//wstring text{ readyTextObject->GetText() };
+		//if (text == readyText)
+		//{
+		//	readyTextObject->SetBrush("BLUE");
+		//	readyTextObject->SetMouseOverBrush("BLUE");
+		//	readyTextObject->SetText(readyOkText);
+		//	packet.state = true;
+		//}
+		//else
+		//{
+		//	readyTextObject->SetBrush("BLACK");
+		//	readyTextObject->SetMouseOverBrush("BLACK");
+		//	readyTextObject->SetText(readyText);
+		//	packet.state = false;
+		//}
+		//readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
+		//send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+		g_gameFramework.SetNextScene(eScene::GAME);
 #else
 		g_gameFramework.SetNextScene(eScene::GAME);
 #endif
