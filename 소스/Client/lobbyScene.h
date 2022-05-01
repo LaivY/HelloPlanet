@@ -17,6 +17,7 @@ public:
 	virtual void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
+	virtual void OnDestroy();
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnKeyboardEvent(FLOAT deltaTime);
@@ -28,7 +29,7 @@ public:
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
 
-	virtual void ProcessClient();
+	virtual void RecvPacket();
 
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
@@ -39,10 +40,16 @@ public:
 
 	void Update(FLOAT deltaTime);
 	void UpdateShadowMatrix();
-
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
+	void ProcessPacket();
+	void RecvLoginOkPacket();
+	void RecvReady();
+
 private:
+	BOOL								m_isReadyToPlay;
+	INT									m_loginCount;
+
 	ComPtr<ID3D12Resource>				m_cbGameScene;
 	cbGameScene*						m_pcbGameScene;
 	unique_ptr<cbGameScene>				m_cbGameSceneData;

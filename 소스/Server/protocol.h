@@ -11,16 +11,18 @@ constexpr int  MAX_NAME_SIZE = 10;
 
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_SELECT_WEAPON = 2;
-constexpr char CS_PACKET_UPDATE_LEGS = 3;
-constexpr char CS_PACKET_BULLET_FIRE = 4;
-constexpr char CS_PACKET_BULLET_HIT = 5;
+constexpr char CS_PACKET_READY = 3;
+constexpr char CS_PACKET_UPDATE_LEGS = 4;
+constexpr char CS_PACKET_BULLET_FIRE = 5;
+constexpr char CS_PACKET_BULLET_HIT = 6;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_READY_TO_PLAY = 2;
-constexpr char SC_PACKET_UPDATE_CLIENT = 3;
-constexpr char SC_PACKET_BULLET_FIRE = 4;
-constexpr char SC_PACKET_BULLET_HIT = 5;
-constexpr char SC_PACKET_UPDATE_MONSTER = 6;
+constexpr char SC_PACKET_READY = 3;
+constexpr char SC_PACKET_UPDATE_CLIENT = 4;
+constexpr char SC_PACKET_BULLET_FIRE = 5;
+constexpr char SC_PACKET_BULLET_HIT = 6;
+constexpr char SC_PACKET_UPDATE_MONSTER = 7;
 
 enum class eAnimationType : char
 {
@@ -108,6 +110,13 @@ struct cs_packet_select_weapon
 	eWeaponType	weaponType;
 };
 
+struct cs_packet_ready
+{
+	UCHAR		size;
+	UCHAR		type;
+	bool		state; // true : 준비완료
+};
+
 struct cs_packet_update_legs
 {
 	UCHAR				size;
@@ -134,6 +143,14 @@ struct sc_packet_login_ok
 	UCHAR		type;
 	PlayerData	data;
 	//CHAR		name[MAX_NAME_SIZE];
+};
+
+struct sc_packet_ready
+{
+	UCHAR		size;
+	UCHAR		type;
+	CHAR		id;
+	bool		state;
 };
 
 struct sc_packet_ready_to_play

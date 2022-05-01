@@ -313,6 +313,18 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	}
 }
 
+void Player::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	if (!m_outlineShader) return;
+
+	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
+	XMFLOAT4X4 scale{};
+	XMStoreFloat4x4(&scale, XMMatrixScaling(1.05f, 1.05f, 1.05f));
+	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
+	Player::Render(commandList, m_outlineShader);
+	m_worldMatrix = worldMatrix;
+}
+
 void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	GameObject::Render(commandList, m_shadowShader);
