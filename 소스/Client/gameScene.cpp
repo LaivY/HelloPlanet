@@ -312,6 +312,12 @@ void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandL
 
 void GameScene::ProcessClient()
 {
+	constexpr char name[10] = "Hello\0";
+	cs_packet_login packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGIN;
+	memcpy(packet.name, name, sizeof(char) * 10);
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 	while (g_isConnected)
 		RecvPacket();
 }
@@ -798,7 +804,7 @@ void GameScene::RecvLoginOk()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	char nameBuf[20]{};
+	char nameBuf[10]{};
 	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 

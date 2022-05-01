@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 constexpr short SERVER_PORT = 9000;
-constexpr const char* SERVER_IP = "127.0.0.1";
-//constexpr const char* SERVER_IP = "121.173.248.190";
+//constexpr const char* SERVER_IP = "127.0.0.1";
+constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
@@ -17,7 +17,7 @@ constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
-constexpr char SC_PACKET_READY_TO_PLAY = 2;
+constexpr char SC_PACKET_SELECT_WEAPON = 2;
 constexpr char SC_PACKET_READY = 3;
 constexpr char SC_PACKET_UPDATE_CLIENT = 4;
 constexpr char SC_PACKET_BULLET_FIRE = 5;
@@ -100,7 +100,7 @@ struct cs_packet_login
 {
 	UCHAR	size;
 	UCHAR	type;
-	//CHAR	name[MAX_NAME_SIZE];
+	CHAR	name[MAX_NAME_SIZE];
 };
 
 struct cs_packet_select_weapon
@@ -142,7 +142,15 @@ struct sc_packet_login_ok
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
-	//CHAR		name[MAX_NAME_SIZE];
+	CHAR		name[MAX_NAME_SIZE];
+};
+
+struct sc_packet_select_weapon
+{
+	UCHAR		size;
+	UCHAR		type;
+	UCHAR		id;
+	eWeaponType	weaponType;
 };
 
 struct sc_packet_ready
@@ -151,14 +159,6 @@ struct sc_packet_ready
 	UCHAR		type;
 	CHAR		id;
 	bool		state;
-};
-
-struct sc_packet_ready_to_play
-{
-	UCHAR		size;
-	UCHAR		type;
-	UCHAR		id;
-	eWeaponType	weaponType;
 };
 
 struct sc_packet_update_client
