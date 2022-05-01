@@ -20,10 +20,11 @@ constexpr char CS_PACKET_LOGOUT = 127;
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_SELECT_WEAPON = 2;
 constexpr char SC_PACKET_READY = 3;
-constexpr char SC_PACKET_UPDATE_CLIENT = 4;
-constexpr char SC_PACKET_BULLET_FIRE = 5;
-constexpr char SC_PACKET_BULLET_HIT = 6;
-constexpr char SC_PACKET_UPDATE_MONSTER = 7;
+constexpr char SC_PACKET_CHANGE_SCENE = 4;
+constexpr char SC_PACKET_UPDATE_CLIENT = 5;
+constexpr char SC_PACKET_BULLET_FIRE = 6;
+constexpr char SC_PACKET_BULLET_HIT = 7;
+constexpr char SC_PACKET_UPDATE_MONSTER = 8;
 constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
@@ -54,7 +55,14 @@ enum class eMobAnimationType : char
 	DIE
 };
 
-enum class eWeaponType : char
+enum class eClientSceneType : char
+{
+	LOBBY,
+	INGAME,
+	ENDING
+};
+
+enum class eClientWeaponType : char
 {
 	AR,
 	SG,
@@ -115,7 +123,7 @@ struct cs_packet_select_weapon
 {
 	UCHAR		size;
 	UCHAR		type;
-	eWeaponType	weaponType;
+	eClientWeaponType	weaponType;
 };
 
 struct cs_packet_ready
@@ -173,7 +181,14 @@ struct sc_packet_select_weapon
 	UCHAR		size;
 	UCHAR		type;
 	CHAR		id;
-	eWeaponType	weaponType;
+	eClientWeaponType	weaponType;
+};
+
+struct sc_packet_change_scene
+{
+	UCHAR		size;
+	UCHAR		type;
+	eClientSceneType	sceneType;
 };
 
 struct sc_packet_update_client

@@ -12,7 +12,7 @@ public:
 	SOCKET		socket;
 	std::mutex	lock;
 	PlayerData	data;
-	eWeaponType weaponType;
+	eClientWeaponType weaponType;
 	BOOL		isReady;
 	CHAR		name[MAX_NAME_SIZE];
 	//WSABUF		_wsabuf;

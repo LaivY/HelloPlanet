@@ -269,17 +269,17 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		case eGunType::AR:
 			m_player->SetGunMesh(s_meshes["MG"]);
 			m_player->SetGunType(eGunType::MG);
-			packet.weaponType = eWeaponType::MG;
+			packet.weaponType = eClientWeaponType::MG;
 			break;
 		case eGunType::SG:
 			m_player->SetGunMesh(s_meshes["AR"]);
 			m_player->SetGunType(eGunType::AR);
-			packet.weaponType = eWeaponType::AR;
+			packet.weaponType = eClientWeaponType::AR;
 			break;
 		case eGunType::MG:
 			m_player->SetGunMesh(s_meshes["SG"]);
 			m_player->SetGunType(eGunType::SG);
-			packet.weaponType = eWeaponType::SG;
+			packet.weaponType = eClientWeaponType::SG;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
@@ -302,17 +302,17 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		case eGunType::AR:
 			m_player->SetGunMesh(s_meshes["SG"]);
 			m_player->SetGunType(eGunType::SG);
-			packet.weaponType = eWeaponType::SG;
+			packet.weaponType = eClientWeaponType::SG;
 			break;
 		case eGunType::SG:
 			m_player->SetGunMesh(s_meshes["MG"]);
 			m_player->SetGunType(eGunType::MG);
-			packet.weaponType = eWeaponType::MG;
+			packet.weaponType = eClientWeaponType::MG;
 			break;
 		case eGunType::MG:
 			m_player->SetGunMesh(s_meshes["AR"]);
 			m_player->SetGunType(eGunType::AR);
-			packet.weaponType = eWeaponType::AR;
+			packet.weaponType = eClientWeaponType::AR;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
@@ -648,7 +648,7 @@ void LobbyScene::RecvSelectWeaponPacket()
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
 	int id{ static_cast<int>(buf[0]) };
-	eWeaponType type{ static_cast<eWeaponType>(buf[1]) };
+	eClientWeaponType type{ static_cast<eClientWeaponType>(buf[1]) };
 
 	for (auto& p : m_multiPlayers)
 	{
@@ -657,15 +657,15 @@ void LobbyScene::RecvSelectWeaponPacket()
 
 		switch (type)
 		{
-		case eWeaponType::AR:
+		case eClientWeaponType::AR:
 			p->SetGunMesh(s_meshes["AR"]);
 			p->SetGunType(eGunType::AR);
 			break;
-		case eWeaponType::SG:
+		case eClientWeaponType::SG:
 			p->SetGunMesh(s_meshes["SG"]);
 			p->SetGunType(eGunType::SG);
 			break;
-		case eWeaponType::MG:
+		case eClientWeaponType::MG:
 			p->SetGunMesh(s_meshes["MG"]);
 			p->SetGunType(eGunType::MG);
 			break;

@@ -14,7 +14,7 @@ public:
 	void ProcessRecvPacket(const int id);
 
 	void SendLoginOkPacket(const int id, const char* name) const;
-	void SendReadyPacket(const int id, const eWeaponType weaponType) const;
+	void SendReadyPacket(const int id, const eClientWeaponType weaponType) const;
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();

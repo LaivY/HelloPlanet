@@ -99,27 +99,24 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	std::cout << "[" << id << " client] Login Packet Received" << std::endl;
 }
 
-void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
-{
+//void NetworkFramework::SendReadyToPlayPacket(const int id, const eClientWeaponType weaponType)
+//{
 	//sc_packet_ready_to_play packet{};
 	//packet.size = sizeof(packet);
 	//packet.type = SC_PACKET_SELECT_WEAPON;
 	//packet.weaponType = weaponType;
-
 	//char buf[sizeof(packet)];
 	//memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 	//WSABUF wsabuf{ sizeof(buf), buf };
 	//DWORD sentByte;
-
 	//std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-
 	//// 모든 클라이언트에게 클라이언트의 무기 정보 전송
 	//for (const auto& c : clients)
 	//{
 	//	if (!c.data.isActive) continue;
 	//	WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	//}
-}
+//}
 
 void NetworkFramework::SendPlayerDataPacket()
 {
@@ -290,7 +287,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_SELECT_WEAPON;
 			packet.id = id;
-			packet.weaponType = static_cast<eWeaponType>(subBuf);
+			packet.weaponType = static_cast<eClientWeaponType>(subBuf);
 
 			for (const auto& c : clients)
 			{
@@ -326,6 +323,35 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 			}
 			std::cout << "[" << id << " client] Ready : " << std::boolalpha << isReady << std::endl;
+
+			for (const auto& c : clients)
+			{
+				if (!c.data.isActive) continue;
+				if (c.isReady) readyCount++;
+			}
+			if (readyCount >= 3)
+			{
+				isAccept = true;
+				sc_packet_change_scene sendPacket{};
+				sendPacket.size = sizeof(sendPacket);
+				sendPacket.type = SC_PACKET_CHANGE_SCENE;
+				sendPacket.sceneType = eClientSceneType::INGAME;
+
+				char sendBuf[sizeof(sendPacket)]{};
+				WSABUF sendWsabuf = { sizeof(subBuf), sendBuf };
+				memcpy(sendBuf, &sendPacket, sizeof(sendPacket));
+				DWORD sent_byte;
+
+				for (const auto& cl : clients)
+				{
+					if (!cl.data.isActive) continue;
+					retVal = WSASend(cl.socket, &sendWsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+					if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_CHANGE_SCENE)");
+				}
+
+				std::cout << "[Send All Client Ready]" << std::endl;
+			}
+			readyCount = 0;
 			break;
 		}
 		case CS_PACKET_UPDATE_LEGS:
