@@ -1,5 +1,4 @@
 ﻿#pragma once
-
 #include "stdafx.h"
 #include "protocol.h"
 
@@ -11,10 +10,11 @@ public:
 
 public:
 	SOCKET		socket;
-	PlayerData	data;
-	CHAR		name[MAX_NAME_SIZE];
-	eWeaponType weaponType;
 	std::mutex	lock;
+	PlayerData	data;
+	eWeaponType weaponType;
+	BOOL		isReady;
+	CHAR		name[MAX_NAME_SIZE];
 	//WSABUF		_wsabuf;
 	//WSAOVERLAPPED	_recv_over;
 };

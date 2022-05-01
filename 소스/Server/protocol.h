@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 constexpr short SERVER_PORT = 9000;
-//constexpr const char* SERVER_IP = "127.0.0.1";
-constexpr const char* SERVER_IP = "121.173.248.190";
+constexpr const char* SERVER_IP = "127.0.0.1";
+//constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
@@ -15,6 +15,7 @@ constexpr char CS_PACKET_READY = 3;
 constexpr char CS_PACKET_UPDATE_LEGS = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
+constexpr char CS_PACKET_LOGOUT = 127;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
 constexpr char SC_PACKET_SELECT_WEAPON = 2;
@@ -23,6 +24,7 @@ constexpr char SC_PACKET_UPDATE_CLIENT = 4;
 constexpr char SC_PACKET_BULLET_FIRE = 5;
 constexpr char SC_PACKET_BULLET_HIT = 6;
 constexpr char SC_PACKET_UPDATE_MONSTER = 7;
+constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
 {
@@ -103,6 +105,12 @@ struct cs_packet_login
 	CHAR	name[MAX_NAME_SIZE];
 };
 
+struct cs_packet_logout
+{
+	UCHAR size;
+	UCHAR type;
+};
+
 struct cs_packet_select_weapon
 {
 	UCHAR		size;
@@ -114,7 +122,7 @@ struct cs_packet_ready
 {
 	UCHAR		size;
 	UCHAR		type;
-	bool		state; // true : 준비완료
+	bool		isReady; // true : 준비완료
 };
 
 struct cs_packet_update_legs
@@ -145,12 +153,11 @@ struct sc_packet_login_ok
 	CHAR		name[MAX_NAME_SIZE];
 };
 
-struct sc_packet_select_weapon
+struct sc_packet_logout_ok
 {
-	UCHAR		size;
-	UCHAR		type;
-	UCHAR		id;
-	eWeaponType	weaponType;
+	UCHAR	size;
+	UCHAR	type;
+	CHAR	id;
 };
 
 struct sc_packet_ready
@@ -158,7 +165,15 @@ struct sc_packet_ready
 	UCHAR		size;
 	UCHAR		type;
 	CHAR		id;
-	bool		state;
+	bool		isReady;
+};
+
+struct sc_packet_select_weapon
+{
+	UCHAR		size;
+	UCHAR		type;
+	CHAR		id;
+	eWeaponType	weaponType;
 };
 
 struct sc_packet_update_client
