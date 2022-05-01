@@ -44,11 +44,16 @@ public:
 
 	void ProcessPacket();
 	void RecvLoginOkPacket();
-	void RecvReady();
+	void RecvReadyPacket();
+	void RecvSelectWeaponPacket();
 
 private:
 	BOOL								m_isReadyToPlay;
 	INT									m_loginCount;
+	INT									m_leftSlotPlayerId;
+	INT									m_rightSlotPlayerId;
+	TextObject*							m_leftSlotReadyText;
+	TextObject*							m_rightSlotReadyText;
 
 	ComPtr<ID3D12Resource>				m_cbGameScene;
 	cbGameScene*						m_pcbGameScene;

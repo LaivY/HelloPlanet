@@ -17,7 +17,7 @@ constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
 
 constexpr char SC_PACKET_LOGIN_OK = 1;
-constexpr char SC_PACKET_READY_TO_PLAY = 2;
+constexpr char SC_PACKET_SELECT_WEAPON = 2;
 constexpr char SC_PACKET_READY = 3;
 constexpr char SC_PACKET_UPDATE_CLIENT = 4;
 constexpr char SC_PACKET_BULLET_FIRE = 5;
@@ -153,10 +153,11 @@ struct sc_packet_ready
 	bool		state;
 };
 
-struct sc_packet_ready_to_play
+struct sc_packet_select_weapon
 {
 	UCHAR		size;
 	UCHAR		type;
+	CHAR		id;
 	eWeaponType	weaponType;
 };
 

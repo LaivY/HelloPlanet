@@ -101,24 +101,24 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 
 void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
 {
-	sc_packet_ready_to_play packet{};
-	packet.size = sizeof(packet);
-	packet.type = SC_PACKET_READY_TO_PLAY;
-	packet.weaponType = weaponType;
+	//sc_packet_ready_to_play packet{};
+	//packet.size = sizeof(packet);
+	//packet.type = SC_PACKET_SELECT_WEAPON;
+	//packet.weaponType = weaponType;
 
-	char buf[sizeof(packet)];
-	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD sentByte;
+	//char buf[sizeof(packet)];
+	//memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	//WSABUF wsabuf{ sizeof(buf), buf };
+	//DWORD sentByte;
 
-	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
+	//std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
 
-	// 모든 클라이언트에게 클라이언트의 무기 정보 전송
-	for (const auto& c : clients)
-	{
-		if (!c.data.isActive) continue;
-		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	}
+	//// 모든 클라이언트에게 클라이언트의 무기 정보 전송
+	//for (const auto& c : clients)
+	//{
+	//	if (!c.data.isActive) continue;
+	//	WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+	//}
 }
 
 void NetworkFramework::SendPlayerDataPacket()
@@ -269,31 +269,52 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		case CS_PACKET_LOGIN:
 		{
 			// name[MAX_NAME_SIZE]
-			char subBuf[1 + 1 + MAX_NAME_SIZE];
+			char subBuf[MAX_NAME_SIZE]{};
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_LOGIN)");
-			memcpy(&cl.name, &subBuf[2], sizeof(cl.name));
+			memcpy(&cl.name, subBuf, sizeof(cl.name));
 			SendLoginOkPacket(id, cl.name);
 			break;
 		}
 		case CS_PACKET_SELECT_WEAPON:
 		{
-			// weaponType
-			char subBuf[1 + 1 + 1];
-			wsabuf = { sizeof(subBuf), subBuf };
+			// 무기 타입
+			char subBuf{};
+			wsabuf = { sizeof(subBuf), &subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
-			cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
-			// readyCount가 3명일때 시작
-			readyCount++;
-			if (readyCount >= MAX_USER)
+
+			// 다른 플레이어게 전송
+			sc_packet_select_weapon packet{};
+			packet.size = sizeof(packet);
+			packet.type = SC_PACKET_SELECT_WEAPON;
+			packet.id = id;
+			packet.weaponType = static_cast<eWeaponType>(subBuf);
+
+			for (const auto& c : clients)
 			{
-				isAccept = true;
-				for(const auto & pl:clients)
-					SendReadyToPlayPacket(id, pl.weaponType);
-				readyCount = 0;
+				if (c.data.id == id) continue;
+				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 			}
+
+			//// weaponType
+			//char subBuf[1 + 1 + 1];
+			//wsabuf = { sizeof(subBuf), subBuf };
+			//retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+			//if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
+			//cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
+			//// readyCount가 3명일때 시작
+			//readyCount++;
+			//if (readyCount >= MAX_USER)
+			//{
+			//	isAccept = true;
+			//	for(const auto & pl:clients)
+			//		SendReadyToPlayPacket(id, pl.weaponType);
+			//	readyCount = 0;
+			//}
+
+			std::cout << id << "'s weapon state : " << static_cast<int>(subBuf) << std::endl;
 			break;
 		}
 		case CS_PACKET_READY:
