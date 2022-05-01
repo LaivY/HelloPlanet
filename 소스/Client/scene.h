@@ -41,6 +41,7 @@ public:
 						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
 	virtual void OnInitEnd();
+	virtual void OnDestroy();
 	virtual void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);

@@ -1,13 +1,24 @@
 ﻿#include "lobbyScene.h"
 #include "framework.h"
 
-LobbyScene::LobbyScene() : m_pcbGameScene{ nullptr }
+LobbyScene::LobbyScene() : m_isReadyToPlay{ FALSE }, m_loginCount{ 0 }, m_pcbGameScene{ nullptr }
 {
+
 }
 
 LobbyScene::~LobbyScene()
 {
 	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
+#ifdef NETWORK
+	if (!m_isReadyToPlay)
+	{
+		m_isReadyToPlay = TRUE;
+		closesocket(g_socket);
+		WSACleanup();
+		if (g_networkThread.joinable())
+			g_networkThread.join();
+	}
+#endif
 }
 
 void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -18,6 +29,19 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
+
+#ifdef NETWORK
+	g_networkThread = thread{ &LobbyScene::RecvPacket, this };
+#endif
+}
+
+void LobbyScene::OnDestroy()
+{
+	m_isReadyToPlay = TRUE;
+	closesocket(g_socket);
+	WSACleanup();
+	if (g_networkThread.joinable())
+		g_networkThread.join();
 }
 
 void LobbyScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -112,9 +136,18 @@ void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 		w->Render2D(device);
 }
 
-void LobbyScene::ProcessClient()
+void LobbyScene::RecvPacket()
 {
+	constexpr char name[10] = "Hello\0";
 
+	cs_packet_login packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGIN;
+	memcpy(packet.name, name, sizeof(char) * 10);
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
+	while (!m_isReadyToPlay)
+		ProcessPacket();
 }
 
 void LobbyScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -183,23 +216,31 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	constexpr auto readyCallBack = 
 	[](MenuTextObject* readyTextObject)
 	{
-		//wstring text{ readyTextObject->GetText() };
-		//if (text == readyText)
-		//{
-		//	readyTextObject->SetBrush("BLUE");
-		//	readyTextObject->SetMouseOverBrush("BLUE");
-		//	readyTextObject->SetText(readyOkText);
-		//}
-		//else
-		//{
-		//	readyTextObject->SetBrush("BLACK");
-		//	readyTextObject->SetMouseOverBrush("BLACK");
-		//	readyTextObject->SetText(readyText);
-		//}
-		//readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -50.0f });
+#ifdef NETWORK
+		cs_packet_ready packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_READY;
 
-		// 지금은 준비 버튼을 누르면 바로 게임 시작
+		wstring text{ readyTextObject->GetText() };
+		if (text == readyText)
+		{
+			readyTextObject->SetBrush("BLUE");
+			readyTextObject->SetMouseOverBrush("BLUE");
+			readyTextObject->SetText(readyOkText);
+			packet.state = true;
+		}
+		else
+		{
+			readyTextObject->SetBrush("BLACK");
+			readyTextObject->SetMouseOverBrush("BLACK");
+			readyTextObject->SetText(readyText);
+			packet.state = false;
+		}
+		readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+#else
 		g_gameFramework.SetNextScene(eScene::GAME);
+#endif
 	};
 
 	auto leftCallBack =
@@ -426,4 +467,88 @@ void LobbyScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comm
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void LobbyScene::ProcessPacket()
+{
+	char buf[2]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{ 0 }, recvFlag{ 0 };
+	if (WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr) == SOCKET_ERROR)
+		error_display("RecvSizeType");
+
+	UCHAR size{ static_cast<UCHAR>(buf[0]) };
+	UCHAR type{ static_cast<UCHAR>(buf[1]) };
+
+	switch (type)
+	{
+	case SC_PACKET_LOGIN_OK:
+		RecvLoginOkPacket();
+		break;
+	case SC_PACKET_READY:
+		RecvReady();
+		break;
+	}
+}
+
+void LobbyScene::RecvLoginOkPacket()
+{
+	// 플레이어정보 + 닉네임
+	char buf[sizeof(PlayerData) + 10]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	if (!m_player) return;
+
+	PlayerData data{};
+	char name[10]{};
+	memcpy(&data, buf, sizeof(data));
+	memcpy(&name, &buf[sizeof(PlayerData)], sizeof(name));
+	OutputDebugStringA(("RECV LOGIN OK PACKET (id : " + to_string(data.id) + ")\n").c_str());
+
+	if (m_player->GetId() == -1)
+	{
+		m_player->SetId(static_cast<int>(data.id));
+		return;
+	}
+
+	if (m_player->GetId() != data.id)
+		for (auto& p : m_multiPlayers)
+		{
+			if (p) continue;
+			p = make_unique<Player>(TRUE);
+			p->SetMesh(s_meshes["PLAYER"]);
+			p->SetShader(s_shaders["ANIMATION"]);
+			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			p->SetGunMesh(s_meshes["AR"]);
+			p->SetGunShader(s_shaders["LINK"]);
+			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
+			p->SetGunType(eGunType::AR);
+			p->PlayAnimation("IDLE");
+			p->SetId(static_cast<int>(data.id));
+			p->ApplyServerData(data);
+			if (m_loginCount == 0)
+			{
+				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
+				++m_loginCount;
+			}
+			else if (m_loginCount == 1)
+			{
+				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
+			}
+			break;
+		}
+}
+
+void LobbyScene::RecvReady()
+{
+	// 아이디, 준비상태
+	char buf[1 + 1]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf[0]) };
+	bool state{ static_cast<bool>(buf[1]) };
 }

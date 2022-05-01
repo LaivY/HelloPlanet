@@ -11,12 +11,14 @@ public:
 
 	int OnInit(SOCKET socket);
 	void AcceptThread(SOCKET socket);
+	void ProcessRecvPacket(const int id);
+
 	void SendLoginOkPacket(const int id, const char* name) const;
 	void SendReadyToPlayPacket(const int id, const eWeaponType weaponType);
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();
-	void ProcessRecvPacket(const int id);
+
 	void Update(FLOAT deltaTime);
 	void SpawnMonsters(FLOAT deltaTime);
 	void CollisionCheck();

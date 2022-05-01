@@ -114,17 +114,7 @@ void GameFramework::OnRender()
 
 void GameFramework::OnDestroy()
 {
-#ifdef NETWORK
-	if (g_isConnected)
-	{
-		g_isConnected = FALSE;
-		if (g_networkThread.joinable())
-			g_networkThread.join();
-		closesocket(g_socket);
-		WSACleanup();
-	}
-#endif
-
+	if (m_scene) m_scene->OnDestroy();
 	WaitForPreviousFrame();
 	CloseHandle(m_fenceEvent);
 }
@@ -628,6 +618,7 @@ void GameFramework::ChangeScene()
 {
 	WaitForPreviousFrame();
 
+	//m_scene.reset();
 	switch (m_nextScene)
 	{
 	case eScene::LOADING:

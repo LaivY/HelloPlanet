@@ -13,6 +13,7 @@ Scene::Scene()
 
 void Scene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory) { }
 void Scene::OnInitEnd() { }
+void Scene::OnDestroy() { }
 void Scene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
 void Scene::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
 void Scene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
