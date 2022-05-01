@@ -46,10 +46,11 @@ public:
 	void RecvLoginOkPacket();
 	void RecvReadyPacket();
 	void RecvSelectWeaponPacket();
+	void RecvLogoutOkPacket();
 
 private:
 	BOOL								m_isReadyToPlay;
-	INT									m_loginCount;
+	BOOL								m_isLogout;
 	INT									m_leftSlotPlayerId;
 	INT									m_rightSlotPlayerId;
 	TextObject*							m_leftSlotReadyText;

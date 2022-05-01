@@ -52,7 +52,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
-		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
+		std::cout << "[" << static_cast<int>(player.data.id) << " client] connect IP: " << ipInfo << std::endl;
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		//isAccept = true;
 	}
@@ -75,8 +75,6 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
 
-	std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-
 	// 모든 클라이언트에게 로그인한 클라이언트의 정보 전송
 	for (const auto& c : clients)
 	{
@@ -97,6 +95,8 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
 		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
 	}
+
+	std::cout << "[" << id << " client] Login Packet Received" << std::endl;
 }
 
 void NetworkFramework::SendReadyToPlayPacket(const int id, const eWeaponType weaponType)
@@ -141,7 +141,7 @@ void NetworkFramework::SendPlayerDataPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(cl.data.id) << " SESSION] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(cl.data.id) << " client] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendPlayerData");
 		}
 	}
@@ -197,7 +197,7 @@ void NetworkFramework::SendBulletHitPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " SESSION] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " client] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendBulletHitData");
 		}
 	}
@@ -226,7 +226,7 @@ void NetworkFramework::SendMonsterDataPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(player.data.id) << " SESSION] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(player.data.id) << " client] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendMonsterData");
 		}
 	}
@@ -248,7 +248,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
 			{
-				std::cout << "[" << static_cast<int>(cl.data.id) << " client] Abortive Close " << std::endl;
+				std::cout << "[" << id << " client] Abortive Close " << std::endl;
 				Disconnect(cl.data.id);
 				break;
 			}
@@ -256,7 +256,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		}
 		if (recvd_byte == 0)
 		{
-			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Graceful Close " << std::endl;
+			std::cout << "[" << id << " client] Graceful Close " << std::endl;
 			Disconnect(cl.data.id);
 			break;
 		}
@@ -297,24 +297,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				if (c.data.id == id) continue;
 				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 			}
-
-			//// weaponType
-			//char subBuf[1 + 1 + 1];
-			//wsabuf = { sizeof(subBuf), subBuf };
-			//retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-			//if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
-			//cl.weaponType = static_cast<eWeaponType>(subBuf[2]);
-			//// readyCount가 3명일때 시작
-			//readyCount++;
-			//if (readyCount >= MAX_USER)
-			//{
-			//	isAccept = true;
-			//	for(const auto & pl:clients)
-			//		SendReadyToPlayPacket(id, pl.weaponType);
-			//	readyCount = 0;
-			//}
-
-			std::cout << id << "'s weapon state : " << static_cast<int>(subBuf) << std::endl;
+			std::cout << "[" << id << " client] weapon Type : " << static_cast<int>(subBuf) << std::endl;
 			break;
 		}
 		case CS_PACKET_READY:
@@ -326,26 +309,23 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_READY)");
 
 			// 준비 완료한 플레이어 수 최신화
-			bool state{ static_cast<bool>(subBuf) };
-			if (state)
-				++readyCount;
-			else
-				--readyCount;
+			bool isReady{ static_cast<bool>(subBuf) };
+			cl.isReady = isReady;
 
 			// 다른 플레이어에게 해당 플레이어가 준비 완료했다고 알림
 			sc_packet_ready packet{};
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_READY;
 			packet.id = id;
-			packet.state = state;
+			packet.isReady = isReady;
 
 			for (const auto& c : clients)
 			{
 				if (c.data.id == id) continue;
+				if (!c.data.isActive) continue;
 				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 			}
-
-			std::cout << id << "'s ready state : " << std::boolalpha << state << std::endl;
+			std::cout << "[" << id << " client] Ready : " << std::boolalpha << isReady << std::endl;
 			break;
 		}
 		case CS_PACKET_UPDATE_LEGS:
@@ -384,7 +364,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			// 총알은 수신하자마자 모든 클라이언트들에게 송신
 			for (const auto& c : clients)
 			{
-				if(c.data.isActive == false) continue;
+				if (!c.data.isActive) continue;
 				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
 			}
@@ -393,8 +373,31 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			bullets.push_back(packet.data);
 			break;
 		}
+		case CS_PACKET_LOGOUT:
+		{
+			sc_packet_logout_ok packet{};
+			packet.size = sizeof(packet);
+			packet.type = SC_PACKET_LOGOUT_OK;
+			packet.id = id;
+
+			char subBuf[sizeof(packet)]{};
+			wsabuf = { sizeof(subBuf), subBuf };
+			memcpy(subBuf, &packet, sizeof(packet));
+			DWORD sent_byte;
+
+			// 모든 클라이언트에게 이 플레이어가 나갔다고 송신
+			for (const auto& c : clients)
+			{
+				if (!c.data.isActive) continue;
+				retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+			}
+
+			std::cout << "[" << id << " client] Logout" << std::endl;
+			break;
+		}
 		default:
-			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Server Received Unknown Packet" << std::endl;
+			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Server Received Unknown Packet (type : " << static_cast<int>(type) << ")" << std::endl;
 			break;
 		}
 	}

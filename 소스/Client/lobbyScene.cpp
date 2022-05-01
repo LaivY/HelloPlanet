@@ -1,7 +1,8 @@
 ﻿#include "lobbyScene.h"
 #include "framework.h"
 
-LobbyScene::LobbyScene() : m_isReadyToPlay{ FALSE }, m_loginCount{ 0 }, m_leftSlotPlayerId{ -1 }, m_rightSlotPlayerId{ -1 }, m_pcbGameScene{ nullptr }
+LobbyScene::LobbyScene() : m_isReadyToPlay{ FALSE }, m_isLogout{ FALSE },
+						   m_leftSlotPlayerId{ -1 }, m_rightSlotPlayerId{ -1 }, m_leftSlotReadyText{ nullptr }, m_rightSlotReadyText{ nullptr }, m_pcbGameScene{ nullptr }
 {
 
 }
@@ -10,13 +11,22 @@ LobbyScene::~LobbyScene()
 {
 	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
 #ifdef NETWORK
-	if (!m_isReadyToPlay)
+	if (m_isReadyToPlay)
 	{
-		m_isReadyToPlay = TRUE;
-		closesocket(g_socket);
-		WSACleanup();
+		// 모두 준비완료가 되서 게임 씬으로 넘어가는 경우
+	}
+	else
+	{
+		// 강제종료, 나가기 버튼을 누른 경우
+		cs_packet_logout packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_LOGOUT;
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
 		if (g_networkThread.joinable())
 			g_networkThread.join();
+		closesocket(g_socket);
+		WSACleanup();
 	}
 #endif
 }
@@ -146,7 +156,7 @@ void LobbyScene::RecvPacket()
 	memcpy(packet.name, name, sizeof(char) * 10);
 	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 
-	while (!m_isReadyToPlay)
+	while (!m_isReadyToPlay && !m_isLogout)
 		ProcessPacket();
 }
 
@@ -227,14 +237,14 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 			readyTextObject->SetBrush("BLUE");
 			readyTextObject->SetMouseOverBrush("BLUE");
 			readyTextObject->SetText(readyOkText);
-			packet.state = true;
+			packet.isReady = true;
 		}
 		else
 		{
 			readyTextObject->SetBrush("BLACK");
 			readyTextObject->SetMouseOverBrush("BLACK");
 			readyTextObject->SetText(readyText);
-			packet.state = false;
+			packet.isReady = false;
 		}
 		readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
@@ -527,6 +537,9 @@ void LobbyScene::ProcessPacket()
 	case SC_PACKET_SELECT_WEAPON:
 		RecvSelectWeaponPacket();
 		break;
+	case SC_PACKET_LOGOUT_OK:
+		RecvLogoutOkPacket();
+		return;
 	}
 }
 
@@ -567,15 +580,14 @@ void LobbyScene::RecvLoginOkPacket()
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
-			if (m_loginCount == 0)
+			if (m_leftSlotPlayerId == -1)
 			{
 				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
 				m_leftSlotPlayerId = static_cast<int>(data.id);
 				m_leftSlotReadyText->SetText(TEXT("준비중"));
 				m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
-				++m_loginCount;
 			}
-			else if (m_loginCount == 1)
+			else if (m_rightSlotPlayerId == -1)
 			{
 				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
 				m_rightSlotPlayerId = static_cast<int>(data.id);
@@ -660,5 +672,43 @@ void LobbyScene::RecvSelectWeaponPacket()
 		}
 		p->PlayAnimation("RELOAD");
 		break;
+	}
+}
+
+void LobbyScene::RecvLogoutOkPacket()
+{
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf) };
+	if (m_player->GetId() == id)
+	{
+		m_isLogout = TRUE;
+		return;
+	}
+
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		if (p->GetId() != id) continue;
+
+		if (m_leftSlotPlayerId == id)
+		{
+			m_leftSlotPlayerId = -1;
+			m_leftSlotReadyText->SetBrush("BLACK");
+			m_leftSlotReadyText->SetText(TEXT("대기중"));
+			m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+		}
+		else if (m_rightSlotPlayerId == id)
+		{
+			m_rightSlotPlayerId = -1;
+			m_rightSlotReadyText->SetBrush("BLACK");
+			m_rightSlotReadyText->SetText(TEXT("대기중"));
+			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+		}
+		p.reset();
+		return;
 	}
 }
