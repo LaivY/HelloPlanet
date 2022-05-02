@@ -269,17 +269,17 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		case eGunType::AR:
 			m_player->SetGunMesh(s_meshes["MG"]);
 			m_player->SetGunType(eGunType::MG);
-			packet.weaponType = eClientWeaponType::MG;
+			packet.weaponType = eWeaponType::MG;
 			break;
 		case eGunType::SG:
 			m_player->SetGunMesh(s_meshes["AR"]);
 			m_player->SetGunType(eGunType::AR);
-			packet.weaponType = eClientWeaponType::AR;
+			packet.weaponType = eWeaponType::AR;
 			break;
 		case eGunType::MG:
 			m_player->SetGunMesh(s_meshes["SG"]);
 			m_player->SetGunType(eGunType::SG);
-			packet.weaponType = eClientWeaponType::SG;
+			packet.weaponType = eWeaponType::SG;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
@@ -302,17 +302,17 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		case eGunType::AR:
 			m_player->SetGunMesh(s_meshes["SG"]);
 			m_player->SetGunType(eGunType::SG);
-			packet.weaponType = eClientWeaponType::SG;
+			packet.weaponType = eWeaponType::SG;
 			break;
 		case eGunType::SG:
 			m_player->SetGunMesh(s_meshes["MG"]);
 			m_player->SetGunType(eGunType::MG);
-			packet.weaponType = eClientWeaponType::MG;
+			packet.weaponType = eWeaponType::MG;
 			break;
 		case eGunType::MG:
 			m_player->SetGunMesh(s_meshes["AR"]);
 			m_player->SetGunType(eGunType::AR);
-			packet.weaponType = eClientWeaponType::AR;
+			packet.weaponType = eWeaponType::AR;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
@@ -560,7 +560,7 @@ void LobbyScene::RecvLoginOkPacket()
 
 	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
 	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
-	auto weapon = static_cast<eClientWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
+	auto weapon = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
 
 	OutputDebugStringA(("RECV LOGIN OK PACKET (id : " + to_string(data.id) + ")\n").c_str());
 	
@@ -653,7 +653,7 @@ void LobbyScene::RecvSelectWeaponPacket()
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
 	int id{ static_cast<int>(buf[0]) };
-	eClientWeaponType type{ static_cast<eClientWeaponType>(buf[1]) };
+	eWeaponType type{ static_cast<eWeaponType>(buf[1]) };
 
 	for (auto& p : m_multiPlayers)
 	{
@@ -662,15 +662,15 @@ void LobbyScene::RecvSelectWeaponPacket()
 
 		switch (type)
 		{
-		case eClientWeaponType::AR:
+		case eWeaponType::AR:
 			p->SetGunMesh(s_meshes["AR"]);
 			p->SetGunType(eGunType::AR);
 			break;
-		case eClientWeaponType::SG:
+		case eWeaponType::SG:
 			p->SetGunMesh(s_meshes["SG"]);
 			p->SetGunType(eGunType::SG);
 			break;
-		case eClientWeaponType::MG:
+		case eWeaponType::MG:
 			p->SetGunMesh(s_meshes["MG"]);
 			p->SetGunType(eGunType::MG);
 			break;

@@ -51,7 +51,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		player.isReady = false;
 		constexpr char dummyName[10] = "unknown\0";
 		strcpy_s(player.name, sizeof(dummyName), dummyName);
-		player.weaponType = eClientWeaponType::AR;
+		player.weaponType = eWeaponType::AR;
 		player.lock.unlock();
 
 		char ipInfo[20]{};
@@ -326,7 +326,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
-			cl.weaponType = static_cast<eClientWeaponType>(subBuf[0]);
+			cl.weaponType = static_cast<eWeaponType>(subBuf[0]);
 			SendSelectWeaponPacket(cl);
 			break;
 		}
@@ -352,7 +352,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				sc_packet_change_scene sendPacket{};
 				sendPacket.size = sizeof(sendPacket);
 				sendPacket.type = SC_PACKET_CHANGE_SCENE;
-				sendPacket.sceneType = eClientSceneType::INGAME;
+				sendPacket.sceneType = eSceneType::INGAME;
 
 				char sendBuf[sizeof(sendPacket)]{};
 				WSABUF sendWsabuf = { sizeof(subBuf), sendBuf };

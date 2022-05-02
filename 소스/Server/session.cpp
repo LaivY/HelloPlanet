@@ -1,6 +1,6 @@
 ﻿#include "session.h"
 
-Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eClientWeaponType::AR }, isReady{ FALSE }
+Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE }
 {
 	strcpy_s(name, "Player\0");
 }

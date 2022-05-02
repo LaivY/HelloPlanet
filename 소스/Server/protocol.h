@@ -55,14 +55,14 @@ enum class eMobAnimationType : char
 	DIE
 };
 
-enum class eClientSceneType : char
+enum class eSceneType : char
 {
 	LOBBY,
 	INGAME,
 	ENDING
 };
 
-enum class eClientWeaponType : char
+enum class eWeaponType : char
 {
 	AR,
 	SG,
@@ -123,7 +123,7 @@ struct cs_packet_select_weapon
 {
 	UCHAR				size;
 	UCHAR				type;
-	eClientWeaponType	weaponType;
+	eWeaponType	weaponType;
 };
 
 struct cs_packet_ready
@@ -160,7 +160,7 @@ struct sc_packet_login_confirm
 	PlayerData	data;
 	CHAR		name[MAX_NAME_SIZE];
 	bool		isReady;
-	eClientWeaponType	weaponType;
+	eWeaponType	weaponType;
 };
 
 struct sc_packet_logout_ok
@@ -183,14 +183,14 @@ struct sc_packet_select_weapon
 	UCHAR		size;
 	UCHAR		type;
 	CHAR		id;
-	eClientWeaponType	weaponType;
+	eWeaponType	weaponType;
 };
 
 struct sc_packet_change_scene
 {
 	UCHAR		size;
 	UCHAR		type;
-	eClientSceneType	sceneType;
+	eSceneType	sceneType;
 };
 
 struct sc_packet_update_client
