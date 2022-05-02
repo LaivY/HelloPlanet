@@ -604,9 +604,9 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 void Player::SendPlayerData() const
 {
 #ifdef NETWORK
-	cs_packet_update_legs packet;
+	cs_packet_update_player packet;
 	packet.size = sizeof(packet);
-	packet.type = CS_PACKET_UPDATE_LEGS;
+	packet.type = CS_PACKET_UPDATE_PLAYER;
 	packet.aniType = GetAnimationType();
 	packet.upperAniType = GetUpperAnimationType();
 	packet.pos = GetPosition();

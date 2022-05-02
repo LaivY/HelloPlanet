@@ -772,7 +772,7 @@ void GameScene::RecvPacket()
 	UCHAR type{ static_cast<UCHAR>(buf[1]) };
 	switch (type)
 	{
-	case SC_PACKET_LOGIN_OK:
+	case SC_PACKET_LOGIN_CONFIRM:
 		RecvLoginOk();
 		break;
 	case SC_PACKET_UPDATE_CLIENT:

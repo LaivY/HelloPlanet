@@ -12,14 +12,14 @@ constexpr int  MAX_NAME_SIZE = 10;
 constexpr char CS_PACKET_LOGIN = 1;
 constexpr char CS_PACKET_SELECT_WEAPON = 2;
 constexpr char CS_PACKET_READY = 3;
-constexpr char CS_PACKET_UPDATE_LEGS = 4;
+constexpr char CS_PACKET_UPDATE_PLAYER = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
 constexpr char CS_PACKET_LOGOUT = 127;
 
-constexpr char SC_PACKET_LOGIN_OK = 1;
+constexpr char SC_PACKET_LOGIN_CONFIRM = 1;
 constexpr char SC_PACKET_SELECT_WEAPON = 2;
-constexpr char SC_PACKET_READY = 3;
+constexpr char SC_PACKET_READY_CHECK = 3;
 constexpr char SC_PACKET_CHANGE_SCENE = 4;
 constexpr char SC_PACKET_UPDATE_CLIENT = 5;
 constexpr char SC_PACKET_BULLET_FIRE = 6;
@@ -121,8 +121,8 @@ struct cs_packet_logout
 
 struct cs_packet_select_weapon
 {
-	UCHAR		size;
-	UCHAR		type;
+	UCHAR				size;
+	UCHAR				type;
 	eClientWeaponType	weaponType;
 };
 
@@ -133,7 +133,7 @@ struct cs_packet_ready
 	bool		isReady; // true : 준비완료
 };
 
-struct cs_packet_update_legs
+struct cs_packet_update_player
 {
 	UCHAR				size;
 	UCHAR				type;
@@ -153,12 +153,14 @@ struct cs_packet_bullet_fire
 
 // ---------------------------------
 
-struct sc_packet_login_ok
+struct sc_packet_login_confirm
 {
 	UCHAR		size;
 	UCHAR		type;
 	PlayerData	data;
 	CHAR		name[MAX_NAME_SIZE];
+	bool		isReady;
+	eClientWeaponType	weaponType;
 };
 
 struct sc_packet_logout_ok
@@ -168,7 +170,7 @@ struct sc_packet_logout_ok
 	CHAR	id;
 };
 
-struct sc_packet_ready
+struct sc_packet_ready_check
 {
 	UCHAR		size;
 	UCHAR		type;
@@ -218,5 +220,4 @@ struct sc_packet_update_monsters
 	UCHAR		type;
 	MonsterData	data[MAX_MONSTER];
 };
-
 #pragma pack(pop)

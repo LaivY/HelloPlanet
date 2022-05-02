@@ -37,7 +37,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	while (true)
 	{
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
-		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept");
+		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept()");
 
 		CHAR id{ GetNewId() };
 		Session& player = clients[id];
@@ -138,7 +138,7 @@ void NetworkFramework::SendPlayerDataPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(cl.data.id) << " client] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(cl.data.id) << " Session] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendPlayerData");
 		}
 	}
@@ -146,34 +146,6 @@ void NetworkFramework::SendPlayerDataPacket()
 	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
 	for (auto& c : clients)
 		c.data.upperAniType = eUpperAnimationType::NONE;
-
-	/*
-	for (const auto& player : clients)
-	{
-		if (!player.data.isActive) continue;
-		sc_packet_update_client packet{};
-		for (int i = 0; i < MAX_USER; ++i)	{
-			packet.data[i] = clients[i].data;
-		}
-		packet.size = sizeof(packet);
-		packet.type = SC_PACKET_UPDATE_CLIENT;
-		//packet.data = player.data;
-		char buf[sizeof(packet)];
-		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-		WSABUF wsabuf{ sizeof(buf), buf };
-		DWORD sent_byte;
-		for (const auto& cl : clients)
-		{
-			if (!cl.data.isActive) continue;
-			int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR)
-			{
-				if (WSAGetLastError() == WSAECONNRESET)
-					std::cout <<  "[" << static_cast<int>(cl.data.id) << " SESSION] Disconnect" << std::endl;
-				else errorDisplay(WSAGetLastError(), "SendPlayerData");
-			}
-		}
-	}*/
 }
 
 void NetworkFramework::SendBulletHitPacket()
@@ -194,7 +166,7 @@ void NetworkFramework::SendBulletHitPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " client] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " Session] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendBulletHitData");
 		}
 	}
@@ -223,7 +195,7 @@ void NetworkFramework::SendMonsterDataPacket()
 		if (retVal == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(player.data.id) << " client] Disconnect" << std::endl;
+				std::cout << "[" << static_cast<int>(player.data.id) << " Session] Disconnect" << std::endl;
 			else errorDisplay(WSAGetLastError(), "SendMonsterData");
 		}
 	}
@@ -245,7 +217,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
 			{
-				std::cout << "[" << id << " client] Abortive Close " << std::endl;
+				std::cout << "[" << id << " Session] Abortive Close " << std::endl;
 				Disconnect(cl.data.id);
 				break;
 			}
@@ -253,7 +225,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		}
 		if (recvd_byte == 0)
 		{
-			std::cout << "[" << id << " client] Graceful Close " << std::endl;
+			std::cout << "[" << id << " Session] Graceful Close " << std::endl;
 			Disconnect(cl.data.id);
 			break;
 		}
@@ -349,18 +321,18 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 					if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_CHANGE_SCENE)");
 				}
 
-				std::cout << "[Send All Client Ready]" << std::endl;
+				std::cout << "[Send All Client] Ready To Play" << std::endl;
 			}
 			readyCount = 0;
 			break;
 		}
-		case CS_PACKET_UPDATE_LEGS:
+		case CS_PACKET_UPDATE_PLAYER:
 		{
 			// aniType, upperAniType, pos, velocity, yaw
 			char subBuf[1 + 1 + 12 + 12 + 4];
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_UPDATE_LEGS)");
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_UPDATE_PLAYER)");
 			cl.data.aniType = static_cast<eAnimationType>(subBuf[0]);
 			cl.data.upperAniType = static_cast<eUpperAnimationType>(subBuf[1]);
 			memcpy(&cl.data.pos, &subBuf[2], sizeof(cl.data.pos));
@@ -419,11 +391,11 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
 			}
 
-			std::cout << "[" << id << " client] Logout" << std::endl;
+			std::cout << "[" << id << " Session] Logout" << std::endl;
 			break;
 		}
 		default:
-			std::cout << "[" << static_cast<int>(cl.data.id) << " client] Server Received Unknown Packet (type : " << static_cast<int>(type) << ")" << std::endl;
+			std::cout << "[" << static_cast<int>(cl.data.id) << " Session] Server Received Unknown Packet (type : " << static_cast<int>(type) << ")" << std::endl;
 			break;
 		}
 	}

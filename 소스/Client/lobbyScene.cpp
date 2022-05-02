@@ -528,10 +528,10 @@ void LobbyScene::ProcessPacket()
 
 	switch (type)
 	{
-	case SC_PACKET_LOGIN_OK:
+	case SC_PACKET_LOGIN_CONFIRM:
 		RecvLoginOkPacket();
 		break;
-	case SC_PACKET_READY:
+	case SC_PACKET_READY_CHECK:
 		RecvReadyPacket();
 		break;
 	case SC_PACKET_SELECT_WEAPON:
