@@ -13,8 +13,9 @@ public:
 	void AcceptThread(SOCKET socket);
 	void ProcessRecvPacket(const int id);
 
-	void SendLoginOkPacket(const int id, const char* name) const;
-	void SendReadyPacket(const int id, const eClientWeaponType weaponType) const;
+	void SendLoginOkPacket(const Session& player) const;
+	void SendSelectWeaponPacket(const Session& player) const;
+	void SendReadyCheckPacket(const Session& player) const;
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();

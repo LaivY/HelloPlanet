@@ -48,27 +48,33 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		player.data.aniType = eAnimationType::IDLE;
 		player.data.upperAniType = eUpperAnimationType::NONE;
 		player.socket = cSocket;
+		player.isReady = false;
+		constexpr char dummyName[10] = "unknown\0";
+		strcpy_s(player.name, sizeof(dummyName), dummyName);
+		player.weaponType = eClientWeaponType::AR;
 		player.lock.unlock();
 
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
-		std::cout << "[" << static_cast<int>(player.data.id) << " client] connect IP: " << ipInfo << std::endl;
+		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
 		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		//isAccept = true;
 	}
 }
 
-void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
+void NetworkFramework::SendLoginOkPacket(const Session& player) const
 {
-	sc_packet_login_ok packet{};
+	sc_packet_login_confirm packet{};
 	packet.size = sizeof(packet);
-	packet.type = SC_PACKET_LOGIN_OK;
-	packet.data.id = id;
+	packet.type = SC_PACKET_LOGIN_CONFIRM;
+	packet.data.id = player.data.id;
 	packet.data.isActive = true;
 	packet.data.aniType = eAnimationType::IDLE;
 	packet.data.upperAniType = eUpperAnimationType::NONE;
 	packet.data.pos = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
-	strcpy_s(packet.name, sizeof(packet.name), name);
+	strcpy_s(packet.name, sizeof(packet.name), player.name);
+	packet.isReady = player.isReady;
+	packet.weaponType = player.weaponType;
 
 	char buf[sizeof(packet)];
 	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
@@ -76,47 +82,114 @@ void NetworkFramework::SendLoginOkPacket(const int id, const char* name) const
 	DWORD sentByte;
 
 	// 모든 클라이언트에게 로그인한 클라이언트의 정보 전송
-	for (const auto& c : clients)
+	for (const auto& other : clients)
 	{
-		if (!c.data.isActive) continue;
-		WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (!other.data.isActive) continue;
+		const int retVal = WSASend(other.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_LOGIN_CONFIRM)");
 	}
 
-	// 로그인한 클라이언트에게 이미 접속해있는 클라이언트 정보 전송
-	for (const auto& c : clients)
+	// 로그인한 클라이언트에게 이미 접속해있는 클라이언트들의 정보 전송
+	for (const auto& other : clients)
 	{
-		if (!c.data.isActive) continue;
-		if (static_cast<int>(c.data.id) == id) continue;
+		if (!other.data.isActive) continue;
+		if (static_cast<int>(other.data.id) == player.data.id) continue;
 
-		sc_packet_login_ok packet{};
-		packet.size = sizeof(packet);
-		packet.type = SC_PACKET_LOGIN_OK;
-		packet.data = c.data;
-		memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-		WSASend(clients[id].socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		sc_packet_login_confirm subPacket{};
+		subPacket.size = sizeof(subPacket);
+		subPacket.type = SC_PACKET_LOGIN_CONFIRM;
+		subPacket.data = other.data;
+		strcpy_s(subPacket.name, sizeof(subPacket.name), other.name);
+		subPacket.isReady = other.isReady;
+		subPacket.weaponType = other.weaponType;
+
+		memcpy(buf, reinterpret_cast<char*>(&subPacket), sizeof(subPacket));
+		const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_LOGIN_CONFIRM)");
 	}
 
-	std::cout << "[" << id << " client] Login Packet Received" << std::endl;
+	std::cout << "[" << player.data.id << " Session] Login Packet Received" << std::endl;
 }
 
-//void NetworkFramework::SendReadyToPlayPacket(const int id, const eClientWeaponType weaponType)
-//{
-	//sc_packet_ready_to_play packet{};
-	//packet.size = sizeof(packet);
-	//packet.type = SC_PACKET_SELECT_WEAPON;
-	//packet.weaponType = weaponType;
-	//char buf[sizeof(packet)];
-	//memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	//WSABUF wsabuf{ sizeof(buf), buf };
-	//DWORD sentByte;
-	//std::cout << "[" << static_cast<int>(buf[2]) << " Session] Login Packet Received" << std::endl;
-	//// 모든 클라이언트에게 클라이언트의 무기 정보 전송
-	//for (const auto& c : clients)
-	//{
-	//	if (!c.data.isActive) continue;
-	//	WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-	//}
-//}
+void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
+{
+	sc_packet_select_weapon packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_SELECT_WEAPON;
+	packet.id = player.data.id;
+	packet.weaponType = player.weaponType;
+
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sentByte;
+
+	// 모든 클라이언트에게 클라이언트의 무기상태 전송
+	for (const auto& c : clients)
+	{
+		if (c.data.id == player.data.id) continue;
+		if (!c.data.isActive) continue;
+		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_SELECT_WEAPON)");
+	}
+
+	// 클라이언트에게 이미 접속해있는 클라이언트 무기상태 전송
+	/*for (const auto& c : clients)
+	{
+		if (!c.data.isActive) continue;
+		if (static_cast<int>(c.data.id) == player.data.id) continue;
+		sc_packet_select_weapon subPacket{};
+		subPacket.size = sizeof(subPacket);
+		subPacket.type = SC_PACKET_LOGIN_CONFIRM;
+		subPacket.id = c.data.id;
+		subPacket.weaponType = c.weaponType;
+		memcpy(buf, reinterpret_cast<char*>(&subPacket), sizeof(subPacket));
+		const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_SELECT_WEAPON)");
+	}*/
+
+	std::cout << "[" << player.data.id << " Session] Select Weapon Packet Received" << std::endl;
+}
+
+void NetworkFramework::SendReadyCheckPacket(const Session& player) const
+{
+	sc_packet_ready_check packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_READY_CHECK;
+	packet.id = player.data.id;
+	packet.isReady = player.isReady;
+
+	char buf[sizeof(packet)];
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sentByte;
+
+	// 모든 클라이언트에게 이 클라이언트의 준비상태 전송
+	for (const auto& c : clients)
+	{
+		if (c.data.id == player.data.id) continue;
+		if (!c.data.isActive) continue;
+		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_READY_CHECK)");
+	}
+
+	// 클라이언트에게 이미 접속해있는 클라이언트 준비상태 전송
+	/*for (const auto& c : clients)
+	{
+		if (!c.data.isActive) continue;
+		if (static_cast<int>(c.data.id) == player.data.id) continue;
+		sc_packet_ready_check subPacket{};
+		subPacket.size = sizeof(subPacket);
+		subPacket.type = SC_PACKET_LOGIN_CONFIRM;
+		subPacket.id = c.data.id;
+		subPacket.isReady = c.isReady;
+		memcpy(buf, reinterpret_cast<char*>(&subPacket), sizeof(subPacket));
+		const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_READY_CHECK)");
+	}*/
+
+	std::cout << "[" << player.data.id << " Session] Ready Packet Received" << std::endl;
+}
 
 void NetworkFramework::SendPlayerDataPacket()
 {
@@ -243,59 +316,31 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_LOGIN)");
 			memcpy(&cl.name, subBuf, sizeof(cl.name));
-			SendLoginOkPacket(id, cl.name);
+			SendLoginOkPacket(cl);
 			break;
 		}
 		case CS_PACKET_SELECT_WEAPON:
 		{
 			// 무기 타입
-			char subBuf{};
-			wsabuf = { sizeof(subBuf), &subBuf };
+			char subBuf[1]{};
+			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_SELECT_WEAPON)");
-
-			// 다른 플레이어게 전송
-			sc_packet_select_weapon packet{};
-			packet.size = sizeof(packet);
-			packet.type = SC_PACKET_SELECT_WEAPON;
-			packet.id = id;
-			packet.weaponType = static_cast<eClientWeaponType>(subBuf);
-
-			for (const auto& c : clients)
-			{
-				if (c.data.id == id) continue;
-				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
-			}
-			std::cout << "[" << id << " client] weapon Type : " << static_cast<int>(subBuf) << std::endl;
+			cl.weaponType = static_cast<eClientWeaponType>(subBuf[0]);
+			SendSelectWeaponPacket(cl);
 			break;
 		}
 		case CS_PACKET_READY:
 		{
 			// 준비 상태
-			char subBuf{};
-			wsabuf = { sizeof(subBuf), &subBuf };
+			char subBuf[1]{};
+			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_READY)");
-
-			// 준비 완료한 플레이어 수 최신화
-			bool isReady{ static_cast<bool>(subBuf) };
-			cl.isReady = isReady;
-
-			// 다른 플레이어에게 해당 플레이어가 준비 완료했다고 알림
-			sc_packet_ready packet{};
-			packet.size = sizeof(packet);
-			packet.type = SC_PACKET_READY;
-			packet.id = id;
-			packet.isReady = isReady;
-
-			for (const auto& c : clients)
-			{
-				if (c.data.id == id) continue;
-				if (!c.data.isActive) continue;
-				send(c.socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
-			}
-			std::cout << "[" << id << " client] Ready : " << std::boolalpha << isReady << std::endl;
-
+			cl.isReady = subBuf[0];
+			SendReadyCheckPacket(cl);
+			
+			// 게임 시작 확인
 			for (const auto& c : clients)
 			{
 				if (!c.data.isActive) continue;

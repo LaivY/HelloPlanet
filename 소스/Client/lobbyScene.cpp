@@ -545,8 +545,8 @@ void LobbyScene::ProcessPacket()
 
 void LobbyScene::RecvLoginOkPacket()
 {
-	// 플레이어정보 + 닉네임
-	char buf[sizeof(PlayerData) + 10]{};
+	// 플레이어정보 + 닉네임 + 준비상태 + 무기상태
+	char buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1 + 1]{};
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
@@ -554,11 +554,16 @@ void LobbyScene::RecvLoginOkPacket()
 	if (!m_player) return;
 
 	PlayerData data{};
-	char name[10]{};
+	char name[MAX_NAME_SIZE]{};
 	memcpy(&data, buf, sizeof(data));
 	memcpy(&name, &buf[sizeof(PlayerData)], sizeof(name));
-	OutputDebugStringA(("RECV LOGIN OK PACKET (id : " + to_string(data.id) + ")\n").c_str());
 
+	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
+	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
+	auto weapon = static_cast<eClientWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
+
+	OutputDebugStringA(("RECV LOGIN OK PACKET (id : " + to_string(data.id) + ")\n").c_str());
+	
 	if (m_player->GetId() == -1)
 	{
 		m_player->SetId(static_cast<int>(data.id));
@@ -576,7 +581,7 @@ void LobbyScene::RecvLoginOkPacket()
 			p->SetGunMesh(s_meshes["AR"]);
 			p->SetGunShader(s_shaders["LINK"]);
 			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-			p->SetGunType(eGunType::AR);
+			p->SetGunType(eGunType::AR); // weapon 값을 여기에 넣고 싶음...
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
