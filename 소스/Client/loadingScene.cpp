@@ -56,7 +56,7 @@ void LoadingScene::Update(FLOAT deltaTime)
 	if (m_isDone && m_thread.joinable())
 	{
 		m_thread.join();
-		g_gameFramework.SetNextScene(eScene::MAIN);
+		g_gameFramework.SetNextScene(eSceneType::MAIN);
 	}
 }
 

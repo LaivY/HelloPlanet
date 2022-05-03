@@ -5,11 +5,6 @@
 #include "timer.h"
 #include "scene.h"
 
-enum class eScene
-{
-	NONE, LOADING, MAIN, LOBBY, GAME
-};
-
 struct cbGameFramework
 {
 	FLOAT deltaTime;
@@ -60,7 +55,7 @@ public:
 
 	void SetIsActive(BOOL isActive);
 	void SetIsFullScreen(BOOL isFullScreen);
-	void SetNextScene(eScene sceneType);
+	void SetNextScene(eSceneType sceneType);
 
 	HWND GetWindow() const;
 	BOOL isActive() const;
@@ -123,5 +118,5 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
-	eScene								m_nextScene;
+	eSceneType								m_nextScene;
 };

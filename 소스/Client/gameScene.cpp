@@ -8,7 +8,15 @@ GameScene::GameScene() : m_pcbGameScene{ nullptr }
 
 GameScene::~GameScene()
 {
+	cs_packet_logout packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGOUT;
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 
+	if (g_networkThread.joinable())
+		g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
@@ -384,32 +392,10 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	bbPlayer->SetMesh(s_meshes["BB_PLAYER"]);
 	bbPlayer->SetShader(s_shaders["WIREFRAME"]);
 
-	// 플레이어 생성
-	m_player = make_shared<Player>();
-	m_player->SetMesh(s_meshes["ARM"]);
-	m_player->SetShader(s_shaders["ANIMATION"]);
-	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-	m_player->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
-	m_player->SetGunShader(s_shaders["LINK"]);
-	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-
-	switch (g_playerGunType)
-	{
-	case eGunType::AR:
-		m_player->SetGunMesh(s_meshes["AR"]);
-		m_player->SetGunType(eGunType::AR);
-		break;
-	case eGunType::SG:
-		m_player->SetGunMesh(s_meshes["SG"]);
-		m_player->SetGunType(eGunType::SG);
-		break;
-	case eGunType::MG:
-		m_player->SetGunMesh(s_meshes["MG"]);
-		m_player->SetGunType(eGunType::MG);
-		break;
-	}
-
+	// 플레이어 설정
+	// 플레이어는 이전 로비 씬에서 만들어져있다.
 	m_player->PlayAnimation("IDLE");
+	m_player->DeleteUpperAnimation();
 	m_player->AddBoundingBox(bbPlayer);
 
 	// 카메라, 플레이어 설정
@@ -429,8 +415,6 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
-
-	
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -545,18 +529,8 @@ void GameScene::CreateExitWindow()
 	okText->SetMouseClickCallBack(
 		[]()
 		{
-			// 서버와의 연결을 끊음
-			if (g_isConnected)
-			{
-				g_isConnected = FALSE;
-				if (g_networkThread.joinable())
-					g_networkThread.join();
-				closesocket(g_socket);
-				WSACleanup();
-			}
-
 			ShowCursor(TRUE);
-			g_gameFramework.SetNextScene(eScene::MAIN);
+			g_gameFramework.SetNextScene(eSceneType::MAIN);
 		}
 	);
 
@@ -766,9 +740,6 @@ void GameScene::RecvPacket()
 	UCHAR type{ static_cast<UCHAR>(buf[1]) };
 	switch (type)
 	{
-	case SC_PACKET_LOGIN_OK:
-		RecvLoginOk();
-		break;
 	case SC_PACKET_UPDATE_CLIENT:
 		RecvUpdateClient();
 		break;
@@ -780,6 +751,9 @@ void GameScene::RecvPacket()
 		break;
 	case SC_PACKET_BULLET_HIT:
 		RecvBulletHit();
+		break;
+	case SC_PACKET_LOGOUT_OK:
+		RecvLogoutOkPacket();
 		break;
 	default:
 	{
@@ -798,7 +772,7 @@ void GameScene::RecvLoginOk()
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	char nameBuf[20]{};
+	char nameBuf[10]{};
 	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
@@ -827,7 +801,7 @@ void GameScene::RecvLoginOk()
 			p->SetGunMesh(s_meshes["SG"]);
 			p->SetGunShader(s_shaders["LINK"]);
 			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-			p->SetGunType(eGunType::SG);
+			p->SetWeaponType(eWeaponType::SG);
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
@@ -939,4 +913,38 @@ void GameScene::RecvBulletHit()
 	dmgText->SetCamera(m_camera);
 	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
 	m_textObjects.push_back(move(dmgText));
+}
+
+void GameScene::RecvLogoutOkPacket()
+{
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf) };
+	if (m_player->GetId() == id)
+	{
+		g_isConnected = FALSE;
+		return;
+	}
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		if (p->GetId() == id)
+		{
+			p.reset();
+			return;
+		}
+	}
+}
+
+void GameScene::SetPlayer(unique_ptr<Player>& player)
+{
+	m_player = move(player);
+}
+
+void GameScene::SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers)
+{
+	m_multiPlayers = move(multiPlayers);
 }

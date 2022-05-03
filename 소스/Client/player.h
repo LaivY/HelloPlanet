@@ -4,11 +4,6 @@
 
 class Camera;
 
-enum class eGunType
-{
-	NONE, AR, SG, MG
-};
-
 class Player : public GameObject
 {
 public:
@@ -26,6 +21,7 @@ public:
 	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
+	void DeleteUpperAnimation();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void SendPlayerData() const;
@@ -34,8 +30,9 @@ public:
 	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
+	void SetIsMultiplayer(BOOL isMultiPlayer) { m_isMultiPlayer = isMultiPlayer; }
 	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
-	void SetGunType(eGunType gunType);
+	void SetWeaponType(eWeaponType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
@@ -43,7 +40,7 @@ public:
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	INT GetId() const;
-	eGunType GetGunType() const;
+	eWeaponType GetWeaponType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
 	INT GetBulletCount() const;
@@ -62,7 +59,7 @@ private:
 	INT								m_id;				// 플레이어 고유 아이디
 	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL							m_isFired;			// 발사 여부
-	eGunType						m_gunType;			// 총 타입
+	eWeaponType						m_weaponType;		// 총 타입
 
 	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
 	FLOAT							m_delayPitch;		// .. x축 회전각

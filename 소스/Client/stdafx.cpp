@@ -18,7 +18,7 @@ BOOL                    g_isConnected{};
 thread                  g_networkThread{};
 mutex                   g_mutex{};
 
-eGunType                g_playerGunType{ eGunType::NONE };
+eWeaponType             g_playerGunType{ eWeaponType::AR };
 
 namespace Utile
 {

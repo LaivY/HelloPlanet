@@ -5,11 +5,13 @@
 #include "mainScene.h"
 
 GameFramework::GameFramework() 
-	: m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_isActive{ TRUE },
-	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
+	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
+	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }
 {
 	HWND desktop{ GetDesktopWindow() };
 	GetWindowRect(desktop, &m_fullScreenRect);
+	g_maxWidth = m_fullScreenRect.right;
+	g_maxHeight = m_fullScreenRect.bottom;
 }
 
 GameFramework::~GameFramework()
@@ -19,7 +21,7 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
-	if (m_nextScene != eScene::NONE)
+	if (m_nextScene != eSceneType::NONE)
 		ChangeScene();
 
 	m_timer.Tick();
@@ -33,11 +35,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 {
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
-
-	RECT rect{};
-	GetWindowRect(GetDesktopWindow(), &rect);
-	g_maxWidth = rect.right;
-	g_maxHeight = rect.bottom;
+	GetWindowRect(hWnd, &m_lastWindowRect);
 
 	LoadPipeline();
 	LoadAssets();
@@ -618,23 +616,30 @@ void GameFramework::ChangeScene()
 {
 	WaitForPreviousFrame();
 
-	//m_scene.reset();
 	switch (m_nextScene)
 	{
-	case eScene::LOADING:
+	case eSceneType::LOADING:
 		m_scene = make_unique<LoadingScene>();
 		break;
-	case eScene::MAIN:
+	case eSceneType::MAIN:
 		m_scene = make_unique<MainScene>();
 		break;
-	case eScene::LOBBY:
+	case eSceneType::LOBBY:
 		m_scene = make_unique<LobbyScene>();
 		break;
-	case eScene::GAME:
-		m_scene = make_unique<GameScene>();
+	case eSceneType::GAME:
+	{
+		auto scene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
+		auto nextScene{ make_unique<GameScene>() };
+		auto& player{ scene->GetPlayer() };
+		player->SetIsMultiplayer(FALSE);
+		nextScene->SetPlayer(player);
+		nextScene->SetMultiPlayers(scene->GetMultiPlayers());
+		m_scene = move(nextScene);
 		break;
 	}
-	m_nextScene = eScene::NONE;
+	}
+	m_nextScene = eSceneType::NONE;
 
 	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
 	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
@@ -690,7 +695,7 @@ void GameFramework::SetIsFullScreen(BOOL isFullScreen)
 	m_isFullScreen = isFullScreen;
 }
 
-void GameFramework::SetNextScene(eScene scene)
+void GameFramework::SetNextScene(eSceneType scene)
 {
 	m_nextScene = scene;
 }
