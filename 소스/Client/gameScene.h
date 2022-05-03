@@ -59,6 +59,11 @@ public:
 	void RecvUpdateMonster();
 	void RecvBulletFire();
 	void RecvBulletHit();
+	void RecvLogoutOkPacket();
+
+	// 이전 씬에서 데이터를 가져옴
+	void SetPlayer(unique_ptr<Player>& player);
+	void SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
 
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼

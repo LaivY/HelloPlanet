@@ -166,7 +166,7 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	player->SetGunMesh(s_meshes["AR"]);
 	player->SetGunShader(s_shaders["LINK"]);
 	player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	player->SetGunType(eGunType::AR);
+	player->SetWeaponType(eWeaponType::AR);
 	player->PlayAnimation("IDLE");
 	m_players.push_back(move(player));
 }
@@ -212,7 +212,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 				return;
 			}
 #endif
-			g_gameFramework.SetNextScene(eScene::LOBBY);
+			g_gameFramework.SetNextScene(eSceneType::LOBBY);
 		});
 	m_textObjects.push_back(move(gameStartText));
 

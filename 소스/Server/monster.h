@@ -9,6 +9,7 @@ public:
 	~Monster() = default;
 
 	void OnHit(const BulletData& bullet);
+	void Attack(const int id);
 	void Update(FLOAT deltaTime);
 
 	void SetId(CHAR id);
@@ -25,6 +26,7 @@ public:
 	INT GetHp() const;
 	CHAR GetId() const;
 	UCHAR GetTargetId() const;
+	eMobAnimationType GetAnimationType() const;
 
 private:
 	// 클라이언트로 보낼 데이터들

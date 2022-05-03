@@ -44,9 +44,13 @@ public:
 
 	void ProcessPacket();
 	void RecvLoginOkPacket();
-	void RecvReadyPacket();
 	void RecvSelectWeaponPacket();
+	void RecvReadyPacket();
+	void RecvChangeScenePacket();
 	void RecvLogoutOkPacket();
+
+	unique_ptr<Player>& GetPlayer();
+	array<unique_ptr<Player>, Setting::MAX_PLAYERS>& GetMultiPlayers();
 
 private:
 	BOOL								m_isReadyToPlay;

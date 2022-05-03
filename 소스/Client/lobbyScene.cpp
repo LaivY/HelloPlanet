@@ -14,6 +14,8 @@ LobbyScene::~LobbyScene()
 	if (m_isReadyToPlay)
 	{
 		// 모두 준비완료가 되서 게임 씬으로 넘어가는 경우
+		if (g_networkThread.joinable())
+			g_networkThread.join();
 	}
 	else
 	{
@@ -47,11 +49,11 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 
 void LobbyScene::OnDestroy()
 {
-	m_isReadyToPlay = TRUE;
-	closesocket(g_socket);
-	WSACleanup();
+	m_isLogout = TRUE;
 	if (g_networkThread.joinable())
 		g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
 }
 
 void LobbyScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -149,7 +151,6 @@ void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 void LobbyScene::RecvPacket()
 {
 	constexpr char name[10] = "Hello\0";
-
 	cs_packet_login packet{};
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_LOGIN;
@@ -200,6 +201,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_gameObjects.push_back(move(dropship));
 
 	// 플레이어
+	// 평범하게 렌더링하기 위해 멀티플레이어로 만듦
 	m_player = make_unique<Player>(TRUE);
 	m_player->SetMesh(s_meshes["PLAYER"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
@@ -207,7 +209,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_player->SetGunMesh(s_meshes["AR"]);
 	m_player->SetGunShader(s_shaders["LINK"]);
 	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	m_player->SetGunType(eGunType::AR);
+	m_player->SetWeaponType(eWeaponType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->PlayAnimation("RELOAD");
 	m_player->SetCamera(m_camera);
@@ -249,7 +251,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 #else
-		g_gameFramework.SetNextScene(eScene::GAME);
+		g_gameFramework.SetNextScene(eSceneType::GAME);
 #endif
 	};
 
@@ -263,22 +265,22 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_SELECT_WEAPON;
 
-		eGunType type{ m_player->GetGunType() };
+		eWeaponType type{ m_player->GetWeaponType() };
 		switch (type)
 		{
-		case eGunType::AR:
+		case eWeaponType::AR:
 			m_player->SetGunMesh(s_meshes["MG"]);
-			m_player->SetGunType(eGunType::MG);
+			m_player->SetWeaponType(eWeaponType::MG);
 			packet.weaponType = eWeaponType::MG;
 			break;
-		case eGunType::SG:
+		case eWeaponType::SG:
 			m_player->SetGunMesh(s_meshes["AR"]);
-			m_player->SetGunType(eGunType::AR);
+			m_player->SetWeaponType(eWeaponType::AR);
 			packet.weaponType = eWeaponType::AR;
 			break;
-		case eGunType::MG:
+		case eWeaponType::MG:
 			m_player->SetGunMesh(s_meshes["SG"]);
-			m_player->SetGunType(eGunType::SG);
+			m_player->SetWeaponType(eWeaponType::SG);
 			packet.weaponType = eWeaponType::SG;
 			break;
 		}
@@ -296,22 +298,22 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_SELECT_WEAPON;
 
-		eGunType type{ m_player->GetGunType() };
+		eWeaponType type{ m_player->GetWeaponType() };
 		switch (type)
 		{
-		case eGunType::AR:
+		case eWeaponType::AR:
 			m_player->SetGunMesh(s_meshes["SG"]);
-			m_player->SetGunType(eGunType::SG);
+			m_player->SetWeaponType(eWeaponType::SG);
 			packet.weaponType = eWeaponType::SG;
 			break;
-		case eGunType::SG:
+		case eWeaponType::SG:
 			m_player->SetGunMesh(s_meshes["MG"]);
-			m_player->SetGunType(eGunType::MG);
+			m_player->SetWeaponType(eWeaponType::MG);
 			packet.weaponType = eWeaponType::MG;
 			break;
-		case eGunType::MG:
+		case eWeaponType::MG:
 			m_player->SetGunMesh(s_meshes["AR"]);
-			m_player->SetGunType(eGunType::AR);
+			m_player->SetWeaponType(eWeaponType::AR);
 			packet.weaponType = eWeaponType::AR;
 			break;
 		}
@@ -363,7 +365,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	exit->SetMouseClickCallBack(
 		[]()
 		{
-			g_gameFramework.SetNextScene(eScene::MAIN);
+			g_gameFramework.SetNextScene(eSceneType::MAIN);
 		}
 	);
 	m_textObjects.push_back(move(exit));
@@ -531,11 +533,14 @@ void LobbyScene::ProcessPacket()
 	case SC_PACKET_LOGIN_CONFIRM:
 		RecvLoginOkPacket();
 		break;
+	case SC_PACKET_SELECT_WEAPON:
+		RecvSelectWeaponPacket();
+		break;
 	case SC_PACKET_READY_CHECK:
 		RecvReadyPacket();
 		break;
-	case SC_PACKET_SELECT_WEAPON:
-		RecvSelectWeaponPacket();
+	case SC_PACKET_CHANGE_SCENE:
+		RecvChangeScenePacket();
 		break;
 	case SC_PACKET_LOGOUT_OK:
 		RecvLogoutOkPacket();
@@ -560,9 +565,7 @@ void LobbyScene::RecvLoginOkPacket()
 
 	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
 	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
-	auto weapon = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
-
-	OutputDebugStringA(("RECV LOGIN OK PACKET (id : " + to_string(data.id) + ")\n").c_str());
+	auto weaponType = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
 	
 	if (m_player->GetId() == -1)
 	{
@@ -581,7 +584,7 @@ void LobbyScene::RecvLoginOkPacket()
 			p->SetGunMesh(s_meshes["AR"]);
 			p->SetGunShader(s_shaders["LINK"]);
 			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-			p->SetGunType(eGunType::AR); // weapon 값을 여기에 넣고 싶음...
+			p->SetWeaponType(weaponType); // weapon 값을 여기에 넣고 싶음...
 			p->PlayAnimation("IDLE");
 			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
@@ -644,6 +647,22 @@ void LobbyScene::RecvReadyPacket()
 	}
 }
 
+void LobbyScene::RecvChangeScenePacket()
+{
+	// 씬 타입
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+	
+	// 타입은 사용하지 않음.
+	// 이 패킷이 왔다는 것은 모든 플레이어가 준비완료 했다는 것
+	eSceneType type{ static_cast<eSceneType>(buf) };
+
+	m_isReadyToPlay = TRUE;
+	g_gameFramework.SetNextScene(eSceneType::GAME);
+}
+
 void LobbyScene::RecvSelectWeaponPacket()
 {
 	// 아이디, 무기타입
@@ -664,15 +683,15 @@ void LobbyScene::RecvSelectWeaponPacket()
 		{
 		case eWeaponType::AR:
 			p->SetGunMesh(s_meshes["AR"]);
-			p->SetGunType(eGunType::AR);
+			p->SetWeaponType(eWeaponType::AR);
 			break;
 		case eWeaponType::SG:
 			p->SetGunMesh(s_meshes["SG"]);
-			p->SetGunType(eGunType::SG);
+			p->SetWeaponType(eWeaponType::SG);
 			break;
 		case eWeaponType::MG:
 			p->SetGunMesh(s_meshes["MG"]);
-			p->SetGunType(eGunType::MG);
+			p->SetWeaponType(eWeaponType::MG);
 			break;
 		}
 		p->PlayAnimation("RELOAD");
@@ -716,4 +735,14 @@ void LobbyScene::RecvLogoutOkPacket()
 		p.reset();
 		return;
 	}
+}
+
+unique_ptr<Player>& LobbyScene::GetPlayer()
+{
+	return m_player;
+}
+
+array<unique_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
+{
+	return m_multiPlayers;
 }

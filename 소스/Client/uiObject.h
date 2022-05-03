@@ -63,7 +63,7 @@ public:
 private:
 	shared_ptr<Player>				m_player;
 	array<unique_ptr<UIObject>, 4>	m_lines;
-	eGunType						m_gunType;
+	eWeaponType						m_weaponType;
 	INT								m_bulletCount;
 	FLOAT							m_radius;
 	FLOAT							m_timer;

@@ -57,9 +57,11 @@ enum class eMobAnimationType : char
 
 enum class eSceneType : char
 {
+	NONE,
+	LOADING,
+	MAIN,
 	LOBBY,
-	INGAME,
-	ENDING
+	GAME
 };
 
 enum class eWeaponType : char
@@ -121,16 +123,16 @@ struct cs_packet_logout
 
 struct cs_packet_select_weapon
 {
-	UCHAR				size;
-	UCHAR				type;
+	UCHAR		size;
+	UCHAR		type;
 	eWeaponType	weaponType;
 };
 
 struct cs_packet_ready
 {
-	UCHAR		size;
-	UCHAR		type;
-	bool		isReady; // true : 준비완료
+	UCHAR	size;
+	UCHAR	type;
+	bool	isReady; // true : 준비완료
 };
 
 struct cs_packet_update_player

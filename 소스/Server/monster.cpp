@@ -23,6 +23,12 @@ void Monster::OnHit(const BulletData& bullet)
 		m_aniType = eMobAnimationType::HIT;
 }
 
+void Monster::Attack(const int id)
+{
+	if (m_aniType == eMobAnimationType::RUNNING)
+		m_aniType = eMobAnimationType::ATTACK;
+	//g_networkFramework.clients[id].data.hp -= 10;
+}
 
 void Monster::Update(FLOAT deltaTime)
 {
@@ -47,6 +53,16 @@ void Monster::Update(FLOAT deltaTime)
 		m_velocity.x = 0.0f;
 		m_velocity.y = 0.0f;
 		m_velocity.z = -MOB_SPEED * value;
+
+		m_hitTimer += deltaTime;
+		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
+	}
+	else if(m_aniType == eMobAnimationType::ATTACK)
+	{
+		XMStoreFloat3(&velocity, dir * 0);
+		m_velocity.x = 0.0f;
+		m_velocity.y = 0.0f;
+		m_velocity.z = 0.0f;
 
 		m_hitTimer += deltaTime;
 		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
@@ -81,6 +97,8 @@ void Monster::Update(FLOAT deltaTime)
 	// 몹 애니메이션
 	if (m_aniType == eMobAnimationType::HIT && m_hitTimer < HIT_PERIOD)
 		m_aniType = eMobAnimationType::HIT;
+	else if (m_aniType == eMobAnimationType::ATTACK && m_hitTimer < HIT_PERIOD)
+		m_aniType = eMobAnimationType::ATTACK;
 	else
 		m_aniType = eMobAnimationType::RUNNING;
 
@@ -164,4 +182,9 @@ CHAR Monster::GetId() const
 UCHAR Monster::GetTargetId() const
 {
 	return m_target;
+}
+
+eMobAnimationType Monster::GetAnimationType() const
+{
+	return m_aniType;
 }

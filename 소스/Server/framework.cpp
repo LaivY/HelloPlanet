@@ -108,7 +108,7 @@ void NetworkFramework::SendLoginOkPacket(const Session& player) const
 		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_LOGIN_CONFIRM)");
 	}
 
-	std::cout << "[" << player.data.id << " Session] Login Packet Received" << std::endl;
+	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Login Packet Received" << std::endl;
 }
 
 void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
@@ -133,22 +133,7 @@ void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
 		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_SELECT_WEAPON)");
 	}
 
-	// 클라이언트에게 이미 접속해있는 클라이언트 무기상태 전송
-	/*for (const auto& c : clients)
-	{
-		if (!c.data.isActive) continue;
-		if (static_cast<int>(c.data.id) == player.data.id) continue;
-		sc_packet_select_weapon subPacket{};
-		subPacket.size = sizeof(subPacket);
-		subPacket.type = SC_PACKET_LOGIN_CONFIRM;
-		subPacket.id = c.data.id;
-		subPacket.weaponType = c.weaponType;
-		memcpy(buf, reinterpret_cast<char*>(&subPacket), sizeof(subPacket));
-		const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_SELECT_WEAPON)");
-	}*/
-
-	std::cout << "[" << player.data.id << " Session] Select Weapon Packet Received" << std::endl;
+	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Select Weapon Packet Received" << std::endl;
 }
 
 void NetworkFramework::SendReadyCheckPacket(const Session& player) const
@@ -173,22 +158,7 @@ void NetworkFramework::SendReadyCheckPacket(const Session& player) const
 		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_READY_CHECK)");
 	}
 
-	// 클라이언트에게 이미 접속해있는 클라이언트 준비상태 전송
-	/*for (const auto& c : clients)
-	{
-		if (!c.data.isActive) continue;
-		if (static_cast<int>(c.data.id) == player.data.id) continue;
-		sc_packet_ready_check subPacket{};
-		subPacket.size = sizeof(subPacket);
-		subPacket.type = SC_PACKET_LOGIN_CONFIRM;
-		subPacket.id = c.data.id;
-		subPacket.isReady = c.isReady;
-		memcpy(buf, reinterpret_cast<char*>(&subPacket), sizeof(subPacket));
-		const int retVal = WSASend(player.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_READY_CHECK)");
-	}*/
-
-	std::cout << "[" << player.data.id << " Session] Ready Packet Received" << std::endl;
+	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Ready Packet Received" << std::endl;
 }
 
 void NetworkFramework::SendPlayerDataPacket()
@@ -346,16 +316,16 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				if (!c.data.isActive) continue;
 				if (c.isReady) readyCount++;
 			}
-			if (readyCount >= 3)
+			if (readyCount >= 2)
 			{
 				isAccept = true;
 				sc_packet_change_scene sendPacket{};
 				sendPacket.size = sizeof(sendPacket);
 				sendPacket.type = SC_PACKET_CHANGE_SCENE;
-				sendPacket.sceneType = eSceneType::INGAME;
+				sendPacket.sceneType = eSceneType::GAME;
 
 				char sendBuf[sizeof(sendPacket)]{};
-				WSABUF sendWsabuf = { sizeof(subBuf), sendBuf };
+				WSABUF sendWsabuf = { sizeof(sendBuf), sendBuf };
 				memcpy(sendBuf, &sendPacket, sizeof(sendPacket));
 				DWORD sent_byte;
 
@@ -538,6 +508,19 @@ void NetworkFramework::CollisionCheck()
 
 	// 충돌체크가 완료된 총알들은 삭제
 	bullets.clear();
+
+	// 몬스터 공격 
+	Monster* attackMonster{ nullptr };	// 다가온 몹
+
+	for (Monster& mob : monsters)
+	{
+		if (mob.GetHp() <= 0) continue;
+		if (mob.GetAnimationType() == eMobAnimationType::ATTACK) continue;
+
+		float range{ Vector3::Length(Vector3::Sub(clients[mob.GetTargetId()].data.pos, mob.GetPosition()))};
+		if (range < 25.0f)attackMonster = &mob;
+	}
+	if (attackMonster) attackMonster->Attack(clients[attackMonster->GetTargetId()].data.id);
 }
 
 void NetworkFramework::Disconnect(const int id)

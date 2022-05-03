@@ -2,7 +2,7 @@
 #include "camera.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_gunType{ eGunType::NONE },
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
 	m_hp{}, m_maxHp{}, m_speed{ 20.0f },
 	m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
@@ -77,7 +77,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
 	{
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_gunType != eGunType::MG && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_weaponType != eWeaponType::MG && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
@@ -143,7 +143,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			break;
 		case VK_SHIFT:
 			// MG는 패스
-			if (m_gunType == eGunType::MG)
+			if (m_weaponType == eWeaponType::MG)
 				break;
 			// 안뛰고 있을 때는 패스
 			if (GetCurrAnimationName() != "RUNNING")
@@ -188,17 +188,17 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		// 애니메이션에 맞춰 총 발사
 		if (!m_isMultiPlayer && !m_isFired && m_upperAnimationInfo->state == eAnimationState::PLAY && GetUpperCurrAnimationName() == "FIRING")
 		{
-			switch (m_gunType)
+			switch (m_weaponType)
 			{
-			case eGunType::AR:
+			case eWeaponType::AR:
 				if (currFrame > 0.5f)
 					Fire();
 				break;
-			case eGunType::SG:
+			case eWeaponType::SG:
 				if (currFrame > 3.0f)
 					Fire();
 				break;
-			case eGunType::MG:
+			case eWeaponType::MG:
 				if (currFrame > 0.1f)
 					Fire();
 				break;
@@ -292,7 +292,7 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
 		m_camera->UpdateShaderVariableByPlayer(commandList); // 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
 #endif
-		if (m_gunType == eGunType::MG) // 머신건은 팔을 렌더링하지 않음
+		if (m_weaponType == eWeaponType::MG) // 머신건은 팔을 렌더링하지 않음
 			UpdateShaderVariable(commandList);
 		else
 			GameObject::Render(commandList, shader);
@@ -345,11 +345,9 @@ void Player::Fire()
 	XMFLOAT3 center{ m_camera->GetEye() };
 	center = Vector3::Add(center, Vector3::Mul(m_camera->GetAt(), 1000.0f));
 
-	switch (m_gunType)
+	switch (m_weaponType)
 	{
-	case eGunType::NONE:
-		break;
-	case eGunType::AR:
+	case eWeaponType::AR:
 	{
 		// 총구에서 나오도록
 		start = Vector3::Add(start, GetRight());
@@ -367,7 +365,7 @@ void Player::Fire()
 		DelayRotate(0.0f, -0.4f, Utile::Random(-0.1f, 0.1f), 0.1f);
 		break;
 	}
-	case eGunType::SG:
+	case eWeaponType::SG:
 	{
 		// 총구에서 나오도록
 		start = Vector3::Add(start, Vector3::Mul(GetRight(), 1.0f));
@@ -411,7 +409,7 @@ void Player::Fire()
 		DelayRotate(0.0f, -2.0f, 0.0f, 0.1f);
 		break;
 	}
-	case eGunType::MG:
+	case eWeaponType::MG:
 		// 총구에서 나오도록
 		start = Vector3::Add(start, GetRight());
 		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
@@ -512,9 +510,9 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	string pureAnimationName{ GetPureAnimationName(animationName) };
 	if (pureAnimationName == "RELOAD" || pureAnimationName == "FIRING")
 	{
-		switch (m_gunType)
+		switch (m_weaponType)
 		{
-		case eGunType::AR:
+		case eWeaponType::AR:
 			PlayUpperAnimation("AR/" + pureAnimationName, doBlending);
 			if (pureAnimationName == "FIRING")
 			{
@@ -523,7 +521,7 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 				m_isFired = FALSE;
 			}
 			break;
-		case eGunType::SG:
+		case eWeaponType::SG:
 			PlayUpperAnimation("SG/" + pureAnimationName, doBlending);
 			if (pureAnimationName == "FIRING")
 			{
@@ -532,7 +530,7 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 				m_isFired = FALSE;
 			}
 			break;
-		case eGunType::MG:
+		case eWeaponType::MG:
 			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 			if (pureAnimationName == "FIRING")
 			{
@@ -546,28 +544,28 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	}
 
 	// 그 외는 상하체 모두 애니메이션함
-	if (m_gunType == eGunType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
-	else if (m_gunType == eGunType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
-	else if (m_gunType == eGunType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
+	if (m_weaponType == eWeaponType::AR) GameObject::PlayAnimation("AR/" + pureAnimationName, doBlending);
+	else if (m_weaponType == eWeaponType::SG) GameObject::PlayAnimation("SG/" + pureAnimationName, doBlending);
+	else if (m_weaponType == eWeaponType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
 }
 
-void Player::SetGunType(eGunType gunType)
+void Player::SetWeaponType(eWeaponType gunType)
 {
 	switch (gunType)
 	{
-	case eGunType::AR:
+	case eWeaponType::AR:
 		m_hp = m_maxHp = 150;
 		m_shotSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
-	case eGunType::SG:
+	case eWeaponType::SG:
 		m_hp = m_maxHp = 175;
 		m_shotSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
-	case eGunType::MG:
+	case eWeaponType::MG:
 		m_hp = m_maxHp = 200;
 		m_shotSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
@@ -575,7 +573,7 @@ void Player::SetGunType(eGunType gunType)
 		break;
 	}
 	m_shotTimer = 0.0f;
-	m_gunType = gunType;
+	m_weaponType = gunType;
 	g_playerGunType = gunType;
 }
 
@@ -599,6 +597,11 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 		m_upperAnimationInfo->afterTimer = 0.0f;
 	}
 	m_upperAnimationInfo->blendingTimer = 0.0f;
+}
+
+void Player::DeleteUpperAnimation()
+{
+	m_upperAnimationInfo.reset();
 }
 
 void Player::SendPlayerData() const
@@ -677,9 +680,9 @@ INT Player::GetId() const
 	return m_id;
 }
 
-eGunType Player::GetGunType() const
+eWeaponType Player::GetWeaponType() const
 {
-	return m_gunType;
+	return m_weaponType;
 }
 
 INT Player::GetHp() const
