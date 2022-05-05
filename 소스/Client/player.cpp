@@ -9,8 +9,10 @@ Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr },
 	m_gunOffset{}, m_gunOffsetTimer{}
 {
-	SharedBoundingBox bb{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-	m_boundingBoxes.push_back(bb);
+	auto hitBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f },
+									 XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }) };
+	hitBox->SetOwner(this);
+	m_hitboxes.push_back(move(hitBox));
 }
 
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -274,6 +276,12 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 
 void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
+#ifdef RENDER_HITBOX
+	// 플레이어의 경우 총 때문에 히트박스를 먼저 렌더링해야함
+	for (const auto& hitBox : m_hitboxes)
+		hitBox->Render(commandList);
+#endif
+
 	if (m_isMultiPlayer)
 	{
 		GameObject::Render(commandList, shader);
@@ -478,6 +486,11 @@ void Player::Update(FLOAT deltaTime)
 		m_gunOffsetTimer = min(0.5f, m_gunOffsetTimer + deltaTime);
 	else
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
+
+#ifdef RENDER_HITBOX
+	for (auto& hitBox : m_hitboxes)
+		hitBox->Update(deltaTime);
+#endif
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

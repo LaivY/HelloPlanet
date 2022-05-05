@@ -388,15 +388,15 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 바운딩박스
-	SharedBoundingBox bbPlayer{ make_shared<DebugBoundingBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-	bbPlayer->SetMesh(s_meshes["BB_PLAYER"]);
-	bbPlayer->SetShader(s_shaders["WIREFRAME"]);
+	//SharedBoundingBox bbPlayer{ make_shared<HitBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
+	//bbPlayer->SetMesh(s_meshes["BB_PLAYER"]);
+	//bbPlayer->SetShader(s_shaders["WIREFRAME"]);
 
 	// 플레이어 설정
 	// 플레이어는 이전 로비 씬에서 만들어져있다.
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
-	m_player->AddBoundingBox(bbPlayer);
+	//m_player->AddBoundingBox(bbPlayer);
 
 	// 카메라, 플레이어 설정
 	m_player->SetCamera(m_camera);
@@ -472,18 +472,11 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
 		trans = Vector3::Mul(trans, 100.0f);
 
-		XMMATRIX worldMatrix{ XMMatrixIdentity() };
-		XMMATRIX scaleMatrix{ XMMatrixScaling(scale.x, scale.y, scale.z) };
-		XMMATRIX rotateMatrix{ XMMatrixRotationX(XMConvertToRadians(rotat.x)) * 
-							   XMMatrixRotationY(XMConvertToRadians(rotat.y)) *
-							   XMMatrixRotationZ(XMConvertToRadians(rotat.z)) };
-		XMMATRIX transMatrix{ XMMatrixTranslation(trans.x, trans.y, trans.z) };
-		worldMatrix = worldMatrix * scaleMatrix * rotateMatrix * transMatrix;
-
-		XMFLOAT4X4 world;
-		XMStoreFloat4x4(&world, worldMatrix);
-
 		unique_ptr<GameObject> object{ make_unique<GameObject>() };
+		object->SetScale(scale);
+		object->Rotate(rotat.z, rotat.x, rotat.y);
+		object->SetPosition(trans);
+		
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
 		if (type == 0 || type == 1)
 		{
@@ -496,7 +489,6 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 			object->SetShader(s_shaders["STENCIL_MODEL"]);
 			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
 		}
-		object->SetWorldMatrix(world);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
 		if (0 <= type && type <= 1)
 			object->SetTexture(s_textures["OBJECT0"]);
@@ -504,6 +496,78 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 			object->SetTexture(s_textures["OBJECT1"]);
 		else if (10 <= type && type <= 11)
 			object->SetTexture(s_textures["OBJECT2"]);
+
+		// 히트박스
+		if (type == 2)
+		{
+			auto hitbox1{ make_unique<Hitbox>(XMFLOAT3{ -100.0f, 0.0f, -550.0f }, XMFLOAT3{ 500.0f / 2.0f, 500.0f / 2.0f, 1100.0f / 2.0f }, XMFLOAT3{ 0.0f, 0.0f, -60.0f }) };
+			auto hitbox2{ make_unique<Hitbox>(XMFLOAT3{ -100.0f, 0.0f, 550.0f }, XMFLOAT3{ 500.0f / 2.0f, 500.0f / 2.0f, 1100.0f / 2.0f }, XMFLOAT3{ 0.0f, 0.0f, 60.0f }) };
+			auto hitbox3{ make_unique<Hitbox>(XMFLOAT3{ -200.0f, 0.0f, 0.0f }, XMFLOAT3{ 750.0f / 2.0f, 500.0f / 2.0f, 1100.0f / 2.0f }) };
+			hitbox1->SetOwner(object.get());
+			hitbox2->SetOwner(object.get());
+			hitbox3->SetOwner(object.get());
+			object->AddHitbox(move(hitbox1));
+			object->AddHitbox(move(hitbox2));
+			object->AddHitbox(move(hitbox3));
+		}
+		else if (type == 3)
+		{
+			auto hitbox1{ make_unique<Hitbox>(XMFLOAT3{ -102.0f, 0.0f, 850.0f }, XMFLOAT3{ 400.0f / 2.0f, 300.0f, 300.0f / 2.0f }) };
+			auto hitbox2{ make_unique<Hitbox>(XMFLOAT3{ 850.0f, 0.0f, 0.0f }, XMFLOAT3{ 400.0f / 2.0f, 300.0f, 300.0f / 2.0f }) };
+			auto hitbox3{ make_unique<Hitbox>(XMFLOAT3{ -650.0f, 0.0f, -120.0f }, XMFLOAT3{ 400.0f / 2.0f, 300.0f, 300.0f / 2.0f }) };
+			auto hitbox4{ make_unique<Hitbox>(XMFLOAT3{ 100.0f, 0.0f, -650.0f }, XMFLOAT3{ 300.0f / 2.0f, 300.0f, 200.0f / 2.0f }) };
+			hitbox1->SetOwner(object.get());
+			hitbox2->SetOwner(object.get());
+			hitbox3->SetOwner(object.get());
+			hitbox4->SetOwner(object.get());
+			object->AddHitbox(move(hitbox1));
+			object->AddHitbox(move(hitbox2));
+			object->AddHitbox(move(hitbox3));
+			object->AddHitbox(move(hitbox4));
+		}
+		else if (type == 4)
+		{
+			auto hitbox1{ make_unique<Hitbox>(XMFLOAT3{ 650.0f, 0.0f, 0.0f }, XMFLOAT3{ 250.0f / 2.0f, 300.0f, 200.0f / 2.0f }) };
+			auto hitbox2{ make_unique<Hitbox>(XMFLOAT3{ -700.0f, 0.0f, 50.0f }, XMFLOAT3{ 330.0f / 2.0f, 300.0f, 300.0f / 2.0f }) };
+			hitbox1->SetOwner(object.get());
+			hitbox2->SetOwner(object.get());
+			object->AddHitbox(move(hitbox1));
+			object->AddHitbox(move(hitbox2));
+		}
+		else if (type == 5)
+		{
+			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -10.0f, 13.0f, 0.0f }, XMFLOAT3{ 98.0f / 2.0f, 90.0f / 2.0f, 141.0f / 2.0f }) };
+			hitbox->SetOwner(object.get());
+			object->AddHitbox(move(hitbox));
+		}
+		else if (type == 6)
+		{
+			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{}, XMFLOAT3{ 336.0f / 2.0f, 400.0f / 2.0f, 870.0f / 2.0f }, XMFLOAT3{ 0.0f, 0.0f, 22.952f }) };
+			hitbox->SetOwner(object.get());
+			object->AddHitbox(move(hitbox));
+		}
+		else if (type == 9)
+		{
+			// 비행기
+			auto hitbox1{ make_unique<Hitbox>(XMFLOAT3{ 3.0f, 0.0f, -630.0f }, XMFLOAT3{ 1550.3f / 2.0f, 291.0f / 2.0f, 543.0f / 2.0f }) };
+			auto hitbox2{ make_unique<Hitbox>(XMFLOAT3{ -2.4f, 0.0f, -450.0f }, XMFLOAT3{ 386.0f / 2.0f, 386.0f / 2.0f, 1100.0f / 2.0f }) };
+			hitbox1->SetOwner(object.get());
+			hitbox2->SetOwner(object.get());
+			object->AddHitbox(move(hitbox1));
+			object->AddHitbox(move(hitbox2));
+		}
+		else if (type == 10)
+		{
+			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -33.0f, 7.2f, 90.0f }, XMFLOAT3{ 213.0f / 2.0f, 129.0f / 2.0f, 115.3f / 2.0f }, XMFLOAT3{ 0.0f, 0.0f, 71.0f }) };
+			hitbox->SetOwner(object.get());
+			object->AddHitbox(move(hitbox));
+		}
+		else if (type == 11)
+		{
+			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ 10.56f, 7.2f, 14.44f }, XMFLOAT3{ 605.7f / 2.0f, 187.0f / 2.0f, 397.0f / 2.0f }, XMFLOAT3{ 0.0f, 0.0f, 41.0f }) };
+			hitbox->SetOwner(object.get());
+			object->AddHitbox(move(hitbox));
+		}
 		m_gameObjects.push_back(move(object));
 	}
 }
@@ -615,43 +679,49 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 {
-	// 플레이어의 바운딩박스
-	const auto& pPbb{ m_player->GetBoundingBox().front() };
-	BoundingOrientedBox pbb;
-	pPbb->Transform(pbb, XMLoadFloat4x4(&m_player->GetWorldMatrix()));
+	// 플레이어가 맵 밖으로 나가지 못하도록
+	XMFLOAT3 position{ m_player->GetPosition() };
+	position.x = clamp(position.x, -700.0f, 700.0f);
+	position.z = clamp(position.z, -625.0f, 700.0f);
+	m_player->SetPosition(position);
 
-	// 플레이어와 게임오브젝트 충돌판정
+	// 플레이어 바운딩박스
+	BoundingOrientedBox playerBoundingBox{ m_player->GetHitboxes().front()->GetBoundingBox() };
 	for (const auto& object : m_gameObjects)
-	{
-		const auto& boundingBoxes{ object->GetBoundingBox() };
-		for (const auto& bb : boundingBoxes)
+		for (const auto& objectHitbox : object->GetHitboxes())
 		{
-			BoundingOrientedBox obb;
-			bb->Transform(obb, XMLoadFloat4x4(&object->GetWorldMatrix()));
-			if (pbb.Intersects(obb))
-			{
-				XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), object->GetPosition()) };
-				v = Vector3::Normalize(v);
-				m_player->Move(Vector3::Mul(v, Vector3::Length(m_player->GetVelocity()) * deltaTime));
-				m_player->SendPlayerData();
-			}
+			BoundingOrientedBox objectBoundingBox{ objectHitbox->GetBoundingBox() };
+			if (!playerBoundingBox.Intersects(objectBoundingBox)) continue;
+
+			XMFLOAT3 p1{ position.x, 0.0f, position.z };
+			XMFLOAT3 p2{ objectBoundingBox.Center.x, 0.0f, objectBoundingBox.Center.z };
+			XMFLOAT3 v{ Vector3::Sub(p1, p2) };
+			v = Vector3::Normalize(v);
+			m_player->Move(Vector3::Mul(v, Vector3::Length(m_player->GetVelocity()) * 2.0f * deltaTime));
 		}
-	}
 
 	// 플레이어와 멀티플레이어 충돌판정
-	for (const auto& p : m_multiPlayers)
-	{
-		if (!p) continue;
-		BoundingOrientedBox mpbb;
-		p->GetBoundingBox().front()->Transform(mpbb, XMLoadFloat4x4(&p->GetWorldMatrix()));
-		if (pbb.Intersects(mpbb))
-		{
-			XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), p->GetPosition()) };
-			v = Vector3::Normalize(v);
-			m_player->Move(Vector3::Mul(v, 3.0f * deltaTime));
-			m_player->SendPlayerData();
-		}
-	}
+	//for (const auto& p : m_multiPlayers)
+	//{
+	//	if (!p) continue;
+	//	BoundingOrientedBox mpbb;
+	//	p->GetHitboxes().front()->Transform(mpbb, XMLoadFloat4x4(&p->GetWorldMatrix()));
+	//	if (pbb.Intersects(mpbb))
+	//	{
+	//		XMFLOAT3 v{ Vector3::Sub(m_player->GetPosition(), p->GetPosition()) };
+	//		v = Vector3::Normalize(v);
+	//		m_player->Move(Vector3::Mul(v, 3.0f * deltaTime));
+	//		m_player->SendPlayerData();
+	//	}
+	//}
+
+	// 충돌 시 필요한 변수
+	//XMFLOAT3 velocity{ m_player->GetVelocity() };
+	//XMFLOAT3 right{ m_player->GetRight() };
+	//XMFLOAT3 look{ m_player->GetLook() };
+	//XMFLOAT3 worldVelocity{};
+	//worldVelocity = Vector3::Add(worldVelocity, Vector3::Mul(right, velocity.x));
+	//worldVelocity = Vector3::Add(worldVelocity, Vector3::Mul(look, velocity.z));
 }
 
 void GameScene::UpdateShadowMatrix()

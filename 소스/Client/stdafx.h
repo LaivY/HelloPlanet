@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
-//#define BOUNDINGBOX
-#define NETWORK
+#define RENDER_HITBOX
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN

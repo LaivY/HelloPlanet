@@ -59,11 +59,11 @@ public:
 	// 서버 통신 함수
 	virtual void ProcessClient();
 
-protected:
 	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;
 	static unordered_map<string, shared_ptr<Shader>>	s_shaders;
 	static unordered_map<string, shared_ptr<Texture>>	s_textures;
 
+protected:
 	D3D12_VIEWPORT	m_viewport;
 	D3D12_RECT		m_scissorRect;
 };

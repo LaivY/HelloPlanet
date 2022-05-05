@@ -1,30 +1,8 @@
 ﻿#include "object.h"
 #include "camera.h"
+#include "scene.h"
 
-DebugBoundingBox::DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation) : BoundingOrientedBox{ center, extents, orientation }, m_mesh{ nullptr }, m_shader{ nullptr }
-{
-
-}
-
-void DebugBoundingBox::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
-{
-	if (!m_mesh || !m_shader) return;
-	commandList->SetPipelineState(m_shader->GetPipelineState().Get());
-	m_mesh->UpdateShaderVariable(commandList, nullptr);
-	m_mesh->Render(commandList);
-}
-
-void DebugBoundingBox::SetMesh(const shared_ptr<Mesh>& mesh)
-{
-	m_mesh = mesh;
-}
-
-void DebugBoundingBox::SetShader(const shared_ptr<Shader>& shader)
-{
-	m_shader = shader;
-}
-
-GameObject::GameObject() : m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_velocity{ 0.0f, 0.0f, 0.0f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
+GameObject::GameObject() : m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -48,8 +26,8 @@ void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, co
 	// 메쉬 렌더링
 	if (m_mesh) m_mesh->Render(commandList);
 
-#ifdef BOUNDINGBOX
-	for (const auto& bb : m_boundingBoxes)
+#ifdef RENDER_HITBOX
+	for (const auto& bb : m_hitboxes)
 		bb->Render(commandList);
 #endif
 }
@@ -95,6 +73,11 @@ void GameObject::Update(FLOAT deltaTime)
 	Move(Vector3::Mul(GetRight(), m_velocity.x * deltaTime));
 	Move(Vector3::Mul(GetUp(), m_velocity.y * deltaTime));
 	Move(Vector3::Mul(GetLook(), m_velocity.z * deltaTime));
+
+#ifdef RENDER_HITBOX
+	for (auto& hitbox : m_hitboxes)
+		hitbox->Update(deltaTime);
+#endif
 }
 
 void GameObject::Move(const XMFLOAT3& shift)
@@ -132,6 +115,19 @@ void GameObject::SetPosition(const XMFLOAT3& position)
 	m_worldMatrix._43 = position.z;
 }
 
+void GameObject::SetScale(const XMFLOAT3& scale)
+{
+	XMFLOAT4X4 scaleMatrix{};
+	XMStoreFloat4x4(&scaleMatrix, XMMatrixScaling(scale.x / m_scale.x, scale.y / m_scale.y, scale.z / m_scale.z));
+
+	XMFLOAT3 position{ GetPosition() };
+	SetPosition(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+	m_worldMatrix = Matrix::Mul(m_worldMatrix, scaleMatrix);
+	SetPosition(position);
+
+	m_scale = scale;
+}
+
 void GameObject::SetMesh(const shared_ptr<Mesh>& mesh)
 {
 	m_mesh = mesh;
@@ -162,9 +158,9 @@ void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
 	m_textureInfo = move(textureInfo);
 }
 
-void GameObject::AddBoundingBox(const SharedBoundingBox& boundingBox)
+void GameObject::AddHitbox(unique_ptr<Hitbox>& hitbox)
 {
-	m_boundingBoxes.push_back(boundingBox);
+	m_hitboxes.push_back(move(hitbox));
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
@@ -281,4 +277,54 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	SetPosition(monsterData.pos);
 	SetVelocity(monsterData.velocity);
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
+}
+
+Hitbox::Hitbox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT3& rollPitchYaw) : m_owner{ nullptr }, m_center{ center }, m_extents{ extents }, m_rollPitchYaw{ rollPitchYaw }
+{
+	m_hitbox = make_unique<GameObject>();
+	m_hitbox->SetMesh(Scene::s_meshes["CUBE"]);
+	m_hitbox->SetShader(Scene::s_shaders["WIREFRAME"]);
+}
+
+void Hitbox::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	m_hitbox->Render(commandList);
+}
+
+void Hitbox::Update(FLOAT /*deltaTime*/)
+{
+	if (!m_owner) return;
+
+	XMFLOAT4X4 worldMatrix{ Matrix::Identity() };
+	XMFLOAT4X4 scaleMatrix{}, rotateMatrix{},transMatrix{};
+	XMStoreFloat4x4(&scaleMatrix, XMMatrixScaling(m_extents.x * 2.0f, m_extents.y * 2.0f, m_extents.z * 2.0f));
+	XMStoreFloat4x4(&rotateMatrix, XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_rollPitchYaw.y), XMConvertToRadians(m_rollPitchYaw.z), XMConvertToRadians(m_rollPitchYaw.x)));
+	XMStoreFloat4x4(&transMatrix, XMMatrixTranslation(m_center.x, m_center.y, m_center.z));
+
+	worldMatrix = Matrix::Mul(worldMatrix, scaleMatrix);
+	worldMatrix = Matrix::Mul(worldMatrix, rotateMatrix);
+	worldMatrix = Matrix::Mul(worldMatrix, transMatrix);
+	worldMatrix = Matrix::Mul(worldMatrix, m_owner->GetWorldMatrix());
+	m_hitbox->SetWorldMatrix(move(worldMatrix));
+}
+
+void Hitbox::SetOwner(GameObject* gameObject)
+{
+	m_owner = gameObject;
+}
+
+BoundingOrientedBox Hitbox::GetBoundingBox() const
+{
+	BoundingOrientedBox result{ XMFLOAT3{}, m_extents, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+
+	XMFLOAT4X4 worldMatrix{ Matrix::Identity() };
+	XMFLOAT4X4 rotateMatrix{}, transMatrix{};
+	XMStoreFloat4x4(&rotateMatrix, XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_rollPitchYaw.y), XMConvertToRadians(m_rollPitchYaw.z), XMConvertToRadians(m_rollPitchYaw.x)));
+	XMStoreFloat4x4(&transMatrix, XMMatrixTranslation(m_center.x, m_center.y, m_center.z));
+
+	worldMatrix = Matrix::Mul(worldMatrix, rotateMatrix);
+	worldMatrix = Matrix::Mul(worldMatrix, transMatrix);
+	worldMatrix = Matrix::Mul(worldMatrix, m_owner->GetWorldMatrix());
+	result.Transform(result, XMLoadFloat4x4(&worldMatrix));
+	return result;
 }

@@ -482,7 +482,7 @@ BillboardMesh::BillboardMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position, const XMFLOAT4& color)
 {
 	// 큐브 가로, 세로, 높이
-	FLOAT sx{ width / 2.0f }, sy{ height }, sz{ length / 2.0f };
+	FLOAT hx{ width / 2.0f }, hy{ height / 2.0f }, hz{ length / 2.0f };
 
 	vector<Vertex> vertices;
 	vertices.reserve(36);
@@ -491,58 +491,58 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	v.materialIndex = 0;
 
 	// 앞면
-	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z - sz };	vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z - hz };	vertices.push_back(v);
 
-	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z - sz };	vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z - sz };	vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z - hz };	vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z - hz };	vertices.push_back(v);
 
 	// 오른쪽면
-	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z + hz }; vertices.push_back(v);
 
-	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z - hz }; vertices.push_back(v);
 
 	// 왼쪽면
-	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z - hz }; vertices.push_back(v);
 
-	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z - sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z + hz }; vertices.push_back(v);
 
 	// 뒷면
-	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z + hz }; vertices.push_back(v);
 
-	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y,		 position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y,		 position.z + sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z + hz }; vertices.push_back(v);
 
 	// 윗면
-	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z - hz }; vertices.push_back(v);
 
-	v.position = { position.x - sx, position.y + sy, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y + sy, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y + sy, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y + hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y + hy, position.z - hz }; vertices.push_back(v);
 
 	// 밑면
-	v.position = { position.x + sx, position.y, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y, position.z - hz }; vertices.push_back(v);
 
-	v.position = { position.x + sx, position.y, position.z + sz }; vertices.push_back(v);
-	v.position = { position.x - sx, position.y, position.z - sz }; vertices.push_back(v);
-	v.position = { position.x + sx, position.y, position.z - sz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y, position.z - hz }; vertices.push_back(v);
 
 	// 회색 재질
 	Material material;
