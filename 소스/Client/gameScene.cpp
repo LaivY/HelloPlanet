@@ -752,6 +752,9 @@ void GameScene::RecvPacket()
 	case SC_PACKET_BULLET_HIT:
 		RecvBulletHit();
 		break;
+	case SC_PACKET_MONSTER_ATTACK:
+		RecvMosterAttack();
+		break;
 	case SC_PACKET_LOGOUT_OK:
 		RecvLogoutOkPacket();
 		break;
@@ -913,6 +916,22 @@ void GameScene::RecvBulletHit()
 	dmgText->SetCamera(m_camera);
 	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
 	m_textObjects.push_back(move(dmgText));
+}
+
+void GameScene::RecvMosterAttack()
+{
+	char buf[sizeof(MonsterAttackData)]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	MonsterAttackData data{};
+	memcpy(&data, buf, sizeof(data));
+
+	if (m_player->GetId() == data.id)
+	{
+		m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
+	}
 }
 
 void GameScene::RecvLogoutOkPacket()

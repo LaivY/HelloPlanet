@@ -123,16 +123,20 @@ void Monster::Update(FLOAT deltaTime)
 	{
 		if (GetAtkTimer() >= 0.3f && m_wasAttack == false)
 		{
-			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[GetTargetId()].data.pos, GetPosition())) };
-			if (range < 27.0f) std::cout << static_cast<int>(GetTargetId()) << " is under attack!" << std::endl;
-			else std::cout << static_cast<int>(GetTargetId()) << " is dodge!" << std::endl;
+			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+			if (range < 27.0f)
+			{
+				g_networkFramework.SendMonsterAttackPacket(m_target, 10);
+				std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
+			}
+			else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
 			m_wasAttack = true;
 		}
 	}
 	else 
 	{
-		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[GetTargetId()].data.pos, GetPosition())) };
-		if (range < 25.0f)m_aniType = eMobAnimationType::ATTACK;
+		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+		if (range < 25.0f) m_aniType = eMobAnimationType::ATTACK;
 	}
 }
 

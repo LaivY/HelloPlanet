@@ -86,7 +86,7 @@ void NetworkFramework::SendLoginOkPacket(const Session& player) const
 	{
 		if (!other.data.isActive) continue;
 		const int retVal = WSASend(other.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_LOGIN_CONFIRM)");
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGIN_CONFIRM)");
 	}
 
 	// 로그인한 클라이언트에게 이미 접속해있는 클라이언트들의 정보 전송
@@ -130,7 +130,7 @@ void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
 		if (c.data.id == player.data.id) continue;
 		if (!c.data.isActive) continue;
 		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_SELECT_WEAPON)");
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_SELECT_WEAPON)");
 	}
 
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Select Weapon Packet Received" << std::endl;
@@ -155,7 +155,7 @@ void NetworkFramework::SendReadyCheckPacket(const Session& player) const
 		if (c.data.id == player.data.id) continue;
 		if (!c.data.isActive) continue;
 		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(SC_PACKET_READY_CHECK)");
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_READY_CHECK)");
 	}
 
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Ready Packet Received" << std::endl;
@@ -182,7 +182,7 @@ void NetworkFramework::SendPlayerDataPacket()
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
 				std::cout << "[" << static_cast<int>(cl.data.id) << " Session] Disconnect" << std::endl;
-			else errorDisplay(WSAGetLastError(), "SendPlayerData");
+			else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_UPDATE_CLIENT)");
 		}
 	}
 
@@ -210,7 +210,7 @@ void NetworkFramework::SendBulletHitPacket()
 		{
 			if (WSAGetLastError() == WSAECONNRESET)
 				std::cout << "[" << static_cast<int>(data.bullet.playerId) << " Session] Disconnect" << std::endl;
-			else errorDisplay(WSAGetLastError(), "SendBulletHitData");
+			else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_HIT)");
 		}
 	}
 	bulletHits.clear();
@@ -235,17 +235,34 @@ void NetworkFramework::SendMonsterDataPacket()
 	{
 		if (!player.data.isActive) continue;
 		const int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR)
-		{
-			if (WSAGetLastError() == WSAECONNRESET)
-				std::cout << "[" << static_cast<int>(player.data.id) << " Session] Disconnect" << std::endl;
-			else errorDisplay(WSAGetLastError(), "SendMonsterData");
-		}
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_UPDATE_MONSTER)");
 	}
 
 	// 죽은 몬스터는 서버에서 삭제
 	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
 }
+
+void NetworkFramework::SendMonsterAttackPacket(const int id, const int damage) const
+{
+	sc_packet_monster_attack packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_MONSTER_ATTACK;
+	packet.data.id = static_cast<CHAR>(id);
+	packet.data.damage = static_cast<CHAR>(damage);
+
+	char buf[sizeof(packet)]{};
+	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD sent_byte;
+
+	for (const auto& cl : clients) {
+		if (cl.data.isActive == false) continue;
+		const int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_MONSTER_ATTACK)");
+	}
+}
+
+
 
 void NetworkFramework::ProcessRecvPacket(const int id)
 {
@@ -508,33 +525,6 @@ void NetworkFramework::CollisionCheck()
 
 	// 충돌체크가 완료된 총알들은 삭제
 	bullets.clear();
-
-	// 몬스터 공격 
-	//Monster* attackMonster{ nullptr };	// 다가온 몹
-	
-	for (Monster& mob : monsters)
-	{
-		/*if (mob.GetHp() <= 0) continue;
-		std::cout << mob.GetAtkTimer() << "   " << static_cast<int>(mob.GetAnimationType()) << std::endl;
-		if (mob.GetAnimationType() == eMobAnimationType::ATTACK)
-		{
-			if (mob.GetAtkTimer() >= 0.3f && mob.tmp == false)
-			{
-				float range{ Vector3::Length(Vector3::Sub(clients[mob.GetTargetId()].data.pos, mob.GetPosition())) };
-				if (range < 27.0f) std::cout << static_cast<int>(mob.GetTargetId()) << " is under attack!" << std::endl;
-				else std::cout << static_cast<int>(mob.GetTargetId()) << " is dodge!" << std::endl;
-				mob.tmp = true;
-			}
-			continue;
-		}
-		float range{ Vector3::Length(Vector3::Sub(clients[mob.GetTargetId()].data.pos, mob.GetPosition()))};
-
-		if (range < 25.0f)
-		{
-			std::cout << static_cast<int>(mob.GetTargetId()) << " is close!" << std::endl;
-			mob.Attack(mob.GetTargetId());
-		}*/
-	}
 }
 
 void NetworkFramework::Disconnect(const int id)

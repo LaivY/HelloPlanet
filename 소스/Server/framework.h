@@ -19,6 +19,7 @@ public:
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();
+	void SendMonsterAttackPacket(const int id, const int damage) const;
 
 	void Update(FLOAT deltaTime);
 	void SpawnMonsters(FLOAT deltaTime);

@@ -59,6 +59,7 @@ public:
 	void RecvUpdateMonster();
 	void RecvBulletFire();
 	void RecvBulletHit();
+	void RecvMosterAttack();
 	void RecvLogoutOkPacket();
 
 	// 이전 씬에서 데이터를 가져옴
