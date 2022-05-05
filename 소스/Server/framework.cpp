@@ -510,17 +510,31 @@ void NetworkFramework::CollisionCheck()
 	bullets.clear();
 
 	// 몬스터 공격 
-	Monster* attackMonster{ nullptr };	// 다가온 몹
-
+	//Monster* attackMonster{ nullptr };	// 다가온 몹
+	
 	for (Monster& mob : monsters)
 	{
-		if (mob.GetHp() <= 0) continue;
-		if (mob.GetAnimationType() == eMobAnimationType::ATTACK) continue;
-
+		/*if (mob.GetHp() <= 0) continue;
+		std::cout << mob.GetAtkTimer() << "   " << static_cast<int>(mob.GetAnimationType()) << std::endl;
+		if (mob.GetAnimationType() == eMobAnimationType::ATTACK)
+		{
+			if (mob.GetAtkTimer() >= 0.3f && mob.tmp == false)
+			{
+				float range{ Vector3::Length(Vector3::Sub(clients[mob.GetTargetId()].data.pos, mob.GetPosition())) };
+				if (range < 27.0f) std::cout << static_cast<int>(mob.GetTargetId()) << " is under attack!" << std::endl;
+				else std::cout << static_cast<int>(mob.GetTargetId()) << " is dodge!" << std::endl;
+				mob.tmp = true;
+			}
+			continue;
+		}
 		float range{ Vector3::Length(Vector3::Sub(clients[mob.GetTargetId()].data.pos, mob.GetPosition()))};
-		if (range < 25.0f)attackMonster = &mob;
+
+		if (range < 25.0f)
+		{
+			std::cout << static_cast<int>(mob.GetTargetId()) << " is close!" << std::endl;
+			mob.Attack(mob.GetTargetId());
+		}*/
 	}
-	if (attackMonster) attackMonster->Attack(clients[attackMonster->GetTargetId()].data.id);
 }
 
 void NetworkFramework::Disconnect(const int id)

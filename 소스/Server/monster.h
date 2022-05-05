@@ -27,7 +27,8 @@ public:
 	CHAR GetId() const;
 	UCHAR GetTargetId() const;
 	eMobAnimationType GetAnimationType() const;
-
+	FLOAT GetAtkTimer() const;
+	
 private:
 	// 클라이언트로 보낼 데이터들
 	CHAR							m_id;
@@ -41,6 +42,8 @@ private:
 	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
 	DirectX::BoundingOrientedBox	m_boundingBox;	// 바운딩박스
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
+	FLOAT							m_atkTimer;		// 공격한 시점부터 시작되는 타이머
 	INT								m_hp;			// 체력
 	UCHAR							m_target;		// 타겟
+	bool							m_wasAttack;	// 
 };
