@@ -384,7 +384,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 #endif
 	m_camera->CreateShaderVariable(device, commandList);
 	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2000.0f));
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 바운딩박스
@@ -698,7 +698,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 void GameScene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.08f, 0.1f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.1f, 0.4f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
 	XMFLOAT3 frustum[]{
@@ -725,7 +725,7 @@ void GameScene::UpdateShadowMatrix()
 	// 큐브의 정점을 시야절두체 구간으로 변경
 	for (int i = 0; i < casecade.size() - 1; ++i)
 	{
-		XMFLOAT3 tFrustum[8];
+		XMFLOAT3 tFrustum[8]{};
 		for (int j = 0; j < 8; ++j)
 			tFrustum[j] = frustum[j];
 
@@ -756,7 +756,7 @@ void GameScene::UpdateShadowMatrix()
 
 		// 그림자를 만들 조명의 좌표를 바운딩구의 중심에서 빛의 반대방향으로 적당히 움직이여야함
 		// 이건 씬의 오브젝트를 고려해서 정말 적당한 수치만큼 움직여줘야함
-		float value{ max(750.0f, radius * 2.5f) };
+		float value{ max(500.0f, radius) };
 		XMFLOAT3 shadowLightPos{ Vector3::Add(center, Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -value)) };
 
 		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
@@ -940,6 +940,7 @@ void GameScene::RecvBulletHit()
 
 	auto textureInfo{ make_unique<TextureInfo>() };
 	textureInfo->doRepeat = FALSE;
+	textureInfo->interver = 1.0f / 30.0f;
 
 	auto hitEffect{ make_unique<UIObject>(50.0f, 50.0f) };
 	hitEffect->SetMesh(s_meshes["UI"]);
