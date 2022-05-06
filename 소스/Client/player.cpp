@@ -498,8 +498,6 @@ void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	// 회전각 제한
 	if (m_pitch + pitch > Setting::CAMERA_MAX_PITCH)
 		pitch = Setting::CAMERA_MAX_PITCH - m_pitch;
-	else if (m_pitch + pitch < Setting::CAMERA_MIN_PITCH)
-		pitch = Setting::CAMERA_MIN_PITCH - m_pitch;
 
 	// 카메라는 x,y축으로 회전할 수 있다.
 	// GameObject::Rotate에서 플레이어의 로컬 x,y,z축을 변경하므로 먼저 호출해야한다.

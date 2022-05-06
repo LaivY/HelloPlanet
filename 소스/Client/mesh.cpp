@@ -536,13 +536,13 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	v.position = { position.x - hx, position.y + hy, position.z - hz }; vertices.push_back(v);
 
 	// 밑면
-	v.position = { position.x + hx, position.y, position.z + hz }; vertices.push_back(v);
-	v.position = { position.x - hx, position.y, position.z + hz }; vertices.push_back(v);
-	v.position = { position.x - hx, position.y, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z - hz }; vertices.push_back(v);
 
-	v.position = { position.x + hx, position.y, position.z + hz }; vertices.push_back(v);
-	v.position = { position.x - hx, position.y, position.z - hz }; vertices.push_back(v);
-	v.position = { position.x + hx, position.y, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z + hz }; vertices.push_back(v);
+	v.position = { position.x - hx, position.y - hy, position.z - hz }; vertices.push_back(v);
+	v.position = { position.x + hx, position.y - hy, position.z - hz }; vertices.push_back(v);
 
 	// 회색 재질
 	Material material;
