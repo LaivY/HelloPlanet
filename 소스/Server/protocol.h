@@ -25,6 +25,7 @@ constexpr char SC_PACKET_UPDATE_CLIENT = 5;
 constexpr char SC_PACKET_BULLET_FIRE = 6;
 constexpr char SC_PACKET_BULLET_HIT = 7;
 constexpr char SC_PACKET_UPDATE_MONSTER = 8;
+constexpr char SC_PACKET_MONSTER_ATTACK = 9;
 constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
@@ -104,6 +105,12 @@ struct MonsterData
 	DirectX::XMFLOAT3	pos;		// 위치
 	DirectX::XMFLOAT3	velocity;	// 속도
 	FLOAT				yaw;		// 회전각
+};
+
+struct MonsterAttackData
+{
+	CHAR		id;			// 맞은 사람
+	CHAR		damage;		// 데미지
 };
 
 // ---------------------------------
@@ -221,5 +228,12 @@ struct sc_packet_update_monsters
 	UCHAR		size;
 	UCHAR		type;
 	MonsterData	data[MAX_MONSTER];
+};
+
+struct sc_packet_monster_attack
+{
+	UCHAR				size;
+	UCHAR				type;
+	MonsterAttackData	data;
 };
 #pragma pack(pop)
