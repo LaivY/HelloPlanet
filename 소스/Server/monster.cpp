@@ -17,8 +17,11 @@ void Monster::OnHit(const BulletData& bullet)
 	SetTargetId(bullet.playerId);
 	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
 	SetHp(m_hp - 40);
-	if (m_hp <= 0)
+	if (m_hp <= 0) 
+	{
 		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.m_killScore++;
+	}
 	else if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
 }
@@ -126,10 +129,11 @@ void Monster::Update(FLOAT deltaTime)
 			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
 			if (range < 27.0f)
 			{
+				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
 				g_networkFramework.SendMonsterAttackPacket(m_target, 10);
-				std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
+				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
 			}
-			else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
+			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
 			m_wasAttack = true;
 		}
 	}
