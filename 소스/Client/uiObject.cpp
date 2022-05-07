@@ -274,7 +274,7 @@ void HpUIObject::SetPlayer(const shared_ptr<Player>& player)
 	m_maxHp = player->GetMaxHp();
 }
 
-CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_gunType{ eGunType::NONE }, m_bulletCount{}, m_radius{ 11.0f }, m_timer{}
+CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_weaponType{ eWeaponType::AR }, m_bulletCount{}, m_radius{ 11.0f }, m_timer{}
 {
 	// width, height는 선 하나의 너비와 높이를 나타낸다.
 	// 반지름은 각 선이 중심으로부터 떨어져있는 거리이다.
@@ -322,15 +322,15 @@ void CrosshairUIObject::Update(FLOAT deltaTime)
 	{
 		m_bulletCount = bulletCount;
 		if (m_bulletCount != m_player->GetMaxBulletCount())
-			switch (m_gunType)
+			switch (m_weaponType)
 			{
-			case eGunType::AR:
+			case eWeaponType::AR:
 				m_radius = 14.0f;
 				break;
-			case eGunType::SG:
+			case eWeaponType::SG:
 				m_radius = 16.0f;
 				break;
-			case eGunType::MG:
+			case eWeaponType::MG:
 				m_radius = 15.0f;
 				break;
 			}
@@ -364,7 +364,7 @@ void CrosshairUIObject::SetMesh(shared_ptr<Mesh>& mesh)
 void CrosshairUIObject::SetPlayer(const shared_ptr<Player>& player)
 {
 	m_player = player;
-	m_gunType = player->GetGunType();
+	m_weaponType = player->GetWeaponType();
 	m_bulletCount = player->GetBulletCount();
 }
 

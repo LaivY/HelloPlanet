@@ -1,13 +1,36 @@
 ﻿#include "lobbyScene.h"
 #include "framework.h"
 
-LobbyScene::LobbyScene() : m_pcbGameScene{ nullptr }
+LobbyScene::LobbyScene() : m_isReadyToPlay{ FALSE }, m_isLogout{ FALSE },
+						   m_leftSlotPlayerId{ -1 }, m_rightSlotPlayerId{ -1 }, m_leftSlotReadyText{ nullptr }, m_rightSlotReadyText{ nullptr }, m_pcbGameScene{ nullptr }
 {
+
 }
 
 LobbyScene::~LobbyScene()
 {
 	if (m_cbGameScene) m_cbGameScene->Unmap(0, NULL);
+#ifdef NETWORK
+	if (m_isReadyToPlay)
+	{
+		// 모두 준비완료가 되서 게임 씬으로 넘어가는 경우
+		if (g_networkThread.joinable())
+			g_networkThread.join();
+	}
+	else
+	{
+		// 나가기 버튼을 누른 경우
+		cs_packet_logout packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_LOGOUT;
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
+		if (g_networkThread.joinable())
+			g_networkThread.join();
+		closesocket(g_socket);
+		WSACleanup();
+	}
+#endif
 }
 
 void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -18,6 +41,23 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
+
+#ifdef NETWORK
+	g_networkThread = thread{ &LobbyScene::RecvPacket, this };
+#endif
+}
+
+void LobbyScene::OnDestroy()
+{
+	cs_packet_logout packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGOUT;
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
+	if (g_networkThread.joinable())
+		g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
 }
 
 void LobbyScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -112,9 +152,17 @@ void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 		w->Render2D(device);
 }
 
-void LobbyScene::ProcessClient()
+void LobbyScene::RecvPacket()
 {
+	constexpr char name[10] = "Hello\0";
+	cs_packet_login packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGIN;
+	memcpy(packet.name, name, sizeof(char) * 10);
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 
+	while (!m_isReadyToPlay && !m_isLogout)
+		ProcessPacket();
 }
 
 void LobbyScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -157,6 +205,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_gameObjects.push_back(move(dropship));
 
 	// 플레이어
+	// 평범하게 렌더링하기 위해 멀티플레이어로 만듦
 	m_player = make_unique<Player>(TRUE);
 	m_player->SetMesh(s_meshes["PLAYER"]);
 	m_player->SetShader(s_shaders["ANIMATION"]);
@@ -164,7 +213,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_player->SetGunMesh(s_meshes["AR"]);
 	m_player->SetGunShader(s_shaders["LINK"]);
 	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	m_player->SetGunType(eGunType::AR);
+	m_player->SetWeaponType(eWeaponType::AR);
 	m_player->PlayAnimation("IDLE");
 	m_player->PlayAnimation("RELOAD");
 	m_player->SetCamera(m_camera);
@@ -183,23 +232,31 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	constexpr auto readyCallBack = 
 	[](MenuTextObject* readyTextObject)
 	{
-		//wstring text{ readyTextObject->GetText() };
-		//if (text == readyText)
-		//{
-		//	readyTextObject->SetBrush("BLUE");
-		//	readyTextObject->SetMouseOverBrush("BLUE");
-		//	readyTextObject->SetText(readyOkText);
-		//}
-		//else
-		//{
-		//	readyTextObject->SetBrush("BLACK");
-		//	readyTextObject->SetMouseOverBrush("BLACK");
-		//	readyTextObject->SetText(readyText);
-		//}
-		//readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -50.0f });
+#ifdef NETWORK
+		cs_packet_ready packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_READY;
 
-		// 지금은 준비 버튼을 누르면 바로 게임 시작
-		g_gameFramework.SetNextScene(eScene::GAME);
+		wstring text{ readyTextObject->GetText() };
+		if (text == readyText)
+		{
+			readyTextObject->SetBrush("BLUE");
+			readyTextObject->SetMouseOverBrush("BLUE");
+			readyTextObject->SetText(readyOkText);
+			packet.isReady = true;
+		}
+		else
+		{
+			readyTextObject->SetBrush("BLACK");
+			readyTextObject->SetMouseOverBrush("BLACK");
+			readyTextObject->SetText(readyText);
+			packet.isReady = false;
+		}
+		readyTextObject->SetPosition(XMFLOAT2{ 0.0f, -30.0f });
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+#else
+		g_gameFramework.SetNextScene(eSceneType::GAME);
+#endif
 	};
 
 	auto leftCallBack =
@@ -208,23 +265,31 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		if (readyTextObject->GetText() == readyOkText)
 			return;
 
-		eGunType type{ m_player->GetGunType() };
+		cs_packet_select_weapon packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_SELECT_WEAPON;
+
+		eWeaponType type{ m_player->GetWeaponType() };
 		switch (type)
 		{
-		case eGunType::AR:
+		case eWeaponType::AR:
 			m_player->SetGunMesh(s_meshes["MG"]);
-			m_player->SetGunType(eGunType::MG);
+			m_player->SetWeaponType(eWeaponType::MG);
+			packet.weaponType = eWeaponType::MG;
 			break;
-		case eGunType::SG:
+		case eWeaponType::SG:
 			m_player->SetGunMesh(s_meshes["AR"]);
-			m_player->SetGunType(eGunType::AR);
+			m_player->SetWeaponType(eWeaponType::AR);
+			packet.weaponType = eWeaponType::AR;
 			break;
-		case eGunType::MG:
+		case eWeaponType::MG:
 			m_player->SetGunMesh(s_meshes["SG"]);
-			m_player->SetGunType(eGunType::SG);
+			m_player->SetWeaponType(eWeaponType::SG);
+			packet.weaponType = eWeaponType::SG;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 	};
 
 	auto rightCallBack =
@@ -233,29 +298,37 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		if (readyTextObject->GetText() == readyOkText)
 			return;
 
-		eGunType type{ m_player->GetGunType() };
+		cs_packet_select_weapon packet{};
+		packet.size = sizeof(packet);
+		packet.type = CS_PACKET_SELECT_WEAPON;
+
+		eWeaponType type{ m_player->GetWeaponType() };
 		switch (type)
 		{
-		case eGunType::AR:
+		case eWeaponType::AR:
 			m_player->SetGunMesh(s_meshes["SG"]);
-			m_player->SetGunType(eGunType::SG);
+			m_player->SetWeaponType(eWeaponType::SG);
+			packet.weaponType = eWeaponType::SG;
 			break;
-		case eGunType::SG:
+		case eWeaponType::SG:
 			m_player->SetGunMesh(s_meshes["MG"]);
-			m_player->SetGunType(eGunType::MG);
+			m_player->SetWeaponType(eWeaponType::MG);
+			packet.weaponType = eWeaponType::MG;
 			break;
-		case eGunType::MG:
+		case eWeaponType::MG:
 			m_player->SetGunMesh(s_meshes["AR"]);
-			m_player->SetGunType(eGunType::AR);
+			m_player->SetWeaponType(eWeaponType::AR);
+			packet.weaponType = eWeaponType::AR;
 			break;
 		}
 		m_player->PlayAnimation("RELOAD");
+		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 	};
 
 	auto ready{ make_unique<MenuTextObject>() };
 	ready->SetBrush("BLACK");
 	ready->SetMouseOverBrush("BLACK");
-	ready->SetFormat("MENU");
+	ready->SetFormat("48_RIGHT");
 	ready->SetText(TEXT("준비"));
 	ready->SetPivot(ePivot::CENTERBOT);
 	ready->SetScreenPivot(ePivot::CENTERBOT);
@@ -265,7 +338,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto leftText{ make_unique<MenuTextObject>() };
 	leftText->SetBrush("BLACK");
 	leftText->SetMouseOverBrush("BLUE");
-	leftText->SetFormat("MENU");
+	leftText->SetFormat("48_RIGHT");
 	leftText->SetText(TEXT("<"));
 	leftText->SetPivot(ePivot::CENTERBOT);
 	leftText->SetScreenPivot(ePivot::CENTERBOT);
@@ -276,7 +349,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto rightText{ make_unique<MenuTextObject>() };
 	rightText->SetBrush("BLACK");
 	rightText->SetMouseOverBrush("BLUE");
-	rightText->SetFormat("MENU");
+	rightText->SetFormat("48_RIGHT");
 	rightText->SetText(TEXT(">"));
 	rightText->SetPivot(ePivot::CENTERBOT);
 	rightText->SetScreenPivot(ePivot::CENTERBOT);
@@ -286,9 +359,9 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	m_textObjects.push_back(move(ready));
 
 	auto exit{ make_unique<MenuTextObject>() };
-	exit->SetBrush("BLACK");
-	exit->SetMouseOverBrush("BLUE");
-	exit->SetFormat("MENU");
+	exit->SetBrush("RED");
+	exit->SetMouseOverBrush("RED");
+	exit->SetFormat("48_RIGHT");
 	exit->SetText(TEXT("나가기"));
 	exit->SetPivot(ePivot::RIGHTBOT);
 	exit->SetScreenPivot(ePivot::RIGHTBOT);
@@ -296,10 +369,30 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	exit->SetMouseClickCallBack(
 		[]()
 		{
-			g_gameFramework.SetNextScene(eScene::MAIN);
+			g_gameFramework.SetNextScene(eSceneType::MAIN);
 		}
 	);
 	m_textObjects.push_back(move(exit));
+
+	auto leftReadyText{ make_unique<TextObject>() };
+	leftReadyText->SetBrush("BLACK");
+	leftReadyText->SetFormat("48_RIGHT");
+	leftReadyText->SetText(TEXT("대기중"));
+	leftReadyText->SetPivot(ePivot::CENTERBOT);
+	leftReadyText->SetScreenPivot(ePivot::CENTERBOT);
+	leftReadyText->SetPosition(XMFLOAT2{ -650.0f * g_width / g_maxWidth, -200.0f * g_width / g_maxWidth });
+	m_leftSlotReadyText = leftReadyText.get();
+	m_textObjects.push_back(move(leftReadyText));
+
+	auto rightReadyText{ make_unique<TextObject>() };
+	rightReadyText->SetBrush("BLACK");
+	rightReadyText->SetFormat("48_RIGHT");
+	rightReadyText->SetText(TEXT("대기중"));
+	rightReadyText->SetPivot(ePivot::CENTERBOT);
+	rightReadyText->SetScreenPivot(ePivot::CENTERBOT);
+	rightReadyText->SetPosition(XMFLOAT2{ 650.0f * g_width / g_maxWidth, -200.0f * g_width / g_maxWidth });
+	m_rightSlotReadyText = rightReadyText.get();
+	m_textObjects.push_back(move(rightReadyText));
 }
 
 void LobbyScene::CreateLights() const
@@ -426,4 +519,244 @@ void LobbyScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comm
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void LobbyScene::ProcessPacket()
+{
+	char buf[1 + 1]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{ 0 }, recvFlag{ 0 };
+	if (WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr) == SOCKET_ERROR)
+		error_display("RecvSizeType");
+
+	UCHAR size{ static_cast<UCHAR>(buf[0]) };
+	UCHAR type{ static_cast<UCHAR>(buf[1]) };
+
+	switch (type)
+	{
+	case SC_PACKET_LOGIN_CONFIRM:
+		RecvLoginOkPacket();
+		break;
+	case SC_PACKET_SELECT_WEAPON:
+		RecvSelectWeaponPacket();
+		break;
+	case SC_PACKET_READY_CHECK:
+		RecvReadyPacket();
+		break;
+	case SC_PACKET_CHANGE_SCENE:
+		RecvChangeScenePacket();
+		break;
+	case SC_PACKET_LOGOUT_OK:
+		RecvLogoutOkPacket();
+		return;
+	}
+}
+
+void LobbyScene::RecvLoginOkPacket()
+{
+	// 플레이어정보 + 닉네임 + 준비상태 + 무기상태
+	char buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1 + 1]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	if (!m_player) return;
+
+	PlayerData data{};
+	char name[MAX_NAME_SIZE]{};
+	memcpy(&data, buf, sizeof(data));
+	memcpy(&name, &buf[sizeof(PlayerData)], sizeof(name));
+
+	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
+	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
+	auto weaponType = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
+	
+	if (m_player->GetId() == -1)
+	{
+		m_player->SetId(static_cast<int>(data.id));
+		return;
+	}
+	if (m_player->GetId() != data.id)
+		for (auto& p : m_multiPlayers)
+		{
+			if (p) continue;
+			p = make_unique<Player>(TRUE);
+			p->SetWeaponType(weaponType);
+			p->SetId(static_cast<int>(data.id));
+			p->ApplyServerData(data);
+			if (m_leftSlotPlayerId == -1)
+			{
+				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
+				m_leftSlotPlayerId = static_cast<int>(data.id);
+				if (isReady)
+				{
+					m_leftSlotReadyText->SetBrush("BLUE");
+					m_leftSlotReadyText->SetText(TEXT("준비완료"));
+				}
+				else
+				{
+					m_leftSlotReadyText->SetBrush("BLACK");
+					m_leftSlotReadyText->SetText(TEXT("준비중"));
+				}
+				m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+			}
+			else if (m_rightSlotPlayerId == -1)
+			{
+				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
+				m_rightSlotPlayerId = static_cast<int>(data.id);
+				if (isReady)
+				{
+					m_rightSlotReadyText->SetBrush("BLUE");
+					m_rightSlotReadyText->SetText(TEXT("준비완료"));
+				}
+				else
+				{
+					m_rightSlotReadyText->SetBrush("BLACK");
+					m_rightSlotReadyText->SetText(TEXT("준비중"));
+				}
+				m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+			}
+			break;
+		}
+}
+
+void LobbyScene::RecvReadyPacket()
+{
+	// 아이디, 준비상태
+	char buf[1 + 1]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf[0]) };
+	bool state{ static_cast<bool>(buf[1]) };
+
+	if (m_leftSlotPlayerId == id)
+	{
+		if (state)
+		{
+			m_leftSlotReadyText->SetBrush("BLUE");
+			m_leftSlotReadyText->SetText(TEXT("준비완료"));
+		}
+		else
+		{
+			m_leftSlotReadyText->SetBrush("BLACK");
+			m_leftSlotReadyText->SetText(TEXT("준비중"));
+		}
+		m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+	}
+	else if (m_rightSlotPlayerId == id)
+	{
+		if (state)
+		{
+			m_rightSlotReadyText->SetBrush("BLUE");
+			m_rightSlotReadyText->SetText(TEXT("준비완료"));
+		}
+		else
+		{
+			m_rightSlotReadyText->SetBrush("BLACK");
+			m_rightSlotReadyText->SetText(TEXT("준비중"));
+		}
+		m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+	}
+}
+
+void LobbyScene::RecvChangeScenePacket()
+{
+	// 씬 타입
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+	
+	// 타입은 사용하지 않음.
+	// 이 패킷이 왔다는 것은 모든 플레이어가 준비완료 했다는 것
+	eSceneType type{ static_cast<eSceneType>(buf) };
+
+	m_isReadyToPlay = TRUE;
+	g_gameFramework.SetNextScene(eSceneType::GAME);
+}
+
+void LobbyScene::RecvSelectWeaponPacket()
+{
+	// 아이디, 무기타입
+	char buf[1 + 1]{};
+	WSABUF wsabuf{ sizeof(buf), buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf[0]) };
+	eWeaponType type{ static_cast<eWeaponType>(buf[1]) };
+
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		if (p->GetId() != id) continue;
+
+		switch (type)
+		{
+		case eWeaponType::AR:
+			p->SetGunMesh(s_meshes["AR"]);
+			p->SetWeaponType(eWeaponType::AR);
+			break;
+		case eWeaponType::SG:
+			p->SetGunMesh(s_meshes["SG"]);
+			p->SetWeaponType(eWeaponType::SG);
+			break;
+		case eWeaponType::MG:
+			p->SetGunMesh(s_meshes["MG"]);
+			p->SetWeaponType(eWeaponType::MG);
+			break;
+		}
+		p->PlayAnimation("RELOAD");
+		break;
+	}
+}
+
+void LobbyScene::RecvLogoutOkPacket()
+{
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	int id{ static_cast<int>(buf) };
+	if (m_player->GetId() == id)
+	{
+		m_isLogout = TRUE;
+		return;
+	}
+
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		if (p->GetId() != id) continue;
+
+		if (m_leftSlotPlayerId == id)
+		{
+			m_leftSlotPlayerId = -1;
+			m_leftSlotReadyText->SetBrush("BLACK");
+			m_leftSlotReadyText->SetText(TEXT("대기중"));
+			m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+		}
+		else if (m_rightSlotPlayerId == id)
+		{
+			m_rightSlotPlayerId = -1;
+			m_rightSlotReadyText->SetBrush("BLACK");
+			m_rightSlotReadyText->SetText(TEXT("대기중"));
+			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+		}
+		p.reset();
+		return;
+	}
+}
+
+unique_ptr<Player>& LobbyScene::GetPlayer()
+{
+	return m_player;
+}
+
+array<unique_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
+{
+	return m_multiPlayers;
 }

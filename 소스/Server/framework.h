@@ -3,6 +3,8 @@
 #include "session.h"
 #include "monster.h"
 
+constexpr INT stage1Goal = 3;
+
 class NetworkFramework
 {
 public:
@@ -11,12 +13,19 @@ public:
 
 	int OnInit(SOCKET socket);
 	void AcceptThread(SOCKET socket);
-	void SendLoginOkPacket(const int id, const char* name) const;
-	void SendReadyToPlayPacket(const int id, const eWeaponType weaponType);
+	void ProcessRecvPacket(const int id);
+
+	void SendLoginOkPacket(const Session& player) const;
+	void SendSelectWeaponPacket(const Session& player) const;
+	void SendReadyCheckPacket(const Session& player) const;
+	void SendChangeScenePacket(const eSceneType sceneType) const;
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();
-	void ProcessRecvPacket(const int id);
+	void SendMonsterAttackPacket(const int id, const int damage) const;
+	void SendRoundResultPacket(const eRoundResult result) const;
+	void SendPacket2AllPlayer(const void* packet, const int bufSize) const;
+
 	void Update(FLOAT deltaTime);
 	void SpawnMonsters(FLOAT deltaTime);
 	void CollisionCheck();
@@ -26,14 +35,15 @@ public:
 	CHAR GetNewId() const;
 
 public:
-	bool							isAccept;			// 1명이라도 서버에 들어왔는지
-	int								readyCount;			// 레디한 인원
+	BOOL							isAccept;			// 1명이라도 서버에 들어왔는지
+	BOOL							isClearStage1;
+	INT								readyCount;			// 레디한 인원
 	std::array<Session, MAX_USER>	clients;			// 클라이언트
-	std::vector<Monster>			monsters;			// 몬스터
-	std::vector<BulletData>			bullets;			// 총알
-	std::vector<BulletHitData>		bulletHits;			// 총알을 맞춘 정보
-	std::vector<std::thread>		threads;			// 쓰레드
+	std::vector<Monster>			monsters{};			// 몬스터
+	std::vector<BulletData>			bullets{};			// 총알
+	std::vector<BulletHitData>		bulletHits{};		// 총알을 맞춘 정보
+	std::vector<std::thread>		threads{};			// 쓰레드
 	FLOAT							m_spawnCooldown;	// 스폰 쿨다운
 	CHAR							m_lastMobId;		// 몬스터 ID
-
+	INT								m_killScore;		// 잡은 몬스터 점수
 };

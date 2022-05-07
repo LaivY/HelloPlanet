@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
-//#define BOUNDINGBOX
-//#define NETWORK
+//#define RENDER_HITBOX
+#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -73,8 +73,7 @@ extern BOOL                 g_isConnected;                      // 서버 연결
 extern thread               g_networkThread;                    // 네트워크 쓰레드
 extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
 
-enum class eGunType;
-extern eGunType             g_playerGunType;
+extern eWeaponType          g_playerGunType;
 
 namespace DX
 {

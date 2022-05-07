@@ -21,6 +21,7 @@ public:
 	virtual void OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
 						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory);
+	virtual void OnDestroy();
 	virtual void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -33,6 +34,7 @@ public:
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget);
 
 	// 서버 통신 함수
 	virtual void ProcessClient();
@@ -58,6 +60,13 @@ public:
 	void RecvUpdateMonster();
 	void RecvBulletFire();
 	void RecvBulletHit();
+	void RecvMosterAttack();
+	void RecvRoundResult();
+	void RecvLogoutOkPacket();
+
+	// 이전 씬에서 데이터를 가져옴
+	void SetPlayer(unique_ptr<Player>& player);
+	void SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
 
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼

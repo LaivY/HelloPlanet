@@ -56,14 +56,10 @@ NoDepthShader::NoDepthShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, vs.c_str(), "vs_5_1", compileFlags, 0, &vertexShader, &error));
 	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, ps.c_str(), "ps_5_1", compileFlags, 0, &pixelShader, &error));
 
-	// 깊이 검사 OFF
-	// 깊이 쓰기 OFF
 	CD3DX12_DEPTH_STENCIL_DESC depthStencilState{ D3D12_DEFAULT };
 	depthStencilState.DepthEnable = FALSE;
 	depthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	depthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_NEVER;
-	//depthStencilState.StencilEnable = TRUE;
-	//depthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };

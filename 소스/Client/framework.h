@@ -5,11 +5,6 @@
 #include "timer.h"
 #include "scene.h"
 
-enum class eScene
-{
-	NONE, LOADING, MAIN, LOBBY, GAME
-};
-
 struct cbGameFramework
 {
 	FLOAT deltaTime;
@@ -45,6 +40,7 @@ public:
 	void CreateRenderTargetView();
 	void CreateDepthStencilView();
 	void CreateRootSignature();
+	void CreatePostRootSignature();
 	void CreateShaderVariable();
 
 	void Update(FLOAT deltaTime);
@@ -53,13 +49,13 @@ public:
 	void Render2D() const;
 	void WaitForPreviousFrame();
 	void WaitForGpu();
+	void ChangeScene();
 	BOOL ConnectServer();
 	void ProcessClient();
-	void ChangeScene();
 
 	void SetIsActive(BOOL isActive);
 	void SetIsFullScreen(BOOL isFullScreen);
-	void SetNextScene(eScene sceneType);
+	void SetNextScene(eSceneType sceneType);
 
 	HWND GetWindow() const;
 	BOOL isActive() const;
@@ -94,7 +90,7 @@ private:
 	ComPtr<ID3D12Resource>				m_depthStencil;
 	ComPtr<ID3D12DescriptorHeap>		m_dsvHeap;
 	ComPtr<ID3D12RootSignature>			m_rootSignature;
-	ComPtr<ID3D12RootSignature>			m_postProcessRootSignature;
+	ComPtr<ID3D12RootSignature>			m_postRootSignature;
 
 	// Direct11, 2D
 	ComPtr<ID3D11DeviceContext>			m_d3d11DeviceContext;
@@ -122,5 +118,5 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
-	eScene								m_nextScene;
+	eSceneType								m_nextScene;
 };

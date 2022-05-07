@@ -166,7 +166,7 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	player->SetGunMesh(s_meshes["AR"]);
 	player->SetGunShader(s_shaders["LINK"]);
 	player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-	player->SetGunType(eGunType::AR);
+	player->SetWeaponType(eWeaponType::AR);
 	player->PlayAnimation("IDLE");
 	m_players.push_back(move(player));
 }
@@ -197,7 +197,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto gameStartText{ make_unique<MenuTextObject>() };
 	gameStartText->SetBrush("BLACK");
 	gameStartText->SetMouseOverBrush("WHITE");
-	gameStartText->SetFormat("MENU");
+	gameStartText->SetFormat("48_RIGHT");
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
@@ -212,14 +212,14 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 				return;
 			}
 #endif
-			g_gameFramework.SetNextScene(eScene::LOBBY);
+			g_gameFramework.SetNextScene(eSceneType::LOBBY);
 		});
 	m_textObjects.push_back(move(gameStartText));
 
 	auto settingText{ make_unique<MenuTextObject>() };
 	settingText->SetBrush("BLACK");
 	settingText->SetMouseOverBrush("WHITE");
-	settingText->SetFormat("MENU");
+	settingText->SetFormat("48_RIGHT");
 	settingText->SetText(TEXT("설정"));
 	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
@@ -230,7 +230,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto exitText{ make_unique<MenuTextObject>() };
 	exitText->SetBrush("BLACK");
 	exitText->SetMouseOverBrush("WHITE");
-	exitText->SetFormat("MENU");
+	exitText->SetFormat("48_RIGHT");
 	exitText->SetText(TEXT("종료"));
 	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
@@ -266,7 +266,7 @@ void MainScene::CreateSettingWindow()
 	auto close{ make_unique<MenuTextObject>() };
 	close->SetBrush("BLACK");
 	close->SetMouseOverBrush("BLUE");
-	close->SetFormat("MENU");
+	close->SetFormat("48_RIGHT");
 	close->SetText(TEXT("확인"));
 	close->SetScreenPivot(ePivot::CENTERBOT);
 	close->SetPivot(ePivot::CENTERBOT);
@@ -280,7 +280,7 @@ void MainScene::CreateSettingWindow()
 
 	auto text{ make_unique<TextObject>() };
 	text->SetBrush("BLACK");
-	text->SetFormat("MENU");
+	text->SetFormat("48_RIGHT");
 	text->SetText(TEXT("설정"));
 	text->SetPivot(ePivot::CENTERTOP);
 	text->SetScreenPivot(ePivot::CENTERTOP);
@@ -289,7 +289,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText1{ make_unique<MenuTextObject>() };
 	windowSizeText1->SetBrush("BLACK");
 	windowSizeText1->SetMouseOverBrush("BLUE");
-	windowSizeText1->SetFormat("MENU");
+	windowSizeText1->SetFormat("48_RIGHT");
 	windowSizeText1->SetText(TEXT("1280x720"));
 	windowSizeText1->SetPivot(ePivot::CENTER);
 	windowSizeText1->SetScreenPivot(ePivot::CENTER);
@@ -306,7 +306,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText2{ make_unique<MenuTextObject>() };
 	windowSizeText2->SetBrush("BLACK");
 	windowSizeText2->SetMouseOverBrush("BLUE");
-	windowSizeText2->SetFormat("MENU");
+	windowSizeText2->SetFormat("48_RIGHT");
 	windowSizeText2->SetText(TEXT("1680x1050"));
 	windowSizeText2->SetPivot(ePivot::CENTER);
 	windowSizeText2->SetScreenPivot(ePivot::CENTER);
@@ -323,7 +323,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText3{ make_unique<MenuTextObject>() };
 	windowSizeText3->SetBrush("BLACK");
 	windowSizeText3->SetMouseOverBrush("BLUE");
-	windowSizeText3->SetFormat("MENU");
+	windowSizeText3->SetFormat("48_RIGHT");
 	windowSizeText3->SetText(TEXT("전체화면"));
 	windowSizeText3->SetPivot(ePivot::CENTER);
 	windowSizeText3->SetScreenPivot(ePivot::CENTER);

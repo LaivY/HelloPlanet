@@ -36,22 +36,7 @@ struct AnimationInfo
 	FLOAT			fps;
 };
 
-class DebugBoundingBox : public BoundingOrientedBox
-{
-public:
-	DebugBoundingBox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT4& orientation);
-	~DebugBoundingBox() = default;
-
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void SetMesh(const shared_ptr<Mesh>& mesh);
-	void SetShader(const shared_ptr<Shader>& shader);
-
-private:
-	shared_ptr<Mesh>	m_mesh;
-	shared_ptr<Shader>	m_shader;
-};
-
-typedef shared_ptr<DebugBoundingBox> SharedBoundingBox;
+class Hitbox;
 
 class GameObject
 {
@@ -75,6 +60,7 @@ public:
 	void Delete() { m_isDeleted = TRUE; }
 	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_worldMatrix = worldMatrix; }
 	virtual void SetPosition(const XMFLOAT3& position);
+	void SetScale(const XMFLOAT3& scale);
 	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
@@ -82,7 +68,7 @@ public:
 	void SetOutlineShader(const shared_ptr<Shader>& outlineShader);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
-	void AddBoundingBox(const SharedBoundingBox& boundingBox);
+	void AddHitbox(unique_ptr<Hitbox>& hitbox);
 
 	BOOL isDeleted() const { return m_isDeleted; }
 	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
@@ -91,8 +77,9 @@ public:
 	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
 	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
 	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
+	XMFLOAT3 GetScale() const { return m_scale; }
 	XMFLOAT3 GetVelocity() const { return m_velocity; }
-	const vector<SharedBoundingBox>& GetBoundingBox() const { return m_boundingBoxes; }
+	const vector<unique_ptr<Hitbox>>& GetHitboxes() const { return m_hitboxes; }
 	shared_ptr<Shader> GetShadowShader() const { return m_shadowShader; }
 	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
 	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
@@ -104,8 +91,9 @@ protected:
 	FLOAT							m_roll;					// z축 회전각
 	FLOAT							m_pitch;				// x축 회전각
 	FLOAT							m_yaw;					// y축 회전각
+	XMFLOAT3						m_scale;				// 스케일
 	XMFLOAT3						m_velocity;				// 속도
-	vector<SharedBoundingBox>		m_boundingBoxes;		// 바운딩박스
+	vector<unique_ptr<Hitbox>>		m_hitboxes;				// 히트박스
 
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더
@@ -156,4 +144,25 @@ public:
 
 private:
 	INT	m_id;
+};
+
+class Hitbox
+{
+public:
+	Hitbox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT3& rollPitchYaw = XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+	~Hitbox() = default;
+
+	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void Update(FLOAT /*deltaTime*/);
+
+	void SetOwner(GameObject* gameObject);
+
+	BoundingOrientedBox GetBoundingBox() const;
+
+private:
+	GameObject*				m_owner;
+	unique_ptr<GameObject>	m_hitbox;
+	XMFLOAT3				m_center;
+	XMFLOAT3				m_extents;
+	XMFLOAT3				m_rollPitchYaw;
 };

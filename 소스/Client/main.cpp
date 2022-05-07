@@ -59,8 +59,7 @@ int APIENTRY wWinMain(_In_      HINSTANCE hInstance,
 			g_gameFramework.GameLoop();
 		}
 	}
-	g_gameFramework.OnDestroy();
-	return (int)msg.wParam;
+	return (int) msg.wParam;
 }
 
 ATOM MyRegisterClass(HINSTANCE hInstance)
@@ -110,7 +109,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_ACTIVATE:
-		g_gameFramework.SetIsActive((BOOL)wParam);
+		g_gameFramework.SetIsActive(static_cast<BOOL>(wParam));
+		break;
+	case WM_SIZE:
+		g_gameFramework.OnResize(hWnd, message, wParam, lParam);
+		break;
+	case WM_MOVE:
+		g_gameFramework.OnMove(hWnd, message, wParam, lParam);
 		break;
 	case WM_SIZE:
 		g_gameFramework.OnResize(hWnd, message, wParam, lParam);
@@ -150,6 +155,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:
+		g_gameFramework.OnDestroy();
 		PostQuitMessage(0);
 		break;
 	default:

@@ -5,11 +5,13 @@
 #include "mainScene.h"
 
 GameFramework::GameFramework() 
-	: m_hInstance{}, m_hWnd{}, m_MSAA4xQualityLevel{}, m_isActive{ TRUE },
-	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eScene::NONE }
+	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
+	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }
 {
 	HWND desktop{ GetDesktopWindow() };
 	GetWindowRect(desktop, &m_fullScreenRect);
+	g_maxWidth = m_fullScreenRect.right;
+	g_maxHeight = m_fullScreenRect.bottom;
 }
 
 GameFramework::~GameFramework()
@@ -19,7 +21,7 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
-	if (m_nextScene != eScene::NONE)
+	if (m_nextScene != eSceneType::NONE)
 		ChangeScene();
 
 	m_timer.Tick();
@@ -33,11 +35,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 {
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
-
-	RECT rect{};
-	GetWindowRect(GetDesktopWindow(), &rect);
-	g_maxWidth = rect.right;
-	g_maxHeight = rect.bottom;
+	GetWindowRect(hWnd, &m_lastWindowRect);
 
 	LoadPipeline();
 	LoadAssets();
@@ -114,17 +112,7 @@ void GameFramework::OnRender()
 
 void GameFramework::OnDestroy()
 {
-#ifdef NETWORK
-	if (g_isConnected)
-	{
-		g_isConnected = FALSE;
-		if (g_networkThread.joinable())
-			g_networkThread.join();
-		closesocket(g_socket);
-		WSACleanup();
-	}
-#endif
-
+	if (m_scene) m_scene->OnDestroy();
 	WaitForPreviousFrame();
 	CloseHandle(m_fenceEvent);
 }
@@ -180,6 +168,7 @@ void GameFramework::LoadPipeline()
 
 	// 루트시그니쳐 생성(디바이스 필요)
 	CreateRootSignature();
+	CreatePostRootSignature();
 
 	// 명령리스트 생성
 	DX::ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[m_frameIndex].Get(), nullptr, IID_PPV_ARGS(&m_commandList)));
@@ -204,7 +193,7 @@ void GameFramework::LoadAssets()
 
 	// 씬 생성, 초기화
 	m_scene = make_unique<LoadingScene>();
-	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postRootSignature, m_d2dDeviceContext, m_dWriteFactory);
 
 	// 명령 제출
 	m_commandList->Close();
@@ -459,6 +448,24 @@ void GameFramework::CreateRootSignature()
 	DX::ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 }
 
+void GameFramework::CreatePostRootSignature()
+{
+	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // Texture2D g_input				: t0;
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0); // RWTexture2D<float4> g_output	: u0;
+
+	CD3DX12_ROOT_PARAMETER rootParameter[2];
+	rootParameter[0].InitAsDescriptorTable(1, &ranges[0]);
+	rootParameter[1].InitAsDescriptorTable(1, &ranges[1]);
+
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 0, NULL, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	ComPtr<ID3DBlob> signature, error;
+	DX::ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
+	DX::ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_postRootSignature)));
+}
+
 void GameFramework::CreateD3D11On12Device()
 {
 	// Create an 11 device wrapped around the 12 device and share 12's command queue.
@@ -544,15 +551,6 @@ void GameFramework::PopulateCommandList() const
 	// Set necessary state
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-	// 프레임워크 셰이더 변수 최신화
-	UpdateShaderVariable();
-
-	// 씬 셰이더 변수 최신화
-	if (m_scene) m_scene->UpdateShaderVariable(m_commandList);
-
-	// 그림자맵에 씬 렌더링
-	if (m_scene) m_scene->PreRender(m_commandList);
-
 	// Indicate that the back buffer will be used as a render target
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
@@ -566,8 +564,15 @@ void GameFramework::PopulateCommandList() const
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, NULL);
 	m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
-	// 씬 렌더링
-	if (m_scene) m_scene->Render(m_commandList, rtvHandle, dsvHandle);
+	// 렌더링
+	if (m_scene)
+	{
+		UpdateShaderVariable();
+		m_scene->UpdateShaderVariable(m_commandList);
+		m_scene->PreRender(m_commandList);
+		m_scene->Render(m_commandList, rtvHandle, dsvHandle);
+		m_scene->PostProcessing(m_commandList, m_postRootSignature, m_renderTargets[m_frameIndex]);
+	}
 
 	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
@@ -607,6 +612,50 @@ void GameFramework::WaitForGpu()
 	m_fenceValues[m_frameIndex]++;
 }
 
+void GameFramework::ChangeScene()
+{
+	WaitForPreviousFrame();
+
+	switch (m_nextScene)
+	{
+	case eSceneType::LOADING:
+		m_scene = make_unique<LoadingScene>();
+		break;
+	case eSceneType::MAIN:
+		m_scene = make_unique<MainScene>();
+		break;
+	case eSceneType::LOBBY:
+		m_scene = make_unique<LobbyScene>();
+		break;
+	case eSceneType::GAME:
+	{
+		// 로비 씬에서 만든 플레이어와 멀티플레이어를 게임씬으로 옮김
+		auto scene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
+		auto nextScene{ make_unique<GameScene>() };
+		auto& player{ scene->GetPlayer() };
+		player->SetIsMultiplayer(FALSE);
+		nextScene->SetPlayer(player);
+		nextScene->SetMultiPlayers(scene->GetMultiPlayers());
+		m_scene = move(nextScene);
+		break;
+	}
+	}
+	m_nextScene = eSceneType::NONE;
+
+	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
+
+	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postRootSignature, m_d2dDeviceContext, m_dWriteFactory);
+
+	m_commandList->Close();
+	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
+
+	WaitForGpu();
+
+	m_scene->OnInitEnd();
+}
+
 BOOL GameFramework::ConnectServer()
 {
 	wcout.imbue(locale("korean"));
@@ -637,41 +686,6 @@ void GameFramework::ProcessClient()
 	if (m_scene) m_scene->ProcessClient();
 }
 
-void GameFramework::ChangeScene()
-{
-	WaitForPreviousFrame();
-
-	switch (m_nextScene)
-	{
-	case eScene::LOADING:
-		m_scene = make_unique<LoadingScene>();
-		break;
-	case eScene::MAIN:
-		m_scene = make_unique<MainScene>();
-		break;
-	case eScene::LOBBY:
-		m_scene = make_unique<LobbyScene>();
-		break;
-	case eScene::GAME:
-		m_scene = make_unique<GameScene>();
-		break;
-	}
-	m_nextScene = eScene::NONE;
-
-	DX::ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
-	DX::ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), NULL));
-
-	m_scene->OnInit(m_device, m_commandList, m_rootSignature, m_postProcessRootSignature, m_d2dDeviceContext, m_dWriteFactory);
-
-	m_commandList->Close();
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
-	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
-
-	WaitForGpu();
-
-	m_scene->OnInitEnd();
-}
-
 void GameFramework::SetIsActive(BOOL isActive)
 {
 	m_isActive = isActive;
@@ -682,7 +696,7 @@ void GameFramework::SetIsFullScreen(BOOL isFullScreen)
 	m_isFullScreen = isFullScreen;
 }
 
-void GameFramework::SetNextScene(eScene scene)
+void GameFramework::SetNextScene(eSceneType scene)
 {
 	m_nextScene = scene;
 }

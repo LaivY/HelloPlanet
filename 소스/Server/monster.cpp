@@ -6,7 +6,7 @@ using namespace DirectX;
 constexpr float MOB_SPEED{ 50.0f };			// 1초당 움직일 거리
 constexpr float HIT_PERIOD{ 0.7f };			// 맞으면 넉백당하는 시간
 
-Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_hp{}, m_target{}
+Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_atkTimer{}, m_hp{}, m_target{}, m_wasAttack{}
 {
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
@@ -17,12 +17,21 @@ void Monster::OnHit(const BulletData& bullet)
 	SetTargetId(bullet.playerId);
 	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
 	SetHp(m_hp - 40);
-	if (m_hp <= 0)
+	if (m_hp <= 0) 
+	{
 		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.m_killScore++;
+	}
 	else if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
 }
 
+void Monster::Attack(const int id)
+{
+	if (m_aniType == eMobAnimationType::RUNNING)
+		m_aniType = eMobAnimationType::ATTACK;
+	//g_networkFramework.clients[id].data.hp -= 10;
+}
 
 void Monster::Update(FLOAT deltaTime)
 {
@@ -50,6 +59,16 @@ void Monster::Update(FLOAT deltaTime)
 
 		m_hitTimer += deltaTime;
 		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
+	}
+	else if(m_aniType == eMobAnimationType::ATTACK)
+	{
+		XMStoreFloat3(&velocity, dir * 0);
+		m_velocity.x = 0.0f;
+		m_velocity.y = 0.0f;
+		m_velocity.z = 0.0f;
+
+		m_atkTimer += deltaTime;
+		m_atkTimer = min(m_atkTimer, HIT_PERIOD);
 	}
 	else
 	{
@@ -81,9 +100,13 @@ void Monster::Update(FLOAT deltaTime)
 	// 몹 애니메이션
 	if (m_aniType == eMobAnimationType::HIT && m_hitTimer < HIT_PERIOD)
 		m_aniType = eMobAnimationType::HIT;
-	else
+	else if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer < HIT_PERIOD)
+		m_aniType = eMobAnimationType::ATTACK;
+	else {
 		m_aniType = eMobAnimationType::RUNNING;
-
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+	}
 	// --------------------------------------------------
 
 	XMVECTOR look{ dir };
@@ -97,6 +120,28 @@ void Monster::Update(FLOAT deltaTime)
 	worldMatrix.r[2] = look;
 	worldMatrix.r[3] = XMVectorSet(m_position.x, m_position.y, m_position.z, 1.0f);
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
+
+
+	if (GetAnimationType() == eMobAnimationType::ATTACK)
+	{
+		if (GetAtkTimer() >= 0.3f && m_wasAttack == false)
+		{
+			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+			if (range < 27.0f)
+			{
+				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
+				g_networkFramework.SendMonsterAttackPacket(m_target, 10);
+				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
+			}
+			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
+			m_wasAttack = true;
+		}
+	}
+	else 
+	{
+		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+		if (range < 25.0f) m_aniType = eMobAnimationType::ATTACK;
+	}
 }
 
 void Monster::SetId(CHAR id)
@@ -164,4 +209,14 @@ CHAR Monster::GetId() const
 UCHAR Monster::GetTargetId() const
 {
 	return m_target;
+}
+
+eMobAnimationType Monster::GetAnimationType() const
+{
+	return m_aniType;
+}
+
+FLOAT Monster::GetAtkTimer() const
+{
+	return m_atkTimer;
 }
