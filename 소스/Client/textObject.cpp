@@ -227,19 +227,19 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	// 포멧은 좌측 하단 정렬이고, 전체 총알 수를 표시한 후 그 왼쪽에 현재 총알 수를 그린다.
 	wstring maxBulletCount{ to_wstring(m_player->GetMaxBulletCount()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["24_RIGHT"].Get(), &m_rect, s_brushes["BLACK"].Get());
 
 	m_text = maxBulletCount;
-	m_format = "MAXBULLETCOUNT";
+	m_format = "24_RIGHT";
 	CalcWidthHeight();
 	float maxBulletTextWidth{ m_width };
 
 	wstring slash{ TEXT("/") };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x - maxBulletTextWidth, m_position.y));
-	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXBULLETCOUNT"].Get(), &m_rect, s_brushes["BLUE"].Get());
+	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24_RIGHT"].Get(), &m_rect, s_brushes["BLUE"].Get());
 
 	m_text = slash;
-	m_format = "MAXBULLETCOUNT";
+	m_format = "24_RIGHT";
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
@@ -248,7 +248,7 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	D2D1::Matrix3x2F matrix{};
 	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxBulletTextWidth - slashTextWidth, m_position.y));
 	device->SetTransform(matrix);
-	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["BULLETCOUNT"].Get(), &m_rect, m_bulletCount == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["36_RIGHT"].Get(), &m_rect, m_bulletCount == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
 }
 
 void BulletTextObject::Update(FLOAT deltaTime)
@@ -264,7 +264,7 @@ void BulletTextObject::Update(FLOAT deltaTime)
 
 	// 총알 수 변함에 따라 사각형 범위 재계산
 	m_text = to_wstring(bulletCount);
-	m_format = "BULLETCOUNT";
+	m_format = "36_RIGHT";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
@@ -297,27 +297,27 @@ void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	// 포멧은 우측 하단 정렬이고, 현재 체력을 표시하고 그 오른쪽에 전체 체력을 표시한다.
 	wstring hpText{ to_wstring(m_hp) };
 	m_text = hpText;
-	m_format = "HP";
+	m_format = "36_LEFT";
 	CalcWidthHeight();
 	float hpTextWidth{ m_width };
 
 	D2D1::Matrix3x2F matrix{};
 	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { hpTextWidth, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->SetTransform(matrix);
-	device->DrawText(hpText.c_str(), static_cast<UINT32>(hpText.size()), s_formats["HP"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(hpText.c_str(), static_cast<UINT32>(hpText.size()), s_formats["36_LEFT"].Get(), &m_rect, s_brushes["BLACK"].Get());
 
 	wstring slash{ TEXT("/") };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth, m_position.y));
-	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["MAXHP"].Get(), &m_rect, s_brushes["BLUE"].Get());
+	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24_LEFT"].Get(), &m_rect, s_brushes["BLUE"].Get());
 
 	m_text = slash;
-	m_format = "MAXHP";
+	m_format = "24_LEFT";
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
 	wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth + slashTextWidth, m_position.y));
-	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["MAXHP"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["24_LEFT"].Get(), &m_rect, s_brushes["BLACK"].Get());
 }
 
 void HPTextObject::Update(FLOAT deltaTime)
@@ -333,7 +333,7 @@ void HPTextObject::Update(FLOAT deltaTime)
 
 	// 체력 수치가 변함에 따라 사각형 범위 재계산
 	m_text = to_wstring(hp);
-	m_format = "BULLETCOUNT";
+	m_format = "36_RIGHT";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
@@ -421,7 +421,7 @@ void MenuTextObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }
 {
 	m_brush = "BLUE";
-	m_format = "MAXHP";
+	m_format = "24_LEFT";
 	SetText(damage);
 	m_screenPivot = ePivot::LEFTTOP;
 

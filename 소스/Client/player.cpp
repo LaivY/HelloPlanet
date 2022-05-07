@@ -622,7 +622,8 @@ void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
 
 void Player::DeleteUpperAnimation()
 {
-	m_upperAnimationInfo.reset();
+	if (m_upperAnimationInfo)
+		m_upperAnimationInfo.reset();
 }
 
 void Player::SendPlayerData() const

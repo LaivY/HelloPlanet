@@ -328,7 +328,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto ready{ make_unique<MenuTextObject>() };
 	ready->SetBrush("BLACK");
 	ready->SetMouseOverBrush("BLACK");
-	ready->SetFormat("MENU");
+	ready->SetFormat("48_RIGHT");
 	ready->SetText(TEXT("준비"));
 	ready->SetPivot(ePivot::CENTERBOT);
 	ready->SetScreenPivot(ePivot::CENTERBOT);
@@ -338,7 +338,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto leftText{ make_unique<MenuTextObject>() };
 	leftText->SetBrush("BLACK");
 	leftText->SetMouseOverBrush("BLUE");
-	leftText->SetFormat("MENU");
+	leftText->SetFormat("48_RIGHT");
 	leftText->SetText(TEXT("<"));
 	leftText->SetPivot(ePivot::CENTERBOT);
 	leftText->SetScreenPivot(ePivot::CENTERBOT);
@@ -349,7 +349,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto rightText{ make_unique<MenuTextObject>() };
 	rightText->SetBrush("BLACK");
 	rightText->SetMouseOverBrush("BLUE");
-	rightText->SetFormat("MENU");
+	rightText->SetFormat("48_RIGHT");
 	rightText->SetText(TEXT(">"));
 	rightText->SetPivot(ePivot::CENTERBOT);
 	rightText->SetScreenPivot(ePivot::CENTERBOT);
@@ -361,7 +361,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto exit{ make_unique<MenuTextObject>() };
 	exit->SetBrush("RED");
 	exit->SetMouseOverBrush("RED");
-	exit->SetFormat("MENU");
+	exit->SetFormat("48_RIGHT");
 	exit->SetText(TEXT("나가기"));
 	exit->SetPivot(ePivot::RIGHTBOT);
 	exit->SetScreenPivot(ePivot::RIGHTBOT);
@@ -376,7 +376,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 	auto leftReadyText{ make_unique<TextObject>() };
 	leftReadyText->SetBrush("BLACK");
-	leftReadyText->SetFormat("MENU");
+	leftReadyText->SetFormat("48_RIGHT");
 	leftReadyText->SetText(TEXT("대기중"));
 	leftReadyText->SetPivot(ePivot::CENTERBOT);
 	leftReadyText->SetScreenPivot(ePivot::CENTERBOT);
@@ -386,7 +386,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 	auto rightReadyText{ make_unique<TextObject>() };
 	rightReadyText->SetBrush("BLACK");
-	rightReadyText->SetFormat("MENU");
+	rightReadyText->SetFormat("48_RIGHT");
 	rightReadyText->SetText(TEXT("대기중"));
 	rightReadyText->SetPivot(ePivot::CENTERBOT);
 	rightReadyText->SetScreenPivot(ePivot::CENTERBOT);

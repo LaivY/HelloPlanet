@@ -279,65 +279,35 @@ void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"), NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		48,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["MENU"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["MENU"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-	DX::ThrowIfFailed(TextObject::s_formats["MENU"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+	// 왼쪽 정렬 포멧
+	for (int size : { 24, 36 })
+	{
+		DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+			TEXT("나눔바른고딕OTF"), NULL,
+			DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			static_cast<float>(size),
+			TEXT("ko-kr"),
+			&TextObject::s_formats[to_string(size) + "_LEFT"]
+		));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_LEFT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_LEFT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+	}
 
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"), NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		36,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["BULLETCOUNT"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-	DX::ThrowIfFailed(TextObject::s_formats["BULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		24,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["MAXBULLETCOUNT"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXBULLETCOUNT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"), NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		36,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["HP"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
-	DX::ThrowIfFailed(TextObject::s_formats["HP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-
-	DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
-		TEXT("나눔바른고딕OTF"),
-		NULL,
-		DWRITE_FONT_WEIGHT_ULTRA_BOLD,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		24,
-		TEXT("ko-kr"),
-		&TextObject::s_formats["MAXHP"]
-	));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_JUSTIFIED));
-	DX::ThrowIfFailed(TextObject::s_formats["MAXHP"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+	// 오른쪽 정렬 포멧
+	for (int size : { 24, 36, 48 })
+	{
+		DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
+			TEXT("나눔바른고딕OTF"), NULL,
+			DWRITE_FONT_WEIGHT_ULTRA_BOLD,
+			DWRITE_FONT_STYLE_NORMAL,
+			DWRITE_FONT_STRETCH_NORMAL,
+			static_cast<float>(size),
+			TEXT("ko-kr"),
+			&TextObject::s_formats[to_string(size) + "_RIGHT"]
+		));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+	}
 }

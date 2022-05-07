@@ -400,16 +400,16 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
-	// 바운딩박스
-	//SharedBoundingBox bbPlayer{ make_shared<HitBox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f }, XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f }) };
-	//bbPlayer->SetMesh(s_meshes["BB_PLAYER"]);
-	//bbPlayer->SetShader(s_shaders["WIREFRAME"]);
-
-	// 플레이어 설정
-	// 플레이어는 이전 로비 씬에서 만들어져있다.
+	// 플레이어, 멀티플레이어 설정
+	// 플레이어와 멀티플레이어는 이전 로비 씬에서 만들어져있다.
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
-	//m_player->AddBoundingBox(bbPlayer);
+	for (auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		p->PlayAnimation("IDLE");
+		p->DeleteUpperAnimation();
+	}
 
 	// 카메라, 플레이어 설정
 	m_player->SetCamera(m_camera);
@@ -530,7 +530,7 @@ void GameScene::CreateExitWindow()
 {
 	auto text{ make_unique<TextObject>() };
 	text->SetBrush("BLACK");
-	text->SetFormat("HP");
+	text->SetFormat("36_LEFT");
 	text->SetText(TEXT("메인 화면으로\n돌아갈까요?"));
 	text->SetPivot(ePivot::CENTER);
 	text->SetScreenPivot(ePivot::CENTER);
@@ -539,7 +539,7 @@ void GameScene::CreateExitWindow()
 	auto okText{ make_unique<MenuTextObject>() };
 	okText->SetBrush("BLACK");
 	okText->SetMouseOverBrush("BLUE");
-	okText->SetFormat("MENU");
+	okText->SetFormat("48_RIGHT");
 	okText->SetText(TEXT("확인"));
 	okText->SetPivot(ePivot::CENTERBOT);
 	okText->SetScreenPivot(ePivot::CENTERBOT);
@@ -555,7 +555,7 @@ void GameScene::CreateExitWindow()
 	auto cancleText{ make_unique<MenuTextObject>() };
 	cancleText->SetBrush("BLACK");
 	cancleText->SetMouseOverBrush("BLUE");
-	cancleText->SetFormat("MENU");
+	cancleText->SetFormat("48_RIGHT");
 	cancleText->SetText(TEXT("취소"));
 	cancleText->SetPivot(ePivot::CENTERBOT);
 	cancleText->SetScreenPivot(ePivot::CENTERBOT);
@@ -1010,7 +1010,7 @@ void GameScene::RecvRoundResult()
 		auto goToMainText{ make_unique<MenuTextObject>() };
 		goToMainText->SetBrush("BLACK");
 		goToMainText->SetMouseOverBrush("BLUE");
-		goToMainText->SetFormat("MENU");
+		goToMainText->SetFormat("48_RIGHT");
 		goToMainText->SetText(TEXT("메인으로"));
 		goToMainText->SetPivot(ePivot::CENTERBOT);
 		goToMainText->SetScreenPivot(ePivot::CENTERBOT);
@@ -1024,7 +1024,7 @@ void GameScene::RecvRoundResult()
 
 		auto descText{ make_unique<TextObject>() };
 		descText->SetBrush("BLACK");
-		descText->SetFormat("MAXBULLETCOUNT");
+		descText->SetFormat("24_RIGHT");
 		descText->SetPivot(ePivot::CENTER);
 		descText->SetScreenPivot(ePivot::CENTER);
 		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));

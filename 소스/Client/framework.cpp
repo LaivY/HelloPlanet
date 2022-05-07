@@ -629,6 +629,7 @@ void GameFramework::ChangeScene()
 		break;
 	case eSceneType::GAME:
 	{
+		// 로비 씬에서 만든 플레이어와 멀티플레이어를 게임씬으로 옮김
 		auto scene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
 		auto nextScene{ make_unique<GameScene>() };
 		auto& player{ scene->GetPlayer() };
