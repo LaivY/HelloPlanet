@@ -62,6 +62,25 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	}
 }
 
+void  NetworkFramework::SendPacket2AllPlayer(const void* packet, const int bufSize) const
+{
+	char buf[BUF_SIZE]{};
+	memcpy(buf, packet, bufSize);
+	WSABUF wsaBuf = { sizeof(buf), buf};
+	DWORD sentByte;
+
+	for (const auto& cl : clients)
+	{
+		if (!cl.data.isActive) continue;
+		const int retVal = WSASend(cl.socket, &wsaBuf, 1, &sentByte, 0, nullptr, nullptr);
+		if (retVal == SOCKET_ERROR) 
+		{
+			errorDisplay(WSAGetLastError(), "SendPacket2AllPlayer");
+			std::cout << "Error Num: " << static_cast<int>(buf[1]) << std::endl;
+		}
+	}
+}
+
 void NetworkFramework::SendLoginOkPacket(const Session& player) const
 {
 	sc_packet_login_confirm packet{};
@@ -119,19 +138,7 @@ void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
 	packet.id = player.data.id;
 	packet.weaponType = player.weaponType;
 
-	char buf[sizeof(packet)];
-	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD sentByte;
-
-	// 모든 클라이언트에게 클라이언트의 무기상태 전송
-	for (const auto& c : clients)
-	{
-		if (c.data.id == player.data.id) continue;
-		if (!c.data.isActive) continue;
-		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_SELECT_WEAPON)");
-	}
+	SendPacket2AllPlayer(reinterpret_cast<void*>(&packet), packet.size);
 
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Select Weapon Packet Received" << std::endl;
 }
@@ -144,20 +151,8 @@ void NetworkFramework::SendReadyCheckPacket(const Session& player) const
 	packet.id = player.data.id;
 	packet.isReady = player.isReady;
 
-	char buf[sizeof(packet)];
-	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD sentByte;
-
-	// 모든 클라이언트에게 이 클라이언트의 준비상태 전송
-	for (const auto& c : clients)
-	{
-		if (c.data.id == player.data.id) continue;
-		if (!c.data.isActive) continue;
-		const int retVal = WSASend(c.socket, &wsabuf, 1, &sentByte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_READY_CHECK)");
-	}
-
+	SendPacket2AllPlayer(&packet, packet.size);
+	
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Ready Packet Received" << std::endl;
 }
 
@@ -169,17 +164,7 @@ void NetworkFramework::SendChangeScenePacket(const eSceneType sceneType) const
 	packet.type = SC_PACKET_CHANGE_SCENE;
 	packet.sceneType = sceneType;
 
-	char buf[sizeof(packet)]{};
-	WSABUF wsabuf = { sizeof(buf), buf };
-	memcpy(buf, &packet, sizeof(packet));
-	DWORD sent_byte;
-
-	for (const auto& cl : clients)
-	{
-		if (!cl.data.isActive) continue;
-		const int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_CHANGE_SCENE)");
-	}
+	SendPacket2AllPlayer(&packet, packet.size);
 
 	std::cout << "[All Session] Ready To Play" << std::endl;
 }
@@ -273,19 +258,20 @@ void NetworkFramework::SendMonsterAttackPacket(const int id, const int damage) c
 	packet.data.id = static_cast<CHAR>(id);
 	packet.data.damage = static_cast<CHAR>(damage);
 
-	char buf[sizeof(packet)]{};
-	memcpy(buf, reinterpret_cast<char*>(&packet), sizeof(packet));
-	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD sent_byte;
-
-	for (const auto& cl : clients) {
-		if (cl.data.isActive == false) continue;
-		const int retVal = WSASend(cl.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_MONSTER_ATTACK)");
-	}
+	SendPacket2AllPlayer(&packet, packet.size);
 }
 
+void NetworkFramework::SendRoundResultPacket(const eRoundResult result) const
+{
+	sc_packet_round_result packet{};
+	packet.size = sizeof(packet);
+	packet.type = SC_PACKET_ROUND_RESULT;
+	packet.result = result;
 
+	SendPacket2AllPlayer(&packet, packet.size);
+
+	std::cout << "[All Session] Ready To Play" << std::endl;
+}
 
 void NetworkFramework::ProcessRecvPacket(const int id)
 {
@@ -460,6 +446,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 			mob.SetAnimationType(eMobAnimationType::DIE);
 		}
 		std::cout << "[system] Stage1 Clear!" << std::endl;
+		SendRoundResultPacket(eRoundResult::CLEAR);
 		//SendChangeScenePacket(eSceneType::ENDING);
 		isClearStage1 = true;
 	}
