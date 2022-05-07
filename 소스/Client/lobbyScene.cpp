@@ -19,7 +19,7 @@ LobbyScene::~LobbyScene()
 	}
 	else
 	{
-		// 강제종료, 나가기 버튼을 누른 경우
+		// 나가기 버튼을 누른 경우
 		cs_packet_logout packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_LOGOUT;
@@ -49,7 +49,11 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 
 void LobbyScene::OnDestroy()
 {
-	m_isLogout = TRUE;
+	cs_packet_logout packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGOUT;
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
 	if (g_networkThread.joinable())
 		g_networkThread.join();
 	closesocket(g_socket);
@@ -572,34 +576,44 @@ void LobbyScene::RecvLoginOkPacket()
 		m_player->SetId(static_cast<int>(data.id));
 		return;
 	}
-
 	if (m_player->GetId() != data.id)
 		for (auto& p : m_multiPlayers)
 		{
 			if (p) continue;
 			p = make_unique<Player>(TRUE);
-			p->SetMesh(s_meshes["PLAYER"]);
-			p->SetShader(s_shaders["ANIMATION"]);
-			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-			p->SetGunMesh(s_meshes["AR"]);
-			p->SetGunShader(s_shaders["LINK"]);
-			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
-			p->SetWeaponType(weaponType); // weapon 값을 여기에 넣고 싶음...
-			p->PlayAnimation("IDLE");
+			p->SetWeaponType(weaponType);
 			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
 			if (m_leftSlotPlayerId == -1)
 			{
 				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
 				m_leftSlotPlayerId = static_cast<int>(data.id);
-				m_leftSlotReadyText->SetText(TEXT("준비중"));
+				if (isReady)
+				{
+					m_leftSlotReadyText->SetBrush("BLUE");
+					m_leftSlotReadyText->SetText(TEXT("준비완료"));
+				}
+				else
+				{
+					m_leftSlotReadyText->SetBrush("BLACK");
+					m_leftSlotReadyText->SetText(TEXT("준비중"));
+				}
 				m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
 			}
 			else if (m_rightSlotPlayerId == -1)
 			{
 				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
 				m_rightSlotPlayerId = static_cast<int>(data.id);
-				m_rightSlotReadyText->SetText(TEXT("준비중"));
+				if (isReady)
+				{
+					m_rightSlotReadyText->SetBrush("BLUE");
+					m_rightSlotReadyText->SetText(TEXT("준비완료"));
+				}
+				else
+				{
+					m_rightSlotReadyText->SetBrush("BLACK");
+					m_rightSlotReadyText->SetText(TEXT("준비중"));
+				}
 				m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
 			}
 			break;

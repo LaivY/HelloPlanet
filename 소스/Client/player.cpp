@@ -1,18 +1,25 @@
 ﻿#include "player.h"
 #include "camera.h"
+#include "scene.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
-	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f },
-	m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
-	m_camera{ nullptr }, m_gunMesh{ nullptr }, m_gunShader{ nullptr },
-	m_gunOffset{}, m_gunOffsetTimer{}
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
 {
+	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
+	m_shader = Scene::s_shaders["ANIMATION"];
+	m_shadowShader = Scene::s_shaders["SHADOW_ANIMATION"];
+	m_gunMesh = Scene::s_meshes["AR"];
+	m_gunShader	= Scene::s_shaders["LINK"];
+	m_gunShadowShader = Scene::s_shaders["SHADOW_LINK"];
+
+	// 히트박스
 	auto hitBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 32.5f / 2.0f, 0.0f },
 									 XMFLOAT3{ 8.0f / 2.0f, 32.5f / 2.0f, 8.0f / 2.0f }) };
 	hitBox->SetOwner(this);
 	m_hitboxes.push_back(move(hitBox));
+
+	PlayAnimation("IDLE");
 }
 
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
@@ -565,18 +572,21 @@ void Player::SetWeaponType(eWeaponType gunType)
 	switch (gunType)
 	{
 	case eWeaponType::AR:
+		m_gunMesh = Scene::s_meshes["AR"];
 		m_hp = m_maxHp = 150;
 		m_shotSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
 	case eWeaponType::SG:
+		m_gunMesh = Scene::s_meshes["SG"];
 		m_hp = m_maxHp = 175;
 		m_shotSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
 	case eWeaponType::MG:
+		m_gunMesh = Scene::s_meshes["MG"];
 		m_hp = m_maxHp = 200;
 		m_shotSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;

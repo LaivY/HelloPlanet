@@ -109,7 +109,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_ACTIVATE:
-		g_gameFramework.SetIsActive((BOOL)wParam);
+		g_gameFramework.SetIsActive(static_cast<BOOL>(wParam));
 		break;
 	case WM_SIZE:
 		g_gameFramework.OnResize(hWnd, message, wParam, lParam);
@@ -124,28 +124,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_KEYUP:
 	case WM_KEYDOWN:
-		//if (wParam == '1')
-		//{
-		//	isFullScreen = FALSE;
-		//	SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
-		//	SetWindowPos(hWnd, HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1280, 720, SWP_SHOWWINDOW);
-		//}
-		//else if (wParam == '2')
-		//{
-		//	isFullScreen = FALSE;
-		//	SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
-		//	SetWindowPos(hWnd, HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1680, 1050, SWP_SHOWWINDOW);
-		//}
-		//if (wParam == '3')
-		//{
-		//	g_gameFramework.SetIsFullScreen(TRUE);
-		//	SetWindowPos(hWnd, HWND_TOP, 0, 0, fullScreenRect.right, fullScreenRect.bottom, SWP_SHOWWINDOW);
-
-		//	LONG style = GetWindowLong(hWnd, GWL_STYLE);
-		//	style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
-		//	SetWindowLong(hWnd, GWL_STYLE, style);
-		//	SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-		//}
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:

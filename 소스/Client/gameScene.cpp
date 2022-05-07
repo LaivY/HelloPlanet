@@ -36,6 +36,19 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 #endif
 }
 
+void GameScene::OnDestroy()
+{
+	cs_packet_logout packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_LOGOUT;
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+
+	if (g_networkThread.joinable())
+		g_networkThread.join();
+	closesocket(g_socket);
+	WSACleanup();
+}
+
 void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f };
@@ -820,9 +833,7 @@ void GameScene::RecvLoginOk()
 	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	if (!m_player) return;
-
-	PlayerData data;
+	PlayerData data{};
 	memcpy(&data, subBuf, sizeof(data));
 
 	// 로그인 패킷을 처음 수신했을 경우 자신의 id 설정
@@ -974,6 +985,14 @@ void GameScene::RecvMosterAttack()
 	{
 		m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
 	}
+}
+
+void GameScene::RecvRoundResult()
+{
+	char buf{};
+	WSABUF wsabuf{ sizeof(buf), &buf };
+	DWORD recvByte{}, recvFlag{};
+	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 }
 
 void GameScene::RecvLogoutOkPacket()
