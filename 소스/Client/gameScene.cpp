@@ -809,6 +809,9 @@ void GameScene::RecvPacket()
 	case SC_PACKET_MONSTER_ATTACK:
 		RecvMosterAttack();
 		break;
+	case SC_PACKET_ROUND_RESULT:
+		RecvRoundResult();
+		break;
 	case SC_PACKET_LOGOUT_OK:
 		RecvLogoutOkPacket();
 		break;
@@ -993,6 +996,50 @@ void GameScene::RecvRoundResult()
 	WSABUF wsabuf{ sizeof(buf), &buf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+
+	eRoundResult roundResult{ static_cast<eRoundResult>(buf) };
+	switch (roundResult)
+	{
+	case eRoundResult::CLEAR:
+	{
+		auto clearWindow{ make_unique<WindowObject>(400.0f, 300.0f) };
+		clearWindow->SetMesh(s_meshes["UI"]);
+		clearWindow->SetShader(s_shaders["UI"]);
+		clearWindow->SetTexture(s_textures["WHITE"]);
+
+		auto goToMainText{ make_unique<MenuTextObject>() };
+		goToMainText->SetBrush("BLACK");
+		goToMainText->SetMouseOverBrush("BLUE");
+		goToMainText->SetFormat("MENU");
+		goToMainText->SetText(TEXT("메인으로"));
+		goToMainText->SetPivot(ePivot::CENTERBOT);
+		goToMainText->SetScreenPivot(ePivot::CENTERBOT);
+		goToMainText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+		goToMainText->SetMouseClickCallBack(
+			[]()
+			{
+				g_gameFramework.SetNextScene(eSceneType::MAIN);
+			});
+		clearWindow->Add(move(goToMainText));
+
+		auto descText{ make_unique<TextObject>() };
+		descText->SetBrush("BLACK");
+		descText->SetFormat("MAXBULLETCOUNT");
+		descText->SetPivot(ePivot::CENTER);
+		descText->SetScreenPivot(ePivot::CENTER);
+		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
+		descText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+		clearWindow->Add(move(descText));
+
+		unique_lock<mutex> lock{ g_mutex };
+		m_windowObjects.push_back(move(clearWindow));
+		break;
+	}
+	case eRoundResult::OVER:
+		break;
+	case eRoundResult::ENDING:
+		break;
+	}
 }
 
 void GameScene::RecvLogoutOkPacket()

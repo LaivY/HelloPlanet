@@ -61,7 +61,7 @@ public:
 	void RecvBulletFire();
 	void RecvBulletHit();
 	void RecvMosterAttack();
-	void RecvGameState();
+	void RecvRoundResult();
 	void RecvLogoutOkPacket();
 
 	// 이전 씬에서 데이터를 가져옴
