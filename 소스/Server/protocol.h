@@ -26,6 +26,7 @@ constexpr char SC_PACKET_BULLET_FIRE = 6;
 constexpr char SC_PACKET_BULLET_HIT = 7;
 constexpr char SC_PACKET_UPDATE_MONSTER = 8;
 constexpr char SC_PACKET_MONSTER_ATTACK = 9;
+constexpr char SC_PACKET_ROUND_RESULT = 10;
 constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
@@ -70,6 +71,13 @@ enum class eWeaponType : char
 	AR,
 	SG,
 	MG
+};
+
+enum class eRoundResult : char
+{
+	CLEAR,
+	OVER,
+	ENDING
 };
 
 #pragma pack (push, 1)
@@ -235,5 +243,12 @@ struct sc_packet_monster_attack
 	UCHAR				size;
 	UCHAR				type;
 	MonsterAttackData	data;
+};
+
+struct sc_packet_round_result
+{
+	UCHAR				size;
+	UCHAR				type;
+	eRoundResult		result;
 };
 #pragma pack(pop)
