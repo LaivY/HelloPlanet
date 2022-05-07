@@ -49,25 +49,6 @@ void GameScene::OnDestroy()
 	WSACleanup();
 }
 
-void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f };
-	m_scissorRect = D3D12_RECT{ 0, 0, static_cast<long>(g_width), static_cast<long>(g_height) };
-
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
-	m_camera->SetProjMatrix(projMatrix);
-
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
-	// UI, 텍스트 오브젝트들 재배치
-	for (auto& ui : m_uiObjects)
-		ui->SetPosition(ui->GetPivotPosition());
-	for (auto& t : m_textObjects)
-		t->SetPosition(t->GetPivotPosition());
-}
-
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 	static bool isCursorHide{ true };
