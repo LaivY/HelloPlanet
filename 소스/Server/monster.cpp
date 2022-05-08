@@ -21,6 +21,7 @@ void Monster::OnHit(const BulletData& bullet)
 	{
 		m_aniType = eMobAnimationType::DIE;
 		g_networkFramework.m_killScore++;
+		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
 	}
 	else if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
@@ -178,6 +179,19 @@ void Monster::SetTargetId(UCHAR id)
 {
 	m_target = id;
 }
+
+void Monster::SetRandomPosition()
+{
+	std::random_device rd;
+	const std::uniform_int_distribution<int> areasDistribution(0, 7);
+	std::mt19937 generator(rd());
+	const DirectX::XMFLOAT3 mobSpawnAreas[8]{ {0.0f, 0.0f, 400.0f},{0.0f, 0.0f, -400.0f},{400.0f, 0.0f, 0.0f},{-400.0f, 0.0f, 0.0f},
+		{300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, -300.0f}, {300.0f, 0.0f, -300.0f} };
+	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
+}
+
+
+
 
 MonsterData Monster::GetData() const
 {

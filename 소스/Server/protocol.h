@@ -1,12 +1,12 @@
 ﻿#pragma once
 
 constexpr short SERVER_PORT = 9000;
-constexpr const char* SERVER_IP = "127.0.0.1";
-//constexpr const char* SERVER_IP = "121.173.248.190";
+//constexpr const char* SERVER_IP = "127.0.0.1";
+constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
 constexpr int  MAX_USER = 3;
-constexpr int  MAX_MONSTER = 10;
+constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 
 constexpr char CS_PACKET_LOGIN = 1;
