@@ -118,5 +118,5 @@ private:
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
-	eSceneType								m_nextScene;
+	eSceneType							m_nextScene;
 };

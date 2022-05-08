@@ -26,10 +26,7 @@ struct Material
 
 struct Joint
 {
-	Joint() : name{} { }
-
-	string				name;
-	vector<XMFLOAT4X4>	animationTransformMatrix;
+	vector<XMFLOAT4X4> animationTransformMatrix;
 };
 
 struct Animation

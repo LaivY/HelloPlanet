@@ -249,7 +249,11 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			// 멀티플레이어
 			if (m_isMultiPlayer)
 			{
-				if (currPureAnimationName == "RUNNING" || 
+				if (currPureAnimationName == "WALKING" ||
+					currPureAnimationName == "RUNNING" ||
+					currPureAnimationName == "WALKLEFT" ||
+					currPureAnimationName == "WALKRIGHT" ||
+					currPureAnimationName == "WALKBACK" ||
 					currPureAnimationName == "IDLE")
 				{
 					PlayAnimation(currPureAnimationName);

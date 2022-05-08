@@ -733,33 +733,33 @@ void GameScene::UpdateShadowMatrix()
 	// 큐브의 정점을 시야절두체 구간으로 변경
 	for (int i = 0; i < casecade.size() - 1; ++i)
 	{
-		XMFLOAT3 tFrustum[8]{};
+		XMFLOAT3 wFrustum[8]{};
 		for (int j = 0; j < 8; ++j)
-			tFrustum[j] = frustum[j];
+			wFrustum[j] = frustum[j];
 
 		for (int j = 0; j < 4; ++j)
 		{
 			// 앞쪽에서 뒤쪽으로 향하는 벡터
-			XMFLOAT3 v{ Vector3::Sub(tFrustum[j + 4], tFrustum[j]) };
+			XMFLOAT3 v{ Vector3::Sub(wFrustum[j + 4], wFrustum[j]) };
 
 			// 구간 시작, 끝으로 만들어주는 벡터
 			XMFLOAT3 n{ Vector3::Mul(v, casecade[i]) };
 			XMFLOAT3 f{ Vector3::Mul(v, casecade[i + 1]) };
 
 			// 구간 시작, 끝으로 설정
-			tFrustum[j + 4] = Vector3::Add(tFrustum[j], f);
-			tFrustum[j] = Vector3::Add(tFrustum[j], n);
+			wFrustum[j + 4] = Vector3::Add(wFrustum[j], f);
+			wFrustum[j] = Vector3::Add(wFrustum[j], n);
 		}
 
 		// 해당 구간을 포함할 바운딩구의 중심을 계산
 		XMFLOAT3 center{};
-		for (const auto& v : tFrustum)
+		for (const auto& v : wFrustum)
 			center = Vector3::Add(center, v);
 		center = Vector3::Mul(center, 1.0f / 8.0f);
 
 		// 바운딩구의 반지름을 계산
 		float radius{};
-		for (const auto& v : tFrustum)
+		for (const auto& v : wFrustum)
 			radius = max(radius, Vector3::Length(Vector3::Sub(v, center)));
 
 		// 그림자를 만들 조명의 좌표를 바운딩구의 중심에서 빛의 반대방향으로 적당히 움직이여야함
