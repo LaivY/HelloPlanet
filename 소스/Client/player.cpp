@@ -25,6 +25,7 @@ Player::Player(BOOL isMultiPlayer) : GameObject{},
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 #ifdef FIRSTVIEW
+	m_shotTimer += deltaTime;
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
 		if (m_shotTimer < m_shotSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
@@ -244,42 +245,28 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		{
 		case eAnimationState::PLAY:
 		{
-			string currPureAnimationName{ GetCurrAnimationName() };
-
-			// 멀티플레이어
-			if (m_isMultiPlayer)
-			{
-				if (currPureAnimationName == "RUNNING" || 
-					currPureAnimationName == "IDLE")
-				{
-					PlayAnimation(currPureAnimationName);
-					break;
-				}
-				PlayAnimation("IDLE", TRUE);
-				break;
-			}
-
 			// 이동
+			string currPureAnimationName{ GetCurrAnimationName() };
 			if (((GetAsyncKeyState('W') & 0x8000) && currPureAnimationName == "WALKING") ||
 				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && currPureAnimationName == "RUNNING") ||
 				((GetAsyncKeyState('A') & 0x8000) && currPureAnimationName == "WALKLEFT") ||
 				((GetAsyncKeyState('D') & 0x8000) && currPureAnimationName == "WALKRIGHT"))
 			{
 				PlayAnimation(currPureAnimationName);
-				break;
+				return;
 			}
 			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
 			{
 				PlayAnimation(currPureAnimationName, TRUE);
 				m_animationInfo->blendingFrame = 2;
-				break;
+				return;
 			}
 
 			// 대기
 			if (currPureAnimationName == "IDLE")
 			{
 				PlayAnimation("IDLE");
-				break;
+				return;
 			}
 
 			// 그 외에는 대기 애니메이션 재생
@@ -507,8 +494,10 @@ void Player::Update(FLOAT deltaTime)
 	else
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 
-	// 발사 타이머 진행
-	m_shotTimer += deltaTime;
+#ifdef RENDER_HITBOX
+	for (auto& hitBox : m_hitboxes)
+		hitBox->Update(deltaTime);
+#endif
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -578,9 +567,9 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	else if (m_weaponType == eWeaponType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
 }
 
-void Player::SetWeaponType(eWeaponType weaponType)
+void Player::SetWeaponType(eWeaponType gunType)
 {
-	switch (weaponType)
+	switch (gunType)
 	{
 	case eWeaponType::AR:
 		m_gunMesh = Scene::s_meshes["AR"];
@@ -604,8 +593,9 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
 		break;
 	}
-	m_weaponType = weaponType;
 	m_shotTimer = 0.0f;
+	m_weaponType = gunType;
+	g_playerGunType = gunType;
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)

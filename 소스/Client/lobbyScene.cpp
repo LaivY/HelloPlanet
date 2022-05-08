@@ -202,6 +202,9 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
+	m_skybox->SetMesh(s_meshes["SKYBOX"]);
+	m_skybox->SetShader(s_shaders["SKYBOX"]);
+	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
@@ -220,7 +223,14 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	// 플레이어
 	// 평범하게 렌더링하기 위해 멀티플레이어로 만듦
 	m_player = make_unique<Player>(TRUE);
+	m_player->SetMesh(s_meshes["PLAYER"]);
+	m_player->SetShader(s_shaders["ANIMATION"]);
+	m_player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+	m_player->SetGunMesh(s_meshes["AR"]);
+	m_player->SetGunShader(s_shaders["LINK"]);
+	m_player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 	m_player->SetWeaponType(eWeaponType::AR);
+	m_player->PlayAnimation("IDLE");
 	m_player->PlayAnimation("RELOAD");
 	m_player->SetCamera(m_camera);
 }
@@ -271,18 +281,30 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		if (readyTextObject->GetText() == readyOkText)
 			return;
 
-		eWeaponType type{ m_player->GetWeaponType() };
-		if (type == eWeaponType::AR) type = eWeaponType::MG;
-		else if (type == eWeaponType::SG) type = eWeaponType::AR;
-		else if (type == eWeaponType::MG) type = eWeaponType::SG;
-		m_player->SetWeaponType(type);
-		m_player->PlayAnimation("IDLE");
-		m_player->PlayAnimation("RELOAD");
-
 		cs_packet_select_weapon packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_SELECT_WEAPON;
-		packet.weaponType = type;
+
+		eWeaponType type{ m_player->GetWeaponType() };
+		switch (type)
+		{
+		case eWeaponType::AR:
+			m_player->SetGunMesh(s_meshes["MG"]);
+			m_player->SetWeaponType(eWeaponType::MG);
+			packet.weaponType = eWeaponType::MG;
+			break;
+		case eWeaponType::SG:
+			m_player->SetGunMesh(s_meshes["AR"]);
+			m_player->SetWeaponType(eWeaponType::AR);
+			packet.weaponType = eWeaponType::AR;
+			break;
+		case eWeaponType::MG:
+			m_player->SetGunMesh(s_meshes["SG"]);
+			m_player->SetWeaponType(eWeaponType::SG);
+			packet.weaponType = eWeaponType::SG;
+			break;
+		}
+		m_player->PlayAnimation("RELOAD");
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 	};
 
@@ -292,18 +314,30 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 		if (readyTextObject->GetText() == readyOkText)
 			return;
 
-		eWeaponType type{ m_player->GetWeaponType() };
-		if (type == eWeaponType::AR) type = eWeaponType::SG;
-		else if (type == eWeaponType::SG) type = eWeaponType::MG;
-		else if (type == eWeaponType::MG) type = eWeaponType::AR;
-		m_player->SetWeaponType(type);
-		m_player->PlayAnimation("IDLE");
-		m_player->PlayAnimation("RELOAD");
-
 		cs_packet_select_weapon packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_SELECT_WEAPON;
-		packet.weaponType = type;
+
+		eWeaponType type{ m_player->GetWeaponType() };
+		switch (type)
+		{
+		case eWeaponType::AR:
+			m_player->SetGunMesh(s_meshes["SG"]);
+			m_player->SetWeaponType(eWeaponType::SG);
+			packet.weaponType = eWeaponType::SG;
+			break;
+		case eWeaponType::SG:
+			m_player->SetGunMesh(s_meshes["MG"]);
+			m_player->SetWeaponType(eWeaponType::MG);
+			packet.weaponType = eWeaponType::MG;
+			break;
+		case eWeaponType::MG:
+			m_player->SetGunMesh(s_meshes["AR"]);
+			m_player->SetWeaponType(eWeaponType::AR);
+			packet.weaponType = eWeaponType::AR;
+			break;
+		}
+		m_player->PlayAnimation("RELOAD");
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 	};
 
@@ -379,8 +413,8 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 void LobbyScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
 
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };
@@ -607,7 +641,7 @@ void LobbyScene::RecvLoginOkPacket()
 			p = make_unique<Player>(TRUE);
 			p->SetWeaponType(weaponType);
 			p->SetId(static_cast<int>(data.id));
-			p->PlayAnimation("IDLE");
+			p->ApplyServerData(data);
 			if (m_leftSlotPlayerId == -1)
 			{
 				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });

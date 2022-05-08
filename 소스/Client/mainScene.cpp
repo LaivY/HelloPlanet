@@ -157,6 +157,9 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
+	m_skybox->SetMesh(s_meshes["SKYBOX"]);
+	m_skybox->SetShader(s_shaders["SKYBOX"]);
+	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
@@ -165,8 +168,22 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 
+	// 뒷 배경
+	//auto object{ make_unique<GameObject>() };
+	//object->SetMesh(s_meshes["TREE"]);
+	//object->SetShader(s_shaders["MODEL"]);
+	//object->SetTexture(s_textures["OBJECT2"]);
+	//m_gameObjects.push_back(move(object));
+
 	auto player{ make_unique<Player>(TRUE) };
+	player->SetMesh(s_meshes["PLAYER"]);
+	player->SetShader(s_shaders["ANIMATION"]);
+	player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+	player->SetGunMesh(s_meshes["AR"]);
+	player->SetGunShader(s_shaders["LINK"]);
+	player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 	player->SetWeaponType(eWeaponType::AR);
+	player->PlayAnimation("IDLE");
 	m_players.push_back(move(player));
 }
 
@@ -245,8 +262,8 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 
 void MainScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
 
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };

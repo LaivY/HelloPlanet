@@ -179,6 +179,19 @@ void Monster::SetTargetId(UCHAR id)
 	m_target = id;
 }
 
+void Monster::SetRandomPosition()
+{
+	std::random_device rd;
+	const std::uniform_int_distribution<int> areasDistribution(0, 7);
+	std::mt19937 generator(rd());
+	const DirectX::XMFLOAT3 mobSpawnAreas[8]{ {0.0f, 0.0f, 400.0f},{0.0f, 0.0f, -400.0f},{400.0f, 0.0f, 0.0f},{-400.0f, 0.0f, 0.0f},
+		{300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, -300.0f}, {300.0f, 0.0f, -300.0f} };
+	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
+}
+
+
+
+
 MonsterData Monster::GetData() const
 {
 	return MonsterData{ m_id, m_type, m_aniType, m_position, m_velocity, m_yaw };

@@ -464,7 +464,7 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		m.SetHp(100);
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
-		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, -400.0f });
+		m.SetRandomPosition();
 		m.SetTargetId(DetectPlayer(m.GetPosition()));
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));

@@ -19,6 +19,7 @@ public:
 	void SetYaw(FLOAT yaw);
 	void SetHp(INT hp);
 	void SetTargetId(UCHAR id);
+	void SetRandomPosition();
 
 	MonsterData GetData() const;
 	DirectX::XMFLOAT3 GetPosition() const;
