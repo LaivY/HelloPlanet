@@ -65,11 +65,11 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	}
 }
 
-void  NetworkFramework::SendPacket2AllPlayer(const void* packet, const int bufSize) const
+void  NetworkFramework::SendPacket2AllPlayer(const void* packet, int bufSize) const
 {
 	char buf[BUF_SIZE]{};
 	memcpy(buf, packet, bufSize);
-	WSABUF wsaBuf = { sizeof(buf), buf};
+	WSABUF wsaBuf = {  static_cast<ULONG>(bufSize), buf};
 	DWORD sentByte;
 
 	for (const auto& cl : clients)
