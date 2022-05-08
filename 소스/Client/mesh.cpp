@@ -97,7 +97,7 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 		Joint joint;
 		joint.animationTransformMatrix.reserve(nFrame);
 
-		file >> joint.name;
+		file >> dumy;
 		for (int i = 0; i < nFrame; ++i)
 		{
 			XMFLOAT4X4 matrix{};
