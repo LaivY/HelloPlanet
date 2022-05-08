@@ -25,7 +25,6 @@ Player::Player(BOOL isMultiPlayer) : GameObject{},
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 #ifdef FIRSTVIEW
-	m_shotTimer += deltaTime;
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
 		if (m_shotTimer < m_shotSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
@@ -245,28 +244,39 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 		{
 		case eAnimationState::PLAY:
 		{
-			// 이동
 			string currPureAnimationName{ GetCurrAnimationName() };
+
+			// 멀티플레이어
+			if (m_isMultiPlayer)
+			{
+				if (currPureAnimationName == "RUNNING")
+				{
+					PlayAnimation(currPureAnimationName);
+				}
+				break;
+			}
+
+			// 이동
 			if (((GetAsyncKeyState('W') & 0x8000) && currPureAnimationName == "WALKING") ||
 				((GetAsyncKeyState('W') & GetAsyncKeyState(VK_SHIFT) & 0x8000) && currPureAnimationName == "RUNNING") ||
 				((GetAsyncKeyState('A') & 0x8000) && currPureAnimationName == "WALKLEFT") ||
 				((GetAsyncKeyState('D') & 0x8000) && currPureAnimationName == "WALKRIGHT"))
 			{
 				PlayAnimation(currPureAnimationName);
-				return;
+				break;
 			}
 			if ((GetAsyncKeyState('S') & 0x8000) && currPureAnimationName == "WALKBACK")
 			{
 				PlayAnimation(currPureAnimationName, TRUE);
 				m_animationInfo->blendingFrame = 2;
-				return;
+				break;
 			}
 
 			// 대기
 			if (currPureAnimationName == "IDLE")
 			{
 				PlayAnimation("IDLE");
-				return;
+				break;
 			}
 
 			// 그 외에는 대기 애니메이션 재생
@@ -494,10 +504,8 @@ void Player::Update(FLOAT deltaTime)
 	else
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 
-#ifdef RENDER_HITBOX
-	for (auto& hitBox : m_hitboxes)
-		hitBox->Update(deltaTime);
-#endif
+	// 발사 타이머 진행
+	m_shotTimer += deltaTime;
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)

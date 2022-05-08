@@ -25,8 +25,6 @@ void GameFramework::GameLoop()
 		ChangeScene();
 
 	m_timer.Tick();
-	OnMouseEvent();
-	OnKeyboardEvent();
 	OnUpdate(m_timer.GetDeltaTime());
 	OnRender();
 }
@@ -88,7 +86,12 @@ void GameFramework::OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 void GameFramework::OnUpdate(FLOAT deltaTime)
 {
 	Update(deltaTime);
-	if (m_scene) m_scene->OnUpdate(deltaTime);
+	if (m_scene)
+	{
+		m_scene->OnUpdate(deltaTime);
+		m_scene->OnMouseEvent(m_hWnd, deltaTime);
+		m_scene->OnKeyboardEvent(deltaTime);
+	}
 }
 
 void GameFramework::OnRender()
