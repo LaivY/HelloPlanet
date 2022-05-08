@@ -66,6 +66,7 @@ public:
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetShadowShader(const shared_ptr<Shader>& shadowShader);
 	void SetOutlineShader(const shared_ptr<Shader>& outlineShader);
+	void SetOutlineScale(const XMFLOAT3& outlineScale);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void AddHitbox(unique_ptr<Hitbox>& hitbox);
@@ -99,6 +100,7 @@ protected:
 	shared_ptr<Shader>				m_shader;				// 셰이더
 	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
 	shared_ptr<Shader>				m_outlineShader;		// 테두리 셰이더
+	XMFLOAT3						m_outlineScale;			// 테두리 크기
 	shared_ptr<Texture>				m_texture;				// 텍스쳐
 	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
 	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체
@@ -108,7 +110,7 @@ protected:
 class Skybox : public GameObject
 {
 public:
-	Skybox() = default;
+	Skybox();
 	~Skybox() = default;
 
 	void Update(FLOAT deltaTime);

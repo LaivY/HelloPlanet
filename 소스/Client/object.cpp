@@ -2,7 +2,7 @@
 #include "camera.h"
 #include "scene.h"
 
-GameObject::GameObject() : m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
+GameObject::GameObject() : m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_outlineScale{ 1.02f, 1.02f, 1.02f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -148,6 +148,11 @@ void GameObject::SetOutlineShader(const shared_ptr<Shader>& outlineShader)
 	m_outlineShader = outlineShader;
 }
 
+void GameObject::SetOutlineScale(const XMFLOAT3& outlineScale)
+{
+	m_outlineScale = outlineScale;
+}
+
 void GameObject::SetTexture(const shared_ptr<Texture>& texture)
 {
 	m_texture = texture;
@@ -188,10 +193,22 @@ void GameObject::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandL
 	if (!m_outlineShader) return;
 	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
 	XMFLOAT4X4 scale{};
-	XMStoreFloat4x4(&scale, XMMatrixScaling(1.02f, 1.02f, 1.02f));
+	XMStoreFloat4x4(&scale, XMMatrixScaling(m_outlineScale.x, m_outlineScale.y, m_outlineScale.z));
 	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
 	Render(commandList, m_outlineShader);
 	m_worldMatrix = worldMatrix;
+
+	//XMStoreFloat4x4(&scale, XMMatrixScaling(0.98f, 0.98f, 0.98f));
+	//m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
+	//Render(commandList, m_outlineShader);
+	//m_worldMatrix = worldMatrix;
+}
+
+Skybox::Skybox()
+{
+	m_mesh = Scene::s_meshes["SKYBOX"];
+	m_shader = Scene::s_shaders["SKYBOX"];
+	m_texture = Scene::s_textures["SKYBOX"];
 }
 
 void Skybox::Update(FLOAT deltaTime)

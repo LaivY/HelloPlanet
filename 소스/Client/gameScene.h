@@ -79,6 +79,7 @@ private:
 	shared_ptr<Player>						m_player;			// 플레이어
 	array<unique_ptr<Player>,
 		  Setting::MAX_PLAYERS>				m_multiPlayers;		// 멀티플레이어
+	vector<unique_ptr<GameObject>>			m_backgrounds;		// 배경 오브젝트들
 	vector<unique_ptr<GameObject>>			m_gameObjects;		// 게임오브젝트들
 	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
 	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트

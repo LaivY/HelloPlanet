@@ -202,9 +202,6 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
-	m_skybox->SetMesh(s_meshes["SKYBOX"]);
-	m_skybox->SetShader(s_shaders["SKYBOX"]);
-	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
@@ -413,8 +410,8 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 void LobbyScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
 
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };

@@ -203,6 +203,8 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 	if (m_skybox) m_skybox->Update(deltaTime);
 	for (auto& p : m_multiPlayers)
 		if (p) p->Update(deltaTime);
+	for (auto& bg : m_backgrounds)
+		bg->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
 	for (auto& [_, m] : m_monsters)
@@ -252,7 +254,11 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 
 	// 게임오브젝트 렌더링
 	UINT stencilRef{ 1 };
+	commandList->OMSetStencilRef(stencilRef++);
+
 	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& bg : m_backgrounds)
+		bg->Render(commandList);
 	for (const auto& o : m_gameObjects)
 	{
 		commandList->OMSetStencilRef(stencilRef++);
@@ -272,14 +278,17 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 
 	// 테두리 렌더링
 	stencilRef = 1;
+	commandList->OMSetStencilRef(stencilRef++);
+	for (const auto& bg : m_backgrounds)
+		bg->RenderOutline(commandList);
 	for (const auto& o : m_gameObjects)
 	{
 		commandList->OMSetStencilRef(stencilRef++);
 		o->RenderOutline(commandList);
 	}
 	commandList->OMSetStencilRef(0);
-	for (const auto& p : m_multiPlayers)
-		if (p) p->RenderOutline(commandList);
+	//for (const auto& p : m_multiPlayers)
+	//	if (p) p->RenderOutline(commandList);
 
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
@@ -288,7 +297,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// UI 렌더링
 	if (m_uiCamera)
 	{
-		unique_lock<mutex> lock{ g_mutex };
+		lock.lock();
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
@@ -398,11 +407,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
-	m_skybox->SetMesh(s_meshes["SKYBOX"]);
-	m_skybox->SetShader(s_shaders["SKYBOX"]);
-	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
-	m_gameObjects.push_back(move(m_skybox));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
@@ -474,18 +479,9 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		object->Rotate(rotat.z, rotat.x, rotat.y);
 		object->SetPosition(trans);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		object->SetShader(s_shaders["STENCIL_MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
-
-		// 셰이더
-		if (type == 0 || type == 1)
-		{
-			object->SetShader(s_shaders["MODEL"]);
-		}
-		else
-		{
-			object->SetShader(s_shaders["STENCIL_MODEL"]);
-			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
-		}
+		object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
 
 		// 텍스쳐
 		if (0 <= type && type <= 1)
@@ -494,7 +490,19 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 			object->SetTexture(s_textures["OBJECT1"]);
 		else if (10 <= type && type <= 11)
 			object->SetTexture(s_textures["OBJECT2"]);
-		m_gameObjects.push_back(move(object));
+
+		// 테두리 스케일
+		if (type == 0)
+			object->SetOutlineScale(XMFLOAT3{ 1.03f, 1.03f, 1.03f });
+		else if (type == 1)
+			object->SetOutlineScale(XMFLOAT3{ 1.01f, 1.01f, 1.01f });
+		else if (type == 9)
+			object->SetOutlineScale(XMFLOAT3{ 1.01f, 1.01f, 1.01f });
+
+		if (type == 0 || type == 1)
+			m_backgrounds.push_back(move(object));
+		else
+			m_gameObjects.push_back(move(object));
 
 		// 히트박스
 		if (type == 12)
@@ -583,6 +591,12 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 	// 렌더링
 	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& bg : m_backgrounds)
+	{
+		auto shadowShader{ bg->GetShadowShader() };
+		if (shadowShader)
+		bg->Render(commandList, shadowShader);
+	}
 	for (const auto& object : m_gameObjects)
 	{
 		auto shadowShader{ object->GetShadowShader() };
