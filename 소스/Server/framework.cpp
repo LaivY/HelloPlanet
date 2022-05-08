@@ -37,7 +37,7 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	INT addrSize = sizeof(clientAddr);
 	while (!isAccept)
 	{
-		if (clients[0].data.isActive && clients[1].data.isActive && clients[2].data.isActive) continue;
+		//if (clients[0].data.isActive && clients[1].data.isActive && clients[2].data.isActive) continue;
 
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
 		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept()");
