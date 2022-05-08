@@ -186,7 +186,6 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 void GameObject::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	if (!m_outlineShader) return;
-
 	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
 	XMFLOAT4X4 scale{};
 	XMStoreFloat4x4(&scale, XMMatrixScaling(1.02f, 1.02f, 1.02f));

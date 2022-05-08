@@ -40,6 +40,7 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 	CreateUIObjects(device, commandList);
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
+	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
 #ifdef NETWORK
@@ -132,10 +133,25 @@ void LobbyScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3
 	if (m_player) m_player->Render(commandList);
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
+
+	UINT stencilRef{ 1 };
 	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
 		o->Render(commandList);
+	}
+
+	stencilRef = 1;
+	for (const auto& o : m_gameObjects)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		o->RenderOutline(commandList);
+	}
+	commandList->OMSetStencilRef(0);
+	
 	if (m_uiCamera)
 	{
+		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
@@ -410,6 +426,48 @@ void LobbyScene::CreateLights() const
 
 	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
 	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+}
+
+void LobbyScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
+{
+	ifstream map{ mapFile };
+	int count{ 0 }; map >> count;
+	for (int i = 0; i < count; ++i)
+	{
+		// 타입, 스케일, 회전, 이동
+		int type{}; map >> type;
+		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
+		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
+		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
+		trans = Vector3::Mul(trans, 100.0f);
+
+		unique_ptr<GameObject> object{ make_unique<GameObject>() };
+		object->SetScale(scale);
+		object->Rotate(rotat.z, rotat.x, rotat.y);
+		object->SetPosition(trans);
+		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
+
+		// 셰이더
+		if (type == 0 || type == 1)
+		{
+			object->SetShader(s_shaders["MODEL"]);
+		}
+		else
+		{
+			object->SetShader(s_shaders["STENCIL_MODEL"]);
+			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
+		}
+
+		// 텍스쳐
+		if (0 <= type && type <= 1)
+			object->SetTexture(s_textures["OBJECT0"]);
+		else if (2 <= type && type <= 8)
+			object->SetTexture(s_textures["OBJECT1"]);
+		else if (10 <= type && type <= 11)
+			object->SetTexture(s_textures["OBJECT2"]);
+		m_gameObjects.push_back(move(object));
+	}
 }
 
 void LobbyScene::CloseWindow()
