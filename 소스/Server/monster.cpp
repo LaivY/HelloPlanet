@@ -21,6 +21,7 @@ void Monster::OnHit(const BulletData& bullet)
 	{
 		m_aniType = eMobAnimationType::DIE;
 		g_networkFramework.m_killScore++;
+		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
 	}
 	else if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;

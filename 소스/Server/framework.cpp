@@ -1,9 +1,10 @@
 ﻿#include "framework.h"
 using namespace DirectX;
 
-NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, bulletHits{}, readyCount{ 0 }, m_spawnCooldown{ 5.0f }, m_lastMobId{ 0 }, m_killScore{ 0 }
+NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, isInGame{ false }, readyCount{ 0 },
+bulletHits{}, m_spawnCooldown{ g_spawnCooldown }, m_lastMobId{ 0 }, m_killScore{ 0 }
 {
-	// m_spawnCooldown 5.0f은 임의의 상수
+	// m_spawnCooldown 2.0f은 임의의 상수
 }
 
 int NetworkFramework::OnInit(SOCKET socket)
@@ -34,8 +35,10 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	std::cout << "AcceptThread start" << std::endl;
 	SOCKADDR_IN clientAddr;
 	INT addrSize = sizeof(clientAddr);
-	while (true)
+	while (!isAccept)
 	{
+		if (clients[0].data.isActive && clients[1].data.isActive && clients[2].data.isActive) continue;
+
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
 		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept()");
 
@@ -438,6 +441,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	// 충돌체크
 	CollisionCheck();
 
+	// 종료체크
 	if (m_killScore >= stage1Goal && isClearStage1 == false)
 	{
 		for (auto& mob : monsters)
@@ -448,7 +452,13 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 		std::cout << "[system] Stage1 Clear!" << std::endl;
 		SendRoundResultPacket(eRoundResult::CLEAR);
 		//SendChangeScenePacket(eSceneType::ENDING);
-		isClearStage1 = true;
+		isAccept = false;
+		isClearStage1 = false;
+		readyCount = 0;
+		m_spawnCooldown = g_spawnCooldown;
+		m_lastMobId = 0;
+		m_killScore = 0;
+		erase_if(monsters, [](const Monster& m) { return m.GetHp() >= -100; });
 	}
 		
 }
@@ -469,7 +479,7 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
-		m_spawnCooldown = 5.0f;
+		m_spawnCooldown = g_spawnCooldown;
 		m_lastMobId++;
 	}
 }
@@ -516,7 +526,7 @@ void NetworkFramework::CollisionCheck()
 				{
 					hitMonster = &m;
 					length = l;
-					std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
+					//std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
 
 				// 해당 플레이어가 총알을 맞췄다는 것을 저장
@@ -544,6 +554,8 @@ void NetworkFramework::Disconnect(const int id)
 	cl.data.pos = {};
 	cl.data.velocity = {};
 	cl.data.yaw = 0.0f;
+	cl.isReady = false;
+	cl.weaponType = eWeaponType::AR;
 	closesocket(cl.socket);
 	cl.lock.unlock();
 }
