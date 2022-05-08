@@ -249,10 +249,13 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 			// 멀티플레이어
 			if (m_isMultiPlayer)
 			{
-				if (currPureAnimationName == "RUNNING")
+				if (currPureAnimationName == "RUNNING" || 
+					currPureAnimationName == "IDLE")
 				{
 					PlayAnimation(currPureAnimationName);
+					break;
 				}
+				PlayAnimation("IDLE", TRUE);
 				break;
 			}
 
@@ -575,9 +578,9 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	else if (m_weaponType == eWeaponType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
 }
 
-void Player::SetWeaponType(eWeaponType gunType)
+void Player::SetWeaponType(eWeaponType weaponType)
 {
-	switch (gunType)
+	switch (weaponType)
 	{
 	case eWeaponType::AR:
 		m_gunMesh = Scene::s_meshes["AR"];
@@ -601,9 +604,8 @@ void Player::SetWeaponType(eWeaponType gunType)
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
 		break;
 	}
+	m_weaponType = weaponType;
 	m_shotTimer = 0.0f;
-	m_weaponType = gunType;
-	g_playerGunType = gunType;
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
