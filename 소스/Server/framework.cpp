@@ -345,7 +345,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				if (!c.data.isActive) continue;
 				if (c.isReady) readyCount++;
 			}
-			if (readyCount >= 2)
+			if (readyCount >= MAX_USER)
 			{
 				isAccept = true;
 				SendChangeScenePacket(eSceneType::GAME);
