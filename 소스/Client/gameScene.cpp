@@ -963,7 +963,7 @@ void GameScene::RecvBulletHit()
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	auto dmgText{ make_unique<DamageTextObject>(TEXT("999"))};
+	auto dmgText{ make_unique<DamageTextObject>(TEXT("40"))};
 	dmgText->SetCamera(m_camera);
 	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
 	m_textObjects.push_back(move(dmgText));
