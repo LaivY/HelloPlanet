@@ -553,5 +553,31 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	UINT cbMeshByteSize{ 0 };
 	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
-	m_cbMesh[nullptr] = Utile::CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbMesh[nullptr] = Utile::CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
+}
+
+FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT4& color)
+{
+	vector<Vertex> vertices;
+	vertices.reserve(6);
+
+	Material material;
+	material.baseColor = color;
+	m_materials.push_back(move(material));
+
+	Vertex v{};
+	v.materialIndex = 0;
+	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = {  1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
+	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+
+	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = { -1.0f, -1.0f, 0.0f }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
+
+	UINT cbMeshByteSize{ 0 };
+	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
+	m_cbMesh[nullptr] = Utile::CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
 }

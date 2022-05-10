@@ -197,6 +197,9 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["SKYBOX"] = make_shared<Mesh>();
 	s_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt"));
 
+	// 스크린전체 메쉬
+	s_meshes["FULL"] = make_shared<FullScreenQuadMesh>(device, commandList);
+
 	// 히트박스 메쉬
 	s_meshes["CUBE"] = make_shared<CubeMesh>(device, commandList, 1.0f, 1.0f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
@@ -217,7 +220,9 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_LINK", "GS");
 
 	// 외곽선
-	s_shaders["OUTLINE"] = make_shared<OutlineShader>(device, postRootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "CS");
+	s_shaders["STENCIL_MODEL"] = make_shared<StencilShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
+	s_shaders["OUTLINE"] = make_shared<OutlineShader>(device, rootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "VS", "PS");
+	s_shaders["OUTLINE2"] = make_shared<OutlineShader2>(device, rootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "VS", "PS_OUTLINE");
 
 	// 디버그
 	s_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");

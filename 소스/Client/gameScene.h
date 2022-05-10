@@ -85,4 +85,8 @@ private:
 	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
 	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
 	unordered_map<INT, unique_ptr<Monster>>	m_monsters;			// 몬스터들
+
+	// 테스트
+	unique_ptr<RenderTargetTexture>			m_renderTargetTexture;
+	unique_ptr<GameObject>					m_fullScreenQuadObject;
 };

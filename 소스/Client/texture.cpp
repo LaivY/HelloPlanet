@@ -83,3 +83,54 @@ void Texture::ReleaseUploadBuffer()
 	for (auto& textureUploadBuffer : m_textureUploadBuffers)
 		textureUploadBuffer.Reset();
 }
+
+RenderTargetTexture::RenderTargetTexture(const ComPtr<ID3D12Device>& device, UINT rootParameterIndex, UINT width, UINT height)
+{
+	constexpr float clearColor[]{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+	// 버퍼 생성
+	ComPtr<ID3D12Resource> buffer;
+	DX::ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		&CD3DX12_CLEAR_VALUE{ DXGI_FORMAT_R8G8B8A8_UNORM, clearColor },
+		IID_PPV_ARGS(&buffer)
+	));
+	buffer->SetName(TEXT("RENDER TARGET TEXTURE"));
+
+	// 셰이더 리소스 뷰 힙 생성
+	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
+	srvHeapDesc.NumDescriptors = 1;
+	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	DX::ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
+
+	// 셰이더 리소스 뷰 생성
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	srvDesc.Texture2D.PlaneSlice = 0;
+	device->CreateShaderResourceView(buffer.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+	m_gpuSrvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+
+	// 렌더 타겟 뷰 힙 생성
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
+	rtvHeapDesc.NumDescriptors = 1;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	rtvHeapDesc.NodeMask = NULL;
+	device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap));
+
+	// 렌더타겟뷰 생성
+	m_rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+	device->CreateRenderTargetView(buffer.Get(), nullptr, m_rtvHandle);
+
+	m_textures.reserve(1);
+	m_textures.push_back(make_pair(rootParameterIndex, buffer));
+}
