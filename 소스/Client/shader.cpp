@@ -195,11 +195,9 @@ WireframeShader::WireframeShader(const ComPtr<ID3D12Device>& device, const ComPt
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
-
-
-OutlineShader::OutlineShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps)
+OutlineShader::OutlineShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs)
 {
-	ComPtr<ID3DBlob> vertexShader, pixelShader, error;
+	ComPtr<ID3DBlob> computeShader, error;
 
 #if defined(_DEBUG)
 	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -207,60 +205,14 @@ OutlineShader::OutlineShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	UINT compileFlags = 0;
 #endif
 
-	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, vs.c_str(), "vs_5_1", compileFlags, 0, &vertexShader, &error));
-	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, ps.c_str(), "ps_5_1", compileFlags, 0, &pixelShader, &error));
+	auto hr = D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, cs.c_str(), "cs_5_1", compileFlags, 0, &computeShader, &error);
+	if (error)
+		OutputDebugStringA(reinterpret_cast<char*>(error->GetBufferPointer()));
+	DX::ThrowIfFailed(hr);
 
-	CD3DX12_DEPTH_STENCIL_DESC depthStencilState{ D3D12_DEFAULT };
-	depthStencilState.StencilEnable = TRUE;
-	depthStencilState.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_NOT_EQUAL;
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
-	psoDesc.pRootSignature = rootSignature.Get();
-	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState = depthStencilState;
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	psoDesc.SampleDesc.Count = 1;
-	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
-}
-
-StencilShader::StencilShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps)
-{
-	ComPtr<ID3DBlob> vertexShader, pixelShader, error;
-
-#if defined(_DEBUG)
-	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	UINT compileFlags = 0;
-#endif
-
-	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, vs.c_str(), "vs_5_1", compileFlags, 0, &vertexShader, &error));
-	DX::ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, ps.c_str(), "ps_5_1", compileFlags, 0, &pixelShader, &error));
-
-	CD3DX12_DEPTH_STENCIL_DESC depthStencilState{ D3D12_DEFAULT };
-	depthStencilState.StencilEnable = TRUE;
-	depthStencilState.FrontFace.StencilPassOp = D3D12_STENCIL_OP_REPLACE;
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-	psoDesc.InputLayout = { m_inputLayout.data(), (UINT)m_inputLayout.size() };
-	psoDesc.pRootSignature = rootSignature.Get();
-	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState = depthStencilState;
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	psoDesc.SampleDesc.Count = 1;
-	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = postRootSignature.Get();
+	psoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
+	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	DX::ThrowIfFailed(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }

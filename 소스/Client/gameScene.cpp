@@ -20,7 +20,7 @@ GameScene::~GameScene()
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature,
 					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
@@ -479,9 +479,8 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		object->Rotate(rotat.z, rotat.x, rotat.y);
 		object->SetPosition(trans);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
-		object->SetShader(s_shaders["STENCIL_MODEL"]);
+		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
-		object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
 
 		// 텍스쳐
 		if (0 <= type && type <= 1)
@@ -491,18 +490,7 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		else if (10 <= type && type <= 11)
 			object->SetTexture(s_textures["OBJECT2"]);
 
-		// 테두리 스케일
-		if (type == 0)
-			object->SetOutlineScale(XMFLOAT3{ 1.03f, 1.03f, 1.03f });
-		else if (type == 1)
-			object->SetOutlineScale(XMFLOAT3{ 1.01f, 1.01f, 1.01f });
-		else if (type == 9)
-			object->SetOutlineScale(XMFLOAT3{ 1.01f, 1.01f, 1.01f });
-
-		if (type == 0 || type == 1)
-			m_backgrounds.push_back(move(object));
-		else
-			m_gameObjects.push_back(move(object));
+		m_gameObjects.push_back(move(object));
 
 		// 히트박스
 		if (type == 12)
@@ -847,16 +835,9 @@ void GameScene::RecvLoginOk()
 		{
 			if (p) continue;
 			p = make_unique<Player>(TRUE);
-			p->SetMesh(s_meshes["PLAYER"]);
-			p->SetShader(s_shaders["ANIMATION"]);
-			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-			//p->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
-			p->SetGunMesh(s_meshes["SG"]);
-			p->SetGunShader(s_shaders["LINK"]);
-			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
+			p->SetId(static_cast<int>(data.id));
 			p->SetWeaponType(eWeaponType::SG);
 			p->PlayAnimation("IDLE");
-			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
 			break;
 		}
@@ -963,10 +944,13 @@ void GameScene::RecvBulletHit()
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	auto dmgText{ make_unique<DamageTextObject>(TEXT("40"))};
-	dmgText->SetCamera(m_camera);
-	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
-	m_textObjects.push_back(move(dmgText));
+	if (m_monsters.find(static_cast<int>(data.mobId)) != m_monsters.end())
+	{
+		auto dmgText{ make_unique<DamageTextObject>(TEXT("40")) };
+		dmgText->SetCamera(m_camera);
+		dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
+		m_textObjects.push_back(move(dmgText));
+	}
 }
 
 void GameScene::RecvMosterAttack()
@@ -1014,6 +998,7 @@ void GameScene::RecvRoundResult()
 			[]()
 			{
 				g_gameFramework.SetNextScene(eSceneType::MAIN);
+				ShowCursor(TRUE);
 			});
 		clearWindow->Add(move(goToMainText));
 

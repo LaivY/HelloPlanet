@@ -16,7 +16,6 @@ public:
 	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
 	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void Update(FLOAT deltaTime);
 	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);

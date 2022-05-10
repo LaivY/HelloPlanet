@@ -412,18 +412,8 @@ void LobbyScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 		object->Rotate(rotat.z, rotat.x, rotat.y);
 		object->SetPosition(trans);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
-
-		// 셰이더
-		if (type == 0 || type == 1)
-		{
-			object->SetShader(s_shaders["MODEL"]);
-		}
-		else
-		{
-			object->SetShader(s_shaders["STENCIL_MODEL"]);
-			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
-		}
 
 		// 텍스쳐
 		if (0 <= type && type <= 1)

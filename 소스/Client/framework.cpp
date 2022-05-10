@@ -576,9 +576,7 @@ void GameFramework::PopulateCommandList() const
 		m_scene->Render(m_commandList, rtvHandle, dsvHandle);
 		m_scene->PostProcessing(m_commandList, m_postRootSignature, m_renderTargets[m_frameIndex]);
 	}
-
 	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
 	DX::ThrowIfFailed(m_commandList->Close());
 }
 

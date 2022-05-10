@@ -207,8 +207,8 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 					Fire();
 				break;
 			case eWeaponType::MG:
-				if (currFrame > 0.1f)
-					Fire();
+				//if (currFrame > 0.1f)
+				Fire();
 				break;
 			}
 		}
@@ -343,18 +343,6 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 		m_camera->UpdateShaderVariable(commandList);
 #endif
 	}
-}
-
-void Player::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	if (!m_outlineShader) return;
-
-	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
-	XMFLOAT4X4 scale{};
-	XMStoreFloat4x4(&scale, XMMatrixScaling(1.05f, 1.05f, 1.05f));
-	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
-	Player::Render(commandList, m_outlineShader);
-	m_worldMatrix = worldMatrix;
 }
 
 void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -564,13 +552,18 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			}
 			break;
 		case eWeaponType::MG:
-			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 			if (pureAnimationName == "FIRING")
 			{
-				m_upperAnimationInfo->blendingFrame = 3;
-				m_upperAnimationInfo->fps = 1.0f / 30.0f;
+				doBlending = FALSE;
 				m_isFired = FALSE;
 			}
+			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
+			//if (pureAnimationName == "FIRING")
+			//{
+			//	m_upperAnimationInfo->blendingFrame = 1;
+			//	m_upperAnimationInfo->fps = 1.0f / 30.0f;
+			//	m_isFired = FALSE;
+			//}
 			break;
 		}
 		return;

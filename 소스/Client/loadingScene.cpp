@@ -201,7 +201,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["CUBE"] = make_shared<CubeMesh>(device, commandList, 1.0f, 1.0f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
 
-void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
+void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature)
 {
 	s_shaders["DEFAULT"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
 	s_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PSSkybox");
@@ -211,15 +211,13 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
 	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true);
 
-	// 테두리 셰이더
-	s_shaders["STENCIL_MODEL"] = make_shared<StencilShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
-	s_shaders["OUTLINE_MODEL"] = make_shared<OutlineShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS_OUTLINE");
-	s_shaders["OUTLINE_ANIMATION"] = make_shared<OutlineShader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS_OUTLINE");
-
 	// 그림자 셰이더
 	s_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
 	s_shaders["SHADOW_ANIMATION"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_ANIMATION", "GS");
 	s_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_LINK", "GS");
+
+	// 외곽선
+	s_shaders["OUTLINE"] = make_shared<OutlineShader>(device, postRootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "CS");
 
 	// 디버그
 	s_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
