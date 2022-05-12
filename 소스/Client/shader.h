@@ -43,23 +43,16 @@ public:
 	~WireframeShader() = default;
 };
 
-class StencilShader : public Shader
+class StencilWriteShader : public Shader
 {
 public:
-	StencilShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	~StencilShader() = default;
+	StencilWriteShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
+	~StencilWriteShader() = default;
 };
 
 class OutlineShader : public Shader
 {
 public:
-	OutlineShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
+	OutlineShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs);
 	~OutlineShader() = default;
-};
-
-class OutlineShader2 : public Shader
-{
-public:
-	OutlineShader2(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
-	~OutlineShader2() = default;
 };

@@ -188,56 +188,8 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 #endif
 }
 
-void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
+void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 {
-	// 상체 애니메이션 콜백 처리
-	if (isUpper)
-	{
-		// 애니메이션에 맞춰 총 발사
-		if (!m_isMultiPlayer && !m_isFired && m_upperAnimationInfo->state == eAnimationState::PLAY && GetUpperCurrAnimationName() == "FIRING")
-		{
-			switch (m_weaponType)
-			{
-			case eWeaponType::AR:
-				if (currFrame > 0.5f)
-					Fire();
-				break;
-			case eWeaponType::SG:
-				if (currFrame > 3.0f)
-					Fire();
-				break;
-			case eWeaponType::MG:
-				//if (currFrame > 0.1f)
-				Fire();
-				break;
-			}
-		}
-
-		if (currFrame >= endFrame)
-		{
-			switch (m_upperAnimationInfo->state)
-			{
-			case eAnimationState::PLAY:
-				m_upperAnimationInfo->state = eAnimationState::SYNC;
-				m_upperAnimationInfo->blendingTimer = 0.0f;
-
-				// 재장전
-				if (GetUpperCurrAnimationName() == "RELOAD")
-					m_bulletCount = m_maxBulletCount;
-				break;
-			case eAnimationState::BLENDING:
-				PlayAnimation(GetUpperAfterAnimationName());
-				break;
-			case eAnimationState::SYNC:
-				m_upperAnimationInfo.reset();
-				if (!m_isMultiPlayer) SendPlayerData(); // 서버에게 상체 애니메이션 끝났다고 알림
-				break;
-			}
-		}
-		return;
-	}
-
-	// 애니메이션이 끝났을 때
 	if (currFrame >= endFrame)
 	{
 		switch (m_animationInfo->state)
@@ -298,6 +250,50 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
 	}
 }
 
+void Player::OnUpperAnimation(FLOAT currFrame, UINT endFrame)
+{
+	// 애니메이션에 맞춰 총 발사
+	if (!m_isMultiPlayer && !m_isFired && m_upperAnimationInfo->state == eAnimationState::PLAY && GetUpperCurrAnimationName() == "FIRING")
+	{
+		switch (m_weaponType)
+		{
+		case eWeaponType::AR:
+			if (currFrame > 0.5f)
+				Fire();
+			break;
+		case eWeaponType::SG:
+			if (currFrame > 3.0f)
+				Fire();
+			break;
+		case eWeaponType::MG:
+			Fire();
+			break;
+		}
+	}
+
+	if (currFrame >= endFrame)
+	{
+		switch (m_upperAnimationInfo->state)
+		{
+		case eAnimationState::PLAY:
+			m_upperAnimationInfo->state = eAnimationState::SYNC;
+			m_upperAnimationInfo->blendingTimer = 0.0f;
+
+			// 재장전
+			if (GetUpperCurrAnimationName() == "RELOAD")
+				m_bulletCount = m_maxBulletCount;
+			break;
+		case eAnimationState::BLENDING:
+			PlayAnimation(GetUpperAfterAnimationName());
+			break;
+		case eAnimationState::SYNC:
+			m_upperAnimationInfo.reset();
+			if (!m_isMultiPlayer) SendPlayerData(); // 서버에게 상체 애니메이션 끝났다고 알림
+			break;
+		}
+	}
+}
+
 void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 #ifdef RENDER_HITBOX
@@ -305,14 +301,12 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	for (const auto& hitBox : m_hitboxes)
 		hitBox->Render(commandList);
 #endif
-
 	if (m_isMultiPlayer)
 	{
-		GameObject::Render(commandList, shader);
+		GameObject::Render(commandList);
 		if (m_gunMesh)
 		{
-			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
 			m_gunMesh->UpdateShaderVariable(commandList, this);
 			m_gunMesh->Render(commandList);
 		}
@@ -320,18 +314,18 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	else
 	{
 #ifdef FIRSTVIEW
-		if (!m_camera) return;
+		// 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
 		XMFLOAT3 at{ m_camera->GetAt() }, up{ m_camera->GetUp() };
-		m_camera->UpdateShaderVariableByPlayer(commandList); // 카메라 파라미터를 플레이어에 맞추고 셰이더 변수를 업데이트한다.
+		m_camera->UpdateShaderVariableByPlayer(commandList);
 #endif
-		if (m_weaponType == eWeaponType::MG) // 머신건은 팔을 렌더링하지 않음
+		// 머신건은 팔을 렌더링하지 않는다.
+		if (m_weaponType == eWeaponType::MG)
 			UpdateShaderVariable(commandList);
 		else
 			GameObject::Render(commandList, shader);
 		if (m_gunMesh)
 		{
-			if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-			else if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
+			if (m_gunShader) commandList->SetPipelineState(m_gunShader->GetPipelineState().Get());
 			m_gunMesh->UpdateShaderVariable(commandList, this);
 			m_gunMesh->Render(commandList);
 		}

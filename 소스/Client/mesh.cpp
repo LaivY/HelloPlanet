@@ -260,7 +260,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
 																										 currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
 																										 upperT);
-				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
+				object->OnUpperAnimation(upperCurrFrame, currUpperAnimation.length);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::BLENDING)
 			{
@@ -290,7 +290,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
+				object->OnUpperAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::SYNC)
 			{
@@ -317,7 +317,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													  t) };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
+				object->OnUpperAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame);
 			}
 		}
 
@@ -553,7 +553,7 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 
 	UINT cbMeshByteSize{ 0 };
 	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
-	m_cbMesh[nullptr] = Utile::CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbMesh[nullptr] = Utile::CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
 }
 
 FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT4& color)
@@ -561,23 +561,15 @@ FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const
 	vector<Vertex> vertices;
 	vertices.reserve(6);
 
-	Material material;
-	material.baseColor = color;
-	m_materials.push_back(move(material));
-
 	Vertex v{};
 	v.materialIndex = 0;
 	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = {  1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = { 1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
+	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 
 	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 	v.position = { -1.0f, -1.0f, 0.0f }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
-
-	UINT cbMeshByteSize{ 0 };
-	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
-	m_cbMesh[nullptr] = Utile::CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
 }

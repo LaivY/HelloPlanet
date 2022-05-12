@@ -30,11 +30,7 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
-
-	m_renderTargetTexture = make_unique<RenderTargetTexture>(device, 5, g_width, g_height);
-	m_fullScreenQuadObject = make_unique<GameObject>();
-	m_fullScreenQuadObject->SetMesh(s_meshes["FULL"]);
-
+	m_outlineFilter = make_unique<OutlineFilter>(device);
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };
 #endif
@@ -207,8 +203,6 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 	if (m_skybox) m_skybox->Update(deltaTime);
 	for (auto& p : m_multiPlayers)
 		if (p) p->Update(deltaTime);
-	for (auto& bg : m_backgrounds)
-		bg->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
 	for (auto& [_, m] : m_monsters)
@@ -248,6 +242,11 @@ void GameScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) 
 
 void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
 {
+	static auto depthTexture{ make_unique<StencilTexture>(g_gameFramework.m_device) };
+	static auto fullScreenObject{ make_unique<GameObject>() };
+	fullScreenObject->SetMesh(s_meshes["FULLSCREEN"]);
+	fullScreenObject->SetShader(s_shaders["FULLSCREEN"]);
+
 	// 뷰포트, 가위사각형, 렌더타겟 설정
 	commandList->RSSetViewports(1, &m_viewport);
 	commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -256,41 +255,24 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 테두리를 위한 스텐실 참조값 설정
-	commandList->OMSetStencilRef(1);
-
-	// 게임오브젝트 렌더링
+	// 외곽선을 그릴 게임오브젝트부터 렌더랑한다.
+	UINT stencilRef{ 0 };
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& o : m_gameObjects)
 	{
+		//if (!o->isMakeOutline()) continue;
+
+		stencilRef = (stencilRef + 1) % 256;
+		commandList->OMSetStencilRef(stencilRef);
 		o->Render(commandList);
-
-		// 테두리 렌더링
-		ID3D12DescriptorHeap* ppHeaps[]{ m_renderTargetTexture->GetSrvHeap().Get() };
-		commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-		commandList->SetGraphicsRootDescriptorTable(5, m_renderTargetTexture->GetGpuSrvHandle());
-
-		// 렌더타겟으로 텍스쳐를 설정함
-		constexpr float clearColor[]{ 0.0f, 0.0f, 0.0f, 1.0f };
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargetTexture->GetTexture().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
-		commandList->OMSetRenderTargets(1, &m_renderTargetTexture->GetRtvHandle(), TRUE, &dsvHandle);
-		commandList->ClearRenderTargetView(m_renderTargetTexture->GetRtvHandle(), clearColor, 0, nullptr);
-
-		// 오브젝트가 그려진 곳을 흰색으로 칠함
-		m_fullScreenQuadObject->Render(commandList, s_shaders["OUTLINE"]);
-
-		// 위에서 만든 텍스쳐를 이용하여 원래 렌더타겟에 테두리를 그림
-		commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargetTexture->GetTexture().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
-		commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
-		m_fullScreenQuadObject->Render(commandList, s_shaders["OUTLINE2"]);
-
-		// 스텐실 버퍼 초기화
-		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	}
 	lock.unlock();
-	
-	// 스텐실 참조값을 원래 상태로 되돌림
 	commandList->OMSetStencilRef(0);
+
+	// 외곽선 렌더링
+	depthTexture->Copy(commandList, g_gameFramework.m_depthStencil);
+	depthTexture->UpdateShaderVariable(commandList);
+	fullScreenObject->Render(commandList);
 
 	// 멀티플레이어 렌더링
 	for (const auto& p : m_multiPlayers)
@@ -309,7 +291,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// UI 렌더링
 	if (m_uiCamera)
 	{
-		lock.lock();
+		unique_lock<mutex> lock{ g_mutex };
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
@@ -328,9 +310,10 @@ void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 		w->Render2D(device);
 }
 
-void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget)
+void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& depthStencil, const ComPtr<ID3D12Resource>& renderTarget)
 {
-
+	//if (m_outlineFilter)
+	//	m_outlineFilter->Excute(commandList, postRootSignature, depthStencil, renderTarget);
 }
 
 void GameScene::ProcessClient()
@@ -491,7 +474,7 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		object->Rotate(rotat.z, rotat.x, rotat.y);
 		object->SetPosition(trans);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
-		object->SetShader(s_shaders["STENCIL_MODEL"]);
+		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
 
 		// 텍스쳐
@@ -591,16 +574,9 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 	// 렌더링
 	unique_lock<mutex> lock{ g_mutex };
-	for (const auto& bg : m_backgrounds)
-	{
-		auto shadowShader{ bg->GetShadowShader() };
-		if (shadowShader)
-		bg->Render(commandList, shadowShader);
-	}
 	for (const auto& object : m_gameObjects)
 	{
-		auto shadowShader{ object->GetShadowShader() };
-		if (shadowShader)
+		if (auto shadowShader{ object->GetShadowShader() })
 			object->Render(commandList, shadowShader);
 	}
 	for (const auto& [_, monster] : m_monsters)

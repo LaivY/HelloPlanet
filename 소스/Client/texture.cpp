@@ -84,23 +84,20 @@ void Texture::ReleaseUploadBuffer()
 		textureUploadBuffer.Reset();
 }
 
-RenderTargetTexture::RenderTargetTexture(const ComPtr<ID3D12Device>& device, UINT rootParameterIndex, UINT width, UINT height)
+StencilTexture::StencilTexture(const ComPtr<ID3D12Device>& device)
 {
-	constexpr float clearColor[]{ 0.0f, 0.0f, 0.0f, 1.0f };
-
 	// 버퍼 생성
-	ComPtr<ID3D12Resource> buffer;
 	DX::ThrowIfFailed(device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET),
+		&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R24G8_TYPELESS, g_width, g_height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_NONE),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
-		&CD3DX12_CLEAR_VALUE{ DXGI_FORMAT_R8G8B8A8_UNORM, clearColor },
-		IID_PPV_ARGS(&buffer)
+		NULL,
+		IID_PPV_ARGS(&m_buffer)
 	));
-	buffer->SetName(TEXT("RENDER TARGET TEXTURE"));
+	m_buffer->SetName(TEXT("DEPTH_STENCIL_BUFFER"));
 
-	// 셰이더 리소스 뷰 힙 생성
+	// 셰이더 리소스 뷰 서술자힙 생성
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
 	srvHeapDesc.NumDescriptors = 1;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -110,27 +107,26 @@ RenderTargetTexture::RenderTargetTexture(const ComPtr<ID3D12Device>& device, UIN
 	// 셰이더 리소스 뷰 생성
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.Format = DXGI_FORMAT_X24_TYPELESS_G8_UINT;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	srvDesc.Texture2D.PlaneSlice = 0;
-	device->CreateShaderResourceView(buffer.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
-	m_gpuSrvHandle = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+	srvDesc.Texture2D.PlaneSlice = 1;
+	device->CreateShaderResourceView(m_buffer.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+}
 
-	// 렌더 타겟 뷰 힙 생성
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
-	rtvHeapDesc.NumDescriptors = 1;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	rtvHeapDesc.NodeMask = NULL;
-	device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap));
+void StencilTexture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& depthStencil)
+{
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_buffer.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depthStencil.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	commandList->CopyResource(m_buffer.Get(), depthStencil.Get());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(depthStencil.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+}
 
-	// 렌더타겟뷰 생성
-	m_rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-	device->CreateRenderTargetView(buffer.Get(), nullptr, m_rtvHandle);
-
-	m_textures.reserve(1);
-	m_textures.push_back(make_pair(rootParameterIndex, buffer));
+void StencilTexture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	ID3D12DescriptorHeap* ppHeaps[]{ m_srvHeap.Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	commandList->SetGraphicsRootDescriptorTable(7, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 }

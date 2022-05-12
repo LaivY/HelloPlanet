@@ -65,7 +65,7 @@ public:
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
-private:
+public:
 	static constexpr UINT				FrameCount = 3;
 
 	// Window

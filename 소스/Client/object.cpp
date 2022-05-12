@@ -2,35 +2,17 @@
 #include "camera.h"
 #include "scene.h"
 
-GameObject::GameObject() : m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_outlineScale{ 1.02f, 1.02f, 1.02f }, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }, m_isDeleted{ FALSE }
+GameObject::GameObject() : m_isDeleted{ FALSE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
 
-void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
-{
-
-}
-
-void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
-{
-	//if (!m_mesh || (!m_shader && !shader)) return;
-
-	// 셰이더 변수 최신화
-	UpdateShaderVariable(commandList);
-
-	// PSO 설정
-	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
-	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
-
-	// 메쉬 렌더링
-	if (m_mesh) m_mesh->Render(commandList);
-
-#ifdef RENDER_HITBOX
-	for (const auto& bb : m_hitboxes)
-		bb->Render(commandList);
-#endif
-}
+void GameObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
+void GameObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
+void GameObject::OnKeyboardEvent(FLOAT deltaTime) { }
+void GameObject::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
+void GameObject::OnAnimation(FLOAT currFrame, UINT endFrame) { }
+void GameObject::OnUpperAnimation(FLOAT currFrame, UINT endFrame) { }
 
 void GameObject::Update(FLOAT deltaTime)
 {
@@ -80,6 +62,36 @@ void GameObject::Update(FLOAT deltaTime)
 #endif
 }
 
+void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	// 게임오브젝트 월드 변환 행렬 최신화
+	commandList->SetGraphicsRoot32BitConstants(0, 16, &Matrix::Transpose(m_worldMatrix), 0);
+
+	// 메쉬 셰이더 변수 최신화
+	if (m_mesh) m_mesh->UpdateShaderVariable(commandList, this);
+
+	// 텍스쳐 셰이더 변수 최신화
+	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureInfo ? m_textureInfo->frame : 0);
+}
+
+void GameObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	// 셰이더 변수 최신화
+	UpdateShaderVariable(commandList);
+
+	// PSO 설정
+	if (shader) commandList->SetPipelineState(shader->GetPipelineState().Get());
+	else if (m_shader) commandList->SetPipelineState(m_shader->GetPipelineState().Get());
+
+	// 메쉬 렌더링
+	if (m_mesh) m_mesh->Render(commandList);
+
+#ifdef RENDER_HITBOX
+	for (const auto& bb : m_hitboxes)
+		bb->Render(commandList);
+#endif
+}
+
 void GameObject::Move(const XMFLOAT3& shift)
 {
 	SetPosition(Vector3::Add(GetPosition(), shift));
@@ -94,78 +106,6 @@ void GameObject::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	XMMATRIX rotate{ XMMatrixRotationRollPitchYaw(XMConvertToRadians(pitch), XMConvertToRadians(yaw), XMConvertToRadians(roll)) };
 	XMMATRIX worldMatrix{ rotate * XMLoadFloat4x4(&m_worldMatrix) };
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
-}
-
-void GameObject::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	// 게임오브젝트 월드 변환 행렬 최신화
-	commandList->SetGraphicsRoot32BitConstants(0, 16, &Matrix::Transpose(m_worldMatrix), 0);
-
-	// 메쉬 셰이더 변수 최신화
-	if (m_mesh) m_mesh->UpdateShaderVariable(commandList, this);
-
-	// 텍스쳐 셰이더 변수 최신화
-	if (m_texture) m_texture->UpdateShaderVariable(commandList, m_textureInfo ? m_textureInfo->frame : 0);
-}
-
-void GameObject::SetPosition(const XMFLOAT3& position)
-{
-	m_worldMatrix._41 = position.x;
-	m_worldMatrix._42 = position.y;
-	m_worldMatrix._43 = position.z;
-}
-
-void GameObject::SetScale(const XMFLOAT3& scale)
-{
-	XMFLOAT4X4 scaleMatrix{};
-	XMStoreFloat4x4(&scaleMatrix, XMMatrixScaling(scale.x / m_scale.x, scale.y / m_scale.y, scale.z / m_scale.z));
-
-	XMFLOAT3 position{ GetPosition() };
-	SetPosition(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
-	m_worldMatrix = Matrix::Mul(m_worldMatrix, scaleMatrix);
-	SetPosition(position);
-
-	m_scale = scale;
-}
-
-void GameObject::SetMesh(const shared_ptr<Mesh>& mesh)
-{
-	m_mesh = mesh;
-}
-
-void GameObject::SetShader(const shared_ptr<Shader>& shader)
-{
-	m_shader = shader;
-}
-
-void GameObject::SetShadowShader(const shared_ptr<Shader>& shadowShader)
-{
-	m_shadowShader = shadowShader;
-}
-
-void GameObject::SetOutlineShader(const shared_ptr<Shader>& outlineShader)
-{
-	m_outlineShader = outlineShader;
-}
-
-void GameObject::SetOutlineScale(const XMFLOAT3& outlineScale)
-{
-	m_outlineScale = outlineScale;
-}
-
-void GameObject::SetTexture(const shared_ptr<Texture>& texture)
-{
-	m_texture = texture;
-}
-
-void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
-{
-	m_textureInfo = move(textureInfo);
-}
-
-void GameObject::AddHitbox(unique_ptr<Hitbox>& hitbox)
-{
-	m_hitboxes.push_back(move(hitbox));
 }
 
 void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
@@ -188,20 +128,139 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 	m_animationInfo->blendingTimer = 0.0f;
 }
 
-void GameObject::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+void GameObject::Delete()
 {
-	if (!m_outlineShader) return;
-	XMFLOAT4X4 worldMatrix{ m_worldMatrix };
-	XMFLOAT4X4 scale{};
-	XMStoreFloat4x4(&scale, XMMatrixScaling(m_outlineScale.x, m_outlineScale.y, m_outlineScale.z));
-	m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
-	Render(commandList, m_outlineShader);
-	m_worldMatrix = worldMatrix;
+	m_isDeleted = TRUE;
+}
 
-	//XMStoreFloat4x4(&scale, XMMatrixScaling(0.98f, 0.98f, 0.98f));
-	//m_worldMatrix = Matrix::Mul(scale, m_worldMatrix);
-	//Render(commandList, m_outlineShader);
-	//m_worldMatrix = worldMatrix;
+void GameObject::SetOutline(BOOL isMakeOutline)
+{
+	m_isMakeOutline = isMakeOutline;
+}
+
+void GameObject::SetWorldMatrix(const XMFLOAT4X4& worldMatrix)
+{
+	m_worldMatrix = worldMatrix;
+}
+
+void GameObject::SetPosition(const XMFLOAT3& position)
+{
+	m_worldMatrix._41 = position.x;
+	m_worldMatrix._42 = position.y;
+	m_worldMatrix._43 = position.z;
+}
+
+void GameObject::SetScale(const XMFLOAT3& scale)
+{
+	XMFLOAT4X4 scaleMatrix{};
+	XMStoreFloat4x4(&scaleMatrix, XMMatrixScaling(scale.x / m_scale.x, scale.y / m_scale.y, scale.z / m_scale.z));
+
+	XMFLOAT3 position{ GetPosition() };
+	SetPosition(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+	m_worldMatrix = Matrix::Mul(m_worldMatrix, scaleMatrix);
+	SetPosition(position);
+
+	m_scale = scale;
+}
+
+void GameObject::SetVelocity(const XMFLOAT3& velocity)
+{
+	m_velocity = velocity;
+}
+
+void GameObject::SetMesh(const shared_ptr<Mesh>& mesh)
+{
+	m_mesh = mesh;
+}
+
+void GameObject::SetShader(const shared_ptr<Shader>& shader)
+{
+	m_shader = shader;
+}
+
+void GameObject::SetShadowShader(const shared_ptr<Shader>& shadowShader)
+{
+	m_shadowShader = shadowShader;
+}
+
+void GameObject::SetTexture(const shared_ptr<Texture>& texture)
+{
+	m_texture = texture;
+}
+
+void GameObject::SetTextureInfo(unique_ptr<TextureInfo>& textureInfo)
+{
+	m_textureInfo = move(textureInfo);
+}
+
+void GameObject::AddHitbox(unique_ptr<Hitbox>& hitbox)
+{
+	m_hitboxes.push_back(move(hitbox));
+}
+
+BOOL GameObject::isDeleted() const
+{
+	return m_isDeleted;
+}
+
+BOOL GameObject::isMakeOutline() const
+{
+	return m_isMakeOutline;
+}
+
+XMFLOAT4X4 GameObject::GetWorldMatrix() const
+{
+	return m_worldMatrix;
+}
+
+XMFLOAT3 GameObject::GetRight() const
+{
+	return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 };
+}
+
+XMFLOAT3 GameObject::GetUp() const
+{
+	return XMFLOAT3{ m_worldMatrix._21, m_worldMatrix._22, m_worldMatrix._23 };
+}
+
+XMFLOAT3 GameObject::GetLook() const
+{
+	return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 };
+}
+
+XMFLOAT3 GameObject::GetPosition() const
+{
+	return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 };
+}
+
+XMFLOAT3 GameObject::GetScale() const
+{
+	return m_scale;
+}
+
+XMFLOAT3 GameObject::GetVelocity() const
+{
+	return m_velocity;
+}
+
+const vector<unique_ptr<Hitbox>>& GameObject::GetHitboxes() const
+{
+	return m_hitboxes;
+}
+
+shared_ptr<Shader> GameObject::GetShadowShader() const
+{
+	return m_shadowShader;
+}
+
+AnimationInfo* GameObject::GetAnimationInfo() const
+{
+	return m_animationInfo.get();
+}
+
+AnimationInfo* GameObject::GetUpperAnimationInfo() const
+{
+	return m_upperAnimationInfo.get();
 }
 
 Skybox::Skybox()
@@ -236,26 +295,24 @@ void Bullet::Update(FLOAT deltaTime)
 		m_isDeleted = TRUE;
 }
 
-void Monster::OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper)
+void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
 {
-	// 오류
-	if (isUpper) return;
-	if (m_animationInfo->state == eAnimationState::PLAY)
+	if (currFrame >= endFrame)
 	{
-		if (currFrame >= endFrame)
+		switch (m_animationInfo->state)
 		{
+		case eAnimationState::PLAY:
 			if (m_animationInfo->currAnimationName == "DIE")
 			{
 				m_isDeleted = TRUE;
-				return;
+				break;
 			}
 			PlayAnimation(m_animationInfo->currAnimationName);
-		}
-	}
-	else if (m_animationInfo->state == eAnimationState::BLENDING) // 블렌딩 진행 중
-	{
-		if (currFrame >= endFrame)
+			break;
+		case eAnimationState::BLENDING:
 			PlayAnimation(m_animationInfo->afterAnimationName);
+			break;
+		}
 	}
 }
 

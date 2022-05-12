@@ -19,12 +19,10 @@ public:
 
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
-
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 
 	void SetFitToScreen(BOOL fitToScreen);
-	void SetPosition(const XMFLOAT3& position);
 	void SetPosition(const XMFLOAT2& position);
 	void SetPivot(const ePivot& pivot);
 	void SetScreenPivot(const ePivot& pivot);

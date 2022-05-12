@@ -96,20 +96,16 @@ void GameFramework::OnUpdate(FLOAT deltaTime)
 
 void GameFramework::OnRender()
 {
-	// 씬 렌더링
+	// 3D 렌더링
 	PopulateCommandList();
-
-	// 명령 제출
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	ID3D12CommandList* ppCommandList[]{ m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
-	// D2D 렌더링
+	// 2D 렌더링
 	Render2D();
 
 	// 출력
 	DX::ThrowIfFailed(m_swapChain->Present(1, 0));
-
-	// GPU 대기
 	WaitForPreviousFrame();
 }
 
@@ -402,19 +398,21 @@ void GameFramework::CreateDepthStencilView()
 
 void GameFramework::CreateRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	CD3DX12_DESCRIPTOR_RANGE ranges[3];
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Setting::SHADOWMAP_COUNT, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 5, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 
 	// 자주 갱신하는 순서대로 해야 성능에 좋음
-	CD3DX12_ROOT_PARAMETER rootParameter[7];
+	CD3DX12_ROOT_PARAMETER rootParameter[8];
 	rootParameter[0].InitAsConstants(16, 0, 0);												// cbGameObject : b0
 	rootParameter[1].InitAsConstantBufferView(1);											// cbMesh : b1
 	rootParameter[2].InitAsConstantBufferView(2);											// cbCamera : b2
 	rootParameter[3].InitAsConstantBufferView(3);											// cbScene : b3
 	rootParameter[4].InitAsConstantBufferView(4);											// cbGameFramework : b4
 	rootParameter[5].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_texture : t0
-	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1 ~ t3
+	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1 ~ t4
+	rootParameter[7].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_stencil : t5
 
 	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
 	samplerDesc[0].Init(
@@ -574,7 +572,7 @@ void GameFramework::PopulateCommandList() const
 		m_scene->UpdateShaderVariable(m_commandList);
 		m_scene->PreRender(m_commandList);
 		m_scene->Render(m_commandList, rtvHandle, dsvHandle);
-		m_scene->PostProcessing(m_commandList, m_postRootSignature, m_renderTargets[m_frameIndex]);
+		m_scene->PostProcessing(m_commandList, m_postRootSignature, m_depthStencil, m_renderTargets[m_frameIndex]);
 	}
 	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 	DX::ThrowIfFailed(m_commandList->Close());

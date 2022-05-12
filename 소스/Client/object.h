@@ -6,6 +6,7 @@
 
 class Camera;
 class Player;
+class Hitbox;
 
 enum class eAnimationState
 {
@@ -36,57 +37,56 @@ struct AnimationInfo
 	FLOAT			fps;
 };
 
-class Hitbox;
-
 class GameObject
 {
 public:
 	GameObject();
 	virtual ~GameObject() = default;
 
-	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
-	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-	virtual void OnKeyboardEvent(FLOAT deltaTime) { }
-	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
-	virtual void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	virtual void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnKeyboardEvent(FLOAT deltaTime);
+	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
+	virtual void OnUpperAnimation(FLOAT currFrame, UINT endFrame);
+
 	virtual void Update(FLOAT deltaTime);
+	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
-	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 
-	void Delete() { m_isDeleted = TRUE; }
-	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_worldMatrix = worldMatrix; }
-	virtual void SetPosition(const XMFLOAT3& position);
+	void Delete();
+	void SetOutline(BOOL isMakeOutline);
+	void SetWorldMatrix(const XMFLOAT4X4& worldMatrix);
+	void SetPosition(const XMFLOAT3& position);
 	void SetScale(const XMFLOAT3& scale);
-	void SetVelocity(const XMFLOAT3& velocity) { m_velocity = velocity; }
+	void SetVelocity(const XMFLOAT3& velocity);
 	void SetMesh(const shared_ptr<Mesh>& Mesh);
 	void SetShader(const shared_ptr<Shader>& shader);
 	void SetShadowShader(const shared_ptr<Shader>& shadowShader);
-	void SetOutlineShader(const shared_ptr<Shader>& outlineShader);
-	void SetOutlineScale(const XMFLOAT3& outlineScale);
 	void SetTexture(const shared_ptr<Texture>& texture);
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void AddHitbox(unique_ptr<Hitbox>& hitbox);
 
-	BOOL isDeleted() const { return m_isDeleted; }
-	XMFLOAT4X4 GetWorldMatrix() const { return m_worldMatrix; }
-	XMFLOAT3 GetRight() const { return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 }; }
-	XMFLOAT3 GetUp() const { return XMFLOAT3{ m_worldMatrix._21, m_worldMatrix._22, m_worldMatrix._23 }; }
-	XMFLOAT3 GetLook() const { return XMFLOAT3{ m_worldMatrix._31, m_worldMatrix._32, m_worldMatrix._33 }; }
-	XMFLOAT3 GetPosition() const { return XMFLOAT3{ m_worldMatrix._41, m_worldMatrix._42, m_worldMatrix._43 }; }
-	XMFLOAT3 GetRollPitchYaw() const { return XMFLOAT3{ m_roll, m_pitch, m_yaw }; }
-	XMFLOAT3 GetScale() const { return m_scale; }
-	XMFLOAT3 GetVelocity() const { return m_velocity; }
-	const vector<unique_ptr<Hitbox>>& GetHitboxes() const { return m_hitboxes; }
-	shared_ptr<Shader> GetShadowShader() const { return m_shadowShader; }
-	AnimationInfo* GetAnimationInfo() const { return m_animationInfo.get(); }
-	AnimationInfo* GetUpperAnimationInfo() const { return m_upperAnimationInfo.get(); }
+	BOOL isDeleted() const;
+	BOOL isMakeOutline() const;
+	XMFLOAT4X4 GetWorldMatrix() const;
+	XMFLOAT3 GetRight() const;
+	XMFLOAT3 GetUp() const;
+	XMFLOAT3 GetLook() const;
+	XMFLOAT3 GetPosition() const;
+	XMFLOAT3 GetScale() const;
+	XMFLOAT3 GetVelocity() const;
+	const vector<unique_ptr<Hitbox>>& GetHitboxes() const;
+	shared_ptr<Shader> GetShadowShader() const;
+	AnimationInfo* GetAnimationInfo() const;
+	AnimationInfo* GetUpperAnimationInfo() const;
 
 protected:
 	BOOL							m_isDeleted;			// 삭제 여부
+	BOOL							m_isMakeOutline;		// 외곽선 여부
 
 	XMFLOAT4X4						m_worldMatrix;			// 월드 변환 행렬
 	FLOAT							m_roll;					// z축 회전각
@@ -99,8 +99,6 @@ protected:
 	shared_ptr<Mesh>				m_mesh;					// 메쉬
 	shared_ptr<Shader>				m_shader;				// 셰이더
 	shared_ptr<Shader>				m_shadowShader;			// 그림자 셰이더
-	shared_ptr<Shader>				m_outlineShader;		// 테두리 셰이더
-	XMFLOAT3						m_outlineScale;			// 테두리 크기
 	shared_ptr<Texture>				m_texture;				// 텍스쳐
 	unique_ptr<TextureInfo>			m_textureInfo;			// 텍스쳐 정보 구조체
 	unique_ptr<AnimationInfo>		m_animationInfo;		// 애니메이션 정보 구조체
@@ -141,7 +139,7 @@ public:
 	Monster() : m_id{ -1 } { }
 	~Monster() = default;
 
-	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
+	void OnAnimation(FLOAT currFrame, UINT endFrame);
 	void ApplyServerData(const MonsterData& monsterData);
 
 private:

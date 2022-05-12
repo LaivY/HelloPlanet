@@ -102,24 +102,10 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	if (m_skybox) m_skybox->Render(commandList);
+	for (const auto& o : m_gameObjects)
+		o->Render(commandList);
 	for (const auto& p : m_players)
 		p->Render(commandList);
-
-	UINT stencilRef{ 1 };
-	for (const auto& o : m_gameObjects)
-	{
-		commandList->OMSetStencilRef(stencilRef++);
-		o->Render(commandList);
-	}
-	
-	stencilRef = 1;
-	for (const auto& o : m_gameObjects)
-	{
-		commandList->OMSetStencilRef(stencilRef++);
-		o->RenderOutline(commandList);
-	}
-	commandList->OMSetStencilRef(0);
-	
 	if (m_uiCamera)
 	{
 		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);

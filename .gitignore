@@ -437,4 +437,5 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,c++
 
 ### Hello, Planet Custom ###
-Resource/
+소스/Client/Resource/*
+!소스/Client/Resource/Shader

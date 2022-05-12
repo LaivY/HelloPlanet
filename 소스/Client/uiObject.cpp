@@ -70,11 +70,6 @@ void UIObject::SetFitToScreen(BOOL fitToScreen)
 	m_isFitToScreen = fitToScreen;
 }
 
-void UIObject::SetPosition(const XMFLOAT3& position)
-{
-	SetPosition(XMFLOAT2{ position.x, position.y });
-}
-
 void UIObject::SetPosition(const XMFLOAT2& position)
 {
 	m_pivotPosition = position;

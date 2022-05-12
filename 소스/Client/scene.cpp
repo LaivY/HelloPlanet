@@ -24,5 +24,5 @@ void Scene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& comman
 void Scene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const { }
 void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const { }
 void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) { }
-void Scene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) { }
+void Scene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& depthStencil, const ComPtr<ID3D12Resource>& renderTarget) { }
 void Scene::ProcessClient() { }

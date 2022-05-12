@@ -10,15 +10,18 @@ public:
 	Player(BOOL isMultiPlayer = FALSE);
 	virtual ~Player() = default;
 
-	void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
-	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void OnKeyboardEvent(FLOAT deltaTime);
-	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	void Update(FLOAT deltaTime);
-	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
-	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnKeyboardEvent(FLOAT deltaTime);
+	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
+	virtual void OnUpperAnimation(FLOAT currFrame, UINT endFrame);
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void DeleteUpperAnimation();
 
