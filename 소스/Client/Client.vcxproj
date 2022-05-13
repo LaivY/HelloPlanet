@@ -161,7 +161,7 @@
     <ClInclude Include="mainScene.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="object.h" />
-    <ClInclude Include="outlineFilter.h" />
+    <ClInclude Include="fadeFilter.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="scene.h" />
@@ -186,7 +186,7 @@
     <ClCompile Include="mainScene.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="object.cpp" />
-    <ClCompile Include="outlineFilter.cpp" />
+    <ClCompile Include="fadeFilter.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="shader.cpp" />
@@ -213,6 +213,9 @@
     <FxCompile Include="Resource\Shader\default.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\fade.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Resource\Shader\lighting.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

@@ -2,22 +2,21 @@
 
 PS_INPUT VS(VS_INPUT input)
 {
-    PS_INPUT output;
+    PS_INPUT output = (PS_INPUT)0;
     output.positionH = input.position;
-    output.materialIndex = input.materialIndex;
     output.uv = input.uv;
     return output;
 }
 
 float4 PS(PS_INPUT input) : SV_TARGET
 {
-    const float4 outlineColor = float4(0.1f, 0.1f, 0.1f, 1.0f);
-    const float outlineThickness = 0.5f;
-    const float outlineThreshHold = 1.0f;
-
     float width, height;
     g_stencil.GetDimensions(width, height);
-    
+
+    const float4 outlineColor = float4(0.1f, 0.1f, 0.1f, 1.0f);
+    const float outlineThickness = 1.0f;
+    const float outlineThreshHold = 1.0f;
+
     // 정수 텍스쳐에서는 샘플링 할 수 없다.
     // 따라서 uv좌표를 실제 픽셀의 좌표로 설정해야한다.
     float2 uv;

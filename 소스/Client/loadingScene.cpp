@@ -85,17 +85,18 @@ void LoadingScene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr
 void LoadingScene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
+	s_shaders["FADE"] = make_shared<FadeShader>(device, postProcessRootSignature, Utile::PATH(TEXT("Shader/fade.hlsl")), "CS");
 }
 
 void LoadingScene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	s_textures["HPBARBASE"] = make_shared<Texture>();
 	s_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
-	s_textures["HPBARBASE"]->CreateTexture(device);
+	s_textures["HPBARBASE"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["HPBAR"] = make_shared<Texture>();
 	s_textures["HPBAR"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds")));
-	s_textures["HPBAR"]->CreateTexture(device);
+	s_textures["HPBAR"]->CreateTextureFromLoadedFiles(device);
 }
 
 void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -137,7 +138,7 @@ void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPt
 	LoadTextFormats(dWriteFactory);
 
 	commandList->Close();
-	ID3D12CommandList* ppCommandList[] = { commandList.Get() };
+	ID3D12CommandList* ppCommandList[]{ commandList.Get() };
 	g_gameFramework.GetCommandQueue()->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 	g_gameFramework.WaitForPreviousFrame();
 	m_isDone = TRUE;
@@ -221,7 +222,6 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["SHADOW_LINK"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_LINK", "GS");
 
 	// 외곽선
-	s_shaders["OUTLINE"] = make_shared<OutlineShader>(device, postRootSignature, Utile::PATH(TEXT("Shader/test.hlsl")), "CS");
 	s_shaders["FULLSCREEN"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "VS", "PS");
 
 	// 디버그
@@ -232,36 +232,36 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 {
 	s_textures["SKYBOX"] = make_shared<Texture>();
 	s_textures["SKYBOX"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds")));
-	s_textures["SKYBOX"]->CreateTexture(device);
+	s_textures["SKYBOX"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["GAROO"] = make_shared<Texture>();
 	s_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
-	s_textures["GAROO"]->CreateTexture(device);
+	s_textures["GAROO"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["OBJECT0"] = make_shared<Texture>();
 	s_textures["OBJECT0"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture0.dds")));
-	s_textures["OBJECT0"]->CreateTexture(device);
+	s_textures["OBJECT0"]->CreateTextureFromLoadedFiles(device);
 	s_textures["OBJECT1"] = make_shared<Texture>();
 	s_textures["OBJECT1"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture1.dds")));
-	s_textures["OBJECT1"]->CreateTexture(device);
+	s_textures["OBJECT1"]->CreateTextureFromLoadedFiles(device);
 	s_textures["OBJECT2"] = make_shared<Texture>();
 	s_textures["OBJECT2"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds")));
-	s_textures["OBJECT2"]->CreateTexture(device);
+	s_textures["OBJECT2"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["WHITE"] = make_shared<Texture>();
 	s_textures["WHITE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));
-	s_textures["WHITE"]->CreateTexture(device);
+	s_textures["WHITE"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["TITLE"] = make_shared<Texture>();
 	s_textures["TITLE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/title.dds")));
-	s_textures["TITLE"]->CreateTexture(device);
+	s_textures["TITLE"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["HIT"] = make_shared<Texture>();
 	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit1.dds")));
 	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit2.dds")));
 	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit3.dds")));
 	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit4.dds")));
-	s_textures["HIT"]->CreateTexture(device);
+	s_textures["HIT"]->CreateTextureFromLoadedFiles(device);
 
 	//s_textures["HPBARBASE"] = make_shared<Texture>();
 	//s_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));

@@ -36,6 +36,9 @@ cbuffer cbScene : register(b3)
 cbuffer cbGameFramework : register(b4)
 {
 	float g_deltaTime;
+	int	g_fadeType;
+	float g_fadeTime;
+	float g_fadeTimer;
 }
 
 struct VS_INPUT
