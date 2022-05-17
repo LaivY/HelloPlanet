@@ -35,7 +35,7 @@ void Texture::CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT text
 
 void Texture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& src, D3D12_RESOURCE_STATES currSrcResourceState)
 {
-	const auto& dst = m_textures.front().second;
+	const auto& dst{ m_textures.front().second };
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), currSrcResourceState, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	commandList->CopyResource(dst.Get(), src.Get());

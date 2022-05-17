@@ -261,7 +261,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	lock.unlock();
 
 	// 플레이어 렌더링
-	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	//commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
@@ -362,6 +362,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 플레이어, 멀티플레이어 설정
 	// 플레이어와 멀티플레이어는 이전 로비 씬에서 만들어져있다.
+	m_player->SetIsMultiplayer(FALSE);
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
 	for (auto& p : m_multiPlayers)
@@ -758,6 +759,11 @@ void GameScene::RenderOutlineObjects(const ComPtr<ID3D12GraphicsCommandList>& co
 	m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	m_stencilTexture->UpdateShaderVariable(commandList);
 	m_fullScreenQuad->Render(commandList);
+
+	// 그림자맵을 읽을 수 있도록 서술자힙 재설정
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	//commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 }
 
 void GameScene::RecvPacket()

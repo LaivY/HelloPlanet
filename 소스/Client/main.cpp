@@ -87,7 +87,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// 윈도우 사이즈를 프레임워크 생성할 때 정한 너비와 높이로 설정
 	RECT rect{ 0, 0, static_cast<LONG>(Setting::SCREEN_WIDTH), static_cast<LONG>(Setting::SCREEN_HEIGHT) };
 	DWORD dwStyle{ WS_OVERLAPPED | WS_SYSMENU | WS_BORDER };
-	AdjustWindowRect(&rect, dwStyle, FALSE);
+	//AdjustWindowRect(&rect, dwStyle, FALSE);
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, hInstance, nullptr);
 	if (!hWnd)

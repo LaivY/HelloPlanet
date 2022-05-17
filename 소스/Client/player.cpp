@@ -569,6 +569,15 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 	else if (m_weaponType == eWeaponType::MG) GameObject::PlayAnimation("MG/" + pureAnimationName, doBlending);
 }
 
+void Player::SetIsMultiplayer(BOOL isMultiPlayer)
+{
+	m_isMultiPlayer = isMultiPlayer;
+	if (isMultiPlayer)
+		m_mesh = Scene::s_meshes["PLAYER"];
+	else
+		m_mesh = Scene::s_meshes["ARM"];
+}
+
 void Player::SetWeaponType(eWeaponType weaponType)
 {
 	switch (weaponType)

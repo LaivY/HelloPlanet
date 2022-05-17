@@ -32,7 +32,7 @@ public:
 	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
-	void SetIsMultiplayer(BOOL isMultiPlayer) { m_isMultiPlayer = isMultiPlayer; }
+	void SetIsMultiplayer(BOOL isMultiPlayer);
 	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
 	void SetWeaponType(eWeaponType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }

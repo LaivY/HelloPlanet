@@ -4,7 +4,7 @@
 
 Texture2D g_texture                     : register(t0);
 Texture2DArray g_shadowMap				: register(t1);
-Texture2D<uint2> g_stencil				: register(t5);
+Texture2D<uint2> g_stencil				: register(t2);
 SamplerState g_sampler                  : register(s0);
 SamplerComparisonState g_shadowSampler  : register(s1);
 
