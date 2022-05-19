@@ -1,4 +1,5 @@
-﻿#include "session.h"
+﻿#include "stdafx.h"
+#include "session.h"
 
 Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE }
 {

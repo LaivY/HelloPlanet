@@ -1,9 +1,8 @@
 ﻿#pragma once
-#include "stdafx.h"
 #include "session.h"
 #include "monster.h"
 
-constexpr INT stage1Goal = 2;
+constexpr INT stage1Goal = 1;
 constexpr FLOAT g_spawnCooldown = 2.0f;
 
 class NetworkFramework
@@ -41,10 +40,10 @@ public:
 	BOOL							isInGame;
 	INT								readyCount;			// 레디한 인원
 	std::array<Session, MAX_USER>	clients;			// 클라이언트
-	std::vector<Monster>			monsters{};			// 몬스터
-	std::vector<BulletData>			bullets{};			// 총알
-	std::vector<BulletHitData>		bulletHits{};		// 총알을 맞춘 정보
-	std::vector<std::thread>		threads{};			// 쓰레드
+	std::vector<Monster>			monsters;			// 몬스터
+	std::vector<BulletData>			bullets;			// 총알
+	std::vector<BulletHitData>		bulletHits;			// 총알을 맞춘 정보
+	std::vector<std::thread>		threads;			// 쓰레드
 	FLOAT							m_spawnCooldown;	// 스폰 쿨다운
 	CHAR							m_lastMobId;		// 몬스터 ID
 	INT								m_killScore;		// 잡은 몬스터 점수

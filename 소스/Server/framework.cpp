@@ -1,4 +1,5 @@
-﻿#include "framework.h"
+﻿#include "stdafx.h"
+#include "framework.h"
 using namespace DirectX;
 
 NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, isInGame{ false }, readyCount{ 0 },

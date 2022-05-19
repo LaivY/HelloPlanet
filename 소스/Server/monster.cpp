@@ -1,4 +1,5 @@
-﻿#include "monster.h"
+﻿#include "stdafx.h"
+#include "monster.h"
 #include "framework.h"
 using namespace DirectX;
 
