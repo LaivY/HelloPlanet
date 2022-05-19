@@ -21,6 +21,7 @@ public:
 
 	void Add(unique_ptr<UIObject>& uiObject);
 	void Add(unique_ptr<MenuUIObject>& uiObject);
+	void Add(unique_ptr<RewardUIObject>& uiObject);
 	void Add(unique_ptr<TextObject>& textObject);
 	void Add(unique_ptr<MenuTextObject>& textObject);
 

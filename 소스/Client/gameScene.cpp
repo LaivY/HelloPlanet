@@ -83,7 +83,10 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		// 해당 상태가 유지되므로 속도와 애니메이션을 기본 상태로 설정해줌
 		m_player->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
 		if (m_player->GetCurrAnimationName() != "IDLE" && m_player->GetAfterAnimationName() != "IDLE")
+		{
 			m_player->PlayAnimation("IDLE", TRUE);
+			m_player->SendPlayerData();
+		}
 
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 		return;
@@ -997,21 +1000,36 @@ void GameScene::RecvRoundResult()
 	{
 	case eRoundResult::CLEAR:
 	{
-		constexpr float REWARE_WIDTH_RATIO{ 0.15f };
-		auto firstReward{ make_unique<UIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.6f) };
+		constexpr float REWARE_WIDTH_RATIO{ 0.2f };
+		auto firstReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
 		firstReward->SetMesh(s_meshes["UI"]);
 		firstReward->SetShader(s_shaders["UI"]);
 		firstReward->SetTexture(s_textures["WHITE"]);
 		firstReward->SetPivot(ePivot::LEFTCENTER);
 		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
-		firstReward->SetPosition(XMFLOAT2{ g_width * 0.1125f, 0.0f });
+		firstReward->SetPosition(XMFLOAT2{ g_width * 0.05f, 0.0f });
 
-		auto rewardWindow{ make_unique<WindowObject>(g_width * 0.6f, g_height * 0.8f) };
+		auto secondReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
+		secondReward->SetMesh(s_meshes["UI"]);
+		secondReward->SetShader(s_shaders["UI"]);
+		secondReward->SetTexture(s_textures["WHITE"]);
+
+		auto thirdReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
+		thirdReward->SetMesh(s_meshes["UI"]);
+		thirdReward->SetShader(s_shaders["UI"]);
+		thirdReward->SetTexture(s_textures["WHITE"]);
+		thirdReward->SetPivot(ePivot::RIGHTCENTER);
+		thirdReward->SetScreenPivot(ePivot::RIGHTCENTER);
+		thirdReward->SetPosition(XMFLOAT2{ g_width * -0.05f, 0.0f });
+
+		auto rewardWindow{ make_unique<WindowObject>(g_width * 0.8f, g_height * 0.8f) };
 		rewardWindow->SetMesh(s_meshes["UI"]);
 		rewardWindow->SetShader(s_shaders["UI"]);
-		rewardWindow->Add(move(firstReward));
-
-		//rewardWindow->SetTexture(s_textures["WHITE"]);
+		rewardWindow->SetTexture(s_textures["HPBARBASE"]);
+		rewardWindow->Add(firstReward);
+		rewardWindow->Add(secondReward);
+		rewardWindow->Add(thirdReward);
+		m_windowObjects.push_back(move(rewardWindow));
 		break;
 	}
 	case eRoundResult::OVER:
@@ -1036,7 +1054,7 @@ void GameScene::RecvRoundResult()
 				g_gameFramework.SetNextScene(eSceneType::MAIN);
 				ShowCursor(TRUE);
 			});
-		clearWindow->Add(move(goToMainText));
+		clearWindow->Add(goToMainText);
 
 		auto descText{ make_unique<TextObject>() };
 		descText->SetBrush("BLACK");
@@ -1045,7 +1063,7 @@ void GameScene::RecvRoundResult()
 		descText->SetScreenPivot(ePivot::CENTER);
 		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
 		descText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
-		clearWindow->Add(move(descText));
+		clearWindow->Add(descText);
 
 		unique_lock<mutex> lock{ g_mutex };
 		m_windowObjects.push_back(move(clearWindow));

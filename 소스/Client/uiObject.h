@@ -96,12 +96,24 @@ public:
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
 
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 
 	void SetMouseClickCallBack(const function<void()>& callBackFunc);
 
-private:
+protected:
 	BOOL				m_isMouseOver;
 	function<void()>	m_mouseClickCallBack;
+};
+
+class RewardUIObject : public MenuUIObject
+{
+public:
+	RewardUIObject(FLOAT width, FLOAT height);
+	~RewardUIObject() = default;
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	FLOAT m_timer;
 };

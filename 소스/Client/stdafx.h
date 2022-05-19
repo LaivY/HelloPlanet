@@ -6,11 +6,9 @@
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
 
-// Windows 헤더 파일
-#include <windows.h>
-
 // C/C++
 #include <tchar.h>
+#include <windows.h>
 #include <wrl.h>
 #include <algorithm>
 #include <array>
