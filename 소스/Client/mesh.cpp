@@ -1,5 +1,7 @@
-﻿#include "mesh.h"
+﻿#include "stdafx.h"
+#include "mesh.h"
 #include "object.h"
+
 #define PLAYER_UPPER_JOINT_START 23
 
 Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }

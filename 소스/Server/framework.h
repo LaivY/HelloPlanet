@@ -3,7 +3,7 @@
 #include "session.h"
 #include "monster.h"
 
-constexpr INT stage1Goal = 20;
+constexpr INT stage1Goal = 2;
 constexpr FLOAT g_spawnCooldown = 2.0f;
 
 class NetworkFramework

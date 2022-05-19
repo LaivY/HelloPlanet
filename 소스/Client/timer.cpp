@@ -1,4 +1,5 @@
-﻿#include "timer.h"
+﻿#include "stdafx.h"
+#include "timer.h"
 
 Timer::Timer() : m_tick{}, m_deltaTime{}
 {
@@ -15,6 +16,11 @@ void Timer::Tick()
 	if (m_deltaTimes.size() >= 60)
 		m_deltaTimes.pop_front();
 	m_deltaTimes.push_back(m_deltaTime);
+}
+
+FLOAT Timer::GetDeltaTime() const
+{
+	return m_deltaTime;
 }
 
 FLOAT Timer::GetFPS() const

@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "DDSTextureLoader12.h"
 
 class Texture
 {

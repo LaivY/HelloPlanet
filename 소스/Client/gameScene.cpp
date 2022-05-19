@@ -1,5 +1,14 @@
-﻿#include "gameScene.h"
+﻿#include "stdafx.h"
+#include "gameScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "object.h"
+#include "player.h"
+#include "shadow.h"
+#include "textObject.h"
+#include "texture.h"
+#include "uiObject.h"
+#include "windowObject.h"
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -69,10 +78,16 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		if (isCursorHide)
 			ShowCursor(TRUE);
 		isCursorHide = false;
+
+		// 플레이어가 키보드를 누르고 있을 때 윈도우가 생기면
+		// 해당 상태가 유지되므로 속도와 애니메이션을 기본 상태로 설정해줌
+		m_player->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+		if (m_player->GetCurrAnimationName() != "IDLE" && m_player->GetAfterAnimationName() != "IDLE")
+			m_player->PlayAnimation("IDLE", TRUE);
+
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 		return;
 	}
-
 	if ((GetAsyncKeyState(VK_TAB) & 0x8000))
 	{
 		if (isCursorHide)
@@ -80,7 +95,6 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		isCursorHide = false;
 		return;
 	}
-
 	if (!isCursorHide)
 	{
 		ShowCursor(FALSE);
@@ -95,7 +109,7 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
 
 	// 움직인 정도에 비례해서 회전
-	float sensitive{ 2.5f };
+	constexpr float sensitive{ 2.5f };
 	int dx = newMousePosition.x - oldMousePosition.x;
 	int dy = newMousePosition.y - oldMousePosition.y;
 	if (dx != 0 || dy != 0)
@@ -983,6 +997,26 @@ void GameScene::RecvRoundResult()
 	{
 	case eRoundResult::CLEAR:
 	{
+		constexpr float REWARE_WIDTH_RATIO{ 0.15f };
+		auto firstReward{ make_unique<UIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.6f) };
+		firstReward->SetMesh(s_meshes["UI"]);
+		firstReward->SetShader(s_shaders["UI"]);
+		firstReward->SetTexture(s_textures["WHITE"]);
+		firstReward->SetPivot(ePivot::LEFTCENTER);
+		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
+		firstReward->SetPosition(XMFLOAT2{ g_width * 0.1125f, 0.0f });
+
+		auto rewardWindow{ make_unique<WindowObject>(g_width * 0.6f, g_height * 0.8f) };
+		rewardWindow->SetMesh(s_meshes["UI"]);
+		rewardWindow->SetShader(s_shaders["UI"]);
+		rewardWindow->Add(move(firstReward));
+
+		//rewardWindow->SetTexture(s_textures["WHITE"]);
+		break;
+	}
+	case eRoundResult::OVER:
+		break;
+	case eRoundResult::ENDING:
 		auto clearWindow{ make_unique<WindowObject>(400.0f, 300.0f) };
 		clearWindow->SetMesh(s_meshes["UI"]);
 		clearWindow->SetShader(s_shaders["UI"]);
@@ -1015,11 +1049,6 @@ void GameScene::RecvRoundResult()
 
 		unique_lock<mutex> lock{ g_mutex };
 		m_windowObjects.push_back(move(clearWindow));
-		break;
-	}
-	case eRoundResult::OVER:
-		break;
-	case eRoundResult::ENDING:
 		break;
 	}
 }

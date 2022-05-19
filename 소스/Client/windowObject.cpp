@@ -1,4 +1,6 @@
-﻿#include "windowObject.h"
+﻿#include "stdafx.h"
+#include "windowObject.h"
+#include "textObject.h"
 
 WindowObject::WindowObject(FLOAT width, FLOAT height) : UIObject{ width, height }
 {

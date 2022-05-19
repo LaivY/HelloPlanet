@@ -1,4 +1,6 @@
-﻿#include "texture.h"
+﻿#include "stdafx.h"
+#include "DDSTextureLoader12.h"
+#include "texture.h"
 
 void Texture::CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT textureFotmat, DXGI_FORMAT shaderResourceViewFormat, UINT width, UINT height, UINT rootParameterIndex)
 {

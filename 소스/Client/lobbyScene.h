@@ -1,12 +1,15 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "camera.h"
-#include "object.h"
 #include "scene.h"
-#include "shadow.h"
-#include "textObject.h"
-#include "uiObject.h"
-#include "windowObject.h"
+
+class Camera;
+class GameObject;
+class Player;
+class ShadowMap;
+class Skybox;
+class TextObject;
+class MenuTextObject;
+class UIObject;
+class WindowObject;
 
 class LobbyScene : public Scene
 {

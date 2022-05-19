@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include "stdafx.h"
 #include "object.h"
-#include "player.h"
+
+class Player;
 
 enum class ePivot
 {

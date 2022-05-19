@@ -1,5 +1,9 @@
-﻿#include "textObject.h"
+﻿#include "stdafx.h"
+#include "textObject.h"
+#include "camera.h"
 #include "framework.h"
+#include "player.h"
+#include "uiObject.h"
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;

@@ -1,8 +1,15 @@
-﻿#include "framework.h"
+﻿#include "stdafx.h"
+#include "framework.h"
+#include "camera.h"
+#include "fadeFilter.h"
+#include "object.h"
+#include "player.h"
+#include "scene.h"
 #include "gameScene.h"
 #include "loadingScene.h"
 #include "lobbyScene.h"
 #include "mainScene.h"
+#include "timer.h"
 
 GameFramework::GameFramework() 
 	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
@@ -24,8 +31,8 @@ void GameFramework::GameLoop()
 	if (m_nextScene != eSceneType::NONE)
 		ChangeScene();
 
-	m_timer.Tick();
-	OnUpdate(m_timer.GetDeltaTime());
+	m_timer->Tick();
+	OnUpdate(m_timer->GetDeltaTime());
 	OnRender();
 }
 
@@ -34,6 +41,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 	GetWindowRect(hWnd, &m_lastWindowRect);
+	m_timer = make_unique<Timer>();
 
 	LoadPipeline();
 	LoadAssets();
@@ -121,7 +129,7 @@ void GameFramework::OnDestroy()
 
 void GameFramework::OnMouseEvent()
 {
-	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer->GetDeltaTime());
 }
 
 void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -131,7 +139,7 @@ void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 void GameFramework::OnKeyboardEvent()
 {
-	if (m_scene) m_scene->OnKeyboardEvent(m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnKeyboardEvent(m_timer->GetDeltaTime());
 }
 
 void GameFramework::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -209,7 +217,7 @@ void GameFramework::LoadAssets()
 	m_scene->OnInitEnd();
 
 	// 타이머 초기화
-	m_timer.Tick();
+	m_timer->Tick();
 }
 
 void GameFramework::CreateFactory()
@@ -540,7 +548,7 @@ void GameFramework::Render2D() const
 
 void GameFramework::Update(FLOAT deltaTime)
 {
-	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
+	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer->GetFPS())) + TEXT("FPS)") };
 	SetWindowText(m_hWnd, title.c_str());
 
 	// 상수버퍼

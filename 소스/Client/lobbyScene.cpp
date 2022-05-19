@@ -1,5 +1,13 @@
-﻿#include "lobbyScene.h"
+﻿#include "stdafx.h"
+#include "lobbyScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "object.h"
+#include "player.h"
+#include "shadow.h"
+#include "textObject.h"
+#include "uiObject.h"
+#include "windowObject.h"
 
 LobbyScene::LobbyScene() : m_isReadyToPlay{ FALSE }, m_isLogout{ FALSE },
 						   m_leftSlotPlayerId{ -1 }, m_rightSlotPlayerId{ -1 }, m_leftSlotReadyText{ nullptr }, m_rightSlotReadyText{ nullptr }, m_pcbGameScene{ nullptr }

@@ -1,11 +1,10 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "mesh.h"
-#include "shader.h"
-#include "texture.h"
 
 class Camera;
+class Mesh;
 class Player;
+class Shader;
+class Texture;
 class Hitbox;
 
 enum class eAnimationState

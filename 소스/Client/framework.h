@@ -1,10 +1,8 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "fadeFilter.h"
-#include "object.h"
-#include "camera.h"
-#include "timer.h"
-#include "scene.h"
+
+class FadeFilter;
+class Scene;
+class Timer;
 
 struct cbGameFramework
 {
@@ -129,7 +127,7 @@ private:
 	unique_ptr<cbPostGameFramework>		m_cbPostGameFrameworkData;
 
 	// Timer
-	Timer								m_timer;
+	unique_ptr<Timer>					m_timer;
 
 	// Scene
 	unique_ptr<Scene>					m_scene;

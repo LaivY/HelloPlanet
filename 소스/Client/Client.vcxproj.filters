@@ -97,9 +97,6 @@
     <ClInclude Include="framework.h">
       <Filter>헤더 파일\Framework</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
-      <Filter>헤더 파일\Framework</Filter>
-    </ClInclude>
     <ClInclude Include="mesh.h">
       <Filter>헤더 파일\Framework</Filter>
     </ClInclude>

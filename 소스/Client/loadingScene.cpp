@@ -1,6 +1,12 @@
-﻿#include "loadingScene.h"
+﻿#include "stdafx.h"
+#include "loadingScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "mesh.h"
+#include "shader.h"
 #include "textObject.h"
+#include "texture.h"
+#include "uiObject.h"
 
 LoadingScene::LoadingScene() : m_isDone{ FALSE }
 {

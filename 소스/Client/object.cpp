@@ -1,6 +1,10 @@
-﻿#include "object.h"
+﻿#include "stdafx.h"
+#include "object.h"
 #include "camera.h"
+#include "mesh.h"
 #include "scene.h"
+#include "shader.h"
+#include "texture.h"
 
 GameObject::GameObject() : m_isDeleted{ FALSE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
 {

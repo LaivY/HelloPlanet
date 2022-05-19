@@ -1,4 +1,5 @@
-﻿#include "shader.h"
+﻿#include "stdafx.h"
+#include "shader.h"
 
 Shader::Shader()
 {

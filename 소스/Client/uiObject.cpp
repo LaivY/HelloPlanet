@@ -1,5 +1,9 @@
-﻿#include "uiObject.h"
+﻿#include "stdafx.h"
+#include "uiObject.h"
 #include "framework.h"
+#include "player.h"
+#include "shader.h"
+#include "texture.h"
 
 UIObject::UIObject() : m_isFitToScreen{ FALSE }, m_pivot { ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
 {

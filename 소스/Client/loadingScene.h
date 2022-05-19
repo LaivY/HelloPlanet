@@ -1,10 +1,8 @@
 ﻿#pragma once
-#include "camera.h"
-#include "mesh.h"
 #include "scene.h"
-#include "shader.h"
-#include "texture.h"
-#include "uiObject.h"
+
+class Camera;
+class UIObject;
 
 class LoadingScene : public Scene
 {

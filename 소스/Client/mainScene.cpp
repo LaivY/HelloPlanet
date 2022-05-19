@@ -1,5 +1,13 @@
-﻿#include "mainScene.h"
+﻿#include "stdafx.h"
+#include "mainScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "object.h"
+#include "player.h"
+#include "shadow.h"
+#include "textObject.h"
+#include "uiObject.h"
+#include "windowObject.h"
 
 MainScene::MainScene() : m_pcbGameScene{ nullptr }
 {

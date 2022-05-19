@@ -1,7 +1,8 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "textObject.h"
 #include "uiObject.h"
+
+class TextObject;
+class MenuTextObject;
 
 class WindowObject : public UIObject
 {

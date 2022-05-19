@@ -1,4 +1,6 @@
-﻿#include "main.h"
+﻿#include "stdafx.h"
+#include "resource.h"
+#include "framework.h"
 #define MAX_LOADSTRING 100
 
 // 콘솔

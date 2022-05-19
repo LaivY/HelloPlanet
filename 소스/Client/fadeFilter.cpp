@@ -1,5 +1,7 @@
-﻿#include "fadeFilter.h"
+﻿#include "stdafx.h"
+#include "fadeFilter.h"
 #include "scene.h"
+#include "shader.h"
 
 FadeFilter::FadeFilter(const ComPtr<ID3D12Device>& device)
 {

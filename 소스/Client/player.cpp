@@ -1,6 +1,9 @@
-﻿#include "player.h"
+﻿#include "stdafx.h"
+#include "player.h"
 #include "camera.h"
+#include "mesh.h"
 #include "scene.h"
+#include "shader.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
