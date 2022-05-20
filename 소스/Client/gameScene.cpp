@@ -549,6 +549,7 @@ void GameScene::Update(FLOAT deltaTime)
 	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
 	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
 	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
 	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
 	lock.unlock();
 
@@ -920,21 +921,18 @@ void GameScene::RecvUpdateMonster()
 
 void GameScene::RecvBulletFire()
 {
-	// pos, dir, playerId
-	char subBuf[12 + 12 + 1]{};
+	char subBuf[sizeof(BulletData)]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	XMFLOAT3 pos{}, dir{}; char playerId{};
-	memcpy(&pos, &subBuf[0], sizeof(pos));
-	memcpy(&dir, &subBuf[12], sizeof(dir));
-	memcpy(&playerId, &subBuf[24], sizeof(playerId));
+	BulletData bulletData{};
+	memcpy(&bulletData, &subBuf, sizeof(BulletData));
 
-	auto bullet{ make_unique<Bullet>(dir) };
+	auto bullet{ make_unique<Bullet>(bulletData.dir) };
 	bullet->SetMesh(s_meshes["BULLET"]);
 	bullet->SetShader(s_shaders["DEFAULT"]);
-	bullet->SetPosition(pos);
+	bullet->SetPosition(bulletData.pos);
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
@@ -965,7 +963,9 @@ void GameScene::RecvBulletHit()
 
 	if (m_monsters.find(static_cast<int>(data.mobId)) != m_monsters.end())
 	{
-		auto dmgText{ make_unique<DamageTextObject>(TEXT("40")) };
+		wstring dmg{ to_wstring(m_player->GetDamage()) };
+
+		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
 		dmgText->SetCamera(m_camera);
 		dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
 		m_textObjects.push_back(move(dmgText));
@@ -1008,6 +1008,21 @@ void GameScene::RecvRoundResult()
 		firstReward->SetPivot(ePivot::LEFTCENTER);
 		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
 		firstReward->SetPosition(XMFLOAT2{ g_width * 0.05f, 0.0f });
+		firstReward->SetMouseClickCallBack(bind(
+			[&](const shared_ptr<Player>& player)
+			{
+				eReward reward{ static_cast<eReward>(Utile::Random(0, 3)) };
+				switch (reward)
+				{
+				case eReward::AD:
+				case eReward::AS:
+				case eReward::HP:
+				case eReward::DEF:
+					player->SetDamage(player->GetDamage() + 10);
+					break;
+				}
+				m_windowObjects.back()->Delete();
+			}, m_player));
 
 		auto secondReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
 		secondReward->SetMesh(s_meshes["UI"]);

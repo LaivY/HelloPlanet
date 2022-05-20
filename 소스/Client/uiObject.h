@@ -115,5 +115,5 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 private:
-	FLOAT m_timer;
+	FLOAT	m_timer;
 };

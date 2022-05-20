@@ -3,6 +3,11 @@
 
 class Camera;
 
+enum class eReward
+{
+	AD, AS, HP, DEF
+};
+
 class Player : public GameObject
 {
 public:
@@ -21,18 +26,22 @@ public:
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
 
+	// 애니메이션
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void DeleteUpperAnimation();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
+	void Fire();
+
+	// 통신
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
-	void Fire();
-	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
 	void SetIsMultiplayer(BOOL isMultiPlayer);
 	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
+	void SetDamage(INT damage) { m_damage = damage; }
 	void SetWeaponType(eWeaponType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
@@ -44,6 +53,7 @@ public:
 	eWeaponType GetWeaponType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
+	INT GetDamage() const;
 	INT GetBulletCount() const;
 	INT GetMaxBulletCount() const;
 	string GetPureAnimationName(const string& animationName) const;
@@ -70,7 +80,8 @@ private:
 
 	INT								m_hp;				// 체력
 	INT								m_maxHp;			// 최대 체력
-	FLOAT							m_speed;			// 속력(실수)
+	FLOAT							m_speed;			// 속력
+	INT								m_damage;			// 공격력
 	FLOAT							m_shotSpeed;		// 공격속도
 	FLOAT							m_shotTimer;		// 공격속도 타이머
 	INT								m_bulletCount;		// 총알 개수

@@ -16,8 +16,8 @@ void Monster::OnHit(const BulletData& bullet)
 {
 	// 총알의 주인을 타겟으로 한다
 	SetTargetId(bullet.playerId);
-	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
-	SetHp(m_hp - 40);
+	SetHp(m_hp - bullet.damage);
+
 	if (m_hp <= 0) 
 	{
 		m_aniType = eMobAnimationType::DIE;

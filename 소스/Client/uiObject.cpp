@@ -414,7 +414,7 @@ void MenuUIObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 
 RewardUIObject::RewardUIObject(FLOAT width, FLOAT height) : MenuUIObject{ width, height }, m_timer{ 0.0f }
 {
-
+	
 }
 
 void RewardUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)

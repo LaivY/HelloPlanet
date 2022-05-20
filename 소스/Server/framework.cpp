@@ -370,17 +370,14 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		}
 		case CS_PACKET_BULLET_FIRE:
 		{
-			// pos, dir, playerId
-			char subBuf[12 + 12 + 1]{};
+			char subBuf[sizeof(BulletData)]{};
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
 			sc_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_BULLET_FIRE;
-			memcpy(&packet.data.pos, &subBuf[0], sizeof(packet.data.pos));
-			memcpy(&packet.data.dir, &subBuf[12], sizeof(packet.data.dir));
-			memcpy(&packet.data.playerId, &subBuf[24], sizeof(packet.data.playerId));
+			memcpy(&packet.data, subBuf, sizeof(BulletData));
 
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };

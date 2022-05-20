@@ -31,53 +31,32 @@ constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
 {
-	NONE,
-	IDLE,
-	RUNNING,
-	WALKING,
-	WALKLEFT,
-	WALKRIGHT,
-	WALKBACK
+	NONE, IDLE,	RUNNING, WALKING, WALKLEFT,	WALKRIGHT, WALKBACK
 };
 
 enum class eUpperAnimationType : char
 {
-	NONE,
-	RELOAD,
-	FIRING
+	NONE, RELOAD, FIRING
 };
 
 enum class eMobAnimationType : char
 {
-	IDLE,
-	WALKING,
-	RUNNING,
-	ATTACK,
-	HIT,
-	DIE
+	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE
 };
 
 enum class eSceneType : char
 {
-	NONE,
-	LOADING,
-	MAIN,
-	LOBBY,
-	GAME
+	NONE, LOADING, MAIN, LOBBY,	GAME
 };
 
 enum class eWeaponType : char
 {
-	AR,
-	SG,
-	MG
+	AR,	SG,	MG
 };
 
 enum class eRoundResult : char
 {
-	CLEAR,
-	OVER,
-	ENDING
+	CLEAR, OVER, ENDING
 };
 
 #pragma pack (push, 1)
@@ -94,9 +73,10 @@ struct PlayerData
 
 struct BulletData
 {
-	DirectX::XMFLOAT3 pos;		// 위치
-	DirectX::XMFLOAT3 dir;		// 방향
-	CHAR			  playerId; // 쏜 사람
+	DirectX::XMFLOAT3	pos;		// 위치
+	DirectX::XMFLOAT3	dir;		// 방향
+	INT					damage;		// 데미지
+	CHAR				playerId;	// 쏜 사람
 };
 
 struct BulletHitData

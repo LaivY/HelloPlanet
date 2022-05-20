@@ -6,8 +6,10 @@
 #include "shader.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR }, m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{}, m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
+	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{ 0 }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
+	m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
 {
 	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
 	m_shader = Scene::s_shaders["ANIMATION"];
@@ -375,7 +377,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = { start, Vector3::Normalize(Vector3::Sub(center, start)), static_cast<char>(GetId())};
+		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(center, start)), m_damage, static_cast<char>(GetId())};
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -418,7 +420,7 @@ void Player::Fire()
 			cs_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_BULLET_FIRE;
-			packet.data = { start, Vector3::Normalize(Vector3::Sub(t, start)), static_cast<char>(GetId()) };
+			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), m_damage, static_cast<char>(GetId()) };
 			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 
@@ -443,7 +445,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = { start, Vector3::Normalize(Vector3::Sub(target, start)), static_cast<char>(GetId()) };
+		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(target, start)), m_damage, static_cast<char>(GetId()) };
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -588,6 +590,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::AR:
 		m_gunMesh = Scene::s_meshes["AR"];
 		m_hp = m_maxHp = 150;
+		m_damage = 40;
 		m_shotSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -595,6 +598,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::SG:
 		m_gunMesh = Scene::s_meshes["SG"];
 		m_hp = m_maxHp = 175;
+		m_damage = 30;
 		m_shotSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -602,6 +606,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::MG:
 		m_gunMesh = Scene::s_meshes["MG"];
 		m_hp = m_maxHp = 200;
+		m_damage = 20;
 		m_shotSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
@@ -728,6 +733,11 @@ INT Player::GetHp() const
 INT Player::GetMaxHp() const
 {
 	return m_maxHp;
+}
+
+INT Player::GetDamage() const
+{
+	return m_damage;
 }
 
 INT Player::GetBulletCount() const

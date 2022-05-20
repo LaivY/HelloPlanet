@@ -38,7 +38,6 @@ public:
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
 	void CreateSettingWindow();
-	void CloseWindow();
 
 	void Update(FLOAT deltaTime);
 	void UpdateCameraPosition(FLOAT deltaTime);

@@ -379,12 +379,6 @@ void MainScene::CreateSettingWindow()
 	m_windowObjects.push_back(move(setting));
 }
 
-void MainScene::CloseWindow()
-{
-	if (!m_windowObjects.empty())
-		m_windowObjects.pop_back();
-}
-
 void MainScene::UpdateCameraPosition(FLOAT deltaTime)
 {
 	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
