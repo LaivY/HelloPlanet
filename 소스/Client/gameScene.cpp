@@ -43,8 +43,12 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
 	// 외곽선
+	m_depthTexture = make_unique<Texture>();
+	m_depthTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, g_width, g_height, 7);
+
 	m_stencilTexture = make_unique<Texture>();
-	m_stencilTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_X24_TYPELESS_G8_UINT, g_width, g_height, 7);
+	m_stencilTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_X24_TYPELESS_G8_UINT, g_width, g_height, 8);
+
 	m_fullScreenQuad = make_unique<GameObject>();
 	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
 	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
@@ -141,7 +145,6 @@ void GameScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
 		return;
 	}
-
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
 }
@@ -265,32 +268,56 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	if (m_skybox) m_skybox->Render(commandList);
 
 	// 외곽선이 있는 게임오브젝트들 렌더링
-	RenderOutlineObjects(commandList);
+	//RenderOutlineObjects(commandList);
+
+	// 외곽선을 그릴 게임오브젝트 렌더링
+	UINT stencilRef{ 1 };
+	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& o : m_gameObjects
+					   | views::filter([](const auto& o) { return o->isMakeOutline(); }))
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		o->Render(commandList);
+	}
+
+	// 외곽선 렌더링
+	m_depthTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	m_depthTexture->UpdateShaderVariable(commandList);
+	m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	m_stencilTexture->UpdateShaderVariable(commandList);
+	m_fullScreenQuad->Render(commandList);
+
+	// 그림자맵을 읽을 수 있도록 서술자힙 재설정
+	// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+
+	// 외곽선 없는 게임오브젝트들 렌더링
+	commandList->OMSetStencilRef(0);
+	for (const auto& o : m_gameObjects
+					   | views::filter([](const auto& o) { return !o->isMakeOutline(); }))
+		o->Render(commandList);
 
 	// 멀티플레이어 렌더링
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
 
 	// 몬스터 렌더링
-	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
-	lock.unlock();
 
 	// 플레이어 렌더링
-	//commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
 	if (m_uiCamera)
 	{
-		unique_lock<mutex> lock{ g_mutex };
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
 		for (const auto& w : m_windowObjects)
 			w->Render(commandList);
-		lock.unlock();
 	}
 }
 
@@ -469,6 +496,7 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
 		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
+		object->SetOutline(TRUE);
 
 		// 텍스쳐
 		if (0 <= type && type <= 1)
@@ -761,27 +789,28 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 void GameScene::RenderOutlineObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	// 외곽선을 그릴 게임오브젝트 렌더링
-	UINT stencilRef{ 1 };
-	unique_lock<mutex> lock{ g_mutex };
-	for (const auto& o : m_gameObjects)
-	{
-		//if (!o->isMakeOutline()) continue;
-		commandList->OMSetStencilRef(stencilRef++);
-		o->Render(commandList);
-	}
-	lock.unlock();
-	commandList->OMSetStencilRef(0);
+	//// 외곽선을 그릴 게임오브젝트 렌더링
+	//UINT stencilRef{ 1 };
+	//unique_lock<mutex> lock{ g_mutex };
+	//for (const auto& o : m_gameObjects
+	//	| views::filter([](const auto& o) { return o->isMakeOutline(); }))
+	//{
+	//	commandList->OMSetStencilRef(stencilRef++);
+	//	o->Render(commandList);
+	//}
+	//lock.unlock();
+	//commandList->OMSetStencilRef(0);
 
-	// 외곽선 렌더링
-	m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	m_stencilTexture->UpdateShaderVariable(commandList);
-	m_fullScreenQuad->Render(commandList);
+	//// 외곽선 렌더링
+	//m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	//m_stencilTexture->UpdateShaderVariable(commandList);
+	//m_fullScreenQuad->Render(commandList);
 
-	// 그림자맵을 읽을 수 있도록 서술자힙 재설정
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	//commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	//// 그림자맵을 읽을 수 있도록 서술자힙 재설정
+	//// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
+	//ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	//commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	////commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 }
 
 void GameScene::RecvPacket()
@@ -1000,7 +1029,14 @@ void GameScene::RecvRoundResult()
 	{
 	case eRoundResult::CLEAR:
 	{
+		// 중복없이 보상 3개 선택
+		const auto r = { eReward::AD, eReward::AS, eReward::HP, eReward::DEF };
+		vector<eReward> rewards;
+		ranges::sample(r, back_inserter(rewards), 3, g_randomEngine);
+
+		// 보상 칸 하나 당 가로 길이 비율
 		constexpr float REWARE_WIDTH_RATIO{ 0.2f };
+
 		auto firstReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
 		firstReward->SetMesh(s_meshes["UI"]);
 		firstReward->SetShader(s_shaders["UI"]);
@@ -1009,20 +1045,45 @@ void GameScene::RecvRoundResult()
 		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
 		firstReward->SetPosition(XMFLOAT2{ g_width * 0.05f, 0.0f });
 		firstReward->SetMouseClickCallBack(bind(
-			[&](const shared_ptr<Player>& player)
+			[&](const shared_ptr<Player>& player, eReward reward)
 			{
-				eReward reward{ static_cast<eReward>(Utile::Random(0, 3)) };
 				switch (reward)
 				{
 				case eReward::AD:
+					player->AddDamage(10);
+					break;
 				case eReward::AS:
+					player->AddAttackSpeed(10);
+					break;
 				case eReward::HP:
 				case eReward::DEF:
-					player->SetDamage(player->GetDamage() + 10);
+					player->AddMaxHp(10);
 					break;
 				}
 				m_windowObjects.back()->Delete();
-			}, m_player));
+			}, m_player, rewards[0]));
+
+		auto firstRewardText{ make_unique<TextObject>() };
+		firstRewardText->SetFormat("36_LEFT");
+		firstRewardText->SetBrush("BLACK");
+		firstRewardText->SetPivot(ePivot::CENTER);
+		firstRewardText->SetScreenPivot(ePivot::LEFTCENTER);
+		switch (rewards[0])
+		{
+		case eReward::AD:
+			firstRewardText->SetText(TEXT("공격력 +10%"));
+			break;
+		case eReward::AS:
+			firstRewardText->SetText(TEXT("공격 속도 +10%"));
+			break;
+		case eReward::HP:
+			firstRewardText->SetText(TEXT("최대 체력 +10"));
+			break;
+		case eReward::DEF:
+			firstRewardText->SetText(TEXT("방어력 +5"));
+			break;
+		}
+		firstRewardText->SetPosition(XMFLOAT2{ g_width * 0.15f, 0.0f });
 
 		auto secondReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
 		secondReward->SetMesh(s_meshes["UI"]);
@@ -1042,6 +1103,7 @@ void GameScene::RecvRoundResult()
 		rewardWindow->SetShader(s_shaders["UI"]);
 		rewardWindow->SetTexture(s_textures["HPBARBASE"]);
 		rewardWindow->Add(firstReward);
+		rewardWindow->Add(firstRewardText);
 		rewardWindow->Add(secondReward);
 		rewardWindow->Add(thirdReward);
 		m_windowObjects.push_back(move(rewardWindow));

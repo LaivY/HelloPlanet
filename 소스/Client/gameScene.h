@@ -72,6 +72,7 @@ private:
 	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
 
 	unique_ptr<ShadowMap>					m_shadowMap;		// 그림자맵
+	unique_ptr<Texture>						m_depthTexture;		// 깊이 버퍼 텍스쳐
 	unique_ptr<Texture>						m_stencilTexture;	// 스텐실 버퍼 텍스쳐
 	unique_ptr<GameObject>					m_fullScreenQuad;	// 화면을 가득 채우는 사각형
 

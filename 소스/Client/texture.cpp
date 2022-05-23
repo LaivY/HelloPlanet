@@ -29,7 +29,7 @@ void Texture::CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT text
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
 	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture2D.PlaneSlice = 1;
+	srvDesc.Texture2D.PlaneSlice = (shaderResourceViewFormat == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
 	device->CreateShaderResourceView(buffer.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
 
 	m_textures.push_back(make_pair(rootParameterIndex, buffer));

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define RENDER_HITBOX
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
@@ -20,6 +20,7 @@
 #include <map>
 #include <mutex>
 #include <random>
+#include <ranges>
 #include <string>
 #include <thread>
 #include <unordered_map>

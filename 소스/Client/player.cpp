@@ -8,7 +8,7 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{ 0 }, m_shotSpeed{ 0.0f }, m_shotTimer{ 0.0f }, m_bulletCount{}, m_maxBulletCount{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_addDamage{}, m_attackSpeed{}, m_addAttackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
 {
 	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
@@ -32,11 +32,11 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 #ifdef FIRSTVIEW
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
-		if (m_shotTimer < m_shotSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
+		if (m_attackTimer < m_attackSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData();
-		m_shotTimer = 0.0f;
+		m_attackTimer = 0.0f;
 	}
 #endif
 }
@@ -499,7 +499,7 @@ void Player::Update(FLOAT deltaTime)
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 
 	// 발사 타이머 진행
-	m_shotTimer += deltaTime;
+	m_attackTimer += deltaTime;
 }
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
@@ -591,7 +591,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_gunMesh = Scene::s_meshes["AR"];
 		m_hp = m_maxHp = 150;
 		m_damage = 40;
-		m_shotSpeed = 0.16f;
+		m_attackSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
@@ -599,7 +599,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_gunMesh = Scene::s_meshes["SG"];
 		m_hp = m_maxHp = 175;
 		m_damage = 30;
-		m_shotSpeed = 0.8f;
+		m_attackSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
 		break;
@@ -607,13 +607,13 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_gunMesh = Scene::s_meshes["MG"];
 		m_hp = m_maxHp = 200;
 		m_damage = 20;
-		m_shotSpeed = 0.1f;
+		m_attackSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
 		break;
 	}
 	m_weaponType = weaponType;
-	m_shotTimer = 0.0f;
+	m_attackTimer = 0.0f;
 }
 
 void Player::PlayUpperAnimation(const string& animationName, BOOL doBlending)
@@ -713,6 +713,22 @@ void Player::ApplyServerData(const PlayerData& playerData)
 void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 {
 	m_gunShadowShader = shadowShader;
+}
+
+void Player::AddMaxHp(INT hp)
+{
+	m_maxHp += hp;
+	m_hp += hp;
+}
+
+void Player::AddDamage(INT damage)
+{
+	m_addDamage += damage;
+}
+
+void Player::AddAttackSpeed(FLOAT attackSpeed)
+{
+	m_addAttackSpeed += attackSpeed;
 }
 
 INT Player::GetId() const

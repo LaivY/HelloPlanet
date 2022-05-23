@@ -1,5 +1,19 @@
 #include "common.hlsl"
 
+static const float xFilter[9] = 
+{
+    -1.0f, 0.0f, 1.0f,
+    -2.0f, 0.0f, 2.0f,
+    -1.0f, 0.0f, 1.0f
+};
+
+static const float yFilter[9] =
+{
+     1.0f,  2.0f,  1.0f,
+     0.0f,  0.0f,  0.0f,
+    -1.0f, -2.0f, -1.0f
+};
+
 PS_INPUT VS(VS_INPUT input)
 {
     PS_INPUT output = (PS_INPUT)0;
@@ -13,7 +27,7 @@ float4 PS(PS_INPUT input) : SV_TARGET
     float width, height;
     g_stencil.GetDimensions(width, height);
 
-    const float4 outlineColor = float4(0.1f, 0.1f, 0.1f, 1.0f);
+    const float3 outlineColor = float3(0.1f, 0.1f, 0.1f);
     const float outlineThickness = 1.0f;
     const float outlineThreshHold = 1.0f;
 
@@ -26,18 +40,68 @@ float4 PS(PS_INPUT input) : SV_TARGET
     float2 tx = float2(outlineThickness, 0.0);
     float2 ty = float2(0.0, outlineThickness);
 
-    float s00 = g_stencil[uv - tx - ty].g;
-    float s01 = g_stencil[uv      - ty].g;
-    float s02 = g_stencil[uv + tx - ty].g;
-    float s10 = g_stencil[uv - tx     ].g;
-    float s12 = g_stencil[uv + tx     ].g;
-    float s20 = g_stencil[uv - tx + ty].g;
-    float s21 = g_stencil[uv      + ty].g;
-    float s22 = g_stencil[uv + tx + ty].g;
+    float values[9];
+    values[0] = g_stencil[uv - tx - ty].g;
+    values[1] = g_stencil[uv      - ty].g;
+    values[2] = g_stencil[uv + tx - ty].g;
+    values[3] = g_stencil[uv - tx     ].g;
+    values[4] = g_stencil[uv          ].g;
+    values[5] = g_stencil[uv + tx     ].g;
+    values[6] = g_stencil[uv - tx + ty].g;
+    values[7] = g_stencil[uv      + ty].g;
+    values[8] = g_stencil[uv + tx + ty].g;
+    if (values[4] == 0)
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-    float sx = s00 + 2.0f * s10 + s20 - s02 - 2.0f * s12 - s22;
-    float sy = s00 + 2.0f * s01 + s02 - s20 - 2.0f * s21 - s22;
-    float dist = sqrt(sx * sx + sy * sy);
+    tx /= width;
+    ty /= height;
+    float depths[9];
+    depths[0] = g_depth.Sample(g_sampler, input.uv - tx - ty);
+    depths[1] = g_depth.Sample(g_sampler, input.uv      - ty);
+    depths[2] = g_depth.Sample(g_sampler, input.uv + tx - ty);
+    depths[3] = g_depth.Sample(g_sampler, input.uv - tx     );
+    depths[4] = g_depth.Sample(g_sampler, input.uv          );
+    depths[5] = g_depth.Sample(g_sampler, input.uv + tx     );
+    depths[6] = g_depth.Sample(g_sampler, input.uv - tx + ty);
+    depths[7] = g_depth.Sample(g_sampler, input.uv      + ty);
+    depths[8] = g_depth.Sample(g_sampler, input.uv + tx + ty);
+
+    // depths[0] = g_depth[uv - tx - ty].r;
+    // depths[1] = g_depth[uv      - ty].r;
+    // depths[2] = g_depth[uv + tx - ty].r;
+    // depths[3] = g_depth[uv - tx     ].r;
+    // depths[4] = g_depth[uv          ].r;
+    // depths[5] = g_depth[uv + tx     ].r;
+    // depths[6] = g_depth[uv - tx + ty].r;
+    // depths[7] = g_depth[uv      + ty].r;
+    // depths[8] = g_depth[uv + tx + ty].r;
+
+    // 현재 픽셀의 스텐실 값과 다른 픽셀의 깊이 값이 
+    // 현재 픽셀의 깊이 값보다 더 작다면(가까이 있다면)
+    // 해당 픽셀의 스텐실 값을 현재 픽셀의 스텐실 값과 같은 것으로 취급함
+    // +
+    // 현재 픽셀의 스텐실 값과 다른 값들은 다 0으로 취급함
+    for (int i = 0; i < 9; ++i)
+    {
+        if (values[i] == values[4]) continue;
+        if (depths[i] < depths[4])
+        {
+            return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+        values[i] = 0.0f;
+    }
+
+    // 현재 픽셀의 스텐실 값은 1로 취급함
+    values[4] = 1.0f;
+
+    float x = 0.0f, y = 0.0f;
+    for (int i = 0; i < 9; ++i)
+    {
+        x += values[i] * xFilter[i];
+        y += values[i] * yFilter[i];
+    }
+
+    float dist = sqrt(x * x + y * y);
     float edge = dist > outlineThreshHold ? 1.0f : 0.0f;
     return float4(outlineColor.rgb, edge);
 }
