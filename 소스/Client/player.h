@@ -1,8 +1,12 @@
 ﻿#pragma once
-#include "stdafx.h"
 #include "object.h"
 
 class Camera;
+
+enum class eReward
+{
+	AD, AS, HP, DEF
+};
 
 class Player : public GameObject
 {
@@ -10,28 +14,34 @@ public:
 	Player(BOOL isMultiPlayer = FALSE);
 	virtual ~Player() = default;
 
-	void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
-	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void OnKeyboardEvent(FLOAT deltaTime);
-	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void OnAnimation(FLOAT currFrame, UINT endFrame, BOOL isUpper = FALSE);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
-	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	void Update(FLOAT deltaTime);
-	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
-	void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+	virtual void OnMouseEvent(HWND hWnd, FLOAT deltaTime);
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnKeyboardEvent(FLOAT deltaTime);
+	virtual void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
+	virtual void OnUpperAnimation(FLOAT currFrame, UINT endFrame);
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+	virtual void PlayAnimation(const string& animationName, BOOL doBlending = FALSE);
+
+	// 애니메이션
 	void PlayUpperAnimation(const string& animationName, BOOL doBlending = FALSE);
 	void DeleteUpperAnimation();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
+	void Fire();
+
+	// 통신
 	void SendPlayerData() const;
 	void ApplyServerData(const PlayerData& playerData);
-	void Fire();
-	void DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time);
 
 	void SetId(INT id) { m_id = id; }
-	void SetIsMultiplayer(BOOL isMultiPlayer) { m_isMultiPlayer = isMultiPlayer; }
+	void SetIsMultiplayer(BOOL isMultiPlayer);
 	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
+	void SetDamage(INT damage) { m_damage = damage; }
 	void SetWeaponType(eWeaponType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
@@ -39,10 +49,15 @@ public:
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
+	void AddMaxHp(INT hp);
+	void AddDamage(INT damage);
+	void AddAttackSpeed(FLOAT attackSpeed);
+
 	INT GetId() const;
 	eWeaponType GetWeaponType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
+	INT GetDamage() const;
 	INT GetBulletCount() const;
 	INT GetMaxBulletCount() const;
 	string GetPureAnimationName(const string& animationName) const;
@@ -59,7 +74,6 @@ private:
 	INT								m_id;				// 플레이어 고유 아이디
 	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL							m_isFired;			// 발사 여부
-	eWeaponType						m_weaponType;		// 총 타입
 
 	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
 	FLOAT							m_delayPitch;		// .. x축 회전각
@@ -67,18 +81,23 @@ private:
 	FLOAT							m_delayTime;		// 몇 초에 걸쳐 회전할 건지
 	FLOAT							m_delayTimer;		// 타이머
 
-	INT								m_hp;				// 체력
+	INT								m_hp;				// 현재 체력
 	INT								m_maxHp;			// 최대 체력
-	FLOAT							m_speed;			// 속력(실수)
-	FLOAT							m_shotSpeed;		// 공격속도
-	FLOAT							m_shotTimer;		// 공격속도 타이머
+	FLOAT							m_speed;			// 이동 속력
+	INT								m_damage;			// 공격력
+	INT								m_addDamage;		// 추가 공격력(+n)
+	FLOAT							m_attackSpeed;		// 공격속도
+	FLOAT							m_addAttackSpeed;	// 추가 공격속도(n%)
+	FLOAT							m_attackTimer;		// 공격속도 타이머
 	INT								m_bulletCount;		// 총알 개수
 	INT								m_maxBulletCount;	// 총알 최대 개수
 
-	shared_ptr<Camera>				m_camera;			// 카메라
+	eWeaponType						m_weaponType;		// 총 타입
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
 	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
 	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
 	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
 	FLOAT							m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
+
+	shared_ptr<Camera>				m_camera;			// 카메라
 };

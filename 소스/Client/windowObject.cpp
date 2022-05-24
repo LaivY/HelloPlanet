@@ -1,4 +1,6 @@
-﻿#include "windowObject.h"
+﻿#include "stdafx.h"
+#include "windowObject.h"
+#include "textObject.h"
 
 WindowObject::WindowObject(FLOAT width, FLOAT height) : UIObject{ width, height }
 {
@@ -93,6 +95,48 @@ void WindowObject::Add(unique_ptr<UIObject>& uiObject)
 }
 
 void WindowObject::Add(unique_ptr<MenuUIObject>& uiObject)
+{
+	XMFLOAT3 winPos{ GetPosition() };
+	float hw{ m_width / 2.0f };
+	float hh{ m_height / 2.0f };
+
+	XMFLOAT2 uiPos{ uiObject->GetPivotPosition() };
+	ePivot uiScreenPivot{ uiObject->GetScreenPivot() };
+	uiObject->SetScreenPivot(m_screenPivot);
+	switch (uiScreenPivot)
+	{
+	case ePivot::LEFTTOP:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x - hw + uiPos.x, winPos.y + hh + uiPos.y });
+		break;
+	case ePivot::CENTERTOP:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + uiPos.x, winPos.y + uiPos.y + hh });
+		break;
+	case ePivot::RIGHTTOP:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + hw + uiPos.x, winPos.y + uiPos.y + hh });
+		break;
+	case ePivot::LEFTCENTER:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x - hw + uiPos.x, winPos.y + uiPos.y });
+		break;
+	case ePivot::CENTER:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + uiPos.x, winPos.y + uiPos.y });
+		break;
+	case ePivot::RIGHTCENTER:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + hw + uiPos.x, winPos.y + uiPos.y });
+		break;
+	case ePivot::LEFTBOT:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x - hw + uiPos.x, winPos.y - hh + uiPos.y });
+		break;
+	case ePivot::CENTERBOT:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + uiPos.x, winPos.y - hh + uiPos.y });
+		break;
+	case ePivot::RIGHTBOT:
+		uiObject->SetPosition(XMFLOAT2{ winPos.x + hw + uiPos.x, winPos.y - hh + uiPos.y });
+		break;
+	}
+	m_uiObjects.push_back(move(uiObject));
+}
+
+void WindowObject::Add(unique_ptr<RewardUIObject>& uiObject)
 {
 	XMFLOAT3 winPos{ GetPosition() };
 	float hw{ m_width / 2.0f };

@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "DDSTextureLoader12.h"
 
 class Texture
 {
@@ -8,8 +6,14 @@ public:
 	Texture() = default;
 	~Texture() = default;
 
+	// 빈 텍스쳐 생성
+	void CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT textureFotmat, DXGI_FORMAT shaderResourceViewFormat, UINT width, UINT height, UINT rootParameterIndex);
+	void Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& src, D3D12_RESOURCE_STATES currSrcResourceState);
+
+	// DDS로딩
 	void LoadTextureFile(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT rootParameterIndex, const wstring& fileName);
-	void CreateTexture(const ComPtr<ID3D12Device>& device);
+	void CreateTextureFromLoadedFiles(const ComPtr<ID3D12Device>& device);
+
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, int index = 0);
 	void ReleaseUploadBuffer();
 

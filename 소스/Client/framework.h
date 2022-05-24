@@ -1,13 +1,20 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "object.h"
-#include "camera.h"
-#include "timer.h"
-#include "scene.h"
+
+class FadeFilter;
+class Scene;
+class Timer;
 
 struct cbGameFramework
 {
 	FLOAT deltaTime;
+};
+
+struct cbPostGameFramework
+{
+	INT		fadeType;
+	FLOAT	fadeTime;
+	FLOAT	fadeTimer;
+	FLOAT	padding;
 };
 
 class GameFramework
@@ -45,6 +52,7 @@ public:
 
 	void Update(FLOAT deltaTime);
 	void UpdateShaderVariable() const;
+	void UpdatePostShaderVariable() const;
 	void PopulateCommandList() const;
 	void Render2D() const;
 	void WaitForPreviousFrame();
@@ -62,6 +70,7 @@ public:
 	BOOL isFullScreen() const;
 	RECT GetLastWindowRect() const;
 	RECT GetFullScreenRect() const;
+	ComPtr<ID3D12Resource> GetDepthStencil() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 
@@ -113,10 +122,17 @@ private:
 	cbGameFramework*					m_pcbGameFramework;
 	unique_ptr<cbGameFramework>			m_cbGameFrameworkData;
 
+	ComPtr<ID3D12Resource>				m_cbPostGameFramework;
+	cbGameFramework*					m_pcbPostGameFramework;
+	unique_ptr<cbPostGameFramework>		m_cbPostGameFrameworkData;
+
 	// Timer
-	Timer								m_timer;
+	unique_ptr<Timer>					m_timer;
 
 	// Scene
 	unique_ptr<Scene>					m_scene;
-	eSceneType								m_nextScene;
+	eSceneType							m_nextScene;
+	eSceneType							m_nextTempScene;
+
+	unique_ptr<FadeFilter>				m_fadeFilter;
 };

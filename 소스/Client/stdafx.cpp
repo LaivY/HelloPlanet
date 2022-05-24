@@ -18,8 +18,6 @@ BOOL                    g_isConnected{};
 thread                  g_networkThread{};
 mutex                   g_mutex{};
 
-eWeaponType             g_playerGunType{ eWeaponType::AR };
-
 namespace Utile
 {
     ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,

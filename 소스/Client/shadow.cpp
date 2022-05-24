@@ -1,4 +1,5 @@
-﻿#include "shadow.h"
+﻿#include "stdafx.h"
+#include "shadow.h"
 
 ShadowMap::ShadowMap(const ComPtr<ID3D12Device>& device, UINT width, UINT height, INT count)
 	: m_viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f }, 

@@ -1,16 +1,14 @@
 ﻿#pragma once
 #define FIRSTVIEW
 //#define RENDER_HITBOX
-#define NETWORK
+//#define NETWORK
 
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN
 
-// Windows 헤더 파일
-#include <windows.h>
-
 // C/C++
 #include <tchar.h>
+#include <windows.h>
 #include <wrl.h>
 #include <algorithm>
 #include <array>
@@ -22,6 +20,7 @@
 #include <map>
 #include <mutex>
 #include <random>
+#include <ranges>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -72,8 +71,6 @@ extern SOCKET               g_socket;                           // 소켓
 extern BOOL                 g_isConnected;                      // 서버 연결 상태
 extern thread               g_networkThread;                    // 네트워크 쓰레드
 extern mutex                g_mutex;                            // 쓰레드 동기화 뮤텍스
-
-extern eWeaponType          g_playerGunType;
 
 namespace DX
 {

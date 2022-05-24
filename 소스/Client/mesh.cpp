@@ -1,5 +1,7 @@
-﻿#include "mesh.h"
+﻿#include "stdafx.h"
+#include "mesh.h"
 #include "object.h"
+
 #define PLAYER_UPPER_JOINT_START 23
 
 Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }
@@ -97,7 +99,7 @@ void Mesh::LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12
 		Joint joint;
 		joint.animationTransformMatrix.reserve(nFrame);
 
-		file >> joint.name;
+		file >> dumy;
 		for (int i = 0; i < nFrame; ++i)
 		{
 			XMFLOAT4X4 matrix{};
@@ -260,7 +262,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(currUpperAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
 																										 currUpperAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
 																										 upperT);
-				object->OnAnimation(upperCurrFrame, currUpperAnimation.length, TRUE);
+				object->OnUpperAnimation(upperCurrFrame, currUpperAnimation.length);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::BLENDING)
 			{
@@ -290,7 +292,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
+				object->OnUpperAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame);
 			}
 			else if (upperAnimationInfo->state == eAnimationState::SYNC)
 			{
@@ -317,7 +319,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 													  t) };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
-				object->OnAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame, TRUE);
+				object->OnUpperAnimation(upperAnimationInfo->blendingTimer / fps, upperAnimationInfo->blendingFrame);
 			}
 		}
 
@@ -554,4 +556,22 @@ CubeMesh::CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	UINT cbMeshByteSize{ 0 };
 	cbMeshByteSize = Utile::GetConstantBufferSize<cbMesh2>();
 	m_cbMesh[nullptr] = Utile::CreateBufferResource(g_device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {});
+}
+
+FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT4& color)
+{
+	vector<Vertex> vertices;
+	vertices.reserve(6);
+
+	Vertex v{};
+	v.materialIndex = 0;
+	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = { 1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
+	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+
+	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
+	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = { -1.0f, -1.0f, 0.0f }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
+
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }

@@ -8,7 +8,7 @@ public:
 	~Timer() = default;
 
 	void Tick();
-	FLOAT GetDeltaTime() const { return m_deltaTime; }
+	FLOAT GetDeltaTime() const;
 	FLOAT GetFPS() const;
 
 private:

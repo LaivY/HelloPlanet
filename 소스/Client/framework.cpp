@@ -1,12 +1,19 @@
-﻿#include "framework.h"
+﻿#include "stdafx.h"
+#include "framework.h"
+#include "camera.h"
+#include "fadeFilter.h"
+#include "object.h"
+#include "player.h"
+#include "scene.h"
 #include "gameScene.h"
 #include "loadingScene.h"
 #include "lobbyScene.h"
 #include "mainScene.h"
+#include "timer.h"
 
 GameFramework::GameFramework() 
 	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
-	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }
+	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }, m_nextTempScene{ eSceneType::NONE }
 {
 	HWND desktop{ GetDesktopWindow() };
 	GetWindowRect(desktop, &m_fullScreenRect);
@@ -24,10 +31,8 @@ void GameFramework::GameLoop()
 	if (m_nextScene != eSceneType::NONE)
 		ChangeScene();
 
-	m_timer.Tick();
-	OnMouseEvent();
-	OnKeyboardEvent();
-	OnUpdate(m_timer.GetDeltaTime());
+	m_timer->Tick();
+	OnUpdate(m_timer->GetDeltaTime());
 	OnRender();
 }
 
@@ -36,6 +41,7 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 	GetWindowRect(hWnd, &m_lastWindowRect);
+	m_timer = make_unique<Timer>();
 
 	LoadPipeline();
 	LoadAssets();
@@ -67,6 +73,9 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
 
+	// 페이드 인/아웃 필터 생성
+	m_fadeFilter = make_unique<FadeFilter>(m_device);
+
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
 	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, g_width, g_height, desc.BufferDesc.Format, desc.Flags));
@@ -88,25 +97,26 @@ void GameFramework::OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 void GameFramework::OnUpdate(FLOAT deltaTime)
 {
 	Update(deltaTime);
-	if (m_scene) m_scene->OnUpdate(deltaTime);
+	if (m_scene)
+	{
+		m_scene->OnUpdate(deltaTime);
+		m_scene->OnMouseEvent(m_hWnd, deltaTime);
+		m_scene->OnKeyboardEvent(deltaTime);
+	}
 }
 
 void GameFramework::OnRender()
 {
-	// 씬 렌더링
+	// 3D 렌더링
 	PopulateCommandList();
-
-	// 명령 제출
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	ID3D12CommandList* ppCommandList[]{ m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
-	// D2D 렌더링
+	// 2D 렌더링
 	Render2D();
 
 	// 출력
 	DX::ThrowIfFailed(m_swapChain->Present(1, 0));
-
-	// GPU 대기
 	WaitForPreviousFrame();
 }
 
@@ -119,7 +129,7 @@ void GameFramework::OnDestroy()
 
 void GameFramework::OnMouseEvent()
 {
-	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnMouseEvent(m_hWnd, m_timer->GetDeltaTime());
 }
 
 void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -129,7 +139,7 @@ void GameFramework::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 
 void GameFramework::OnKeyboardEvent()
 {
-	if (m_scene) m_scene->OnKeyboardEvent(m_timer.GetDeltaTime());
+	if (m_scene) m_scene->OnKeyboardEvent(m_timer->GetDeltaTime());
 }
 
 void GameFramework::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -197,7 +207,7 @@ void GameFramework::LoadAssets()
 
 	// 명령 제출
 	m_commandList->Close();
-	ID3D12CommandList* ppCommandList[] = { m_commandList.Get() };
+	ID3D12CommandList* ppCommandList[]{ m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandList), ppCommandList);
 
 	// 명령들이 완료될 때까지 대기
@@ -207,7 +217,7 @@ void GameFramework::LoadAssets()
 	m_scene->OnInitEnd();
 
 	// 타이머 초기화
-	m_timer.Tick();
+	m_timer->Tick();
 }
 
 void GameFramework::CreateFactory()
@@ -399,19 +409,23 @@ void GameFramework::CreateDepthStencilView()
 
 void GameFramework::CreateRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	CD3DX12_DESCRIPTOR_RANGE ranges[4]{};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, Setting::SHADOWMAP_COUNT, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
+	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 3, 0, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
 
 	// 자주 갱신하는 순서대로 해야 성능에 좋음
-	CD3DX12_ROOT_PARAMETER rootParameter[7];
+	CD3DX12_ROOT_PARAMETER rootParameter[9]{};
 	rootParameter[0].InitAsConstants(16, 0, 0);												// cbGameObject : b0
 	rootParameter[1].InitAsConstantBufferView(1);											// cbMesh : b1
 	rootParameter[2].InitAsConstantBufferView(2);											// cbCamera : b2
 	rootParameter[3].InitAsConstantBufferView(3);											// cbScene : b3
 	rootParameter[4].InitAsConstantBufferView(4);											// cbGameFramework : b4
 	rootParameter[5].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_texture : t0
-	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D g_shadowMap : t1 ~ t3
+	rootParameter[6].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2DArray g_shadowMap : t1
+	rootParameter[7].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<float> g_detph : t2
+	rootParameter[8].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<uint2> g_stencil : t3
 
 	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
 	samplerDesc[0].Init(
@@ -451,12 +465,13 @@ void GameFramework::CreateRootSignature()
 void GameFramework::CreatePostRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE ranges[2];
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // Texture2D g_input				: t0;
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0); // RWTexture2D<float4> g_output	: u0;
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[2];
-	rootParameter[0].InitAsDescriptorTable(1, &ranges[0]);
-	rootParameter[1].InitAsDescriptorTable(1, &ranges[1]);
+	CD3DX12_ROOT_PARAMETER rootParameter[3];
+	rootParameter[0].InitAsConstantBufferView(0);			// cbGameFramework : b0
+	rootParameter[1].InitAsDescriptorTable(1, &ranges[0]);	// Texture2D g_input : t0;
+	rootParameter[2].InitAsDescriptorTable(1, &ranges[1]);	// RWTexture2D<float4> g_output : u0;
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 0, NULL, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -502,10 +517,13 @@ void GameFramework::CreateD2DDevice()
 
 void GameFramework::CreateShaderVariable()
 {
-	ComPtr<ID3D12Resource> dummy;
 	m_cbGameFramework = Utile::CreateBufferResource(m_device, m_commandList, NULL, Utile::GetConstantBufferSize<cbGameFramework>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbGameFramework->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameFramework));
 	m_cbGameFrameworkData = make_unique<cbGameFramework>();
+
+	m_cbPostGameFramework = Utile::CreateBufferResource(m_device, m_commandList, NULL, Utile::GetConstantBufferSize<cbPostGameFramework>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
+	m_cbPostGameFramework->Map(0, NULL, reinterpret_cast<void**>(&m_pcbPostGameFramework));
+	m_cbPostGameFrameworkData = make_unique<cbPostGameFramework>();
 }
 
 void GameFramework::Render2D() const
@@ -532,15 +550,37 @@ void GameFramework::Render2D() const
 
 void GameFramework::Update(FLOAT deltaTime)
 {
-	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer.GetFPS())) + TEXT("FPS)") };
+	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer->GetFPS())) + TEXT("FPS)") };
 	SetWindowText(m_hWnd, title.c_str());
+
+	// 상수버퍼
+	m_cbGameFrameworkData->deltaTime = deltaTime;
+
+	// 후처리 상수버퍼
+	if (m_cbPostGameFrameworkData->fadeType == -1 &&
+		m_cbPostGameFrameworkData->fadeTimer >= m_cbPostGameFrameworkData->fadeTime)
+	{
+		m_nextScene = m_nextTempScene;
+		m_nextTempScene = eSceneType::NONE;
+	}
+	else if (m_cbPostGameFrameworkData->fadeType == 1 &&
+			 m_cbPostGameFrameworkData->fadeTimer >= m_cbPostGameFrameworkData->fadeTime)
+	{
+		m_cbPostGameFrameworkData->fadeType = 0;
+	}
+	m_cbPostGameFrameworkData->fadeTimer += deltaTime;
 }
 
 void GameFramework::UpdateShaderVariable() const
 {
-	m_cbGameFrameworkData->deltaTime = m_timer.GetDeltaTime();
 	memcpy(m_pcbGameFramework, m_cbGameFrameworkData.get(), sizeof(cbGameFramework));
 	m_commandList->SetGraphicsRootConstantBufferView(4, m_cbGameFramework->GetGPUVirtualAddress());
+}
+
+void GameFramework::UpdatePostShaderVariable() const
+{
+	memcpy(m_pcbPostGameFramework, m_cbPostGameFrameworkData.get(), sizeof(cbPostGameFramework));
+	m_commandList->SetComputeRootConstantBufferView(0, m_cbPostGameFramework->GetGPUVirtualAddress());
 }
 
 void GameFramework::PopulateCommandList() const
@@ -574,8 +614,14 @@ void GameFramework::PopulateCommandList() const
 		m_scene->PostProcessing(m_commandList, m_postRootSignature, m_renderTargets[m_frameIndex]);
 	}
 
-	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	// 페이드 인/아웃
+	{
+		m_commandList->SetComputeRootSignature(m_postRootSignature.Get());
+		UpdatePostShaderVariable();
+		m_fadeFilter->Excute(m_commandList, m_postRootSignature, m_renderTargets[m_frameIndex]);
+	}
 
+	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 	DX::ThrowIfFailed(m_commandList->Close());
 }
 
@@ -654,6 +700,11 @@ void GameFramework::ChangeScene()
 	WaitForGpu();
 
 	m_scene->OnInitEnd();
+
+	// 페이드 인
+	m_cbPostGameFrameworkData->fadeType = 1;
+	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
+	m_cbPostGameFrameworkData->fadeTime = 0.3f;
 }
 
 BOOL GameFramework::ConnectServer()
@@ -698,7 +749,12 @@ void GameFramework::SetIsFullScreen(BOOL isFullScreen)
 
 void GameFramework::SetNextScene(eSceneType scene)
 {
-	m_nextScene = scene;
+	// 페이드 아웃
+	m_cbPostGameFrameworkData->fadeType = -1;
+	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
+	m_cbPostGameFrameworkData->fadeTime = 0.3f;
+
+	m_nextTempScene = scene;
 }
 
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const
@@ -734,4 +790,9 @@ RECT GameFramework::GetLastWindowRect() const
 RECT GameFramework::GetFullScreenRect() const
 {
 	return m_fullScreenRect;
+}
+
+ComPtr<ID3D12Resource> GameFramework::GetDepthStencil() const
+{
+	return m_depthStencil;
 }

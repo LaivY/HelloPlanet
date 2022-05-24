@@ -1,5 +1,14 @@
-﻿#include "gameScene.h"
+﻿#include "stdafx.h"
+#include "gameScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "object.h"
+#include "player.h"
+#include "shadow.h"
+#include "textObject.h"
+#include "texture.h"
+#include "uiObject.h"
+#include "windowObject.h"
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -20,7 +29,7 @@ GameScene::~GameScene()
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature,
 					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
@@ -29,7 +38,20 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
+
+	// 그림자맵
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
+
+	// 외곽선
+	m_depthTexture = make_unique<Texture>();
+	m_depthTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, g_width, g_height, 7);
+
+	m_stencilTexture = make_unique<Texture>();
+	m_stencilTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_X24_TYPELESS_G8_UINT, g_width, g_height, 8);
+
+	m_fullScreenQuad = make_unique<GameObject>();
+	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
+	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
 
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };
@@ -49,25 +71,6 @@ void GameScene::OnDestroy()
 	WSACleanup();
 }
 
-void GameScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	m_viewport = D3D12_VIEWPORT{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f };
-	m_scissorRect = D3D12_RECT{ 0, 0, static_cast<long>(g_width), static_cast<long>(g_height) };
-
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
-	m_camera->SetProjMatrix(projMatrix);
-
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
-	// UI, 텍스트 오브젝트들 재배치
-	for (auto& ui : m_uiObjects)
-		ui->SetPosition(ui->GetPivotPosition());
-	for (auto& t : m_textObjects)
-		t->SetPosition(t->GetPivotPosition());
-}
-
 void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
 	static bool isCursorHide{ true };
@@ -79,10 +82,19 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		if (isCursorHide)
 			ShowCursor(TRUE);
 		isCursorHide = false;
+
+		// 플레이어가 키보드를 누르고 있을 때 윈도우가 생기면
+		// 해당 상태가 유지되므로 속도와 애니메이션을 기본 상태로 설정해줌
+		m_player->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+		if (m_player->GetCurrAnimationName() != "IDLE" && m_player->GetAfterAnimationName() != "IDLE")
+		{
+			m_player->PlayAnimation("IDLE", TRUE);
+			m_player->SendPlayerData();
+		}
+
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 		return;
 	}
-
 	if ((GetAsyncKeyState(VK_TAB) & 0x8000))
 	{
 		if (isCursorHide)
@@ -90,7 +102,6 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		isCursorHide = false;
 		return;
 	}
-
 	if (!isCursorHide)
 	{
 		ShowCursor(FALSE);
@@ -105,7 +116,7 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	POINT newMousePosition; GetCursorPos(&newMousePosition);
 
 	// 움직인 정도에 비례해서 회전
-	float sensitive{ 2.5f };
+	constexpr float sensitive{ 2.5f };
 	int dx = newMousePosition.x - oldMousePosition.x;
 	int dy = newMousePosition.y - oldMousePosition.y;
 	if (dx != 0 || dy != 0)
@@ -134,7 +145,6 @@ void GameScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
 		return;
 	}
-
 	if (m_camera) m_camera->OnMouseEvent(hWnd, message, wParam, lParam);
 	if (m_player) m_player->OnMouseEvent(hWnd, message, wParam, lParam);
 }
@@ -234,18 +244,6 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		w->Update(deltaTime);
 }
 
-void GameScene::Update(FLOAT deltaTime)
-{
-	unique_lock<mutex> lock{ g_mutex };
-	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
-	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
-	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
-	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
-	lock.unlock();
-
-	PlayerCollisionCheck(deltaTime);
-	UpdateShadowMatrix();
-}
 
 void GameScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
@@ -269,36 +267,44 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 게임오브젝트 렌더링
+	// 외곽선이 있는 게임오브젝트들 렌더링
+	//RenderOutlineObjects(commandList);
+
+	// 외곽선을 그릴 게임오브젝트 렌더링
 	UINT stencilRef{ 1 };
 	unique_lock<mutex> lock{ g_mutex };
-	for (const auto& o : m_gameObjects)
+	for (const auto& o : m_gameObjects
+					   | views::filter([](const auto& o) { return o->isMakeOutline(); }))
 	{
 		commandList->OMSetStencilRef(stencilRef++);
 		o->Render(commandList);
 	}
-	lock.unlock();
+
+	// 외곽선 렌더링
+	m_depthTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	m_depthTexture->UpdateShaderVariable(commandList);
+	m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	m_stencilTexture->UpdateShaderVariable(commandList);
+	m_fullScreenQuad->Render(commandList);
+
+	// 그림자맵을 읽을 수 있도록 서술자힙 재설정
+	// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+
+	// 외곽선 없는 게임오브젝트들 렌더링
+	commandList->OMSetStencilRef(0);
+	for (const auto& o : m_gameObjects
+					   | views::filter([](const auto& o) { return !o->isMakeOutline(); }))
+		o->Render(commandList);
 
 	// 멀티플레이어 렌더링
 	for (const auto& p : m_multiPlayers)
 		if (p) p->Render(commandList);
 
 	// 몬스터 렌더링
-	lock.lock();
 	for (const auto& [_, m] : m_monsters)
 		m->Render(commandList);
-	lock.unlock();
-
-	// 테두리 렌더링
-	stencilRef = 1;
-	for (const auto& o : m_gameObjects)
-	{
-		commandList->OMSetStencilRef(stencilRef++);
-		o->RenderOutline(commandList);
-	}
-	commandList->OMSetStencilRef(0);
-	for (const auto& p : m_multiPlayers)
-		if (p) p->RenderOutline(commandList);
 
 	// 플레이어 렌더링
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
@@ -307,13 +313,11 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// UI 렌더링
 	if (m_uiCamera)
 	{
-		unique_lock<mutex> lock{ g_mutex };
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
 		for (const auto& w : m_windowObjects)
 			w->Render(commandList);
-		lock.unlock();
 	}
 }
 
@@ -402,6 +406,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 플레이어, 멀티플레이어 설정
 	// 플레이어와 멀티플레이어는 이전 로비 씬에서 만들어져있다.
+	m_player->SetIsMultiplayer(FALSE);
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
 	for (auto& p : m_multiPlayers)
@@ -417,11 +422,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
-	m_skybox->SetMesh(s_meshes["SKYBOX"]);
-	m_skybox->SetShader(s_shaders["SKYBOX"]);
-	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
-	m_gameObjects.push_back(move(m_skybox));
 
 	// 바닥
 	auto floor{ make_unique<GameObject>() };
@@ -493,18 +494,9 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		object->Rotate(rotat.z, rotat.x, rotat.y);
 		object->SetPosition(trans);
 		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		object->SetShader(s_shaders["MODEL"]);
 		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
-
-		// 셰이더
-		if (type == 0 || type == 1)
-		{
-			object->SetShader(s_shaders["MODEL"]);
-		}
-		else
-		{
-			object->SetShader(s_shaders["STENCIL_MODEL"]);
-			object->SetOutlineShader(s_shaders["OUTLINE_MODEL"]);
-		}
+		object->SetOutline(TRUE);
 
 		// 텍스쳐
 		if (0 <= type && type <= 1)
@@ -513,6 +505,7 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 			object->SetTexture(s_textures["OBJECT1"]);
 		else if (10 <= type && type <= 11)
 			object->SetTexture(s_textures["OBJECT2"]);
+
 		m_gameObjects.push_back(move(object));
 
 		// 히트박스
@@ -578,57 +571,18 @@ void GameScene::CloseWindow()
 		m_windowObjects.pop_back();
 }
 
-void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void GameScene::Update(FLOAT deltaTime)
 {
-	if (!m_shadowMap) return;
-
-	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
-
-	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
-
-	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-
-	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-
-	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
-
-	// 렌더링
 	unique_lock<mutex> lock{ g_mutex };
-	for (const auto& object : m_gameObjects)
-	{
-		auto shadowShader{ object->GetShadowShader() };
-		if (shadowShader)
-			object->Render(commandList, shadowShader);
-	}
-	for (const auto& [_, monster] : m_monsters)
-	{
-		auto shadowShader{ monster->GetShadowShader() };
-		if (shadowShader)
-			monster->Render(commandList, shadowShader);
-	}
+	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
+	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
+	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
+	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
 	lock.unlock();
-	for (const auto& player : m_multiPlayers)
-	{
-		if (!player) continue;
-		player->RenderToShadowMap(commandList);
-	}
-	if (m_player)
-	{
-		m_player->SetMesh(s_meshes["PLAYER"]);
-		m_player->RenderToShadowMap(commandList);
-		m_player->SetMesh(s_meshes["ARM"]);
-	}
 
-	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	PlayerCollisionCheck(deltaTime);
+	UpdateShadowMatrix();
 }
 
 void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
@@ -738,33 +692,33 @@ void GameScene::UpdateShadowMatrix()
 	// 큐브의 정점을 시야절두체 구간으로 변경
 	for (int i = 0; i < casecade.size() - 1; ++i)
 	{
-		XMFLOAT3 tFrustum[8]{};
+		XMFLOAT3 wFrustum[8]{};
 		for (int j = 0; j < 8; ++j)
-			tFrustum[j] = frustum[j];
+			wFrustum[j] = frustum[j];
 
 		for (int j = 0; j < 4; ++j)
 		{
 			// 앞쪽에서 뒤쪽으로 향하는 벡터
-			XMFLOAT3 v{ Vector3::Sub(tFrustum[j + 4], tFrustum[j]) };
+			XMFLOAT3 v{ Vector3::Sub(wFrustum[j + 4], wFrustum[j]) };
 
 			// 구간 시작, 끝으로 만들어주는 벡터
 			XMFLOAT3 n{ Vector3::Mul(v, casecade[i]) };
 			XMFLOAT3 f{ Vector3::Mul(v, casecade[i + 1]) };
 
 			// 구간 시작, 끝으로 설정
-			tFrustum[j + 4] = Vector3::Add(tFrustum[j], f);
-			tFrustum[j] = Vector3::Add(tFrustum[j], n);
+			wFrustum[j + 4] = Vector3::Add(wFrustum[j], f);
+			wFrustum[j] = Vector3::Add(wFrustum[j], n);
 		}
 
 		// 해당 구간을 포함할 바운딩구의 중심을 계산
 		XMFLOAT3 center{};
-		for (const auto& v : tFrustum)
+		for (const auto& v : wFrustum)
 			center = Vector3::Add(center, v);
 		center = Vector3::Mul(center, 1.0f / 8.0f);
 
 		// 바운딩구의 반지름을 계산
 		float radius{};
-		for (const auto& v : tFrustum)
+		for (const auto& v : wFrustum)
 			radius = max(radius, Vector3::Length(Vector3::Sub(v, center)));
 
 		// 그림자를 만들 조명의 좌표를 바운딩구의 중심에서 빛의 반대방향으로 적당히 움직이여야함
@@ -779,6 +733,84 @@ void GameScene::UpdateShadowMatrix()
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
+}
+
+void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	if (!m_shadowMap) return;
+
+	// 뷰포트, 가위사각형 설정
+	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
+	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+
+	// 셰이더에 묶기
+	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+
+	// 리소스배리어 설정(깊이버퍼쓰기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+	// 깊이스텐실 버퍼 초기화
+	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+
+	// 렌더타겟 설정
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+
+	// 렌더링
+	unique_lock<mutex> lock{ g_mutex };
+	for (const auto& object : m_gameObjects)
+	{
+		if (auto shadowShader{ object->GetShadowShader() })
+			object->Render(commandList, shadowShader);
+	}
+	for (const auto& [_, monster] : m_monsters)
+	{
+		auto shadowShader{ monster->GetShadowShader() };
+		if (shadowShader)
+			monster->Render(commandList, shadowShader);
+	}
+	lock.unlock();
+	for (const auto& player : m_multiPlayers)
+	{
+		if (!player) continue;
+		player->RenderToShadowMap(commandList);
+	}
+	if (m_player)
+	{
+		m_player->SetMesh(s_meshes["PLAYER"]);
+		m_player->RenderToShadowMap(commandList);
+		m_player->SetMesh(s_meshes["ARM"]);
+	}
+
+	// 리소스배리어 설정(셰이더에서 읽기)
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void GameScene::RenderOutlineObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	//// 외곽선을 그릴 게임오브젝트 렌더링
+	//UINT stencilRef{ 1 };
+	//unique_lock<mutex> lock{ g_mutex };
+	//for (const auto& o : m_gameObjects
+	//	| views::filter([](const auto& o) { return o->isMakeOutline(); }))
+	//{
+	//	commandList->OMSetStencilRef(stencilRef++);
+	//	o->Render(commandList);
+	//}
+	//lock.unlock();
+	//commandList->OMSetStencilRef(0);
+
+	//// 외곽선 렌더링
+	//m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	//m_stencilTexture->UpdateShaderVariable(commandList);
+	//m_fullScreenQuad->Render(commandList);
+
+	//// 그림자맵을 읽을 수 있도록 서술자힙 재설정
+	//// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
+	//ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	//commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	////commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 }
 
 void GameScene::RecvPacket()
@@ -852,16 +884,9 @@ void GameScene::RecvLoginOk()
 		{
 			if (p) continue;
 			p = make_unique<Player>(TRUE);
-			p->SetMesh(s_meshes["PLAYER"]);
-			p->SetShader(s_shaders["ANIMATION"]);
-			p->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-			//p->SetOutlineShader(s_shaders["OUTLINE_ANIMATION"]);
-			p->SetGunMesh(s_meshes["SG"]);
-			p->SetGunShader(s_shaders["LINK"]);
-			p->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
+			p->SetId(static_cast<int>(data.id));
 			p->SetWeaponType(eWeaponType::SG);
 			p->PlayAnimation("IDLE");
-			p->SetId(static_cast<int>(data.id));
 			p->ApplyServerData(data);
 			break;
 		}
@@ -925,21 +950,18 @@ void GameScene::RecvUpdateMonster()
 
 void GameScene::RecvBulletFire()
 {
-	// pos, dir, playerId
-	char subBuf[12 + 12 + 1]{};
+	char subBuf[sizeof(BulletData)]{};
 	WSABUF wsabuf{ sizeof(subBuf), subBuf };
 	DWORD recvByte{}, recvFlag{};
 	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	XMFLOAT3 pos{}, dir{}; char playerId{};
-	memcpy(&pos, &subBuf[0], sizeof(pos));
-	memcpy(&dir, &subBuf[12], sizeof(dir));
-	memcpy(&playerId, &subBuf[24], sizeof(playerId));
+	BulletData bulletData{};
+	memcpy(&bulletData, &subBuf, sizeof(BulletData));
 
-	auto bullet{ make_unique<Bullet>(dir) };
+	auto bullet{ make_unique<Bullet>(bulletData.dir) };
 	bullet->SetMesh(s_meshes["BULLET"]);
 	bullet->SetShader(s_shaders["DEFAULT"]);
-	bullet->SetPosition(pos);
+	bullet->SetPosition(bulletData.pos);
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_gameObjects.push_back(move(bullet));
@@ -968,10 +990,15 @@ void GameScene::RecvBulletHit()
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	auto dmgText{ make_unique<DamageTextObject>(TEXT("999"))};
-	dmgText->SetCamera(m_camera);
-	dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
-	m_textObjects.push_back(move(dmgText));
+	if (m_monsters.find(static_cast<int>(data.mobId)) != m_monsters.end())
+	{
+		wstring dmg{ to_wstring(m_player->GetDamage()) };
+
+		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
+		dmgText->SetCamera(m_camera);
+		dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
+		m_textObjects.push_back(move(dmgText));
+	}
 }
 
 void GameScene::RecvMosterAttack()
@@ -1002,6 +1029,89 @@ void GameScene::RecvRoundResult()
 	{
 	case eRoundResult::CLEAR:
 	{
+		// 중복없이 보상 3개 선택
+		const auto r = { eReward::AD, eReward::AS, eReward::HP, eReward::DEF };
+		vector<eReward> rewards;
+		ranges::sample(r, back_inserter(rewards), 3, g_randomEngine);
+
+		// 보상 칸 하나 당 가로 길이 비율
+		constexpr float REWARE_WIDTH_RATIO{ 0.2f };
+
+		auto firstReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
+		firstReward->SetMesh(s_meshes["UI"]);
+		firstReward->SetShader(s_shaders["UI"]);
+		firstReward->SetTexture(s_textures["WHITE"]);
+		firstReward->SetPivot(ePivot::LEFTCENTER);
+		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
+		firstReward->SetPosition(XMFLOAT2{ g_width * 0.05f, 0.0f });
+		firstReward->SetMouseClickCallBack(bind(
+			[&](const shared_ptr<Player>& player, eReward reward)
+			{
+				switch (reward)
+				{
+				case eReward::AD:
+					player->AddDamage(10);
+					break;
+				case eReward::AS:
+					player->AddAttackSpeed(10);
+					break;
+				case eReward::HP:
+				case eReward::DEF:
+					player->AddMaxHp(10);
+					break;
+				}
+				m_windowObjects.back()->Delete();
+			}, m_player, rewards[0]));
+
+		auto firstRewardText{ make_unique<TextObject>() };
+		firstRewardText->SetFormat("36_LEFT");
+		firstRewardText->SetBrush("BLACK");
+		firstRewardText->SetPivot(ePivot::CENTER);
+		firstRewardText->SetScreenPivot(ePivot::LEFTCENTER);
+		switch (rewards[0])
+		{
+		case eReward::AD:
+			firstRewardText->SetText(TEXT("공격력 +10%"));
+			break;
+		case eReward::AS:
+			firstRewardText->SetText(TEXT("공격 속도 +10%"));
+			break;
+		case eReward::HP:
+			firstRewardText->SetText(TEXT("최대 체력 +10"));
+			break;
+		case eReward::DEF:
+			firstRewardText->SetText(TEXT("방어력 +5"));
+			break;
+		}
+		firstRewardText->SetPosition(XMFLOAT2{ g_width * 0.15f, 0.0f });
+
+		auto secondReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
+		secondReward->SetMesh(s_meshes["UI"]);
+		secondReward->SetShader(s_shaders["UI"]);
+		secondReward->SetTexture(s_textures["WHITE"]);
+
+		auto thirdReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
+		thirdReward->SetMesh(s_meshes["UI"]);
+		thirdReward->SetShader(s_shaders["UI"]);
+		thirdReward->SetTexture(s_textures["WHITE"]);
+		thirdReward->SetPivot(ePivot::RIGHTCENTER);
+		thirdReward->SetScreenPivot(ePivot::RIGHTCENTER);
+		thirdReward->SetPosition(XMFLOAT2{ g_width * -0.05f, 0.0f });
+
+		auto rewardWindow{ make_unique<WindowObject>(g_width * 0.8f, g_height * 0.8f) };
+		rewardWindow->SetMesh(s_meshes["UI"]);
+		rewardWindow->SetShader(s_shaders["UI"]);
+		rewardWindow->SetTexture(s_textures["HPBARBASE"]);
+		rewardWindow->Add(firstReward);
+		rewardWindow->Add(firstRewardText);
+		rewardWindow->Add(secondReward);
+		rewardWindow->Add(thirdReward);
+		m_windowObjects.push_back(move(rewardWindow));
+		break;
+	}
+	case eRoundResult::OVER:
+		break;
+	case eRoundResult::ENDING:
 		auto clearWindow{ make_unique<WindowObject>(400.0f, 300.0f) };
 		clearWindow->SetMesh(s_meshes["UI"]);
 		clearWindow->SetShader(s_shaders["UI"]);
@@ -1019,8 +1129,9 @@ void GameScene::RecvRoundResult()
 			[]()
 			{
 				g_gameFramework.SetNextScene(eSceneType::MAIN);
+				ShowCursor(TRUE);
 			});
-		clearWindow->Add(move(goToMainText));
+		clearWindow->Add(goToMainText);
 
 		auto descText{ make_unique<TextObject>() };
 		descText->SetBrush("BLACK");
@@ -1029,15 +1140,10 @@ void GameScene::RecvRoundResult()
 		descText->SetScreenPivot(ePivot::CENTER);
 		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
 		descText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
-		clearWindow->Add(move(descText));
+		clearWindow->Add(descText);
 
 		unique_lock<mutex> lock{ g_mutex };
 		m_windowObjects.push_back(move(clearWindow));
-		break;
-	}
-	case eRoundResult::OVER:
-		break;
-	case eRoundResult::ENDING:
 		break;
 	}
 }

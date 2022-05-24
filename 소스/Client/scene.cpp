@@ -1,4 +1,5 @@
-﻿#include "scene.h"
+﻿#include "stdafx.h"
+#include "scene.h"
 #include "framework.h"
 
 unordered_map<string, shared_ptr<Mesh>>		Scene::s_meshes;

@@ -1,8 +1,8 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "mesh.h"
-#include "shader.h"
-#include "texture.h"
+
+class Mesh;
+class Shader;
+class Texture;
 
 struct Light
 {
@@ -30,7 +30,7 @@ struct cbGameScene
 	Light		ligths[Setting::MAX_LIGHTS];
 };
 
-class Scene
+class Scene abstract
 {
 public:
 	Scene();

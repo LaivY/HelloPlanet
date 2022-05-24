@@ -1,7 +1,8 @@
 ﻿#pragma once
-#include "stdafx.h"
-#include "player.h"
-#include "uiObject.h"
+
+class Camera;
+class Player;
+enum class ePivot;
 
 class TextObject
 {

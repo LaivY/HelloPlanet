@@ -1,4 +1,6 @@
-﻿#include "main.h"
+﻿#include "stdafx.h"
+#include "resource.h"
+#include "framework.h"
 #define MAX_LOADSTRING 100
 
 // 콘솔
@@ -87,7 +89,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	// 윈도우 사이즈를 프레임워크 생성할 때 정한 너비와 높이로 설정
 	RECT rect{ 0, 0, static_cast<LONG>(Setting::SCREEN_WIDTH), static_cast<LONG>(Setting::SCREEN_HEIGHT) };
 	DWORD dwStyle{ WS_OVERLAPPED | WS_SYSMENU | WS_BORDER };
-	AdjustWindowRect(&rect, dwStyle, FALSE);
+	//AdjustWindowRect(&rect, dwStyle, FALSE);
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, dwStyle, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, hInstance, nullptr);
 	if (!hWnd)
@@ -117,12 +119,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_MOVE:
 		g_gameFramework.OnMove(hWnd, message, wParam, lParam);
 		break;
-	case WM_SIZE:
-		g_gameFramework.OnResize(hWnd, message, wParam, lParam);
-		break;
-	case WM_MOVE:
-		g_gameFramework.OnMove(hWnd, message, wParam, lParam);
-		break;
 	case WM_MOUSEMOVE:
 	case WM_MOUSEWHEEL:
 	case WM_LBUTTONDOWN:
@@ -130,28 +126,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_KEYUP:
 	case WM_KEYDOWN:
-		//if (wParam == '1')
-		//{
-		//	isFullScreen = FALSE;
-		//	SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
-		//	SetWindowPos(hWnd, HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1280, 720, SWP_SHOWWINDOW);
-		//}
-		//else if (wParam == '2')
-		//{
-		//	isFullScreen = FALSE;
-		//	SetWindowLong(hWnd, GWL_STYLE, WS_OVERLAPPED | WS_SYSMENU | WS_CAPTION);
-		//	SetWindowPos(hWnd, HWND_TOP, lastWindowRect.left, lastWindowRect.top, 1680, 1050, SWP_SHOWWINDOW);
-		//}
-		//if (wParam == '3')
-		//{
-		//	g_gameFramework.SetIsFullScreen(TRUE);
-		//	SetWindowPos(hWnd, HWND_TOP, 0, 0, fullScreenRect.right, fullScreenRect.bottom, SWP_SHOWWINDOW);
-
-		//	LONG style = GetWindowLong(hWnd, GWL_STYLE);
-		//	style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
-		//	SetWindowLong(hWnd, GWL_STYLE, style);
-		//	SetWindowPos(hWnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
-		//}
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);
 		break;
 	case WM_DESTROY:

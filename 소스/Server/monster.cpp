@@ -1,4 +1,5 @@
-﻿#include "monster.h"
+﻿#include "stdafx.h"
+#include "monster.h"
 #include "framework.h"
 using namespace DirectX;
 
@@ -15,12 +16,13 @@ void Monster::OnHit(const BulletData& bullet)
 {
 	// 총알의 주인을 타겟으로 한다
 	SetTargetId(bullet.playerId);
-	// DIE로 바꿔서 보내주면 클라가 판단해서 지워줄 예정, 40은 임시 총알 데미지
-	SetHp(m_hp - 40);
+	SetHp(m_hp - bullet.damage);
+
 	if (m_hp <= 0) 
 	{
 		m_aniType = eMobAnimationType::DIE;
 		g_networkFramework.m_killScore++;
+		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
 	}
 	else if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
@@ -178,6 +180,19 @@ void Monster::SetTargetId(UCHAR id)
 {
 	m_target = id;
 }
+
+void Monster::SetRandomPosition()
+{
+	std::random_device rd;
+	const std::uniform_int_distribution<int> areasDistribution(0, 7);
+	std::mt19937 generator(rd());
+	const DirectX::XMFLOAT3 mobSpawnAreas[8]{ {0.0f, 0.0f, 400.0f},{0.0f, 0.0f, -400.0f},{400.0f, 0.0f, 0.0f},{-400.0f, 0.0f, 0.0f},
+		{300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, -300.0f}, {300.0f, 0.0f, -300.0f} };
+	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
+}
+
+
+
 
 MonsterData Monster::GetData() const
 {

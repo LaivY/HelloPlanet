@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "stdafx.h"
 
 class GameObject;
 
@@ -26,10 +25,7 @@ struct Material
 
 struct Joint
 {
-	Joint() : name{} { }
-
-	string				name;
-	vector<XMFLOAT4X4>	animationTransformMatrix;
+	vector<XMFLOAT4X4> animationTransformMatrix;
 };
 
 struct Animation
@@ -116,4 +112,11 @@ public:
 	CubeMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
 			 FLOAT width, FLOAT height, FLOAT length, const XMFLOAT3& position = { 0.0f, 0.0f, 0.0f }, const XMFLOAT4 & color = { 1.0f, 1.0f, 1.0f, 1.0f });
 	~CubeMesh() = default;
+};
+
+class FullScreenQuadMesh : public Mesh
+{
+public:
+	FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f });
+	~FullScreenQuadMesh() = default;
 };

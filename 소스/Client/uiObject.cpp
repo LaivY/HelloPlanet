@@ -1,5 +1,9 @@
-﻿#include "uiObject.h"
+﻿#include "stdafx.h"
+#include "uiObject.h"
 #include "framework.h"
+#include "player.h"
+#include "shader.h"
+#include "texture.h"
 
 UIObject::UIObject() : m_isFitToScreen{ FALSE }, m_pivot { ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
 {
@@ -68,11 +72,6 @@ void UIObject::Update(FLOAT deltaTime)
 void UIObject::SetFitToScreen(BOOL fitToScreen)
 {
 	m_isFitToScreen = fitToScreen;
-}
-
-void UIObject::SetPosition(const XMFLOAT3& position)
-{
-	SetPosition(XMFLOAT2{ position.x, position.y });
 }
 
 void UIObject::SetPosition(const XMFLOAT2& position)
@@ -370,7 +369,7 @@ void CrosshairUIObject::SetPlayer(const shared_ptr<Player>& player)
 
 MenuUIObject::MenuUIObject(FLOAT width, FLOAT height) : UIObject{ width, height }, m_isMouseOver{ FALSE }
 {
-
+	m_mouseClickCallBack = []() {};
 }
 
 void MenuUIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -403,11 +402,6 @@ void MenuUIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		m_isMouseOver = FALSE;
 }
 
-void MenuUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
-{
-	UIObject::Render(commandList, shader);
-}
-
 void MenuUIObject::Update(FLOAT deltaTime)
 {
 
@@ -416,4 +410,30 @@ void MenuUIObject::Update(FLOAT deltaTime)
 void MenuUIObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 {
 	m_mouseClickCallBack = callBackFunc;
+}
+
+RewardUIObject::RewardUIObject(FLOAT width, FLOAT height) : MenuUIObject{ width, height }, m_timer{ 0.0f }
+{
+	
+}
+
+void RewardUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	constexpr float MOUSE_OVER_SCALE{ 0.05f };
+
+	FLOAT originWidth{ m_width }, originHeight{ m_height };
+
+	m_worldMatrix._11 = originWidth + originWidth * MOUSE_OVER_SCALE * m_timer / 0.5f;
+	m_worldMatrix._22 = originHeight + originHeight * MOUSE_OVER_SCALE * m_timer / 0.5f;
+	UIObject::Render(commandList, shader);
+	m_worldMatrix._11 = originWidth;
+	m_worldMatrix._22 = originHeight;
+}
+
+void RewardUIObject::Update(FLOAT deltaTime)
+{
+	if (m_isMouseOver)
+		m_timer = min(0.5f, m_timer + deltaTime * 3.0f);
+	else
+		m_timer = max(0.0f, m_timer - deltaTime * 3.0f);
 }

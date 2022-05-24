@@ -1,9 +1,11 @@
-﻿#include "framework.h"
+﻿#include "stdafx.h"
+#include "framework.h"
 using namespace DirectX;
 
-NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, bulletHits{}, readyCount{ 0 }, m_spawnCooldown{ 5.0f }, m_lastMobId{ 0 }, m_killScore{ 0 }
+NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, isInGame{ false }, readyCount{ 0 },
+bulletHits{}, m_spawnCooldown{ g_spawnCooldown }, m_lastMobId{ 0 }, m_killScore{ 0 }
 {
-	// m_spawnCooldown 5.0f은 임의의 상수
+	// m_spawnCooldown 2.0f은 임의의 상수
 }
 
 int NetworkFramework::OnInit(SOCKET socket)
@@ -34,8 +36,10 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	std::cout << "AcceptThread start" << std::endl;
 	SOCKADDR_IN clientAddr;
 	INT addrSize = sizeof(clientAddr);
-	while (true)
+	while (!isAccept)
 	{
+		//if (clients[0].data.isActive && clients[1].data.isActive && clients[2].data.isActive) continue;
+
 		SOCKET cSocket = WSAAccept(socket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize, nullptr, 0);
 		if (cSocket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Accept()");
 
@@ -62,11 +66,11 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 	}
 }
 
-void  NetworkFramework::SendPacket2AllPlayer(const void* packet, const int bufSize) const
+void  NetworkFramework::SendPacket2AllPlayer(const void* packet, int bufSize) const
 {
 	char buf[BUF_SIZE]{};
 	memcpy(buf, packet, bufSize);
-	WSABUF wsaBuf = { sizeof(buf), buf};
+	WSABUF wsaBuf = {  static_cast<ULONG>(bufSize), buf};
 	DWORD sentByte;
 
 	for (const auto& cl : clients)
@@ -342,7 +346,7 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 				if (!c.data.isActive) continue;
 				if (c.isReady) readyCount++;
 			}
-			if (readyCount >= 2)
+			if (readyCount >= MAX_USER)
 			{
 				isAccept = true;
 				SendChangeScenePacket(eSceneType::GAME);
@@ -366,17 +370,14 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 		}
 		case CS_PACKET_BULLET_FIRE:
 		{
-			// pos, dir, playerId
-			char subBuf[12 + 12 + 1]{};
+			char subBuf[sizeof(BulletData)]{};
 			wsabuf = { sizeof(subBuf), subBuf };
 			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Recv(CS_PACKET_BULLET_FIRE)");
 			sc_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = SC_PACKET_BULLET_FIRE;
-			memcpy(&packet.data.pos, &subBuf[0], sizeof(packet.data.pos));
-			memcpy(&packet.data.dir, &subBuf[12], sizeof(packet.data.dir));
-			memcpy(&packet.data.playerId, &subBuf[24], sizeof(packet.data.playerId));
+			memcpy(&packet.data, subBuf, sizeof(BulletData));
 
 			char sendBuf[sizeof(packet)];
 			wsabuf = { sizeof(sendBuf), sendBuf };
@@ -438,6 +439,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	// 충돌체크
 	CollisionCheck();
 
+	// 종료체크
 	if (m_killScore >= stage1Goal && isClearStage1 == false)
 	{
 		for (auto& mob : monsters)
@@ -448,7 +450,13 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 		std::cout << "[system] Stage1 Clear!" << std::endl;
 		SendRoundResultPacket(eRoundResult::CLEAR);
 		//SendChangeScenePacket(eSceneType::ENDING);
-		isClearStage1 = true;
+		isAccept = false;
+		isClearStage1 = false;
+		readyCount = 0;
+		m_spawnCooldown = g_spawnCooldown;
+		m_lastMobId = 0;
+		m_killScore = 0;
+		erase_if(monsters, [](const Monster& m) { return m.GetHp() >= -100; });
 	}
 		
 }
@@ -464,12 +472,12 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		m.SetHp(100);
 		m.SetType(0);
 		m.SetAnimationType(eMobAnimationType::IDLE);
-		m.SetPosition(DirectX::XMFLOAT3{ 0.0f, 0.0f, -400.0f });
+		m.SetRandomPosition();
 		m.SetTargetId(DetectPlayer(m.GetPosition()));
 		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
-		m_spawnCooldown = 5.0f;
+		m_spawnCooldown = g_spawnCooldown;
 		m_lastMobId++;
 	}
 }
@@ -516,7 +524,7 @@ void NetworkFramework::CollisionCheck()
 				{
 					hitMonster = &m;
 					length = l;
-					std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
+					//std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
 
 				// 해당 플레이어가 총알을 맞췄다는 것을 저장
@@ -544,6 +552,8 @@ void NetworkFramework::Disconnect(const int id)
 	cl.data.pos = {};
 	cl.data.velocity = {};
 	cl.data.yaw = 0.0f;
+	cl.isReady = false;
+	cl.weaponType = eWeaponType::AR;
 	closesocket(cl.socket);
 	cl.lock.unlock();
 }

@@ -1,5 +1,13 @@
-﻿#include "mainScene.h"
+﻿#include "stdafx.h"
+#include "mainScene.h"
+#include "camera.h"
 #include "framework.h"
+#include "object.h"
+#include "player.h"
+#include "shadow.h"
+#include "textObject.h"
+#include "uiObject.h"
+#include "windowObject.h"
 
 MainScene::MainScene() : m_pcbGameScene{ nullptr }
 {
@@ -20,6 +28,7 @@ void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateUIObjects(device, commandList);
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
+	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 }
 
@@ -101,12 +110,13 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	commandList->OMSetRenderTargets(1, &rtvHandle, TRUE, &dsvHandle);
 
 	if (m_skybox) m_skybox->Render(commandList);
-	for (const auto& p : m_players)
-		p->Render(commandList);
 	for (const auto& o : m_gameObjects)
 		o->Render(commandList);
+	for (const auto& p : m_players)
+		p->Render(commandList);
 	if (m_uiCamera)
 	{
+		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 		m_uiCamera->UpdateShaderVariable(commandList);
 		for (const auto& ui : m_uiObjects)
 			ui->Render(commandList);
@@ -141,9 +151,6 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
-	m_skybox->SetMesh(s_meshes["SKYBOX"]);
-	m_skybox->SetShader(s_shaders["SKYBOX"]);
-	m_skybox->SetTexture(s_textures["SKYBOX"]);
 	m_skybox->SetCamera(m_camera);
 
 	// 바닥
@@ -152,22 +159,8 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 
-	// 뒷 배경
-	//auto object{ make_unique<GameObject>() };
-	//object->SetMesh(s_meshes["TREE"]);
-	//object->SetShader(s_shaders["MODEL"]);
-	//object->SetTexture(s_textures["OBJECT2"]);
-	//m_gameObjects.push_back(move(object));
-
 	auto player{ make_unique<Player>(TRUE) };
-	player->SetMesh(s_meshes["PLAYER"]);
-	player->SetShader(s_shaders["ANIMATION"]);
-	player->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-	player->SetGunMesh(s_meshes["AR"]);
-	player->SetGunShader(s_shaders["LINK"]);
-	player->SetGunShadowShader(s_shaders["SHADOW_LINK"]);
 	player->SetWeaponType(eWeaponType::AR);
-	player->PlayAnimation("IDLE");
 	m_players.push_back(move(player));
 }
 
@@ -246,8 +239,8 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 
 void MainScene::CreateLights() const
 {
-	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.1f, 0.1f, 0.1f };
-	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ -0.687586f, -0.716385f, 0.118001f });
+	m_cbGameSceneData->shadowLight.color = XMFLOAT3{ 0.5f, 0.5f, 0.5f };
+	m_cbGameSceneData->shadowLight.direction = Vector3::Normalize(XMFLOAT3{ 0.2f, -1.0f, 0.2f });
 
 	XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 	XMFLOAT3 shadowLightPos{ Vector3::Mul(m_cbGameSceneData->shadowLight.direction, -1500.0f) };
@@ -259,6 +252,38 @@ void MainScene::CreateLights() const
 
 	m_cbGameSceneData->ligths[0].color = XMFLOAT3{ 0.05f, 0.05f, 0.05f };
 	m_cbGameSceneData->ligths[0].direction = XMFLOAT3{ 0.0f, -6.0f, 10.0f };
+}
+
+void MainScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile)
+{
+	ifstream map{ mapFile };
+	int count{ 0 }; map >> count;
+	for (int i = 0; i < count; ++i)
+	{
+		// 타입, 스케일, 회전, 이동
+		int type{}; map >> type;
+		XMFLOAT3 scale{}; map >> scale.x >> scale.y >> scale.z;
+		XMFLOAT3 rotat{}; map >> rotat.x >> rotat.y >> rotat.z;
+		XMFLOAT3 trans{}; map >> trans.x >> trans.y >> trans.z;
+		trans = Vector3::Mul(trans, 100.0f);
+
+		unique_ptr<GameObject> object{ make_unique<GameObject>() };
+		object->SetScale(scale);
+		object->Rotate(rotat.z, rotat.x, rotat.y);
+		object->SetPosition(trans);
+		object->SetMesh(s_meshes["OBJECT" + to_string(type)]);
+		object->SetShader(s_shaders["MODEL"]);
+		object->SetShadowShader(s_shaders["SHADOW_MODEL"]);
+
+		// 텍스쳐
+		if (0 <= type && type <= 1)
+			object->SetTexture(s_textures["OBJECT0"]);
+		else if (2 <= type && type <= 8)
+			object->SetTexture(s_textures["OBJECT1"]);
+		else if (10 <= type && type <= 11)
+			object->SetTexture(s_textures["OBJECT2"]);
+		m_gameObjects.push_back(move(object));
+	}
 }
 
 void MainScene::CreateSettingWindow()
@@ -354,16 +379,10 @@ void MainScene::CreateSettingWindow()
 	m_windowObjects.push_back(move(setting));
 }
 
-void MainScene::CloseWindow()
-{
-	if (!m_windowObjects.empty())
-		m_windowObjects.pop_back();
-}
-
 void MainScene::UpdateCameraPosition(FLOAT deltaTime)
 {
 	constexpr XMFLOAT3 target{ 0.0f, 0.0f, 0.0f };
-	constexpr float speed{ 10.0f };
+	constexpr float speed{ 5.0f };
 	constexpr float radius{ 200.0f };
 	static float angle{ 0.0f };
 

@@ -97,9 +97,6 @@
     <ClInclude Include="framework.h">
       <Filter>헤더 파일\Framework</Filter>
     </ClInclude>
-    <ClInclude Include="main.h">
-      <Filter>헤더 파일\Framework</Filter>
-    </ClInclude>
     <ClInclude Include="mesh.h">
       <Filter>헤더 파일\Framework</Filter>
     </ClInclude>
@@ -127,7 +124,7 @@
     <ClInclude Include="shadow.h">
       <Filter>헤더 파일\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="outlineFilter.h">
+    <ClInclude Include="fadeFilter.h">
       <Filter>헤더 파일\Effect</Filter>
     </ClInclude>
   </ItemGroup>
@@ -192,7 +189,7 @@
     <ClCompile Include="shadow.cpp">
       <Filter>소스 파일\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="outlineFilter.cpp">
+    <ClCompile Include="fadeFilter.cpp">
       <Filter>소스 파일\Effect</Filter>
     </ClCompile>
   </ItemGroup>
@@ -225,6 +222,9 @@
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Resource\Shader\outline.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\fade.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
   </ItemGroup>
