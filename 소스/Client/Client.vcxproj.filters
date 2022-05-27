@@ -127,6 +127,9 @@
     <ClInclude Include="fadeFilter.h">
       <Filter>헤더 파일\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="audioEngine.h">
+      <Filter>헤더 파일\Framework</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="object.cpp">
@@ -191,6 +194,9 @@
     </ClCompile>
     <ClCompile Include="fadeFilter.cpp">
       <Filter>소스 파일\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="audioEngine.cpp">
+      <Filter>소스 파일\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

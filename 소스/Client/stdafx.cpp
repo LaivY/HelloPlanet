@@ -1,8 +1,10 @@
 ﻿#include "stdafx.h"
 #include "framework.h"
 #include "object.h"
+#include "audioEngine.h"
 
 GameFramework           g_gameFramework{};
+AudioEngine             g_audioEngine{};
 UINT                    g_maxWidth{};
 UINT                    g_maxHeight{};
 UINT                    g_width{ Setting::SCREEN_WIDTH };

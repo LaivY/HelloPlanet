@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "loadingScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "mesh.h"
@@ -142,6 +143,7 @@ void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPt
 	LoadTextures(device, commandList);
 	LoadTextBurshes(d2dDeivceContext);
 	LoadTextFormats(dWriteFactory);
+	LoadAudios();
 
 	commandList->Close();
 	ID3D12CommandList* ppCommandList[]{ commandList.Get() };
@@ -319,4 +321,10 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
 		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 	}
+}
+
+void LoadingScene::LoadAudios()
+{
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/bgm.wav")), AudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/shot.wav")), AudioType::SOUND);
 }

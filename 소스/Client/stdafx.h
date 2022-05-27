@@ -7,6 +7,7 @@
 #define WIN32_LEAN_AND_MEAN
 
 // C/C++
+#include <xaudio2.h>
 #include <tchar.h>
 #include <windows.h>
 #include <wrl.h>
@@ -56,7 +57,10 @@ using namespace DirectX;
 #include "../Server/protocol.h"
 
 class GameFramework;
+class AudioEngine;
+
 extern GameFramework        g_gameFramework;                    // 게임프레임워크
+extern AudioEngine          g_audioEngine;                      // 사운드 출력 엔진
 extern UINT                 g_maxWidth;                         // 화면 전체 너비
 extern UINT                 g_maxHeight;                        // 화면 전체 높이
 extern UINT                 g_width;                            // 현재 화면 너비

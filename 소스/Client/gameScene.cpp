@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "gameScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "object.h"
@@ -52,6 +53,9 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	m_fullScreenQuad = make_unique<GameObject>();
 	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
 	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
+
+	// 배경음 재생
+	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };
