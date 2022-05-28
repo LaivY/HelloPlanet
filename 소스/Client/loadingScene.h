@@ -34,6 +34,7 @@ public:
 	void LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext);
 	void LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory);
+	void LoadAudios();
 
 private:
 	thread								m_thread;

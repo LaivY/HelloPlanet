@@ -166,6 +166,7 @@
     <ClInclude Include="scene.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="shadow.h" />
+    <ClInclude Include="audioEngine.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="textObject.h" />
@@ -220,6 +221,7 @@
     <ClCompile Include="shadow.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="audioEngine.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="textObject.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>

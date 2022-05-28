@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "loadingScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "mesh.h"
@@ -142,6 +143,7 @@ void LoadingScene::LoadResources(const ComPtr<ID3D12Device>& device, const ComPt
 	LoadTextures(device, commandList);
 	LoadTextBurshes(d2dDeivceContext);
 	LoadTextFormats(dWriteFactory);
+	LoadAudios();
 
 	commandList->Close();
 	ID3D12CommandList* ppCommandList[]{ commandList.Get() };
@@ -269,6 +271,10 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["HIT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/hit4.dds")));
 	s_textures["HIT"]->CreateTextureFromLoadedFiles(device);
 
+	s_textures["ARROW"] = make_shared<Texture>();
+	s_textures["ARROW"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/arrow.dds")));
+	s_textures["ARROW"]->CreateTextureFromLoadedFiles(device);
+
 	//s_textures["HPBARBASE"] = make_shared<Texture>();
 	//s_textures["HPBARBASE"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
 	//s_textures["HPBARBASE"]->CreateTexture(device);
@@ -319,4 +325,10 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
 		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 	}
+}
+
+void LoadingScene::LoadAudios()
+{
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/bgm.wav")), AudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/shot.wav")), AudioType::SOUND);
 }

@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "player.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "mesh.h"
 #include "scene.h"
@@ -455,6 +456,9 @@ void Player::Fire()
 
 	m_isFired = TRUE;
 	--m_bulletCount;
+
+	// 발사 효과음
+	g_audioEngine.Play(Utile::PATH(TEXT("Sound/shot.wav")));
 }
 
 void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)

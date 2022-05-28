@@ -98,6 +98,7 @@ struct MonsterData
 struct MonsterAttackData
 {
 	CHAR		id;			// 맞은 사람
+	CHAR		mobId;		// 때린 몬스터
 	CHAR		damage;		// 데미지
 };
 

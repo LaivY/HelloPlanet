@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "gameScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "object.h"
@@ -9,6 +10,8 @@
 #include "texture.h"
 #include "uiObject.h"
 #include "windowObject.h"
+
+unordered_map<INT, unique_ptr<Monster>> GameScene::s_monsters;
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -52,6 +55,10 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	m_fullScreenQuad = make_unique<GameObject>();
 	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
 	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
+
+	// 배경음 재생
+	g_audioEngine.SetVolume(AudioType::MUSIC, 0.1f);
+	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };
@@ -234,14 +241,14 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
-	for (auto& [_, m] : m_monsters)
-		m->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
 		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
+	for (auto& [_, m] : s_monsters)
+		m->Update(deltaTime);
 }
 
 
@@ -303,7 +310,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		if (p) p->Render(commandList);
 
 	// 몬스터 렌더링
-	for (const auto& [_, m] : m_monsters)
+	for (const auto& [_, m] : s_monsters)
 		m->Render(commandList);
 
 	// 플레이어 렌더링
@@ -339,6 +346,11 @@ void GameScene::ProcessClient()
 {
 	while (g_isConnected)
 		RecvPacket();
+}
+
+shared_ptr<Player> GameScene::GetPlayer() const
+{
+	return m_player;
 }
 
 void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -578,7 +590,7 @@ void GameScene::Update(FLOAT deltaTime)
 	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
 	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
 	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
-	erase_if(m_monsters, [](const auto& item) { return item.second->isDeleted(); });
+	erase_if(s_monsters, [](const auto& item) { return item.second->isDeleted(); });
 	lock.unlock();
 
 	PlayerCollisionCheck(deltaTime);
@@ -764,7 +776,7 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 		if (auto shadowShader{ object->GetShadowShader() })
 			object->Render(commandList, shadowShader);
 	}
-	for (const auto& [_, monster] : m_monsters)
+	for (const auto& [_, monster] : s_monsters)
 	{
 		auto shadowShader{ monster->GetShadowShader() };
 		if (shadowShader)
@@ -933,18 +945,18 @@ void GameScene::RecvUpdateMonster()
 		if (m.id < 0) continue;
 
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (m_monsters.find(m.id) == m_monsters.end())
+		if (s_monsters.find(m.id) == s_monsters.end())
 		{
 			unique_lock<mutex> lock{ g_mutex };
-			m_monsters[m.id] = make_unique<Monster>();
+			s_monsters[m.id] = make_unique<Monster>();
 			lock.unlock();
-			m_monsters[m.id]->SetMesh(s_meshes["GAROO"]);
-			m_monsters[m.id]->SetShader(s_shaders["ANIMATION"]);
-			m_monsters[m.id]->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-			m_monsters[m.id]->SetTexture(s_textures["GAROO"]);
-			m_monsters[m.id]->PlayAnimation("IDLE");
+			s_monsters[m.id]->SetMesh(s_meshes["GAROO"]);
+			s_monsters[m.id]->SetShader(s_shaders["ANIMATION"]);
+			s_monsters[m.id]->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
+			s_monsters[m.id]->SetTexture(s_textures["GAROO"]);
+			s_monsters[m.id]->PlayAnimation("IDLE");
 		}
-		m_monsters[m.id]->ApplyServerData(m);
+		s_monsters[m.id]->ApplyServerData(m);
 	}
 }
 
@@ -990,13 +1002,13 @@ void GameScene::RecvBulletHit()
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	if (m_monsters.find(static_cast<int>(data.mobId)) != m_monsters.end())
+	if (s_monsters.find(static_cast<int>(data.mobId)) != s_monsters.end())
 	{
 		wstring dmg{ to_wstring(m_player->GetDamage()) };
 
 		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
 		dmgText->SetCamera(m_camera);
-		dmgText->SetStartPosition(m_monsters[static_cast<int>(data.mobId)]->GetPosition());
+		dmgText->SetStartPosition(s_monsters[static_cast<int>(data.mobId)]->GetPosition());
 		m_textObjects.push_back(move(dmgText));
 	}
 }
@@ -1010,11 +1022,21 @@ void GameScene::RecvMosterAttack()
 
 	MonsterAttackData data{};
 	memcpy(&data, buf, sizeof(data));
+	if (m_player->GetId() != data.id) return;
 
-	if (m_player->GetId() == data.id)
-	{
-		m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
-	}
+	// 체력 감소
+	m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
+
+	// 테스트
+	auto hit{ make_unique<HitUIObject>(data.mobId) };
+	hit->SetMesh(s_meshes["UI"]);
+	hit->SetShader(s_shaders["UI"]);
+	hit->SetTexture(s_textures["ARROW"]);
+	hit->SetPivot(ePivot::CENTER);
+	hit->SetScreenPivot(ePivot::CENTER);
+	hit->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+	unique_lock<mutex> lock{ g_mutex };
+	m_uiObjects.push_back(move(hit));
 }
 
 void GameScene::RecvRoundResult()

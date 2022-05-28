@@ -73,6 +73,7 @@ public:
 	ComPtr<ID3D12Resource> GetDepthStencil() const;
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
+	Scene* GetScene() const;
 
 private:
 	static constexpr UINT				FrameCount = 3;

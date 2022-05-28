@@ -22,7 +22,7 @@ public:
 	void SendPlayerDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();
-	void SendMonsterAttackPacket(const int id, const int damage) const;
+	void SendMonsterAttackPacket(const int id, const int mobId, const int damage) const;
 	void SendRoundResultPacket(const eRoundResult result) const;
 	void SendPacket2AllPlayer(const void* packet, int bufSize) const;
 

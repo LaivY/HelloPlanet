@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 class Mesh;
+class Player;
 class Shader;
 class Texture;
 
@@ -58,6 +59,9 @@ public:
 
 	// 서버 통신 함수
 	virtual void ProcessClient();
+
+	// 게터
+	virtual shared_ptr<Player> GetPlayer() const;
 
 	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;
 	static unordered_map<string, shared_ptr<Shader>>	s_shaders;

@@ -132,7 +132,7 @@ void Monster::Update(FLOAT deltaTime)
 			if (range < 27.0f)
 			{
 				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
-				g_networkFramework.SendMonsterAttackPacket(m_target, 10);
+				g_networkFramework.SendMonsterAttackPacket(m_target, m_id, 10);
 				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
 			}
 			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;

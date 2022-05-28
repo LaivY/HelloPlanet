@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "uiObject.h"
 #include "framework.h"
+#include "gameScene.h"
 #include "player.h"
 #include "shader.h"
 #include "texture.h"
@@ -436,4 +437,45 @@ void RewardUIObject::Update(FLOAT deltaTime)
 		m_timer = min(0.5f, m_timer + deltaTime * 3.0f);
 	else
 		m_timer = max(0.0f, m_timer - deltaTime * 3.0f);
+}
+
+HitUIObject::HitUIObject(int monsterId) : m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
+{
+	SetWidth(50.0f);
+	SetHeight(50.0f);
+}
+
+void HitUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	float radius{ g_height * 0.4f };
+	SetPosition(XMFLOAT2{ radius * sinf(m_angle), radius * cosf(m_angle) });
+	Rotate(-m_roll + XMConvertToDegrees(-m_angle), 0.0f, 0.0f);
+	UIObject::Render(commandList);
+}
+
+void HitUIObject::Update(FLOAT deltaTime)
+{
+	if (GameScene::s_monsters.find(m_monsterId) == GameScene::s_monsters.end())
+	{
+		Delete();
+		return;
+	}
+
+	auto player{ g_gameFramework.GetScene()->GetPlayer() };
+	XMFLOAT3 monsterPosition{ GameScene::s_monsters.at(m_monsterId)->GetPosition() };
+	XMFLOAT3 v1{ player->GetLook() };
+	v1.y = 0.0f;
+	v1 = Vector3::Normalize(v1);
+
+	XMFLOAT3 v2{ Vector3::Sub(monsterPosition, player->GetPosition()) };
+	v2.y = 0.0f;
+	v2 = Vector3::Normalize(v2);
+
+	m_angle = XMVectorGetX(XMVector3AngleBetweenNormals(XMLoadFloat3(&v1), XMLoadFloat3(&v2)));
+	if (Vector3::Cross(v1, v2).y < 0)
+		m_angle = -m_angle;
+
+	m_timer -= deltaTime;
+	if (m_timer < 0.0f)
+		Delete();
 }

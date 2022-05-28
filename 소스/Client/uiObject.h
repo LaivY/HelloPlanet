@@ -115,5 +115,20 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 private:
+	FLOAT m_timer;
+};
+
+class HitUIObject : public UIObject
+{
+public:
+	HitUIObject(int monsterId);
+	~HitUIObject() = default;
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	INT		m_monsterId;
+	FLOAT	m_angle;
 	FLOAT	m_timer;
 };

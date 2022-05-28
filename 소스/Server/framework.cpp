@@ -254,14 +254,14 @@ void NetworkFramework::SendMonsterDataPacket()
 	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
 }
 
-void NetworkFramework::SendMonsterAttackPacket(const int id, const int damage) const
+void NetworkFramework::SendMonsterAttackPacket(const int id, const int mobId, const int damage) const
 {
 	sc_packet_monster_attack packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_MONSTER_ATTACK;
 	packet.data.id = static_cast<CHAR>(id);
+	packet.data.mobId = static_cast<CHAR>(mobId);
 	packet.data.damage = static_cast<CHAR>(damage);
-
 	SendPacket2AllPlayer(&packet, packet.size);
 }
 
