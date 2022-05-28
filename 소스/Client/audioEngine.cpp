@@ -93,7 +93,17 @@ void AudioEngine::Play(const wstring& fileName, bool isLoop)
 	audioData.pSourceVoice->Stop();
 	audioData.pSourceVoice->FlushSourceBuffers();
 	audioData.pSourceVoice->SubmitSourceBuffer(&audioData.buffer);
-	m_audios.at(fileName).pSourceVoice->Start();
+
+	switch (audioData.audioType)
+	{
+	case AudioType::MUSIC:
+		audioData.pSourceVoice->SetVolume(m_musicVolume);
+		break;
+	case AudioType::SOUND:
+		audioData.pSourceVoice->SetVolume(m_soundVolume);
+		break;
+	}
+	audioData.pSourceVoice->Start();
 }
 
 void AudioEngine::SetVolume(AudioType audioType, FLOAT volume)
@@ -103,6 +113,10 @@ void AudioEngine::SetVolume(AudioType audioType, FLOAT volume)
 		if (v.audioType != audioType) continue;
 		v.pSourceVoice->SetVolume(volume);
 	}
+	if (audioType == AudioType::MUSIC)
+		m_musicVolume = volume;
+	else if (audioType == AudioType::SOUND)
+		m_soundVolume = volume;
 }
 
 void AudioEngine::TurnOnVolume(FLOAT time)

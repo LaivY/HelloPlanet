@@ -300,8 +300,7 @@ void MainScene::CreateSettingWindow()
 		[&]()
 		{
 			m_windowObjects.back()->Delete();
-		}
-	);
+		});
 
 	auto text{ make_unique<TextObject>() };
 	text->SetBrush("BLACK");

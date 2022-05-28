@@ -767,6 +767,11 @@ ComPtr<ID3D12CommandQueue> GameFramework::GetCommandQueue() const
 	return m_commandQueue;
 }
 
+Scene* GameFramework::GetScene() const
+{
+	return m_scene.get();
+}
+
 HWND GameFramework::GetWindow() const
 {
 	return m_hWnd;

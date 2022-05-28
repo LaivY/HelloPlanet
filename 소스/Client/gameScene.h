@@ -35,6 +35,8 @@ public:
 
 	virtual void ProcessClient();
 
+	virtual shared_ptr<Player> GetPlayer() const;
+
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
@@ -66,6 +68,8 @@ public:
 	void SetPlayer(unique_ptr<Player>& player);
 	void SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
 
+	static unordered_map<INT, unique_ptr<Monster>> s_monsters;
+
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
@@ -86,5 +90,5 @@ private:
 	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
 	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
 	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
-	unordered_map<INT, unique_ptr<Monster>>	m_monsters;			// 몬스터들
+	//unordered_map<INT, unique_ptr<Monster>>	m_monsters;			// 몬스터들
 };
