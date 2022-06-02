@@ -209,6 +209,9 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 테두리
 	s_meshes["FULLSCREEN"] = make_shared<FullScreenQuadMesh>(device, commandList);
 
+	// 파티클
+	s_meshes["PARTICLE"] = make_shared<ParticleMesh>(device, commandList);
+
 	// 히트박스 메쉬
 	s_meshes["CUBE"] = make_shared<CubeMesh>(device, commandList, 1.0f, 1.0f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
@@ -231,6 +234,9 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 
 	// 외곽선
 	s_shaders["FULLSCREEN"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "VS", "PS");
+
+	// 파티클
+	s_shaders["PARTICLE"] = make_shared<ParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/particle.hlsl")), "VS", "GS_STREAM", "GS", "PS");
 
 	// 디버그
 	s_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");

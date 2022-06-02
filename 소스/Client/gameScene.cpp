@@ -441,6 +441,11 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
+
+	// 파티클
+	auto particle{ make_unique<Particle>() };
+	particle->SetPosition(XMFLOAT3{ 0.0f, 50.0f, 0.0f });
+	m_gameObjects.push_back(move(particle));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)

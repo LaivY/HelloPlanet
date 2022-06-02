@@ -66,16 +66,6 @@ float4 PS(PS_INPUT input) : SV_TARGET
     depths[7] = g_depth.Sample(g_sampler, input.uv      + ty);
     depths[8] = g_depth.Sample(g_sampler, input.uv + tx + ty);
 
-    // depths[0] = g_depth[uv - tx - ty].r;
-    // depths[1] = g_depth[uv      - ty].r;
-    // depths[2] = g_depth[uv + tx - ty].r;
-    // depths[3] = g_depth[uv - tx     ].r;
-    // depths[4] = g_depth[uv          ].r;
-    // depths[5] = g_depth[uv + tx     ].r;
-    // depths[6] = g_depth[uv - tx + ty].r;
-    // depths[7] = g_depth[uv      + ty].r;
-    // depths[8] = g_depth[uv + tx + ty].r;
-
     // 현재 픽셀의 스텐실 값과 다른 픽셀의 깊이 값이 
     // 현재 픽셀의 깊이 값보다 더 작다면(가까이 있다면)
     // 해당 픽셀의 스텐실 값을 현재 픽셀의 스텐실 값과 같은 것으로 취급함

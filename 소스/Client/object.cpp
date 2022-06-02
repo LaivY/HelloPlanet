@@ -356,6 +356,23 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
+Particle::Particle()
+{
+	m_mesh = Scene::s_meshes["PARTICLE"];
+	m_shader = Scene::s_shaders["PARTICLE"];
+}
+
+void Particle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	UpdateShaderVariable(commandList);
+	auto m{ reinterpret_cast<ParticleMesh*>(m_mesh.get()) };
+	auto s{ reinterpret_cast<ParticleShader*>(m_shader.get()) };
+	commandList->SetPipelineState(s->GetStreamPipelineState().Get());
+	m->RenderStreamOutput(commandList);
+	commandList->SetPipelineState(s->GetPipelineState().Get());
+	m->Render(commandList);
+}
+
 Hitbox::Hitbox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT3& rollPitchYaw) : m_owner{ nullptr }, m_center{ center }, m_extents{ extents }, m_rollPitchYaw{ rollPitchYaw }
 {
 	m_hitbox = make_unique<GameObject>();

@@ -55,3 +55,15 @@ public:
 	WireframeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
 	~WireframeShader() = default;
 };
+
+class ParticleShader : public Shader
+{
+public:
+	ParticleShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& streamGs, const string& gs, const string& ps);
+	~ParticleShader() = default;
+
+	ComPtr<ID3D12PipelineState> GetStreamPipelineState() const;
+
+private:
+	ComPtr<ID3D12PipelineState> m_streamPipelineState;
+};

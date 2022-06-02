@@ -8,7 +8,7 @@ Texture2D<float> g_depth				: register(t2);
 Texture2D<uint2> g_stencil				: register(t3);
 
 SamplerState g_sampler                  : register(s0);
-SamplerComparisonState g_shadowSampler  : register(s1);
+SamplerComparisonState g_shadowSampler	: register(s1);
 
 cbuffer cbGameObject : register(b0)
 {
