@@ -576,7 +576,7 @@ FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
-constexpr size_t PARTICLE_COUNT{ 5000 };
+constexpr size_t PARTICLE_COUNT{ 1000 };
 ParticleMesh::ParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList) : m_pFilledSize{ nullptr }, m_streamOutputBufferView{}
 {
 	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
@@ -585,7 +585,9 @@ ParticleMesh::ParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D
 	for (int i = 0; i < PARTICLE_COUNT; ++i)
 	{
 		ParticleVertex v{};
-		v.position = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+		v.position.x = Utile::Random(-800.0f, 800.0f);
+		v.position.y = Utile::Random(-100.0f, 100.0f);
+		v.position.z = Utile::Random(-800.0f, 800.0f);
 		v.direction = XMFLOAT3{ Utile::Random(-1.0f, 1.0f), Utile::Random(-1.0f, 1.0f), Utile::Random(-1.0f, 1.0f) };
 		v.direction = Vector3::Normalize(v.direction);
 		v.speed = Utile::Random(40.0f, 50.0f);

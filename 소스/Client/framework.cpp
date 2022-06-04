@@ -555,6 +555,8 @@ void GameFramework::Update(FLOAT deltaTime)
 
 	// 상수버퍼
 	m_cbGameFrameworkData->deltaTime = deltaTime;
+	m_cbGameFrameworkData->screenWidth = g_width;
+	m_cbGameFrameworkData->screenWidth = g_height;
 
 	// 후처리 상수버퍼
 	if (m_cbPostGameFrameworkData->fadeType == -1 &&

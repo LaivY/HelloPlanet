@@ -444,7 +444,6 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 	// 파티클
 	auto particle{ make_unique<Particle>() };
-	particle->SetPosition(XMFLOAT3{ 0.0f, 50.0f, 0.0f });
 	m_gameObjects.push_back(move(particle));
 }
 
