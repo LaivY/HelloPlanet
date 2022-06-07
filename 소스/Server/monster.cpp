@@ -151,7 +151,7 @@ void Monster::SetId(CHAR id)
 	m_id = id;
 }
 
-void Monster::SetType(CHAR type)
+void Monster::SetType(eMobType type)
 {
 	m_type = type;
 }
@@ -190,9 +190,6 @@ void Monster::SetRandomPosition()
 		{300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, -300.0f}, {300.0f, 0.0f, -300.0f} };
 	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
 }
-
-
-
 
 MonsterData Monster::GetData() const
 {

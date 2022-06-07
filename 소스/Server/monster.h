@@ -11,7 +11,7 @@ public:
 	void Update(FLOAT deltaTime);
 
 	void SetId(CHAR id);
-	void SetType(CHAR type);
+	void SetType(eMobType type);
 	void SetAnimationType(eMobAnimationType type);
 	void SetPosition(const DirectX::XMFLOAT3& position);
 	void SetYaw(FLOAT yaw);
@@ -31,7 +31,7 @@ public:
 private:
 	// 클라이언트로 보낼 데이터들
 	CHAR							m_id;
-	CHAR							m_type;
+	eMobType						m_type;
 	eMobAnimationType				m_aniType;
 	DirectX::XMFLOAT3				m_position;
 	DirectX::XMFLOAT3				m_velocity;

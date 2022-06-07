@@ -6,7 +6,7 @@
 #include "shader.h"
 #include "texture.h"
 
-GameObject::GameObject() : m_isDeleted{ FALSE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
+GameObject::GameObject() : m_isValid{ TRUE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -23,9 +23,6 @@ void GameObject::Update(FLOAT deltaTime)
 	// 텍스쳐 타이머 진행
 	if (m_texture && m_textureInfo)
 	{
-		// 타이머 진행
-		m_textureInfo->timer += deltaTime;
-
 		// 프레임 증가
 		if (m_textureInfo->timer > m_textureInfo->interver)
 		{
@@ -36,14 +33,17 @@ void GameObject::Update(FLOAT deltaTime)
 		// 텍스쳐 애니메이션이 마지막일 경우
 		if (m_textureInfo->frame >= m_texture->GetTextureCount())
 		{
-			if (m_textureInfo->doRepeat)
+			if (m_textureInfo->loop)
 				m_textureInfo->frame = 0;
 			else
 			{
 				m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
-				m_isDeleted = true;
+				m_isValid = FALSE;
 			}
 		}
+
+		// 타이머 진행
+		m_textureInfo->timer += deltaTime;
 	}
 
 	// 애니메이션 타이머 진행
@@ -134,7 +134,7 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 
 void GameObject::Delete()
 {
-	m_isDeleted = TRUE;
+	m_isValid = FALSE;
 }
 
 void GameObject::SetOutline(BOOL isMakeOutline)
@@ -202,9 +202,9 @@ void GameObject::AddHitbox(unique_ptr<Hitbox>& hitbox)
 	m_hitboxes.push_back(move(hitbox));
 }
 
-BOOL GameObject::isDeleted() const
+BOOL GameObject::isValid() const
 {
-	return m_isDeleted;
+	return m_isValid;
 }
 
 BOOL GameObject::isMakeOutline() const
@@ -296,7 +296,25 @@ void Bullet::Update(FLOAT deltaTime)
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
-		m_isDeleted = TRUE;
+		Delete();
+}
+
+Monster::Monster(INT id, eMobType type) : m_id{ id }
+{
+	switch (type)
+	{
+	case eMobType::GAROO:
+		SetMesh(Scene::s_meshes["GAROO"]);
+		SetTexture(Scene::s_textures["GAROO"]);
+		break;
+	case eMobType::SERPENT:
+		SetMesh(Scene::s_meshes["SERPENT"]);
+		SetTexture(Scene::s_textures["SERPENT"]);
+		break;
+	}
+	SetShader(Scene::s_shaders["ANIMATION"]);
+	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);
+	PlayAnimation("IDLE");
 }
 
 void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
@@ -308,7 +326,7 @@ void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
 		case eAnimationState::PLAY:
 			if (m_animationInfo->currAnimationName == "DIE")
 			{
-				m_isDeleted = TRUE;
+				Delete();
 				break;
 			}
 			PlayAnimation(m_animationInfo->currAnimationName);
@@ -330,6 +348,10 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	case eMobAnimationType::IDLE:
 		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
 			PlayAnimation("IDLE", TRUE);
+		break;
+	case eMobAnimationType::WALKING:
+		if (m_animationInfo->currAnimationName != "WALKING" && m_animationInfo->afterAnimationName != "WALKING")
+			PlayAnimation("WALKING", TRUE);
 		break;
 	case eMobAnimationType::RUNNING:
 		if (m_animationInfo->currAnimationName != "RUNNING" && m_animationInfo->afterAnimationName != "RUNNING")

@@ -470,7 +470,7 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		Monster m;
 		m.SetId(m_lastMobId);
 		m.SetHp(100);
-		m.SetType(0);
+		m.SetType(eMobType::GAROO);
 		m.SetAnimationType(eMobAnimationType::IDLE);
 		m.SetRandomPosition();
 		m.SetTargetId(DetectPlayer(m.GetPosition()));

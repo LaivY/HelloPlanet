@@ -60,12 +60,12 @@ void UIObject::Update(FLOAT deltaTime)
 	}
 	if (m_textureInfo->frame >= m_texture->GetTextureCount())
 	{
-		if (m_textureInfo->doRepeat)
+		if (m_textureInfo->loop)
 			m_textureInfo->frame = 0;
 		else
 		{
 			m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
-			m_isDeleted = true;
+			Delete();
 		}
 	}
 }
@@ -447,22 +447,21 @@ HitUIObject::HitUIObject(int monsterId) : m_monsterId{ monsterId }, m_angle{ 0.0
 
 void HitUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
-	float radius{ g_height * 0.4f };
-	SetPosition(XMFLOAT2{ radius * sinf(m_angle), radius * cosf(m_angle) });
-	Rotate(-m_roll + XMConvertToDegrees(-m_angle), 0.0f, 0.0f);
 	UIObject::Render(commandList);
 }
 
 void HitUIObject::Update(FLOAT deltaTime)
 {
-	if (GameScene::s_monsters.find(m_monsterId) == GameScene::s_monsters.end())
+	if (!GameScene::s_monsters.contains(m_monsterId))
 	{
 		Delete();
 		return;
 	}
 
 	auto player{ g_gameFramework.GetScene()->GetPlayer() };
-	XMFLOAT3 monsterPosition{ GameScene::s_monsters.at(m_monsterId)->GetPosition() };
+	auto& monster{ GameScene::s_monsters.at(m_monsterId) };
+
+	XMFLOAT3 monsterPosition{ monster->GetPosition() };
 	XMFLOAT3 v1{ player->GetLook() };
 	v1.y = 0.0f;
 	v1 = Vector3::Normalize(v1);
@@ -475,7 +474,10 @@ void HitUIObject::Update(FLOAT deltaTime)
 	if (Vector3::Cross(v1, v2).y < 0)
 		m_angle = -m_angle;
 
+	float radius{ g_height * 0.4f };
+	SetPosition(XMFLOAT2{ radius * sinf(m_angle), radius * cosf(m_angle) });
+	Rotate(-m_roll + XMConvertToDegrees(-m_angle), 0.0f, 0.0f);
+
 	m_timer -= deltaTime;
-	if (m_timer < 0.0f)
-		Delete();
+	if (m_timer < 0.0f) Delete();
 }

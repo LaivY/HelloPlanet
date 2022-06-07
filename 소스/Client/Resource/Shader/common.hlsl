@@ -38,8 +38,8 @@ cbuffer cbScene : register(b3)
 cbuffer cbGameFramework : register(b4)
 {
 	float g_deltaTime;
-	float g_screenWidth;
-	float g_screenHeight;
+	uint g_screenWidth;
+	uint g_screenHeight;
 }
 
 struct VS_INPUT

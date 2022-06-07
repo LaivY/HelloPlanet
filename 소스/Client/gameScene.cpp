@@ -590,11 +590,11 @@ void GameScene::CloseWindow()
 void GameScene::Update(FLOAT deltaTime)
 {
 	unique_lock<mutex> lock{ g_mutex };
-	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return object->isDeleted(); });
-	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return object->isDeleted(); });
-	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return object->isDeleted(); });
-	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
-	erase_if(s_monsters, [](const auto& item) { return item.second->isDeleted(); });
+	erase_if(m_gameObjects, [](unique_ptr<GameObject>& object) { return !object->isValid(); });
+	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return !object->isValid(); });
+	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return !object->isValid(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
+	erase_if(s_monsters, [](const auto& item) { return !item.second->isValid(); });
 	lock.unlock();
 
 	PlayerCollisionCheck(deltaTime);
@@ -943,23 +943,20 @@ void GameScene::RecvUpdateMonster()
 	array<MonsterData, MAX_MONSTER> monsters{};
 	memcpy(monsters.data(), subBuf, sizeof(MonsterData) * MAX_MONSTER);
 
-	for (const MonsterData& m : monsters)
+	for (MonsterData& m : monsters)
 	{
 		// id가 0보다 작으면 유효하지 않음
 		if (m.id < 0) continue;
 
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (s_monsters.find(m.id) == s_monsters.end())
+		if (!s_monsters.contains(m.id))
 		{
 			unique_lock<mutex> lock{ g_mutex };
-			s_monsters[m.id] = make_unique<Monster>();
+			s_monsters.insert(make_pair(m.id, make_unique<Monster>(m.id, m.type)));
 			lock.unlock();
-			s_monsters[m.id]->SetMesh(s_meshes["GAROO"]);
-			s_monsters[m.id]->SetShader(s_shaders["ANIMATION"]);
-			s_monsters[m.id]->SetShadowShader(s_shaders["SHADOW_ANIMATION"]);
-			s_monsters[m.id]->SetTexture(s_textures["GAROO"]);
-			s_monsters[m.id]->PlayAnimation("IDLE");
 		}
+		if (m.aniType == eMobAnimationType::RUNNING)
+			m.aniType = eMobAnimationType::WALKING;
 		s_monsters[m.id]->ApplyServerData(m);
 	}
 }
@@ -994,7 +991,7 @@ void GameScene::RecvBulletHit()
 	memcpy(&data, buf, sizeof(data));
 
 	auto textureInfo{ make_unique<TextureInfo>() };
-	textureInfo->doRepeat = FALSE;
+	textureInfo->loop = FALSE;
 	textureInfo->interver = 1.0f / 30.0f;
 
 	auto hitEffect{ make_unique<UIObject>(50.0f, 50.0f) };

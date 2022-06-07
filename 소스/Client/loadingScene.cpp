@@ -190,6 +190,14 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt"), "WALKBACK");
 	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt"), "WALKING");
 
+	s_meshes["SERPENT"] = make_shared<Mesh>();
+	s_meshes["SERPENT"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/AlienSerpent.bin"));
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/attack.bin"), "ATTACK");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/die.bin"), "DIE");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/hit.bin"), "HIT");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/idle.bin"), "IDLE");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/walking.bin"), "WALKING");
+
 	// 게임오브젝트 관련 로딩
 	s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
 	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
@@ -251,6 +259,10 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["GAROO"] = make_shared<Texture>();
 	s_textures["GAROO"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
 	s_textures["GAROO"]->CreateTextureFromLoadedFiles(device);
+
+	s_textures["SERPENT"] = make_shared<Texture>();
+	s_textures["SERPENT"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienSerpent/texture.dds")));
+	s_textures["SERPENT"]->CreateTextureFromLoadedFiles(device);
 
 	s_textures["OBJECT0"] = make_shared<Texture>();
 	s_textures["OBJECT0"]->LoadTextureFile(device, commandList, 5, Utile::PATH(TEXT("Object/texture0.dds")));

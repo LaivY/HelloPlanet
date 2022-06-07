@@ -135,7 +135,7 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 
 void MainScene::Update(FLOAT deltaTime)
 {
-	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
 	UpdateCameraPosition(deltaTime);
 	UpdateShadowMatrix();
 }

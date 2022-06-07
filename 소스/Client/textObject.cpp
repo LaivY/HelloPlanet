@@ -9,7 +9,7 @@ unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
 TextObject::TextObject() 
-	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
+	: m_isValid{ TRUE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
 	  m_position{}, m_pivotPosition{}, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
 {
 
@@ -28,18 +28,17 @@ void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	device->DrawText(
-		m_text.c_str(),
-		static_cast<UINT32>(m_text.size()),
-		s_formats[m_format].Get(),
-		&m_rect,
-		s_brushes[m_brush].Get()
-	);
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_brush].Get());
 }
 
 void TextObject::Update(FLOAT deltaTime)
 {
 
+}
+
+void TextObject::Delete()
+{
+	m_isValid = FALSE;
 }
 
 void TextObject::CalcWidthHeight()
@@ -81,11 +80,11 @@ void TextObject::SetFormat(const string& format)
 void TextObject::SetText(const wstring& text)
 {
 	m_text = text;
-	if (!m_brush.empty() && !m_format.empty())
-	{
-		CalcWidthHeight();
-		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
-	}
+	if (m_brush.empty()) return;
+	if (m_format.empty()) return;
+
+	CalcWidthHeight();
+	m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
 }
 
 void TextObject::SetPivot(const ePivot& pivot)
@@ -178,9 +177,9 @@ void TextObject::SetScreenPivot(const ePivot& pivot)
 	m_screenPivot = pivot;
 }
 
-BOOL TextObject::isDeleted() const
+BOOL TextObject::isValid() const
 {
-	return m_isDeleted;
+	return m_isValid;
 }
 
 wstring TextObject::GetText() const
@@ -463,7 +462,7 @@ void DamageTextObject::Update(FLOAT deltaTime)
 
 	m_timer += deltaTime;
 	if (m_timer >= lifeTime)
-		m_isDeleted = TRUE;
+		Delete();
 }
 
 void DamageTextObject::SetCamera(const shared_ptr<Camera>& camera)

@@ -16,6 +16,8 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
+	void Delete();
+
 	void CalcWidthHeight();
 	void SetRect(const D2D1_RECT_F& rect);
 	void SetBrush(const string& brush);
@@ -25,7 +27,7 @@ public:
 	void SetScreenPivot(const ePivot& pivot);
 	void SetPosition(const XMFLOAT2& position);
 
-	BOOL isDeleted() const;
+	BOOL isValid() const;
 	wstring GetText() const;
 	ePivot GetPivot() const;
 	ePivot GetScreenPivot() const;
@@ -38,7 +40,7 @@ public:
 	static unordered_map<string, ComPtr<IDWriteTextFormat>>		s_formats;
 
 protected:
-	BOOL		m_isDeleted;
+	BOOL		m_isValid;
 	BOOL		m_isMouseOver;
 
 	D2D1_RECT_F	m_rect;

@@ -428,7 +428,7 @@ void LobbyScene::CloseWindow()
 
 void LobbyScene::Update(FLOAT deltaTime)
 {
-	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
 	UpdateShadowMatrix();
 }
 

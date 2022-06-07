@@ -39,6 +39,11 @@ enum class eUpperAnimationType : char
 	NONE, RELOAD, FIRING
 };
 
+enum class eMobType : char
+{
+	GAROO, SERPENT
+};
+
 enum class eMobAnimationType : char
 {
 	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE
@@ -88,7 +93,7 @@ struct BulletHitData
 struct MonsterData
 {
 	CHAR				id;			// 몬스터 고유 번호
-	CHAR				type;		// 몬스터 타입
+	eMobType			type;		// 몬스터 타입
 	eMobAnimationType	aniType;	// 애니메이션 종류
 	DirectX::XMFLOAT3	pos;		// 위치
 	DirectX::XMFLOAT3	velocity;	// 속도

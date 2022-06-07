@@ -7,8 +7,8 @@ class Timer;
 struct cbGameFramework
 {
 	FLOAT deltaTime;
-	FLOAT screenWidth;
-	FLOAT screenHeight;
+	UINT screenWidth;
+	UINT screenHeight;
 };
 
 struct cbPostGameFramework
