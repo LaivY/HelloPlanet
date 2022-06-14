@@ -10,6 +10,7 @@
 #include "lobbyScene.h"
 #include "mainScene.h"
 #include "timer.h"
+#include "texture.h"
 
 GameFramework::GameFramework() 
 	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
@@ -427,7 +428,7 @@ void GameFramework::CreateRootSignature()
 	rootParameter[7].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<float> g_detph : t2
 	rootParameter[8].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<uint2> g_stencil : t3
 
-	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
+	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2]{};
 	samplerDesc[0].Init(
 		0,								 				// ShaderRegister
 		D3D12_FILTER_MIN_MAG_MIP_LINEAR, 				// filter
@@ -464,11 +465,11 @@ void GameFramework::CreateRootSignature()
 
 void GameFramework::CreatePostRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	CD3DX12_DESCRIPTOR_RANGE ranges[2]{};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[3];
+	CD3DX12_ROOT_PARAMETER rootParameter[3]{};
 	rootParameter[0].InitAsConstantBufferView(0);			// cbGameFramework : b0
 	rootParameter[1].InitAsDescriptorTable(1, &ranges[0]);	// Texture2D g_input : t0;
 	rootParameter[2].InitAsDescriptorTable(1, &ranges[1]);	// RWTexture2D<float4> g_output : u0;
@@ -577,6 +578,9 @@ void GameFramework::UpdateShaderVariable() const
 {
 	memcpy(m_pcbGameFramework, m_cbGameFrameworkData.get(), sizeof(cbGameFramework));
 	m_commandList->SetGraphicsRootConstantBufferView(4, m_cbGameFramework->GetGPUVirtualAddress());
+
+	ID3D12DescriptorHeap* ppHeaps[]{ Texture::s_srvHeap.Get() };
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 }
 
 void GameFramework::UpdatePostShaderVariable() const
@@ -617,6 +621,7 @@ void GameFramework::PopulateCommandList() const
 	}
 
 	// 페이드 인/아웃
+	if (m_cbPostGameFrameworkData->fadeType != 0)
 	{
 		m_commandList->SetComputeRootSignature(m_postRootSignature.Get());
 		UpdatePostShaderVariable();
@@ -678,13 +683,13 @@ void GameFramework::ChangeScene()
 	case eSceneType::GAME:
 	{
 		// 로비 씬에서 만든 플레이어와 멀티플레이어를 게임씬으로 옮김
-		auto scene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
-		auto nextScene{ make_unique<GameScene>() };
-		auto& player{ scene->GetPlayer() };
+		auto lobbyScene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
+		auto gameScene{ make_unique<GameScene>() };
+		auto& player{ lobbyScene->GetPlayer() };
 		player->SetIsMultiplayer(FALSE);
-		nextScene->SetPlayer(player);
-		nextScene->SetMultiPlayers(scene->GetMultiPlayers());
-		m_scene = move(nextScene);
+		gameScene->SetPlayer(player);
+		gameScene->SetMultiPlayers(lobbyScene->GetMultiPlayers());
+		m_scene = move(gameScene);
 		break;
 	}
 	}

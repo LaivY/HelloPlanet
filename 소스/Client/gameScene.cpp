@@ -5,7 +5,6 @@
 #include "framework.h"
 #include "object.h"
 #include "player.h"
-#include "shadow.h"
 #include "textObject.h"
 #include "texture.h"
 #include "uiObject.h"
@@ -42,21 +41,14 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
 
-	// 그림자맵
-	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
+	// 외곽선을 위한 깊이, 스텐실 버퍼 텍스쳐
+	s_textures["DEPTH"] = make_unique<Texture>();
+	s_textures["DEPTH"]->Create(device, DXGI_FORMAT_R24G8_TYPELESS, g_width, g_height, 7, eTextureType::DEPTH);
+	s_textures["STENCIL"] = make_unique<Texture>();
+	s_textures["STENCIL"]->Create(device, DXGI_FORMAT_R24G8_TYPELESS, g_width, g_height, 8, eTextureType::STENCIL);
+	Texture::CreateShaderResourceView(device);
 
-	// 외곽선
-	m_depthTexture = make_unique<Texture>();
-	m_depthTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_R24_UNORM_X8_TYPELESS, g_width, g_height, 7);
-
-	m_stencilTexture = make_unique<Texture>();
-	m_stencilTexture->CreateTexture(device, DXGI_FORMAT_R24G8_TYPELESS, DXGI_FORMAT_X24_TYPELESS_G8_UINT, g_width, g_height, 8);
-
-	m_fullScreenQuad = make_unique<GameObject>();
-	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
-	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
-
-	// 배경음 재생
+	// 오디오 엔진
 	g_audioEngine.SetVolume(AudioType::MUSIC, 0.1f);
 	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 
@@ -274,9 +266,6 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 외곽선이 있는 게임오브젝트들 렌더링
-	//RenderOutlineObjects(commandList);
-
 	// 외곽선을 그릴 게임오브젝트 렌더링
 	UINT stencilRef{ 1 };
 	unique_lock<mutex> lock{ g_mutex };
@@ -288,16 +277,15 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	}
 
 	// 외곽선 렌더링
-	m_depthTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	m_depthTexture->UpdateShaderVariable(commandList);
-	m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	m_stencilTexture->UpdateShaderVariable(commandList);
+	s_textures["DEPTH"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	s_textures["DEPTH"]->UpdateShaderVariable(commandList);
+	s_textures["STENCIL"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	s_textures["STENCIL"]->UpdateShaderVariable(commandList);
 	m_fullScreenQuad->Render(commandList);
 
-	// 그림자맵을 읽을 수 있도록 서술자힙 재설정
-	// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	//ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
+	//commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	//commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
 
 	// 외곽선 없는 게임오브젝트들 렌더링
 	commandList->OMSetStencilRef(0);
@@ -441,6 +429,11 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetMesh(s_meshes["FLOOR"]);
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
+
+	// 화면을 가득 채우는 사각형
+	m_fullScreenQuad = make_unique<GameObject>();
+	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
+	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
 
 	// 파티클
 	auto particle{ make_unique<Particle>() };
@@ -753,25 +746,24 @@ void GameScene::UpdateShadowMatrix()
 
 void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	if (!m_shadowMap) return;
+	if (!s_textures.contains("SHADOW")) return;
+	auto shadowTexture{ reinterpret_cast<ShadowTexture*>(s_textures["SHADOW"].get()) };
 
 	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	commandList->RSSetViewports(1, &shadowTexture->GetViewport());
+	commandList->RSSetScissorRects(1, &shadowTexture->GetScissorRect());
 
 	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	shadowTexture->UpdateShaderVariable(commandList);
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	commandList->ClearDepthStencilView(shadowTexture->GetDsvCpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &shadowTexture->GetDsvCpuHandle());
 
 	// 렌더링
 	unique_lock<mutex> lock{ g_mutex };
@@ -800,33 +792,7 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	}
 
 	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
-}
-
-void GameScene::RenderOutlineObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
-{
-	//// 외곽선을 그릴 게임오브젝트 렌더링
-	//UINT stencilRef{ 1 };
-	//unique_lock<mutex> lock{ g_mutex };
-	//for (const auto& o : m_gameObjects
-	//	| views::filter([](const auto& o) { return o->isMakeOutline(); }))
-	//{
-	//	commandList->OMSetStencilRef(stencilRef++);
-	//	o->Render(commandList);
-	//}
-	//lock.unlock();
-	//commandList->OMSetStencilRef(0);
-
-	//// 외곽선 렌더링
-	//m_stencilTexture->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	//m_stencilTexture->UpdateShaderVariable(commandList);
-	//m_fullScreenQuad->Render(commandList);
-
-	//// 그림자맵을 읽을 수 있도록 서술자힙 재설정
-	//// 왜 이렇게 해줘야 플레이어를 렌더링할 때 그림자가 제대로 적용되는지 모르겠음...
-	//ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	//commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	////commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 void GameScene::RecvPacket()

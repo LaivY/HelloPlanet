@@ -31,13 +31,13 @@ void GameObject::Update(FLOAT deltaTime)
 		}
 
 		// 텍스쳐 애니메이션이 마지막일 경우
-		if (m_textureInfo->frame >= m_texture->GetTextureCount())
+		if (m_textureInfo->frame >= m_texture->GetCount())
 		{
 			if (m_textureInfo->loop)
 				m_textureInfo->frame = 0;
 			else
 			{
-				m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
+				m_textureInfo->frame = static_cast<int>(m_texture->GetCount() - 1);
 				m_isValid = FALSE;
 			}
 		}

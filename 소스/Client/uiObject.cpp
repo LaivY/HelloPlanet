@@ -58,13 +58,13 @@ void UIObject::Update(FLOAT deltaTime)
 		m_textureInfo->frame += static_cast<int>(m_textureInfo->timer / m_textureInfo->interver);
 		m_textureInfo->timer = fmod(m_textureInfo->timer, m_textureInfo->interver);
 	}
-	if (m_textureInfo->frame >= m_texture->GetTextureCount())
+	if (m_textureInfo->frame >= m_texture->GetCount())
 	{
 		if (m_textureInfo->loop)
 			m_textureInfo->frame = 0;
 		else
 		{
-			m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
+			m_textureInfo->frame = static_cast<int>(m_texture->GetCount() - 1);
 			Delete();
 		}
 	}

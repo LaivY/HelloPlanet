@@ -68,7 +68,6 @@ private:
 	cbGameScene*						m_pcbGameScene;
 	unique_ptr<cbGameScene>				m_cbGameSceneData;
 
-	unique_ptr<ShadowMap>				m_shadowMap;
 	unique_ptr<Skybox>					m_skybox;
 	shared_ptr<Camera>					m_camera;
 	shared_ptr<Camera>					m_uiCamera;

@@ -4,10 +4,10 @@
 #include "framework.h"
 #include "object.h"
 #include "player.h"
-#include "shadow.h"
 #include "textObject.h"
 #include "uiObject.h"
 #include "windowObject.h"
+#include "texture.h"
 
 MainScene::MainScene() : m_pcbGameScene{ nullptr }
 {
@@ -29,7 +29,6 @@ void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
-	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 }
 
 void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -464,25 +463,24 @@ void MainScene::UpdateShadowMatrix()
 
 void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	if (!m_shadowMap) return;
+	if (!s_textures.contains("SHADOW")) return;
+	auto shadowTexture{ reinterpret_cast<ShadowTexture*>(s_textures["SHADOW"].get()) };
 
 	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	commandList->RSSetViewports(1, &shadowTexture->GetViewport());
+	commandList->RSSetScissorRects(1, &shadowTexture->GetScissorRect());
 
 	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	shadowTexture->UpdateShaderVariable(commandList);
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	commandList->ClearDepthStencilView(shadowTexture->GetDsvCpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &shadowTexture->GetDsvCpuHandle());
 
 	// 렌더링
 	for (const auto& o : m_gameObjects)
@@ -495,5 +493,5 @@ void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 		p->RenderToShadowMap(commandList);
 
 	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }

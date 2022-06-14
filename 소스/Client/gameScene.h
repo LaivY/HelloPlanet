@@ -52,7 +52,6 @@ public:
 	void UpdateShadowMatrix();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void RenderOutlineObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 	void RecvPacket();
 	void RecvLoginOk();
@@ -75,11 +74,7 @@ private:
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
 	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
 
-	unique_ptr<ShadowMap>					m_shadowMap;		// 그림자맵
-	unique_ptr<Texture>						m_depthTexture;		// 깊이 버퍼 텍스쳐
-	unique_ptr<Texture>						m_stencilTexture;	// 스텐실 버퍼 텍스쳐
 	unique_ptr<GameObject>					m_fullScreenQuad;	// 화면을 가득 채우는 사각형
-
 	unique_ptr<Skybox>						m_skybox;			// 스카이박스
 	shared_ptr<Camera>						m_camera;			// 카메라
 	unique_ptr<Camera>						m_uiCamera;			// UI 카메라
@@ -90,5 +85,4 @@ private:
 	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
 	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
 	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
-	//unordered_map<INT, unique_ptr<Monster>>	m_monsters;			// 몬스터들
 };
