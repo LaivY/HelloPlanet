@@ -46,20 +46,22 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 25 + 11 + 10 + 4 + 5 };
-	size_t currResourceCount{};
+	constexpr size_t allResourceCount{ 26 + 14 + 14 + 4 + 5 };
+	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
 	currResourceCount += s_textures.size();
 	currResourceCount += TextObject::s_brushes.size();
 	currResourceCount += TextObject::s_formats.size();
 
+	// 로딩바 최신화
 	if (m_loadingBarObject)
 	{
 		float width{ 200.0f * static_cast<float>(currResourceCount) / static_cast<float>(allResourceCount) };
 		m_loadingBarObject->SetWidth(width);
 	}
 
+	// 로딩이 끝났으면 다음 씬으로
 	if (m_isDone && m_thread.joinable())
 	{
 		m_thread.join();
@@ -107,6 +109,7 @@ void LoadingScene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComP
 
 void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
+	// UI 카메라
 	XMFLOAT4X4 projMatrix{};
 	m_camera = make_unique<Camera>();
 	m_camera->CreateShaderVariable(device, commandList);
@@ -115,8 +118,6 @@ void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const Com
 
 	// 로딩바 베이스
 	auto loadingBarBase{ make_unique<UIObject>(200.0f, 10.0f) };
-	loadingBarBase->SetMesh(s_meshes["UI"]);
-	loadingBarBase->SetShader(s_shaders["UI"]);
 	loadingBarBase->SetTexture(s_textures["HPBARBASE"]);
 	loadingBarBase->SetPivot(ePivot::LEFTCENTER);
 	loadingBarBase->SetScreenPivot(ePivot::RIGHTBOT);
@@ -125,8 +126,6 @@ void LoadingScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const Com
 
 	// 로딩바
 	m_loadingBarObject = make_unique<UIObject>(200.0f, 10.0f);
-	m_loadingBarObject->SetMesh(s_meshes["UI"]);
-	m_loadingBarObject->SetShader(s_shaders["UI"]);
 	m_loadingBarObject->SetTexture(s_textures["HPBAR"]);
 	m_loadingBarObject->SetPivot(ePivot::LEFTCENTER);
 	m_loadingBarObject->SetScreenPivot(ePivot::RIGHTBOT);
@@ -285,6 +284,10 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 
 	s_textures["ARROW"] = make_shared<Texture>();
 	s_textures["ARROW"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/arrow.dds")));
+
+	// UI 외곽선
+	s_textures["OUTLINE"] = make_shared<Texture>();
+	s_textures["OUTLINE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/outline.dds")));
 }
 
 void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext)
@@ -314,7 +317,7 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 	}
 
 	// 오른쪽 정렬 포멧
-	for (int size : { 24, 36, 48 })
+	for (int size : { 24, 32, 36, 48 })
 	{
 		DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 			TEXT("나눔바른고딕OTF"), NULL,

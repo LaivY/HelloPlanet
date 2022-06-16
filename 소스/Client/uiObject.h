@@ -13,7 +13,6 @@ enum class ePivot
 class UIObject : public GameObject
 {
 public:
-	UIObject();
 	UIObject(FLOAT width, FLOAT height);
 	virtual ~UIObject() = default;
 

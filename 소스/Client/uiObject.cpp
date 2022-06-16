@@ -3,16 +3,15 @@
 #include "framework.h"
 #include "gameScene.h"
 #include "player.h"
+#include "scene.h"
 #include "shader.h"
 #include "texture.h"
 
-UIObject::UIObject() : m_isFitToScreen{ FALSE }, m_pivot { ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
-{
-
-}
-
 UIObject::UIObject(FLOAT width, FLOAT height) : m_isFitToScreen{ FALSE }, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{ width }, m_height{ height }, m_pivotPosition{}, m_scale{ 1.0f, 1.0f }
 {
+	SetShader(Scene::s_shaders["UI"]);
+	SetMesh(Scene::s_meshes["UI"]);
+
 	m_worldMatrix._11 = width;
 	m_worldMatrix._22 = height;
 }
@@ -284,7 +283,7 @@ CrosshairUIObject::CrosshairUIObject(FLOAT width, FLOAT height) : UIObject{ widt
 	// 0번째는 위, 1번째는 오른쪽, 2번째는 왼쪽, 3번째는 밑에 있는 선이다.
 	for (int i = 0 ; i < m_lines.size(); ++i)
 	{
-		m_lines[i] = make_unique<UIObject>();
+		m_lines[i] = make_unique<UIObject>(0.0f, 0.0f);
 		XMFLOAT4X4 worldMatrix{ Matrix::Identity() };
 
 		// 가로, 세로 설정
@@ -439,10 +438,9 @@ void RewardUIObject::Update(FLOAT deltaTime)
 		m_timer = max(0.0f, m_timer - deltaTime * 3.0f);
 }
 
-HitUIObject::HitUIObject(int monsterId) : m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
+HitUIObject::HitUIObject(int monsterId) : UIObject{ 50.0f, 50.0f }, m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
 {
-	SetWidth(50.0f);
-	SetHeight(50.0f);
+
 }
 
 void HitUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)

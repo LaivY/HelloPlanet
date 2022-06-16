@@ -1,10 +1,43 @@
 ﻿#include "stdafx.h"
 #include "windowObject.h"
+#include "scene.h"
 #include "textObject.h"
 
 WindowObject::WindowObject(FLOAT width, FLOAT height) : UIObject{ width, height }
 {
+	constexpr float thickness{ 5.0f };
 
+	// 좌측(왼쪽 위, 아래 모서리 포함)
+	auto outline1{ make_unique<UIObject>(thickness, height + thickness * 2.0f) };
+	outline1->SetTexture(Scene::s_textures["OUTLINE"]);
+	outline1->SetPivot(ePivot::RIGHTCENTER);
+	outline1->SetScreenPivot(ePivot::LEFTCENTER);
+	outline1->SetPosition(XMFLOAT2{});
+	Add(outline1);
+
+	// 우측(오른쪽 위, 아래 모서리 포함)
+	auto outline2{ make_unique<UIObject>(thickness, height + thickness * 2.0f) };
+	outline2->SetTexture(Scene::s_textures["OUTLINE"]);
+	outline2->SetPivot(ePivot::LEFTCENTER);
+	outline2->SetScreenPivot(ePivot::RIGHTCENTER);
+	outline2->SetPosition(XMFLOAT2{});
+	Add(outline2);
+
+	// 상단(왼쪽, 오른쪽 위 제외)
+	auto outline3{ make_unique<UIObject>(width, thickness) };
+	outline3->SetTexture(Scene::s_textures["OUTLINE"]);
+	outline3->SetPivot(ePivot::CENTERBOT);
+	outline3->SetScreenPivot(ePivot::CENTERTOP);
+	outline3->SetPosition(XMFLOAT2{});
+	Add(outline3);
+
+	// 하단(왼쪽, 오른쪽 아래 제외)
+	auto outline4{ make_unique<UIObject>(width, thickness) };
+	outline4->SetTexture(Scene::s_textures["OUTLINE"]);
+	outline4->SetPivot(ePivot::CENTERTOP);
+	outline4->SetScreenPivot(ePivot::CENTERBOT);
+	outline4->SetPosition(XMFLOAT2{});
+	Add(outline4);
 }
 
 void WindowObject::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

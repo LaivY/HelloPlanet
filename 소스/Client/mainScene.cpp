@@ -287,36 +287,52 @@ void MainScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 
 void MainScene::CreateSettingWindow()
 {
+	auto title{ make_unique<TextObject>() };
+	title->SetBrush("BLACK");
+	title->SetFormat("36_RIGHT");
+	title->SetText(TEXT("설정"));
+	title->SetPivot(ePivot::LEFTCENTER);
+	title->SetScreenPivot(ePivot::LEFTTOP);
+	title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+
+	auto resolution{ make_unique<TextObject>() };
+	resolution->SetBrush("BLACK");
+	resolution->SetFormat("36_RIGHT");
+	resolution->SetText(TEXT("해상도"));
+	resolution->SetPivot(ePivot::CENTER);
+	resolution->SetScreenPivot(ePivot::CENTERTOP);
+	resolution->SetPosition(XMFLOAT2{ -150.0f, -resolution->GetHeight() / 2.0f - 10.0f });
+
+	auto volume{ make_unique<TextObject>() };
+	volume->SetBrush("BLACK");
+	volume->SetFormat("36_RIGHT");
+	volume->SetText(TEXT("사운드"));
+	volume->SetPivot(ePivot::CENTER);
+	volume->SetScreenPivot(ePivot::CENTERTOP);
+	volume->SetPosition(XMFLOAT2{ 150.0f, -volume->GetHeight() / 2.0f - 10.0f });
+
 	auto close{ make_unique<MenuTextObject>() };
 	close->SetBrush("BLACK");
 	close->SetMouseOverBrush("BLUE");
-	close->SetFormat("48_RIGHT");
+	close->SetFormat("36_RIGHT");
 	close->SetText(TEXT("확인"));
 	close->SetScreenPivot(ePivot::CENTERBOT);
 	close->SetPivot(ePivot::CENTERBOT);
-	close->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
+	close->SetPosition(XMFLOAT2{ 0.0f, -close->GetHeight() / 2.0f + 10.0f });
 	close->SetMouseClickCallBack(
 		[&]()
 		{
 			m_windowObjects.back()->Delete();
 		});
 
-	auto text{ make_unique<TextObject>() };
-	text->SetBrush("BLACK");
-	text->SetFormat("48_RIGHT");
-	text->SetText(TEXT("설정"));
-	text->SetPivot(ePivot::CENTERTOP);
-	text->SetScreenPivot(ePivot::CENTERTOP);
-	text->SetPosition(XMFLOAT2{ 0.0f, -10.0f });
-
 	auto windowSizeText1{ make_unique<MenuTextObject>() };
 	windowSizeText1->SetBrush("BLACK");
 	windowSizeText1->SetMouseOverBrush("BLUE");
-	windowSizeText1->SetFormat("48_RIGHT");
+	windowSizeText1->SetFormat("32_RIGHT");
 	windowSizeText1->SetText(TEXT("1280x720"));
 	windowSizeText1->SetPivot(ePivot::CENTER);
 	windowSizeText1->SetScreenPivot(ePivot::CENTER);
-	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, 60.0f });
+	windowSizeText1->SetPosition(XMFLOAT2{ -150.0f, 40.0f });
 	windowSizeText1->SetMouseClickCallBack(
 		[]()
 		{
@@ -329,11 +345,11 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText2{ make_unique<MenuTextObject>() };
 	windowSizeText2->SetBrush("BLACK");
 	windowSizeText2->SetMouseOverBrush("BLUE");
-	windowSizeText2->SetFormat("48_RIGHT");
+	windowSizeText2->SetFormat("32_RIGHT");
 	windowSizeText2->SetText(TEXT("1680x1050"));
 	windowSizeText2->SetPivot(ePivot::CENTER);
 	windowSizeText2->SetScreenPivot(ePivot::CENTER);
-	windowSizeText2->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+	windowSizeText2->SetPosition(XMFLOAT2{ -150.0f, 0.0f });
 	windowSizeText2->SetMouseClickCallBack(
 		[]()
 		{
@@ -346,11 +362,11 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText3{ make_unique<MenuTextObject>() };
 	windowSizeText3->SetBrush("BLACK");
 	windowSizeText3->SetMouseOverBrush("BLUE");
-	windowSizeText3->SetFormat("48_RIGHT");
+	windowSizeText3->SetFormat("32_RIGHT");
 	windowSizeText3->SetText(TEXT("전체화면"));
 	windowSizeText3->SetPivot(ePivot::CENTER);
 	windowSizeText3->SetScreenPivot(ePivot::CENTER);
-	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, -60.0f });
+	windowSizeText3->SetPosition(XMFLOAT2{ -150.0f, -40.0f });
 	windowSizeText3->SetMouseClickCallBack(
 		[]()
 		{
@@ -364,16 +380,87 @@ void MainScene::CreateSettingWindow()
 			SetWindowPos(g_gameFramework.GetWindow(), NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 		});
 
-	auto setting{ make_unique<WindowObject>(500.0f, 500.0f) };
-	setting->SetMesh(s_meshes["UI"]);
-	setting->SetShader(s_shaders["UI"]);
+	auto music{ make_unique<TextObject>() };
+	music->SetBrush("BLACK");
+	music->SetFormat("32_RIGHT");
+	music->SetText(TEXT("배경음 : "));
+	music->SetPivot(ePivot::CENTER);
+	music->SetScreenPivot(ePivot::CENTER);
+
+	auto sound{ make_unique<TextObject>() };
+	sound->SetBrush("BLACK");
+	sound->SetFormat("32_RIGHT");
+	sound->SetText(TEXT("효과음 : "));
+	sound->SetPivot(ePivot::CENTER);
+	sound->SetScreenPivot(ePivot::CENTER);
+
+	auto musicOnOff{ make_unique<MenuTextObject>() };
+	musicOnOff->SetBrush("BLUE");
+	musicOnOff->SetMouseOverBrush("BLUE");
+	musicOnOff->SetFormat("32_RIGHT");
+	musicOnOff->SetText(TEXT("ON"));
+	musicOnOff->SetPivot(ePivot::CENTER);
+	musicOnOff->SetScreenPivot(ePivot::CENTER);
+	musicOnOff->SetMouseClickCallBack(bind(
+		[](MenuTextObject* object)
+		{
+			if (object->GetText() == TEXT("ON"))
+			{
+				object->SetBrush("RED");
+				object->SetMouseOverBrush("RED");
+				object->SetText(TEXT("OFF"));
+			}
+			else
+			{
+				object->SetBrush("BLUE");
+				object->SetMouseOverBrush("BLUE");
+				object->SetText(TEXT("ON"));
+			}
+		}, musicOnOff.get()));
+
+	auto soundOnOff{ make_unique<MenuTextObject>() };
+	soundOnOff->SetBrush("BLUE");
+	soundOnOff->SetMouseOverBrush("BLUE");
+	soundOnOff->SetFormat("32_RIGHT");
+	soundOnOff->SetText(TEXT("ON"));
+	soundOnOff->SetPivot(ePivot::CENTER);
+	soundOnOff->SetScreenPivot(ePivot::CENTER);
+	soundOnOff->SetMouseClickCallBack(bind(
+		[](MenuTextObject* object)
+		{
+			if (object->GetText() == TEXT("ON"))
+			{
+				object->SetBrush("RED");
+				object->SetMouseOverBrush("RED");
+				object->SetText(TEXT("OFF"));
+			}
+			else
+			{
+				object->SetBrush("BLUE");
+				object->SetMouseOverBrush("BLUE");
+				object->SetText(TEXT("ON"));
+			}
+		}, soundOnOff.get()));
+
+	music->SetPosition(XMFLOAT2{ 150.0f - musicOnOff->GetWidth() / 2.0f,  20.0f });
+	sound->SetPosition(XMFLOAT2{ 150.0f - soundOnOff->GetWidth() / 2.0f, -20.0f });
+	musicOnOff->SetPosition(XMFLOAT2{ 150.0f + (music->GetWidth() + 20.0f) / 2.0f,  20.0f });
+	soundOnOff->SetPosition(XMFLOAT2{ 150.0f + (sound->GetWidth() + 20.0f) / 2.0f, -20.0f });
+
+	auto setting{ make_unique<WindowObject>(600.0f, 320.0f) };
 	setting->SetTexture(s_textures["WHITE"]);
 	setting->SetPosition(XMFLOAT2{});
+	setting->Add(title);
+	setting->Add(resolution);
+	setting->Add(volume);
 	setting->Add(close);
-	setting->Add(text);
 	setting->Add(windowSizeText1);
 	setting->Add(windowSizeText2);
 	setting->Add(windowSizeText3);
+	setting->Add(music);
+	setting->Add(sound);
+	setting->Add(musicOnOff);
+	setting->Add(soundOnOff);
 	m_windowObjects.push_back(move(setting));
 }
 
