@@ -218,6 +218,10 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 파티클
 	s_meshes["PARTICLE"] = make_shared<ParticleMesh>(device, commandList);
 
+	// 총구 이펙트
+	s_meshes["MUZZLE_FRONT"] = make_shared<RectMesh>(device, commandList, 30.0f, 30.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 0.01f });
+	s_meshes["MUZZLE_SIDE"] = make_shared<RectMesh>(device, commandList, 50.0f, 30.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 0.01f });
+
 	// 히트박스 메쉬
 	s_meshes["CUBE"] = make_shared<CubeMesh>(device, commandList, 1.0f, 1.0f, 1.0f, XMFLOAT3{ 0.0f, 0.0f, 0.0f }, XMFLOAT4{ 0.8f, 0.0f, 0.0f, 1.0f });
 }
@@ -225,13 +229,13 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature)
 {
 	s_shaders["DEFAULT"] = make_shared<StencilWriteShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
+	s_shaders["BLENDING"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");
 	s_shaders["SKYBOX"] = make_shared<NoDepthShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PSSkybox");
-	//s_shaders["MODEL"] = make_shared<Shader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
 	s_shaders["MODEL"] = make_shared<StencilWriteShader>(device, rootSignature, Utile::PATH(TEXT("Shader/model.hlsl")), "VS", "PS");
 	s_shaders["ANIMATION"] = make_shared<StencilWriteShader>(device, rootSignature, Utile::PATH(TEXT("Shader/animation.hlsl")), "VS", "PS");
 	s_shaders["LINK"] = make_shared<StencilWriteShader>(device, rootSignature, Utile::PATH(TEXT("Shader/link.hlsl")), "VS", "PS");
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
-	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true);
+	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true); // 알파 투 커버리지
 
 	// 그림자 셰이더
 	s_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
@@ -288,21 +292,32 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	// UI 외곽선
 	s_textures["OUTLINE"] = make_shared<Texture>();
 	s_textures["OUTLINE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/outline.dds")));
+
+	// 총구 이펙트
+	s_textures["MUZZLE_FRONT"] = make_shared<Texture>();
+	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_1.dds")));
+	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_2.dds")));
+	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_3.dds")));
+
+	s_textures["MUZZLE_SIDE"] = make_shared<Texture>();
+	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_1.dds")));
+	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_2.dds")));
+	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_3.dds")));
 }
 
 void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext)
 {
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &TextObject::s_brushes["BLACK"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &TextObject::s_brushes["RED"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DeepSkyBlue), &TextObject::s_brushes["BLUE"]));
-	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &TextObject::s_brushes["WHITE"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF{ 0x1e1e1e }, &TextObject::s_brushes["BLACK"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF{ D2D1::ColorF::Red }, &TextObject::s_brushes["RED"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF{ D2D1::ColorF::DeepSkyBlue }, &TextObject::s_brushes["BLUE"]));
+	DX::ThrowIfFailed(d2dDeivceContext->CreateSolidColorBrush(D2D1::ColorF{ D2D1::ColorF::White }, &TextObject::s_brushes["WHITE"]));
 }
 
 void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-	// 왼쪽 정렬 포멧
-	for (int size : { 24, 36 })
+	for (int size : { 24, 28, 32, 36, 48 })
 	{
+		// 왼쪽 정렬
 		DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 			TEXT("나눔바른고딕OTF"), NULL,
 			DWRITE_FONT_WEIGHT_ULTRA_BOLD,
@@ -310,15 +325,12 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 			DWRITE_FONT_STRETCH_NORMAL,
 			static_cast<float>(size),
 			TEXT("ko-kr"),
-			&TextObject::s_formats[to_string(size) + "_LEFT"]
+			&TextObject::s_formats[to_string(size) + "L"]
 		));
-		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_LEFT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING));
-		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_LEFT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
-	}
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "L"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "L"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 
-	// 오른쪽 정렬 포멧
-	for (int size : { 24, 32, 36, 48 })
-	{
+		// 오른쪽 정렬
 		DX::ThrowIfFailed(dWriteFactory->CreateTextFormat(
 			TEXT("나눔바른고딕OTF"), NULL,
 			DWRITE_FONT_WEIGHT_ULTRA_BOLD,
@@ -326,15 +338,15 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 			DWRITE_FONT_STRETCH_NORMAL,
 			static_cast<float>(size),
 			TEXT("ko-kr"),
-			&TextObject::s_formats[to_string(size) + "_RIGHT"]
+			&TextObject::s_formats[to_string(size) + "R"]
 		));
-		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
-		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "_RIGHT"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "R"]->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING));
+		DX::ThrowIfFailed(TextObject::s_formats[to_string(size) + "R"]->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_FAR));
 	}
 }
 
 void LoadingScene::LoadAudios()
 {
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/bgm.wav")), AudioType::MUSIC);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/shot.wav")), AudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/bgm.wav")), eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/shot.wav")), eAudioType::SOUND);
 }

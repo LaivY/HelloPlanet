@@ -1,13 +1,13 @@
 ﻿#pragma once
 
-enum class AudioType
+enum class eAudioType
 {
 	MUSIC, SOUND
 };
 
 struct AudioData
 {
-	AudioType				audioType;
+	eAudioType				audioType;
 	unique_ptr<BYTE[]>		pDataBuffer;
 	IXAudio2SourceVoice*	pSourceVoice = nullptr;
 	WAVEFORMATEXTENSIBLE	wfx = {};
@@ -22,11 +22,11 @@ public:
 
 	void Update(FLOAT deltaTime);
 
-	HRESULT Load(const wstring& fileName, AudioType audioType);
+	HRESULT Load(const wstring& fileName, eAudioType audioType);
 	void Play(const wstring& fileName, bool isLoop = false);
 
-	void SetVolume(AudioType audioType, FLOAT volume);
-	void TurnOnVolume(FLOAT time);
+	void SetVolume(eAudioType audioType, FLOAT volume);
+	int GetVolume(eAudioType audioType);
 
 private:
 	HRESULT FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition);

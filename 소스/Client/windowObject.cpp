@@ -3,8 +3,9 @@
 #include "scene.h"
 #include "textObject.h"
 
-WindowObject::WindowObject(FLOAT width, FLOAT height) : UIObject{ width, height }
+WindowObject::WindowObject(FLOAT width, FLOAT height, BOOL hasOutline) : UIObject{ width, height }
 {
+	if (!hasOutline) return;
 	constexpr float thickness{ 5.0f };
 
 	// 좌측(왼쪽 위, 아래 모서리 포함)

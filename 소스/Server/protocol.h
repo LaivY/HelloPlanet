@@ -15,6 +15,7 @@ constexpr char CS_PACKET_READY = 3;
 constexpr char CS_PACKET_UPDATE_PLAYER = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
+constexpr char CS_PACKET_SELECT_REWARD = 7;
 constexpr char CS_PACKET_LOGOUT = 127;
 
 constexpr char SC_PACKET_LOGIN_CONFIRM = 1;
@@ -152,6 +153,13 @@ struct cs_packet_bullet_fire
 	UCHAR		size;
 	UCHAR		type;
 	BulletData	data;
+};
+
+struct cs_packet_select_reward
+{
+	UCHAR	size;
+	UCHAR	type;
+	CHAR	playerId;
 };
 
 // ---------------------------------

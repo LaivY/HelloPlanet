@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "mesh.h"
 #include "scene.h"
+#include "gameScene.h"
 #include "shader.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
@@ -358,12 +359,8 @@ void Player::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandL
 
 void Player::Fire()
 {
-	// 총알 시작 좌표
 	XMFLOAT3 start{ m_camera->GetEye() };
-
-	// 화면 중앙
-	XMFLOAT3 center{ m_camera->GetEye() };
-	center = Vector3::Add(center, Vector3::Mul(m_camera->GetAt(), 1000.0f));
+	XMFLOAT3 center{ Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1000.0f)) };
 
 	switch (m_weaponType)
 	{
@@ -456,6 +453,45 @@ void Player::Fire()
 
 	m_isFired = TRUE;
 	--m_bulletCount;
+
+	// 총구 이펙트
+	{
+		//// 옆
+		//auto sideTextureInfo{ make_unique<TextureInfo>() };
+		//sideTextureInfo->loop = FALSE;
+
+		//auto sideEffect{ make_unique<GameObject>() };
+		//sideEffect->SetMesh(Scene::s_meshes["MUZZLE_SIDE"]);
+		//sideEffect->SetShader(Scene::s_shaders["BLENDING"]);
+		//sideEffect->SetTexture(Scene::s_textures["MUZZLE_SIDE"]);
+		//sideEffect->SetTextureInfo(sideTextureInfo);
+		//switch (m_weaponType)
+		//{
+		//case eWeaponType::AR:
+		//	sideEffect->SetPosition(XMFLOAT3{ 7.0f, -3.0f, 50.0f });
+		//	break;
+		//}
+		//sideEffect->Rotate(0.0f, 0.0f, 90.0f);
+		//GameScene::screenObjects.push_back(move(sideEffect));
+
+		// 앞
+		auto frontTextureInfo{ make_unique<TextureInfo>() };
+		frontTextureInfo->loop = FALSE;
+
+		auto frontEffect{ make_unique<GameObject>() };
+		frontEffect->SetMesh(Scene::s_meshes["MUZZLE_FRONT"]);
+		frontEffect->SetShader(Scene::s_shaders["BLENDING"]);
+		frontEffect->SetTexture(Scene::s_textures["MUZZLE_FRONT"]);
+		frontEffect->SetTextureInfo(frontTextureInfo);
+		switch (m_weaponType)
+		{
+		case eWeaponType::AR:
+			frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
+			break;
+		}
+		frontEffect->Rotate(Utile::Random(-5.0f, 5.0f), 0.0f, 0.0f);
+		GameScene::screenObjects.push_back(move(frontEffect));
+	}
 
 	// 발사 효과음
 	g_audioEngine.Play(Utile::PATH(TEXT("Sound/shot.wav")));

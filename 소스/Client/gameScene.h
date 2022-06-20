@@ -69,6 +69,9 @@ public:
 
 	static unordered_map<INT, unique_ptr<Monster>> s_monsters;
 
+	// 총구 이펙트
+	static vector<unique_ptr<GameObject>>			screenObjects;
+
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
@@ -77,6 +80,7 @@ private:
 	unique_ptr<GameObject>					m_fullScreenQuad;	// 화면을 가득 채우는 사각형
 	unique_ptr<Skybox>						m_skybox;			// 스카이박스
 	shared_ptr<Camera>						m_camera;			// 카메라
+	shared_ptr<Camera>						m_screenCamera;		// 스크린카메라
 	unique_ptr<Camera>						m_uiCamera;			// UI 카메라
 	shared_ptr<Player>						m_player;			// 플레이어
 	array<unique_ptr<Player>,

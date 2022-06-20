@@ -11,6 +11,7 @@
 #include "windowObject.h"
 
 unordered_map<INT, unique_ptr<Monster>> GameScene::s_monsters;
+vector<unique_ptr<GameObject>>			GameScene::screenObjects;
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -49,7 +50,6 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	Texture::CreateShaderResourceView(device);
 
 	// 오디오 엔진
-	g_audioEngine.SetVolume(AudioType::MUSIC, 0.1f);
 	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 
 #ifdef NETWORK
@@ -90,7 +90,6 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 			m_player->PlayAnimation("IDLE", TRUE);
 			m_player->SendPlayerData();
 		}
-
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 		return;
 	}
@@ -239,6 +238,8 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
+	for (auto& o : screenObjects)
+		o->Update(deltaTime);
 	for (auto& [_, m] : s_monsters)
 		m->Update(deltaTime);
 }
@@ -283,10 +284,6 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	s_textures["STENCIL"]->UpdateShaderVariable(commandList);
 	m_fullScreenQuad->Render(commandList);
 
-	//ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	//commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	//commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
-
 	// 외곽선 없는 게임오브젝트들 렌더링
 	commandList->OMSetStencilRef(0);
 	for (const auto& o : m_gameObjects
@@ -301,7 +298,13 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	for (const auto& [_, m] : s_monsters)
 		m->Render(commandList);
 
+	// 화면 기준으로 그리는 게임오브젝트들
+	m_screenCamera->UpdateShaderVariable(commandList);
+	for (const auto& o : screenObjects)
+		o->Render(commandList);
+
 	// 플레이어 렌더링
+	m_camera->UpdateShaderVariable(commandList);
 	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
 
@@ -403,6 +406,11 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	XMFLOAT4X4 projMatrix;
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
+
+	// 스크린 카메라 생성
+	m_screenCamera = make_shared<Camera>();
+	m_screenCamera->CreateShaderVariable(device, commandList);
+	m_screenCamera->SetProjMatrix(projMatrix);
 
 	// 플레이어, 멀티플레이어 설정
 	// 플레이어와 멀티플레이어는 이전 로비 씬에서 만들어져있다.
@@ -530,44 +538,50 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 
 void GameScene::CreateExitWindow()
 {
+	auto title{ make_unique<TextObject>() };
+	title->SetBrush("BLACK");
+	title->SetFormat("36L");
+	title->SetText(TEXT("알림"));
+	title->SetPivot(ePivot::LEFTCENTER);
+	title->SetScreenPivot(ePivot::LEFTTOP);
+	title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+
 	auto text{ make_unique<TextObject>() };
 	text->SetBrush("BLACK");
-	text->SetFormat("36_LEFT");
+	text->SetFormat("32L");
 	text->SetText(TEXT("메인 화면으로\n돌아갈까요?"));
 	text->SetPivot(ePivot::CENTER);
 	text->SetScreenPivot(ePivot::CENTER);
 	text->SetPosition(XMFLOAT2{});
 
 	auto okText{ make_unique<MenuTextObject>() };
-	okText->SetBrush("BLACK");
+	okText->SetBrush("BLUE");
 	okText->SetMouseOverBrush("BLUE");
-	okText->SetFormat("48_RIGHT");
+	okText->SetFormat("36L");
 	okText->SetText(TEXT("확인"));
 	okText->SetPivot(ePivot::CENTERBOT);
 	okText->SetScreenPivot(ePivot::CENTERBOT);
-	okText->SetPosition(XMFLOAT2{ -65.0f, -25.0f });
+	okText->SetPosition(XMFLOAT2{ -40.0f, -okText->GetHeight() / 2.0f + 10.0f });
 	okText->SetMouseClickCallBack(
 		[]()
 		{
 			ShowCursor(TRUE);
 			g_gameFramework.SetNextScene(eSceneType::MAIN);
-		}
-	);
+		});
 
 	auto cancleText{ make_unique<MenuTextObject>() };
-	cancleText->SetBrush("BLACK");
-	cancleText->SetMouseOverBrush("BLUE");
-	cancleText->SetFormat("48_RIGHT");
+	cancleText->SetBrush("RED");
+	cancleText->SetMouseOverBrush("RED");
+	cancleText->SetFormat("36L");
 	cancleText->SetText(TEXT("취소"));
 	cancleText->SetPivot(ePivot::CENTERBOT);
 	cancleText->SetScreenPivot(ePivot::CENTERBOT);
-	cancleText->SetPosition(XMFLOAT2{ 65.0f, -25.0f });
+	cancleText->SetPosition(XMFLOAT2{ 40.0f, -cancleText->GetHeight() / 2.0f + 10.0f });
 	cancleText->SetMouseClickCallBack(bind(&GameScene::CloseWindow, this));
 
-	auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
-	window->SetMesh(s_meshes["UI"]);
-	window->SetShader(s_shaders["UI"]);
+	auto window{ make_unique<WindowObject>(400.0f, 250.0f) };
 	window->SetTexture(s_textures["WHITE"]);
+	window->Add(title);
 	window->Add(text);
 	window->Add(okText);
 	window->Add(cancleText);
@@ -587,6 +601,7 @@ void GameScene::Update(FLOAT deltaTime)
 	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return !object->isValid(); });
 	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return !object->isValid(); });
 	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
+	erase_if(screenObjects, [](unique_ptr<GameObject>& object) { return !object->isValid(); });
 	erase_if(s_monsters, [](const auto& item) { return !item.second->isValid(); });
 	lock.unlock();
 
@@ -961,18 +976,15 @@ void GameScene::RecvBulletHit()
 	textureInfo->interver = 1.0f / 30.0f;
 
 	auto hitEffect{ make_unique<UIObject>(50.0f, 50.0f) };
-	hitEffect->SetMesh(s_meshes["UI"]);
-	hitEffect->SetShader(s_shaders["UI"]);
 	hitEffect->SetTexture(s_textures["HIT"]);
 	hitEffect->SetTextureInfo(move(textureInfo));
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	if (s_monsters.find(static_cast<int>(data.mobId)) != s_monsters.end())
+	if (s_monsters.contains(static_cast<int>(data.mobId)))
 	{
 		wstring dmg{ to_wstring(m_player->GetDamage()) };
-
 		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
 		dmgText->SetCamera(m_camera);
 		dmgText->SetStartPosition(s_monsters[static_cast<int>(data.mobId)]->GetPosition());
@@ -994,7 +1006,7 @@ void GameScene::RecvMosterAttack()
 	// 체력 감소
 	m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
 
-	// 테스트
+	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(data.mobId) };
 	hit->SetMesh(s_meshes["UI"]);
 	hit->SetShader(s_shaders["UI"]);
@@ -1024,115 +1036,162 @@ void GameScene::RecvRoundResult()
 		ranges::sample(r, back_inserter(rewards), 3, g_randomEngine);
 
 		// 보상 칸 하나 당 가로 길이 비율
-		constexpr float REWARE_WIDTH_RATIO{ 0.2f };
+		constexpr float REWARE_WIDTH_RATIO{ 0.18f };
 
-		auto firstReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
-		firstReward->SetMesh(s_meshes["UI"]);
-		firstReward->SetShader(s_shaders["UI"]);
-		firstReward->SetTexture(s_textures["WHITE"]);
-		firstReward->SetPivot(ePivot::LEFTCENTER);
-		firstReward->SetScreenPivot(ePivot::LEFTCENTER);
-		firstReward->SetPosition(XMFLOAT2{ g_width * 0.05f, 0.0f });
-		firstReward->SetMouseClickCallBack(bind(
-			[&](const shared_ptr<Player>& player, eReward reward)
-			{
-				switch (reward)
-				{
-				case eReward::AD:
-					player->AddDamage(10);
-					break;
-				case eReward::AS:
-					player->AddAttackSpeed(10);
-					break;
-				case eReward::HP:
-				case eReward::DEF:
-					player->AddMaxHp(10);
-					break;
-				}
-				m_windowObjects.back()->Delete();
-			}, m_player, rewards[0]));
-
-		auto firstRewardText{ make_unique<TextObject>() };
-		firstRewardText->SetFormat("36_LEFT");
-		firstRewardText->SetBrush("BLACK");
-		firstRewardText->SetPivot(ePivot::CENTER);
-		firstRewardText->SetScreenPivot(ePivot::LEFTCENTER);
-		switch (rewards[0])
+		unique_ptr<RewardUIObject> rewardUIObjects[3]{};
+		unique_ptr<UIObject> rewardImageObjects[3]{};
+		unique_ptr<TextObject> rewardTextObjects[3]{};
+		for (int i = 0; i < 3; ++i)
 		{
-		case eReward::AD:
-			firstRewardText->SetText(TEXT("공격력 +10%"));
-			break;
-		case eReward::AS:
-			firstRewardText->SetText(TEXT("공격 속도 +10%"));
-			break;
-		case eReward::HP:
-			firstRewardText->SetText(TEXT("최대 체력 +10"));
-			break;
-		case eReward::DEF:
-			firstRewardText->SetText(TEXT("방어력 +5"));
-			break;
+			// 보상 UI
+			rewardUIObjects[i] = make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.5f);
+			rewardUIObjects[i]->SetTexture(s_textures["OUTLINE"]);
+			rewardUIObjects[i]->SetMouseClickCallBack(bind(
+				[&](const shared_ptr<Player>& player, eReward reward)
+				{
+					switch (reward)
+					{
+					case eReward::AD:
+						player->AddDamage(10);
+						break;
+					case eReward::AS:
+						player->AddAttackSpeed(10);
+						break;
+					case eReward::HP:
+						player->AddMaxHp(10);
+						break;
+					case eReward::DEF:
+						break;
+					}
+					m_windowObjects.back()->Delete();
+				}, m_player, rewards[i]));
+
+			switch (i)
+			{
+			case 0:
+				rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), 0.0f });
+				break;
+			case 1:
+				break;
+			case 2:
+				rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), 0.0f });
+				break;
+			}
+
+			// 보상 아이콘
+			rewardImageObjects[i] = make_unique<UIObject>(g_width * (REWARE_WIDTH_RATIO - 0.08f), g_width * (REWARE_WIDTH_RATIO - 0.08f));
+			rewardImageObjects[i]->SetTexture(s_textures["WHITE"]);
+			rewardImageObjects[i]->SetPivot(ePivot::CENTERTOP);
+			rewardImageObjects[i]->SetScreenPivot(ePivot::CENTERTOP);
+			switch (i)
+			{
+			case 0:
+				rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+				break;
+			case 1:
+				rewardImageObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
+				break;
+			case 2:
+				rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+				break;
+			}
+
+			// 보상 설명 텍스트
+			rewardTextObjects[i] = make_unique<TextObject>();
+			rewardTextObjects[i]->SetFormat("28L");
+			rewardTextObjects[i]->SetBrush("WHITE");
+			switch (rewards[i])
+			{
+			case eReward::AD:
+				rewardTextObjects[i]->SetText(TEXT("공격력 +10%"));
+				break;
+			case eReward::AS:
+				rewardTextObjects[i]->SetText(TEXT("공격 속도 +10%"));
+				break;
+			case eReward::HP:
+				rewardTextObjects[i]->SetText(TEXT("최대 체력 +10"));
+				break;
+			case eReward::DEF:
+				rewardTextObjects[i]->SetText(TEXT("방어력 +5"));
+				break;
+			}
+
+			switch (i)
+			{
+			case 0:
+				rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+				break;
+			case 1:
+				rewardTextObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
+				break;
+			case 2:
+				rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+				break;
+			}
 		}
-		firstRewardText->SetPosition(XMFLOAT2{ g_width * 0.15f, 0.0f });
 
-		auto secondReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
-		secondReward->SetMesh(s_meshes["UI"]);
-		secondReward->SetShader(s_shaders["UI"]);
-		secondReward->SetTexture(s_textures["WHITE"]);
+		auto title{ make_unique<TextObject>() };
+		title->SetBrush("BLACK");
+		title->SetFormat("36L");
+		title->SetText(TEXT("보상"));
+		title->SetPivot(ePivot::LEFTBOT);
+		title->SetScreenPivot(ePivot::LEFTTOP);
+		title->SetPosition(XMFLOAT2{ 0.0f, 2.0f });
 
-		auto thirdReward{ make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.7f) };
-		thirdReward->SetMesh(s_meshes["UI"]);
-		thirdReward->SetShader(s_shaders["UI"]);
-		thirdReward->SetTexture(s_textures["WHITE"]);
-		thirdReward->SetPivot(ePivot::RIGHTCENTER);
-		thirdReward->SetScreenPivot(ePivot::RIGHTCENTER);
-		thirdReward->SetPosition(XMFLOAT2{ g_width * -0.05f, 0.0f });
-
-		auto rewardWindow{ make_unique<WindowObject>(g_width * 0.8f, g_height * 0.8f) };
-		rewardWindow->SetMesh(s_meshes["UI"]);
-		rewardWindow->SetShader(s_shaders["UI"]);
-		rewardWindow->SetTexture(s_textures["HPBARBASE"]);
-		rewardWindow->Add(firstReward);
-		rewardWindow->Add(firstRewardText);
-		rewardWindow->Add(secondReward);
-		rewardWindow->Add(thirdReward);
-		m_windowObjects.push_back(move(rewardWindow));
+		auto window{ make_unique<WindowObject>(g_width * 0.6f, g_height * 0.54f) };
+		window->SetTexture(s_textures["OUTLINE"]);
+		window->Add(title);
+		for (int i = 0; i < 3; ++i)
+		{
+			window->Add(rewardUIObjects[i]);
+			window->Add(rewardImageObjects[i]);
+			window->Add(rewardTextObjects[i]);
+		}
+		m_windowObjects.push_back(move(window));
 		break;
 	}
 	case eRoundResult::OVER:
 		break;
 	case eRoundResult::ENDING:
-		auto clearWindow{ make_unique<WindowObject>(400.0f, 300.0f) };
-		clearWindow->SetMesh(s_meshes["UI"]);
-		clearWindow->SetShader(s_shaders["UI"]);
-		clearWindow->SetTexture(s_textures["WHITE"]);
+		auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
+		window->SetTexture(s_textures["WHITE"]);
+
+		auto title{ make_unique<TextObject>() };
+		title->SetBrush("BLACK");
+		title->SetFormat("36L");
+		title->SetText(TEXT("알림"));
+		title->SetPivot(ePivot::LEFTCENTER);
+		title->SetScreenPivot(ePivot::LEFTTOP);
+		title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+		window->Add(title);
+
+		auto descText{ make_unique<TextObject>() };
+		descText->SetBrush("BLACK");
+		descText->SetFormat("32L");
+		descText->SetPivot(ePivot::CENTER);
+		descText->SetScreenPivot(ePivot::CENTER);
+		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
+		descText->SetPosition(XMFLOAT2{});
+		window->Add(descText);
 
 		auto goToMainText{ make_unique<MenuTextObject>() };
 		goToMainText->SetBrush("BLACK");
 		goToMainText->SetMouseOverBrush("BLUE");
-		goToMainText->SetFormat("48_RIGHT");
+		goToMainText->SetFormat("32L");
 		goToMainText->SetText(TEXT("메인으로"));
 		goToMainText->SetPivot(ePivot::CENTERBOT);
 		goToMainText->SetScreenPivot(ePivot::CENTERBOT);
-		goToMainText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+		goToMainText->SetPosition(XMFLOAT2{});
 		goToMainText->SetMouseClickCallBack(
 			[]()
 			{
 				g_gameFramework.SetNextScene(eSceneType::MAIN);
 				ShowCursor(TRUE);
 			});
-		clearWindow->Add(goToMainText);
-
-		auto descText{ make_unique<TextObject>() };
-		descText->SetBrush("BLACK");
-		descText->SetFormat("24_RIGHT");
-		descText->SetPivot(ePivot::CENTER);
-		descText->SetScreenPivot(ePivot::CENTER);
-		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
-		descText->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
-		clearWindow->Add(descText);
+		window->Add(goToMainText);
 
 		unique_lock<mutex> lock{ g_mutex };
-		m_windowObjects.push_back(move(clearWindow));
+		m_windowObjects.push_back(move(window));
 		break;
 	}
 }

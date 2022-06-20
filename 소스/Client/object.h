@@ -73,6 +73,7 @@ public:
 	BOOL isValid() const;
 	BOOL isMakeOutline() const;
 	XMFLOAT4X4 GetWorldMatrix() const;
+	XMFLOAT3 GetRollPitchYaw() const;
 	XMFLOAT3 GetRight() const;
 	XMFLOAT3 GetUp() const;
 	XMFLOAT3 GetLook() const;

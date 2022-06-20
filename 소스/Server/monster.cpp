@@ -123,7 +123,6 @@ void Monster::Update(FLOAT deltaTime)
 	worldMatrix.r[3] = XMVectorSet(m_position.x, m_position.y, m_position.z, 1.0f);
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
 
-
 	if (GetAnimationType() == eMobAnimationType::ATTACK)
 	{
 		if (GetAtkTimer() >= 0.3f && m_wasAttack == false)
@@ -183,11 +182,13 @@ void Monster::SetTargetId(UCHAR id)
 
 void Monster::SetRandomPosition()
 {
-	std::random_device rd;
-	const std::uniform_int_distribution<int> areasDistribution(0, 7);
-	std::mt19937 generator(rd());
-	const DirectX::XMFLOAT3 mobSpawnAreas[8]{ {0.0f, 0.0f, 400.0f},{0.0f, 0.0f, -400.0f},{400.0f, 0.0f, 0.0f},{-400.0f, 0.0f, 0.0f},
-		{300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, 300.0f}, {-300.0f, 0.0f, -300.0f}, {300.0f, 0.0f, -300.0f} };
+	static std::mt19937 generator(std::random_device{}());
+	constexpr DirectX::XMFLOAT3 mobSpawnAreas[]
+	{ 
+		{ 0.0f,	  0.0f, 400.0f }, { 0.0f,	 0.0f, -400.0f },	{ 400.0f,  0.0f, 0.0f },	{ -400.0f, 0.0f, 0.0f },
+		{ 300.0f, 0.0f, 300.0f }, { -300.0f, 0.0f,  300.0f },	{ -300.0f, 0.0f, -300.0f }, {  300.0f, 0.0f, -300.0f }
+	};
+	const std::uniform_int_distribution<int> areasDistribution{ 0, 7 };
 	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
 }
 

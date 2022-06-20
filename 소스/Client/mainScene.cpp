@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "mainScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "object.h"
@@ -189,7 +190,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto gameStartText{ make_unique<MenuTextObject>() };
 	gameStartText->SetBrush("BLACK");
 	gameStartText->SetMouseOverBrush("WHITE");
-	gameStartText->SetFormat("48_RIGHT");
+	gameStartText->SetFormat("48R");
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
@@ -211,7 +212,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto settingText{ make_unique<MenuTextObject>() };
 	settingText->SetBrush("BLACK");
 	settingText->SetMouseOverBrush("WHITE");
-	settingText->SetFormat("48_RIGHT");
+	settingText->SetFormat("48R");
 	settingText->SetText(TEXT("설정"));
 	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
@@ -222,7 +223,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto exitText{ make_unique<MenuTextObject>() };
 	exitText->SetBrush("BLACK");
 	exitText->SetMouseOverBrush("WHITE");
-	exitText->SetFormat("48_RIGHT");
+	exitText->SetFormat("48R");
 	exitText->SetText(TEXT("종료"));
 	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
@@ -289,7 +290,7 @@ void MainScene::CreateSettingWindow()
 {
 	auto title{ make_unique<TextObject>() };
 	title->SetBrush("BLACK");
-	title->SetFormat("36_RIGHT");
+	title->SetFormat("36R");
 	title->SetText(TEXT("설정"));
 	title->SetPivot(ePivot::LEFTCENTER);
 	title->SetScreenPivot(ePivot::LEFTTOP);
@@ -297,7 +298,7 @@ void MainScene::CreateSettingWindow()
 
 	auto resolution{ make_unique<TextObject>() };
 	resolution->SetBrush("BLACK");
-	resolution->SetFormat("36_RIGHT");
+	resolution->SetFormat("36R");
 	resolution->SetText(TEXT("해상도"));
 	resolution->SetPivot(ePivot::CENTER);
 	resolution->SetScreenPivot(ePivot::CENTERTOP);
@@ -305,7 +306,7 @@ void MainScene::CreateSettingWindow()
 
 	auto volume{ make_unique<TextObject>() };
 	volume->SetBrush("BLACK");
-	volume->SetFormat("36_RIGHT");
+	volume->SetFormat("36R");
 	volume->SetText(TEXT("사운드"));
 	volume->SetPivot(ePivot::CENTER);
 	volume->SetScreenPivot(ePivot::CENTERTOP);
@@ -314,7 +315,7 @@ void MainScene::CreateSettingWindow()
 	auto close{ make_unique<MenuTextObject>() };
 	close->SetBrush("BLACK");
 	close->SetMouseOverBrush("BLUE");
-	close->SetFormat("36_RIGHT");
+	close->SetFormat("36R");
 	close->SetText(TEXT("확인"));
 	close->SetScreenPivot(ePivot::CENTERBOT);
 	close->SetPivot(ePivot::CENTERBOT);
@@ -328,7 +329,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText1{ make_unique<MenuTextObject>() };
 	windowSizeText1->SetBrush("BLACK");
 	windowSizeText1->SetMouseOverBrush("BLUE");
-	windowSizeText1->SetFormat("32_RIGHT");
+	windowSizeText1->SetFormat("32R");
 	windowSizeText1->SetText(TEXT("1280x720"));
 	windowSizeText1->SetPivot(ePivot::CENTER);
 	windowSizeText1->SetScreenPivot(ePivot::CENTER);
@@ -345,7 +346,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText2{ make_unique<MenuTextObject>() };
 	windowSizeText2->SetBrush("BLACK");
 	windowSizeText2->SetMouseOverBrush("BLUE");
-	windowSizeText2->SetFormat("32_RIGHT");
+	windowSizeText2->SetFormat("32R");
 	windowSizeText2->SetText(TEXT("1680x1050"));
 	windowSizeText2->SetPivot(ePivot::CENTER);
 	windowSizeText2->SetScreenPivot(ePivot::CENTER);
@@ -362,7 +363,7 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText3{ make_unique<MenuTextObject>() };
 	windowSizeText3->SetBrush("BLACK");
 	windowSizeText3->SetMouseOverBrush("BLUE");
-	windowSizeText3->SetFormat("32_RIGHT");
+	windowSizeText3->SetFormat("32R");
 	windowSizeText3->SetText(TEXT("전체화면"));
 	windowSizeText3->SetPivot(ePivot::CENTER);
 	windowSizeText3->SetScreenPivot(ePivot::CENTER);
@@ -382,64 +383,74 @@ void MainScene::CreateSettingWindow()
 
 	auto music{ make_unique<TextObject>() };
 	music->SetBrush("BLACK");
-	music->SetFormat("32_RIGHT");
+	music->SetFormat("32R");
 	music->SetText(TEXT("배경음 : "));
 	music->SetPivot(ePivot::CENTER);
 	music->SetScreenPivot(ePivot::CENTER);
 
 	auto sound{ make_unique<TextObject>() };
 	sound->SetBrush("BLACK");
-	sound->SetFormat("32_RIGHT");
+	sound->SetFormat("32R");
 	sound->SetText(TEXT("효과음 : "));
 	sound->SetPivot(ePivot::CENTER);
 	sound->SetScreenPivot(ePivot::CENTER);
 
+	int musicVolume{ g_audioEngine.GetVolume(eAudioType::MUSIC) };
 	auto musicOnOff{ make_unique<MenuTextObject>() };
 	musicOnOff->SetBrush("BLUE");
 	musicOnOff->SetMouseOverBrush("BLUE");
-	musicOnOff->SetFormat("32_RIGHT");
-	musicOnOff->SetText(TEXT("ON"));
+	musicOnOff->SetFormat("32R");
+	musicOnOff->SetText(to_wstring(musicVolume) + TEXT("%"));
 	musicOnOff->SetPivot(ePivot::CENTER);
 	musicOnOff->SetScreenPivot(ePivot::CENTER);
+	musicOnOff->SetValue(musicVolume);
 	musicOnOff->SetMouseClickCallBack(bind(
 		[](MenuTextObject* object)
 		{
-			if (object->GetText() == TEXT("ON"))
+			int volume{ object->GetValue() };
+			volume = (volume + 10) % 110;
+			if (volume == 0)
 			{
 				object->SetBrush("RED");
 				object->SetMouseOverBrush("RED");
-				object->SetText(TEXT("OFF"));
 			}
 			else
 			{
 				object->SetBrush("BLUE");
 				object->SetMouseOverBrush("BLUE");
-				object->SetText(TEXT("ON"));
 			}
+			object->SetText(to_wstring(volume) + TEXT("%"));
+			object->SetValue(volume);
+			g_audioEngine.SetVolume(eAudioType::MUSIC, static_cast<float>(volume) / 100.0f);
 		}, musicOnOff.get()));
 
+	int soundVolume{ g_audioEngine.GetVolume(eAudioType::SOUND) };
 	auto soundOnOff{ make_unique<MenuTextObject>() };
 	soundOnOff->SetBrush("BLUE");
 	soundOnOff->SetMouseOverBrush("BLUE");
-	soundOnOff->SetFormat("32_RIGHT");
-	soundOnOff->SetText(TEXT("ON"));
+	soundOnOff->SetFormat("32R");
+	soundOnOff->SetText(to_wstring(soundVolume) + TEXT("%"));
 	soundOnOff->SetPivot(ePivot::CENTER);
 	soundOnOff->SetScreenPivot(ePivot::CENTER);
+	soundOnOff->SetValue(soundVolume);
 	soundOnOff->SetMouseClickCallBack(bind(
 		[](MenuTextObject* object)
 		{
-			if (object->GetText() == TEXT("ON"))
+			int volume{ object->GetValue() };
+			volume = (volume + 10) % 110;
+			if (volume == 0)
 			{
 				object->SetBrush("RED");
 				object->SetMouseOverBrush("RED");
-				object->SetText(TEXT("OFF"));
 			}
 			else
 			{
 				object->SetBrush("BLUE");
 				object->SetMouseOverBrush("BLUE");
-				object->SetText(TEXT("ON"));
 			}
+			object->SetText(to_wstring(volume) + TEXT("%"));
+			object->SetValue(volume);
+			g_audioEngine.SetVolume(eAudioType::SOUND, static_cast<float>(volume) / 100.0f);
 		}, soundOnOff.get()));
 
 	music->SetPosition(XMFLOAT2{ 150.0f - musicOnOff->GetWidth() / 2.0f,  20.0f });

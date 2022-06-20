@@ -6,9 +6,10 @@ public:
 	Monster();
 	~Monster() = default;
 
+	virtual void Update(FLOAT deltaTime);
+
 	void OnHit(const BulletData& bullet);
 	void Attack(const int id);
-	void Update(FLOAT deltaTime);
 
 	void SetId(CHAR id);
 	void SetType(eMobType type);
@@ -44,5 +45,5 @@ private:
 	FLOAT							m_atkTimer;		// 공격한 시점부터 시작되는 타이머
 	INT								m_hp;			// 체력
 	UCHAR							m_target;		// 타겟
-	bool							m_wasAttack;	// 
+	bool							m_wasAttack;	// 공격 애니메이션 때 공격했는지
 };

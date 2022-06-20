@@ -201,6 +201,28 @@ StencilWriteShader::StencilWriteShader(const ComPtr<ID3D12Device>& device, const
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
+FadeShader::FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs)
+{
+	ComPtr<ID3DBlob> computeShader, error;
+
+#if defined(_DEBUG)
+	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	UINT compileFlags = 0;
+#endif
+
+	auto hr = D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, cs.c_str(), "cs_5_1", compileFlags, 0, &computeShader, &error);
+	if (error)
+		OutputDebugStringA(reinterpret_cast<char*>(error->GetBufferPointer()));
+	DX::ThrowIfFailed(hr);
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+	psoDesc.pRootSignature = postRootSignature.Get();
+	psoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
+	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	DX::ThrowIfFailed(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+}
+
 WireframeShader::WireframeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps)
 {
 	ComPtr<ID3DBlob> vertexShader, pixelShader, error;
@@ -232,28 +254,6 @@ WireframeShader::WireframeShader(const ComPtr<ID3D12Device>& device, const ComPt
 	psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	psoDesc.SampleDesc.Count = 1;
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
-}
-
-FadeShader::FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs)
-{
-	ComPtr<ID3DBlob> computeShader, error;
-
-#if defined(_DEBUG)
-	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	UINT compileFlags = 0;
-#endif
-
-	auto hr = D3DCompileFromFile(shaderFile.c_str(), NULL, D3D_COMPILE_STANDARD_FILE_INCLUDE, cs.c_str(), "cs_5_1", compileFlags, 0, &computeShader, &error);
-	if (error)
-		OutputDebugStringA(reinterpret_cast<char*>(error->GetBufferPointer()));
-	DX::ThrowIfFailed(hr);
-
-	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-	psoDesc.pRootSignature = postRootSignature.Get();
-	psoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
-	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-	DX::ThrowIfFailed(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
 ParticleShader::ParticleShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& streamGs, const string& gs, const string& ps)

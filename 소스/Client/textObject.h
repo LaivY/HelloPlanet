@@ -108,13 +108,17 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
+	void SetValue(INT value);
 	void SetMouseOverBrush(const string& brush);
 	void SetMouseClickCallBack(const function<void()>& callBackFunc);
+
+	INT GetValue() const;
 
 private:
 	BOOL				m_isMouseOver;
 	FLOAT				m_scale;
 	FLOAT				m_scaleTimer;
+	INT					m_value;
 	string				m_mouseOverBrush;
 	function<void()>	m_mouseClickCallBack;
 };

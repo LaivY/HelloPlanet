@@ -217,6 +217,11 @@ XMFLOAT4X4 GameObject::GetWorldMatrix() const
 	return m_worldMatrix;
 }
 
+XMFLOAT3 GameObject::GetRollPitchYaw() const
+{
+	return XMFLOAT3{ m_roll, m_pitch, m_yaw };
+}
+
 XMFLOAT3 GameObject::GetRight() const
 {
 	return XMFLOAT3{ m_worldMatrix._11, m_worldMatrix._12, m_worldMatrix._13 };

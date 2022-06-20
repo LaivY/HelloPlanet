@@ -458,7 +458,6 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 		m_killScore = 0;
 		erase_if(monsters, [](const Monster& m) { return m.GetHp() >= -100; });
 	}
-		
 }
 
 void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)

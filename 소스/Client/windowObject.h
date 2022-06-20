@@ -7,7 +7,7 @@ class MenuTextObject;
 class WindowObject : public UIObject
 {
 public:
-	WindowObject(FLOAT width, FLOAT height);
+	WindowObject(FLOAT width, FLOAT height, BOOL hasOutline = TRUE);
 	~WindowObject() = default;
 
 	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
