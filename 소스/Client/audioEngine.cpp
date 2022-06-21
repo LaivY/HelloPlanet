@@ -119,7 +119,7 @@ void AudioEngine::SetVolume(eAudioType audioType, FLOAT volume)
 		m_soundVolume = volume;
 }
 
-int AudioEngine::GetVolume(eAudioType audioType)
+int AudioEngine::GetVolume(eAudioType audioType) const
 {
 	switch (audioType)
 	{
@@ -129,6 +129,11 @@ int AudioEngine::GetVolume(eAudioType audioType)
 		return static_cast<int>(m_soundVolume * 100);
 	}
 	return 0;
+}
+
+int AudioEngine::GetAudioCount() const
+{
+	return static_cast<int>(m_audios.size());
 }
 
 HRESULT AudioEngine::FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition)

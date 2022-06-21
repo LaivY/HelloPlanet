@@ -26,7 +26,8 @@ public:
 	void Play(const wstring& fileName, bool isLoop = false);
 
 	void SetVolume(eAudioType audioType, FLOAT volume);
-	int GetVolume(eAudioType audioType);
+	int GetVolume(eAudioType audioType) const;
+	int GetAudioCount() const;
 
 private:
 	HRESULT FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition);

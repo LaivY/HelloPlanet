@@ -46,13 +46,14 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 26 + 14 + 14 + 4 + 5 };
+	constexpr size_t allResourceCount{ 28 + 15 + 16 + 4 + 10 + 2 };
 	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
 	currResourceCount += s_textures.size();
 	currResourceCount += TextObject::s_brushes.size();
 	currResourceCount += TextObject::s_formats.size();
+	currResourceCount += g_audioEngine.GetAudioCount();
 
 	// 로딩바 최신화
 	if (m_loadingBarObject)
@@ -155,8 +156,8 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 플레이어 관련 메쉬 로딩
 	vector<pair<string, string>> animations
 	{
-		{ "idle", "IDLE" }, { "walking", "WALKING" }, {"walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
-		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, {"firing", "FIRING" }, { "reload", "RELOAD" }
+		{ "idle", "IDLE" }, { "walking", "WALKING" }, { "walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
+		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }
 	};
 	s_meshes["PLAYER"] = make_shared<Mesh>();
 	s_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));
@@ -198,7 +199,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 게임오브젝트 관련 로딩
 	s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
-	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.05f, 0.05f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
 	for (int i = 0; i <= 11; ++i)

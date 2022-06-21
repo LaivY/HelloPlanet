@@ -456,24 +456,6 @@ void Player::Fire()
 
 	// 총구 이펙트
 	{
-		//// 옆
-		//auto sideTextureInfo{ make_unique<TextureInfo>() };
-		//sideTextureInfo->loop = FALSE;
-
-		//auto sideEffect{ make_unique<GameObject>() };
-		//sideEffect->SetMesh(Scene::s_meshes["MUZZLE_SIDE"]);
-		//sideEffect->SetShader(Scene::s_shaders["BLENDING"]);
-		//sideEffect->SetTexture(Scene::s_textures["MUZZLE_SIDE"]);
-		//sideEffect->SetTextureInfo(sideTextureInfo);
-		//switch (m_weaponType)
-		//{
-		//case eWeaponType::AR:
-		//	sideEffect->SetPosition(XMFLOAT3{ 7.0f, -3.0f, 50.0f });
-		//	break;
-		//}
-		//sideEffect->Rotate(0.0f, 0.0f, 90.0f);
-		//GameScene::screenObjects.push_back(move(sideEffect));
-
 		// 앞
 		auto frontTextureInfo{ make_unique<TextureInfo>() };
 		frontTextureInfo->loop = FALSE;
@@ -488,9 +470,15 @@ void Player::Fire()
 		case eWeaponType::AR:
 			frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
 			break;
+		case eWeaponType::SG:
+			frontEffect->SetPosition(XMFLOAT3{ 10.0f, -5.5f, 50.0f });
+			break;
+		case eWeaponType::MG:
+			frontEffect->SetPosition(XMFLOAT3{ Utile::Random(12.0f, 14.0f), Utile::Random(-7.0f, -5.0f), 50.0f});
+			break;
 		}
 		frontEffect->Rotate(Utile::Random(-5.0f, 5.0f), 0.0f, 0.0f);
-		GameScene::screenObjects.push_back(move(frontEffect));
+		GameScene::s_screenObjects.push_back(move(frontEffect));
 	}
 
 	// 발사 효과음

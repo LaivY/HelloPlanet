@@ -11,7 +11,7 @@
 #include "windowObject.h"
 
 unordered_map<INT, unique_ptr<Monster>> GameScene::s_monsters;
-vector<unique_ptr<GameObject>>			GameScene::screenObjects;
+vector<unique_ptr<GameObject>>			GameScene::s_screenObjects;
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -49,7 +49,7 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	s_textures["STENCIL"]->Create(device, DXGI_FORMAT_R24G8_TYPELESS, g_width, g_height, 8, eTextureType::STENCIL);
 	Texture::CreateShaderResourceView(device);
 
-	// 오디오 엔진
+	// 배경음 재생
 	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 
 #ifdef NETWORK
@@ -238,7 +238,7 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
-	for (auto& o : screenObjects)
+	for (auto& o : s_screenObjects)
 		o->Update(deltaTime);
 	for (auto& [_, m] : s_monsters)
 		m->Update(deltaTime);
@@ -300,7 +300,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 
 	// 화면 기준으로 그리는 게임오브젝트들
 	m_screenCamera->UpdateShaderVariable(commandList);
-	for (const auto& o : screenObjects)
+	for (const auto& o : s_screenObjects)
 		o->Render(commandList);
 
 	// 플레이어 렌더링
@@ -601,7 +601,7 @@ void GameScene::Update(FLOAT deltaTime)
 	erase_if(m_uiObjects, [](unique_ptr<UIObject>& object) { return !object->isValid(); });
 	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return !object->isValid(); });
 	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
-	erase_if(screenObjects, [](unique_ptr<GameObject>& object) { return !object->isValid(); });
+	erase_if(s_screenObjects, [](unique_ptr<GameObject>& object) { return !object->isValid(); });
 	erase_if(s_monsters, [](const auto& item) { return !item.second->isValid(); });
 	lock.unlock();
 
@@ -689,20 +689,21 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 void GameScene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.1f, 0.4f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.1f, 0.4f, 0.8f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
-	XMFLOAT3 frustum[]{
+	XMFLOAT3 frustum[]
+	{
 		// 앞쪽
-		{ -1.0f, 1.0f, 0.0f },	// 왼쪽위
-		{ 1.0f, 1.0f, 0.0f },	// 오른쪽위
-		{ 1.0f, -1.0f, 0.0f },	// 오른쪽아래
+		{ -1.0f,  1.0f, 0.0f },	// 왼쪽위
+		{  1.0f,  1.0f, 0.0f },	// 오른쪽위
+		{  1.0f, -1.0f, 0.0f },	// 오른쪽아래
 		{ -1.0f, -1.0f, 0.0f },	// 왼쪽아래
 
 		// 뒤쪽
-		{ -1.0f, 1.0f, 1.0f },	// 왼쪽위
-		{ 1.0f, 1.0f, 1.0f },	// 오른쪽위
-		{ 1.0f, -1.0f, 1.0f },	// 오른쪽아래
+		{ -1.0f,  1.0f, 1.0f },	// 왼쪽위
+		{  1.0f,  1.0f, 1.0f },	// 오른쪽위
+		{  1.0f, -1.0f, 1.0f },	// 오른쪽아래
 		{ -1.0f, -1.0f, 1.0f }	// 왼쪽아래
 	};
 
@@ -753,7 +754,8 @@ void GameScene::UpdateShadowMatrix()
 		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 		XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 		XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&shadowLightPos), XMLoadFloat3(&center), XMLoadFloat3(&up)));
-		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
+		//XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
+		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius, radius, 0.0f, 5000.0f));
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}

@@ -70,7 +70,7 @@ public:
 	static unordered_map<INT, unique_ptr<Monster>> s_monsters;
 
 	// 총구 이펙트
-	static vector<unique_ptr<GameObject>>			screenObjects;
+	static vector<unique_ptr<GameObject>> s_screenObjects;
 
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
