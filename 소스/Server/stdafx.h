@@ -12,6 +12,7 @@
 #include <thread>
 #include <vector>
 #include <list>
+#include <sqlext.h>
 #include "protocol.h"
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")

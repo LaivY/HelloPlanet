@@ -10,6 +10,7 @@ bulletHits{}, m_spawnCooldown{ g_spawnCooldown }, m_lastMobId{ 0 }, m_killScore{
 
 int NetworkFramework::OnInit(SOCKET socket)
 {
+	std::wcout.imbue(std::locale("korean"));
 	WSADATA WSAData;
 	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != 0) return 1;
 
@@ -29,6 +30,33 @@ int NetworkFramework::OnInit(SOCKET socket)
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Listen");
 	threads.emplace_back(&NetworkFramework::AcceptThread, this, socket);
 	return 0;
+}
+
+int NetworkFramework::OnInit_iocp(SOCKET socket, HANDLE h_iocp)
+{
+	std::wcout.imbue(std::locale("korean"));
+	WSADATA WSAData;
+	WSAStartup(MAKEWORD(2, 2), &WSAData);
+	socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	SOCKADDR_IN server_addr;
+	ZeroMemory(&server_addr, sizeof(server_addr));
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(SERVER_PORT);
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	bind(socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+	listen(socket, SOMAXCONN);
+
+	h_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+	CreateIoCompletionPort(reinterpret_cast<HANDLE>(socket), h_iocp, 0, 0);
+
+	SOCKET c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	char accept_buf[sizeof(SOCKADDR_IN) * 2 + 32 + 100];
+	EXP_OVER accept_ex;
+	*(reinterpret_cast<SOCKET*>(&accept_ex._net_buf)) = c_socket;
+	ZeroMemory(&accept_ex._wsa_over, sizeof(accept_ex._wsa_over));
+	accept_ex._comp_op = OP_ACCEPT;
+
+	AcceptEx(socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
 }
 
 void NetworkFramework::AcceptThread(SOCKET socket)
