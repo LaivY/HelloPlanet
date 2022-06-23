@@ -54,7 +54,7 @@ public:
 	void RecvLogoutOkPacket();
 
 	unique_ptr<Player>& GetPlayer();
-	array<unique_ptr<Player>, Setting::MAX_PLAYERS>& GetMultiPlayers();
+	array<shared_ptr<Player>, Setting::MAX_PLAYERS>& GetMultiPlayers();
 
 private:
 	BOOL								m_isReadyToPlay;
@@ -73,7 +73,7 @@ private:
 	shared_ptr<Camera>					m_uiCamera;
 	unique_ptr<MenuTextObject>			m_readyTextObject;
 	unique_ptr<Player>					m_player;
-	array<unique_ptr<Player>,
+	array<shared_ptr<Player>,
 		  Setting::MAX_PLAYERS>			m_multiPlayers;
 	vector<unique_ptr<GameObject>>		m_gameObjects;
 	vector<unique_ptr<UIObject>>		m_uiObjects;

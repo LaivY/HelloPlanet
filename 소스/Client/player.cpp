@@ -2,6 +2,7 @@
 #include "player.h"
 #include "audioEngine.h"
 #include "camera.h"
+#include "framework.h"
 #include "mesh.h"
 #include "scene.h"
 #include "gameScene.h"
@@ -31,6 +32,8 @@ Player::Player(BOOL isMultiPlayer) : GameObject{},
 
 void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 {
+	if (m_hp <= 0) return;
+
 #ifdef FIRSTVIEW
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
@@ -45,11 +48,13 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-
+	if (m_hp <= 0) return;
 }
 
 void Player::OnKeyboardEvent(FLOAT deltaTime)
 {
+	if (m_hp <= 0) return;
+
 #ifndef FREEVIEW
 	string currPureAnimationName{ GetCurrAnimationName() };
 	string afterPureAnimationName{ GetAfterAnimationName() };
@@ -138,6 +143,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 
 void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (m_hp <= 0) return;
+
 #ifndef FREEVIEW
 	switch (message)
 	{
@@ -204,6 +211,10 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 		case eAnimationState::PLAY:
 		{
 			string currPureAnimationName{ GetCurrAnimationName() };
+
+			// 사망 애니메이션은 끝나도 계속 사망 상태로 유지함
+			if (currPureAnimationName == "DIE")
+				break;
 
 			// 멀티플레이어
 			if (m_isMultiPlayer)
@@ -308,7 +319,7 @@ void Player::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const 
 	for (const auto& hitBox : m_hitboxes)
 		hitBox->Render(commandList);
 #endif
-	if (m_isMultiPlayer)
+	if (m_isMultiPlayer || m_hp == 0)
 	{
 		GameObject::Render(commandList);
 		if (m_gunMesh)
@@ -532,6 +543,8 @@ void Player::Update(FLOAT deltaTime)
 
 void Player::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 {
+	if (m_hp <= 0) return;
+
 	// 회전각 제한
 	if (m_pitch + pitch > Setting::CAMERA_MAX_PITCH)
 		pitch = Setting::CAMERA_MAX_PITCH - m_pitch;
@@ -609,6 +622,13 @@ void Player::SetIsMultiplayer(BOOL isMultiPlayer)
 		m_mesh = Scene::s_meshes["PLAYER"];
 	else
 		m_mesh = Scene::s_meshes["ARM"];
+}
+
+void Player::SetHp(INT hp)
+{
+	m_hp = clamp(hp, 0, m_maxHp);
+	if (m_hp == 0)
+		g_gameFramework.GetScene()->OnPlayerDie();
 }
 
 void Player::SetWeaponType(eWeaponType weaponType)
@@ -715,6 +735,10 @@ void Player::ApplyServerData(const PlayerData& playerData)
 	case eAnimationType::RUNNING:
 		if (GetCurrAnimationName() != "RUNNING" && GetAfterAnimationName() != "RUNNING")
 			PlayAnimation("RUNNING", TRUE);
+		break;
+	case eAnimationType::DIE:
+		if (GetCurrAnimationName() != "DIE" && GetAfterAnimationName() != "DIE")
+			PlayAnimation("DIE", TRUE);
 		break;
 	}
 
@@ -840,6 +864,8 @@ eAnimationType Player::GetAnimationType() const
 			return eAnimationType::WALKRIGHT;
 		else if (aniName == "WALKBACK")
 			return eAnimationType::WALKBACK;
+		else if (aniName == "DIE")
+			return eAnimationType::DIE;
 		return eAnimationType::NONE;
 	};
 	if (!m_animationInfo) return eAnimationType::NONE;

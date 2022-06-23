@@ -2,6 +2,7 @@
 #include "scene.h"
 
 class Camera;
+class ThirdPersonCamera;
 class GameObject;
 class Player;
 class Monster;
@@ -35,6 +36,8 @@ public:
 
 	virtual void ProcessClient();
 
+	virtual void OnPlayerDie();
+
 	virtual shared_ptr<Player> GetPlayer() const;
 
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
@@ -65,12 +68,11 @@ public:
 
 	// 이전 씬에서 데이터를 가져옴
 	void SetPlayer(unique_ptr<Player>& player);
-	void SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
+	void SetMultiPlayers(array<shared_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
 
-	static unordered_map<INT, unique_ptr<Monster>> s_monsters;
-
-	// 총구 이펙트
-	static vector<unique_ptr<GameObject>> s_screenObjects;
+	// 일부 게임오브젝트들
+	static unordered_map<INT, unique_ptr<Monster>>	s_monsters;
+	static vector<unique_ptr<GameObject>>			s_screenObjects;
 
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
@@ -80,10 +82,11 @@ private:
 	unique_ptr<GameObject>					m_fullScreenQuad;	// 화면을 가득 채우는 사각형
 	unique_ptr<Skybox>						m_skybox;			// 스카이박스
 	shared_ptr<Camera>						m_camera;			// 카메라
-	shared_ptr<Camera>						m_screenCamera;		// 스크린카메라
+	shared_ptr<Camera>						m_observeCamera;	// 관전 카메라
+	unique_ptr<Camera>						m_screenCamera;		// 스크린카메라
 	unique_ptr<Camera>						m_uiCamera;			// UI 카메라
 	shared_ptr<Player>						m_player;			// 플레이어
-	array<unique_ptr<Player>,
+	array<shared_ptr<Player>,
 		  Setting::MAX_PLAYERS>				m_multiPlayers;		// 멀티플레이어
 	vector<unique_ptr<GameObject>>			m_gameObjects;		// 게임오브젝트들
 	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트

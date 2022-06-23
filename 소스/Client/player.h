@@ -40,7 +40,7 @@ public:
 
 	void SetId(INT id) { m_id = id; }
 	void SetIsMultiplayer(BOOL isMultiPlayer);
-	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
+	void SetHp(INT hp);
 	void SetDamage(INT damage) { m_damage = damage; }
 	void SetWeaponType(eWeaponType gunType);
 	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }

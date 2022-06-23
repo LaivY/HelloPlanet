@@ -29,37 +29,15 @@ public:
 	void OnInit(HINSTANCE hInstance, HWND hWnd);
 	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void OnUpdate(FLOAT deltaTime);
-	void OnRender();
 	void OnDestroy();
 	void OnMouseEvent();
 	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnKeyboardEvent();
 	void OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	void LoadPipeline();
-	void LoadAssets();
-	void CreateFactory();
-	void CreateDevice();
-	void CreateCommandQueue();
-	void CreateD3D11On12Device();
-	void CreateD2DDevice();
-	void CreateSwapChain();
-	void CreateRtvDsvDescriptorHeap();
-	void CreateRenderTargetView();
-	void CreateDepthStencilView();
-	void CreateRootSignature();
-	void CreatePostRootSignature();
-	void CreateShaderVariable();
-
-	void Update(FLOAT deltaTime);
-	void UpdateShaderVariable() const;
-	void UpdatePostShaderVariable() const;
-	void PopulateCommandList() const;
-	void Render2D() const;
 	void WaitForPreviousFrame();
 	void WaitForGpu();
-	void ChangeScene();
+
 	BOOL ConnectServer();
 	void ProcessClient();
 
@@ -76,6 +54,32 @@ public:
 	ComPtr<IDWriteFactory> GetDWriteFactory() const;
 	ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
 	Scene* GetScene() const;
+
+private:
+	void OnUpdate(FLOAT deltaTime);
+	void OnRender();
+
+	void LoadPipeline();
+	void LoadAssets();
+	void CreateFactory();
+	void CreateDevice();
+	void CreateCommandQueue();
+	void CreateD3D11On12Device();
+	void CreateD2DDevice();
+	void CreateSwapChain();
+	void CreateRtvDsvDescriptorHeap();
+	void CreateRenderTargetView();
+	void CreateDepthStencilView();
+	void CreateRootSignature();
+	void CreatePostRootSignature();
+	void CreateShaderVariable();
+	void ChangeScene();
+
+	void Update(FLOAT deltaTime);
+	void UpdateShaderVariable() const;
+	void UpdatePostShaderVariable() const;
+	void PopulateCommandList() const;
+	void Render2D() const;
 
 private:
 	static constexpr UINT				FrameCount = 3;

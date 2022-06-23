@@ -383,13 +383,13 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
-Particle::Particle()
+DustParticle::DustParticle()
 {
-	m_mesh = Scene::s_meshes["PARTICLE"];
-	m_shader = Scene::s_shaders["PARTICLE"];
+	m_mesh = Scene::s_meshes["DUST"];
+	m_shader = Scene::s_shaders["DUST"];
 }
 
-void Particle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+void DustParticle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	UpdateShaderVariable(commandList);
 	auto m{ reinterpret_cast<ParticleMesh*>(m_mesh.get()) };

@@ -157,7 +157,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	vector<pair<string, string>> animations
 	{
 		{ "idle", "IDLE" }, { "walking", "WALKING" }, { "walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
-		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }
+		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }, { "die", "DIE" }
 	};
 	s_meshes["PLAYER"] = make_shared<Mesh>();
 	s_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));
@@ -217,7 +217,8 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["FULLSCREEN"] = make_shared<FullScreenQuadMesh>(device, commandList);
 
 	// 파티클
-	s_meshes["PARTICLE"] = make_shared<ParticleMesh>(device, commandList);
+	s_meshes["DUST"] = make_shared<DustParticleMesh>(device, commandList);
+	s_meshes["TRAIL"] = make_shared<TrailParticleMesh>(device, commandList, XMFLOAT3{ 0.0f, 20.0f, 0.0f }, XMFLOAT3{ 0.0f, 0.0f, 1.0f });
 
 	// 총구 이펙트
 	s_meshes["MUZZLE_FRONT"] = make_shared<RectMesh>(device, commandList, 30.0f, 30.0f, 0.0f, XMFLOAT3{ 0.0f, 0.0f, 0.01f });
@@ -247,7 +248,8 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["FULLSCREEN"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/outline.hlsl")), "VS", "PS");
 
 	// 파티클
-	s_shaders["PARTICLE"] = make_shared<ParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/particle.hlsl")), "VS", "GS_STREAM", "GS", "PS");
+	s_shaders["DUST"] = make_shared<DustParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/dust.hlsl")), "VS", "GS_STREAM", "GS", "PS");
+	s_shaders["TRAIL"] = make_shared<TrailParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/trail.hlsl")), "VS", "GS_STREAM", "GS", "PS");
 
 	// 디버그
 	s_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");

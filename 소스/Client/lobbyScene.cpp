@@ -587,7 +587,7 @@ void LobbyScene::RecvLoginOkPacket()
 		for (auto& p : m_multiPlayers)
 		{
 			if (p) continue;
-			p = make_unique<Player>(TRUE);
+			p = make_shared<Player>(TRUE);
 			p->SetWeaponType(weaponType);
 			p->SetId(static_cast<int>(data.id));
 			p->PlayAnimation("IDLE");
@@ -763,7 +763,7 @@ unique_ptr<Player>& LobbyScene::GetPlayer()
 	return m_player;
 }
 
-array<unique_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
+array<shared_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
 {
 	return m_multiPlayers;
 }

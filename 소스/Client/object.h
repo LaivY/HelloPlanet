@@ -147,11 +147,11 @@ private:
 	INT	m_id;
 };
 
-class Particle : public GameObject
+class DustParticle : public GameObject
 {
 public:
-	Particle();
-	~Particle() = default;
+	DustParticle();
+	~DustParticle() = default;
 
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 };

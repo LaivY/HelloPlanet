@@ -84,11 +84,14 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 		// 플레이어가 키보드를 누르고 있을 때 윈도우가 생기면
 		// 해당 상태가 유지되므로 속도와 애니메이션을 기본 상태로 설정해줌
-		m_player->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
-		if (m_player->GetCurrAnimationName() != "IDLE" && m_player->GetAfterAnimationName() != "IDLE")
+		if (m_player->GetHp() > 0)
 		{
-			m_player->PlayAnimation("IDLE", TRUE);
-			m_player->SendPlayerData();
+			m_player->SetVelocity(XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+			if (m_player->GetCurrAnimationName() != "IDLE" && m_player->GetAfterAnimationName() != "IDLE")
+			{
+				m_player->PlayAnimation("IDLE", TRUE);
+				m_player->SendPlayerData();
+			}
 		}
 		m_windowObjects.back()->OnMouseEvent(hWnd, deltaTime);
 		return;
@@ -124,6 +127,10 @@ void GameScene::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 #endif
 #ifdef FIRSTVIEW
 		if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
+
+		// 관전 상태일 경우 카메라 회전
+		if (m_player->GetHp() <= 0)
+			m_camera->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
 #endif
 #ifdef THIRDVIEW
 		if (m_player) m_player->Rotate(0.0f, dy * sensitive * deltaTime, dx * sensitive * deltaTime);
@@ -213,6 +220,14 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 			if (m_player)
 				m_player->SetHp(m_player->GetHp() + 5);
 			break;
+		case VK_LEFT:
+			if (m_multiPlayers[0])
+				m_camera->SetPlayer(m_multiPlayers[0]);
+			break;
+		case VK_RIGHT:
+			if (m_multiPlayers[1])
+				m_camera->SetPlayer(m_multiPlayers[1]);
+			break;
 		case VK_ESCAPE:
 			CreateExitWindow();
 			//PostMessage(hWnd, WM_QUIT, 0, 0);
@@ -249,7 +264,6 @@ void GameScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& co
 {
 	memcpy(m_pcbGameScene, m_cbGameSceneData.get(), sizeof(cbGameScene));
 	commandList->SetGraphicsRootConstantBufferView(3, m_cbGameScene->GetGPUVirtualAddress());
-	if (m_camera) m_camera->UpdateShaderVariable(commandList);
 }
 
 void GameScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -259,6 +273,9 @@ void GameScene::PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) 
 
 void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
 {
+	// 카메라 셰이더 변수 최신화
+	m_camera->UpdateShaderVariable(commandList);
+
 	// 뷰포트, 가위사각형, 렌더타겟 설정
 	commandList->RSSetViewports(1, &m_viewport);
 	commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -305,7 +322,8 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 
 	// 플레이어 렌더링
 	m_camera->UpdateShaderVariable(commandList);
-	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	if (m_player->GetHp() > 0)
+		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 	if (m_player) m_player->Render(commandList);
 
 	// UI 렌더링
@@ -337,6 +355,16 @@ void GameScene::ProcessClient()
 {
 	while (g_isConnected)
 		RecvPacket();
+}
+
+void GameScene::OnPlayerDie()
+{
+	// 플레이어가 죽으면 카메라를 3인칭으로 변경하고 사망 애니메이션을 재생함
+	m_camera.swap(m_observeCamera);
+	m_skybox->SetCamera(m_camera);
+	m_player->SetMesh(s_meshes["PLAYER"]);
+	m_player->PlayAnimation("DIE", TRUE);
+	m_player->SendPlayerData();
 }
 
 shared_ptr<Player> GameScene::GetPlayer() const
@@ -407,8 +435,13 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
+	// 관전 카메라 생성
+	m_observeCamera = make_shared<ThirdPersonCamera>();
+	m_observeCamera->CreateShaderVariable(device, commandList);
+	m_observeCamera->SetProjMatrix(projMatrix);
+
 	// 스크린 카메라 생성
-	m_screenCamera = make_shared<Camera>();
+	m_screenCamera = make_unique<Camera>();
 	m_screenCamera->CreateShaderVariable(device, commandList);
 	m_screenCamera->SetProjMatrix(projMatrix);
 
@@ -427,6 +460,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	// 카메라, 플레이어 설정
 	m_player->SetCamera(m_camera);
 	m_camera->SetPlayer(m_player);
+	m_observeCamera->SetPlayer(m_player);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -444,8 +478,14 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
 
 	// 파티클
-	auto particle{ make_unique<Particle>() };
+	auto particle{ make_unique<DustParticle>() };
 	m_gameObjects.push_back(move(particle));
+
+	// 테스트
+	//auto trail{ make_unique<DustParticle>()};
+	//trail->SetMesh(s_meshes["TRAIL"]);
+	//trail->SetShader(s_shaders["TRAIL"]);
+	//m_gameObjects.push_back(move(trail));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -754,8 +794,7 @@ void GameScene::UpdateShadowMatrix()
 		XMFLOAT4X4 lightViewMatrix, lightProjMatrix;
 		XMFLOAT3 up{ 0.0f, 1.0f, 0.0f };
 		XMStoreFloat4x4(&lightViewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&shadowLightPos), XMLoadFloat3(&center), XMLoadFloat3(&up)));
-		//XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
-		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius, radius, 0.0f, 5000.0f));
+		XMStoreFloat4x4(&lightProjMatrix, XMMatrixOrthographicLH(radius * 2.0f, radius * 2.0f, 0.0f, 5000.0f));
 		m_cbGameSceneData->shadowLight.lightViewMatrix[i] = Matrix::Transpose(lightViewMatrix);
 		m_cbGameSceneData->shadowLight.lightProjMatrix[i] = Matrix::Transpose(lightProjMatrix);
 	}
@@ -803,9 +842,15 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	}
 	if (m_player)
 	{
-		m_player->SetMesh(s_meshes["PLAYER"]);
-		m_player->RenderToShadowMap(commandList);
-		m_player->SetMesh(s_meshes["ARM"]);
+		// 죽었을 경우 이미 메쉬가 PLAYER로 되어있음
+		if (m_player->GetHp() <= 0)
+			m_player->RenderToShadowMap(commandList);
+		else
+		{
+			m_player->SetMesh(s_meshes["PLAYER"]);
+			m_player->RenderToShadowMap(commandList);
+			m_player->SetMesh(s_meshes["ARM"]);
+		}
 	}
 
 	// 리소스배리어 설정(셰이더에서 읽기)
@@ -882,7 +927,7 @@ void GameScene::RecvLoginOk()
 		for (auto& p : m_multiPlayers)
 		{
 			if (p) continue;
-			p = make_unique<Player>(TRUE);
+			p = make_shared<Player>(TRUE);
 			p->SetId(static_cast<int>(data.id));
 			p->SetWeaponType(eWeaponType::SG);
 			p->PlayAnimation("IDLE");
@@ -1004,6 +1049,7 @@ void GameScene::RecvMosterAttack()
 	MonsterAttackData data{};
 	memcpy(&data, buf, sizeof(data));
 	if (m_player->GetId() != data.id) return;
+	if (m_player->GetHp() == 0) return;
 
 	// 체력 감소
 	m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
@@ -1227,7 +1273,7 @@ void GameScene::SetPlayer(unique_ptr<Player>& player)
 	m_player = move(player);
 }
 
-void GameScene::SetMultiPlayers(array<unique_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers)
+void GameScene::SetMultiPlayers(array<shared_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers)
 {
 	m_multiPlayers = move(multiPlayers);
 }

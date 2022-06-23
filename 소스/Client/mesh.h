@@ -122,28 +122,21 @@ public:
 	~FullScreenQuadMesh() = default;
 };
 
-class ParticleMesh : public Mesh
+class ParticleMesh abstract : public Mesh
 {
 public:
-	struct ParticleVertex
-	{
-		XMFLOAT3 position;
-		XMFLOAT3 direction;
-		FLOAT speed;
-		FLOAT lifeTime;
-		FLOAT age;
-	};
-
-public:
-	ParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
-	~ParticleMesh() = default;
+	ParticleMesh();
+	virtual ~ParticleMesh() = default;
 
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void RenderStreamOutput(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 	void CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
-private:
+protected:
+	UINT							m_vertexSize;						// 정점 구조체 크기
+	UINT							m_maxVertexCount;					// 최대 정점 개수
+
 	ComPtr<ID3D12Resource>          m_streamOutputBuffer;               // 스트림 출력 버퍼
 	D3D12_STREAM_OUTPUT_BUFFER_VIEW m_streamOutputBufferView;           // 스트림 출력 버퍼 뷰
 
@@ -152,4 +145,37 @@ private:
 	ComPtr<ID3D12Resource>			m_streamFilledSizeUploadBuffer;		// 위의 버퍼에 복사할 때 쓰일 업로드 버퍼
 	ComPtr<ID3D12Resource>			m_streamFilledSizeReadBackBuffer;	// 쓰여진 데이터 크기를 읽어올 때 쓰일 리드백 버퍼
 	ComPtr<ID3D12Resource>			m_drawBuffer;						// 스트림 출력된 결과를 복사해서 출력할 때 쓰일 버퍼
+};
+
+class DustParticleMesh : public ParticleMesh
+{
+public:
+	struct DustParticleVertex
+	{
+		XMFLOAT3	position;
+		XMFLOAT3	direction;
+		FLOAT		speed;
+		FLOAT		lifeTime;
+		FLOAT		age;
+	};
+
+public:
+	DustParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	~DustParticleMesh() = default;
+};
+
+class TrailParticleMesh : public ParticleMesh
+{
+public:
+	struct TrailParticleVertex
+	{
+		XMFLOAT3	position;
+		XMFLOAT3	direction;
+		FLOAT		lifeTime;
+		INT			type;
+	};
+
+public:
+	TrailParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT3& direction);
+	~TrailParticleMesh() = default;
 };
