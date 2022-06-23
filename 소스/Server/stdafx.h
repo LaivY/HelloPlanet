@@ -18,7 +18,8 @@
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
 
-#define DB_MODE 0;
+//#define DB_MODE
+#define IOCP_MODE
 
 void errorDisplay(const int errNum, const char* msg);
 

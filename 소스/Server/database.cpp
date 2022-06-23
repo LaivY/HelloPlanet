@@ -1,8 +1,5 @@
-// SQLBindCol_ref.cpp  
-// compile with: odbc32.lib  
 #include "database.h"
 using namespace std;
-#define NAME_LEN 20  
 
 void show_error(SQLHANDLE hHandle, SQLSMALLINT hType, RETCODE RetCode)
 {

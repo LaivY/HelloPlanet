@@ -28,26 +28,34 @@ int NetworkFramework::OnInit(SOCKET socket)
 	// listen
 	retVal = listen(socket, SOMAXCONN);
 	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Listen");
+
 	threads.emplace_back(&NetworkFramework::AcceptThread, this, socket);
 	return 0;
 }
 
 int NetworkFramework::OnInit_iocp()
 {
-	std::wcout.imbue(std::locale("korean"));
 	WSADATA WSAData;
-	WSAStartup(MAKEWORD(2, 2), &WSAData);
-	g_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	if (WSAStartup(MAKEWORD(2, 2), &WSAData) != 0) return 1;
+
+	g_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+	if (g_socket == INVALID_SOCKET) errorDisplay(WSAGetLastError(), "Socket");
+
+	// bind
 	SOCKADDR_IN server_addr;
 	ZeroMemory(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(SERVER_PORT);
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	bind(g_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-	listen(g_socket, SOMAXCONN);
+	int retVal = bind(g_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Bind");
+
+	// listen
+	retVal = listen(g_socket, SOMAXCONN);
+	if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Listen");
 
 	g_h_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(socket), g_h_iocp, 0, 0);
+	CreateIoCompletionPort(reinterpret_cast<HANDLE>(g_socket), g_h_iocp, 0, 0);
 
 	SOCKET c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 	char accept_buf[sizeof(SOCKADDR_IN) * 2 + 32 + 100];
@@ -56,15 +64,18 @@ int NetworkFramework::OnInit_iocp()
 	ZeroMemory(&accept_ex._wsa_over, sizeof(accept_ex._wsa_over));
 	accept_ex._comp_op = OP_ACCEPT;
 
-	AcceptEx(g_socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
+	bool ret = AcceptEx(g_socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, 0, &accept_ex._wsa_over);
 	
 	std::cout << "Accept Called " << std::endl;;
-	std::cout << "main process start" << std::endl;
 
-	std::vector<std::thread> worker_threads;
-	for (int i = 0; i < 10; ++i)
+	for (int i = 0; i < MAX_USER; ++i)
+		clients[i].data.id = i;
+
+	for (int i = 0; i < 6; ++i)
 		worker_threads.emplace_back(&NetworkFramework::WorkThreads, this);
-
+	for (auto& th : worker_threads)
+		th.detach();
+	std::cout << "main process start" << std::endl;
 
 	// 1초에 60회 동작하는 루프
 	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
@@ -75,7 +86,7 @@ int NetworkFramework::OnInit_iocp()
 	while (true)
 	{
 		// 아무도 서버에 접속하지 않았으면 패스
-		if (!g_networkFramework.isAccept)
+		if (!isAccept)
 		{
 			// 이 부분이 없다면 첫 프레임 때 deltaTime이 '클라에서 처음 접속한 시각 - 서버를 켠 시각' 이 된다.
 			fpsTimer = std::chrono::steady_clock::now();
@@ -91,17 +102,17 @@ int NetworkFramework::OnInit_iocp()
 		if (frameCount.count() & 1) // even FrameNumber
 		{
 			// playerData Send
-			g_networkFramework.SendPlayerDataPacket();
-			g_networkFramework.SendBulletHitPacket();
+			SendPlayerDataPacket();
+			SendBulletHitPacket();
 		}
 		else // odd FrameNumber
 		{
 			// MonsterData Send
-			g_networkFramework.SendMonsterDataPacket();
+			SendMonsterDataPacket();
 		}
 
 		// 서버에서 해야할 모든 계산 실행
-		g_networkFramework.Update(duration_cast<ms>(fps).count() / 1000.0f);
+		Update(duration_cast<ms>(fps).count() / 1000.0f);
 
 		// 이번 프레임 계산이 끝난 시각 저장
 		frameCount = duration_cast<frame>(frameCount + fps);
@@ -110,16 +121,17 @@ int NetworkFramework::OnInit_iocp()
 		fpsTimer = std::chrono::steady_clock::now();
 	}
 
-	for (const auto& c : g_networkFramework.clients)
+	for (const auto& c : clients)
 	{
 		if (c.data.isActive)
-			g_networkFramework.Disconnect(c.data.id);
+			Disconnect(c.data.id);
 	}
 	for (auto& th : worker_threads)
 		th.join();
 
 	closesocket(g_socket);
 	WSACleanup();
+	return 0;
 }
 
 void NetworkFramework::AcceptThread(SOCKET socket)
@@ -152,21 +164,22 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
 		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
-		//threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
+		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		//isAccept = true;
 	}
 }
 
 void NetworkFramework::WorkThreads()
 {
+	std::cout << "worker_threads is start" << std::endl;
 	for (;;) {
 		DWORD num_byte;
 		LONG64 iocp_key;
 		WSAOVERLAPPED* p_over;
 		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, (PULONG_PTR)&iocp_key, &p_over, INFINITE);
+		//std::cout << iocp_key << std::endl;
 		int client_id = static_cast<int>(iocp_key);
 		EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(p_over);
-
 		if (FALSE == ret)
 		{
 			int err_no = WSAGetLastError();
@@ -188,7 +201,7 @@ void NetworkFramework::WorkThreads()
 			int packet_size = packet_start[0];
 
 			while (packet_size <= remain_data) {
-				ProcessRecvPacket(client_id, packet_start);
+				ProcessRecvPacket_iocp(client_id, packet_start);
 				remain_data -= packet_size;
 				packet_start += packet_size;
 				if (remain_data > 0) packet_size = packet_start[0];
@@ -212,13 +225,12 @@ void NetworkFramework::WorkThreads()
 		case OP_ACCEPT: {
 			std::cout << "Accept Completed." << std::endl;
 			SOCKET c_socket = *(reinterpret_cast<SOCKET*>(exp_over->_net_buf));
-			int new_id = GetNewId();
+			CHAR new_id{ GetNewId() };
 			if (-1 == new_id) {
 				std::cout << "Maxmum user overflow. Accept aborted." << std::endl;
 			}
 			else {
 				Session& cl = clients[new_id];
-
 				cl.lock.lock();
 				cl.data.id = new_id;
 				cl.data.isActive = true;
@@ -243,7 +255,7 @@ void NetworkFramework::WorkThreads()
 			ZeroMemory(&exp_over->_wsa_over, sizeof(exp_over->_wsa_over));
 			c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 			*(reinterpret_cast<SOCKET*>(exp_over->_net_buf)) = c_socket;
-			AcceptEx(g_socket, c_socket, exp_over->_net_buf + 8, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &exp_over->_wsa_over);
+			AcceptEx(g_socket, c_socket, exp_over->_net_buf + 8, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, 0, &exp_over->_wsa_over);
 		}
 		break;
 		}
@@ -610,29 +622,63 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 	}
 }
 
-void NetworkFramework::ProcessRecvPacket(const int id, char* p)
+void NetworkFramework::ProcessRecvPacket_iocp(const int id, char* p)
 {
-	unsigned char packet_type = p[1];
+	char packet_type = p[1];
 	Session& cl = clients[id];
 
 	switch (packet_type) {
 	case CS_PACKET_LOGIN: {
 		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
-#if DB_MODE
-		bool retval = db_login(packet->name, client_id);
+#ifdef DB_MODE
+		bool retval = try_login_db(packet->name, id);
 		if (retval == 1) {
-			Disconnect(client_id);
+			Disconnect(id);
 			return;
 		}
 #else 
 		strcpy_s(cl.name, packet->name);
 #endif
 		SendLoginOkPacket(cl);
-
-		Session& cl = clients[id];
 		cl.lock.lock();
 		cl.state = STATE::ST_INGAME;
 		cl.lock.unlock();
+		std::cout << packet->name << " is connect" << std::endl;
+		break;
+	}
+	case CS_PACKET_SELECT_WEAPON:
+	{
+		// 무기 타입
+		cs_packet_select_weapon* packet = reinterpret_cast<cs_packet_select_weapon*>(p);
+		cl.weaponType = packet->weaponType;
+		SendSelectWeaponPacket(cl);
+		std::cout << id << " client is select" << std::endl;
+
+		break;
+	}
+	case CS_PACKET_READY:
+	{
+		// 준비 상태
+		cs_packet_ready* packet = reinterpret_cast<cs_packet_ready*>(p);
+
+		cl.isReady = packet->isReady;
+		SendReadyCheckPacket(cl);
+
+		// 3명 다 레디한다면 게임 시작
+		for (const auto& c : clients)
+		{
+			if (!c.data.isActive) continue;
+			if (c.isReady) readyCount++;
+		}
+		if (readyCount >= MAX_USER)
+		{
+			isAccept = true;
+			SendChangeScenePacket(eSceneType::GAME);
+		}
+
+		std::cout << id << " client is ready" << std::endl;
+
+		readyCount = 0;
 		break;
 	}
 	case CS_PACKET_UPDATE_PLAYER: {
@@ -644,6 +690,54 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		cl.data.pos = packet->pos;
 		cl.data.velocity = packet->velocity;
 		cl.data.yaw = packet->yaw;
+		break;
+	}
+	case CS_PACKET_BULLET_FIRE:
+	{
+		cs_packet_bullet_fire* packet = reinterpret_cast<cs_packet_bullet_fire*>(p);
+		sc_packet_bullet_fire send_packet{};
+		send_packet.size = sizeof(packet);
+		send_packet.type = SC_PACKET_BULLET_FIRE;
+		send_packet.data = packet->data;
+
+		char sendBuf[sizeof(send_packet)];
+		WSABUF wsabuf = { sizeof(sendBuf), sendBuf };
+		memcpy(sendBuf, &send_packet, sizeof(send_packet));
+		DWORD sent_byte;
+
+		// 총알은 수신하자마자 모든 클라이언트들에게 송신
+		for (const auto& c : clients)
+		{
+			if (!c.data.isActive) continue;
+			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+		}
+
+		// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
+		bullets.push_back(send_packet.data);
+		break;
+	}
+	case CS_PACKET_LOGOUT:
+	{
+		sc_packet_logout_ok send_packet{};
+		send_packet.size = sizeof(send_packet);
+		send_packet.type = SC_PACKET_LOGOUT_OK;
+		send_packet.id = id;
+
+		char subBuf[sizeof(send_packet)]{};
+		WSABUF wsabuf = { sizeof(subBuf), subBuf };
+		memcpy(subBuf, &send_packet, sizeof(send_packet));
+		DWORD sent_byte;
+
+		// 모든 클라이언트에게 이 플레이어가 나갔다고 송신
+		for (const auto& c : clients)
+		{
+			if (!c.data.isActive) continue;
+			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+		}
+
+		std::cout << "[" << id << " Session] Logout" << std::endl;
 		break;
 	}
 	default:
