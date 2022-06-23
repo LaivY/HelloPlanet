@@ -12,16 +12,20 @@
 #include <thread>
 #include <vector>
 #include <list>
+#include <atomic>
 #include <sqlext.h>
 #include "protocol.h"
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
+
+#define DB_MODE 0;
 
 void errorDisplay(const int errNum, const char* msg);
 
 class NetworkFramework;
 extern NetworkFramework	g_networkFramework;
 extern SOCKET			g_socket;
+extern HANDLE           g_h_iocp;
 
 namespace Utility
 {

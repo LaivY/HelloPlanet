@@ -12,9 +12,11 @@ public:
 	~NetworkFramework() = default;
 
 	int OnInit(SOCKET socket);
-	int OnInit_iocp(SOCKET socket, HANDLE h_iocp);
+	int OnInit_iocp();
 	void AcceptThread(SOCKET socket);
+	void WorkThreads();
 	void ProcessRecvPacket(const int id);
+	void ProcessRecvPacket(const int id, char* p);
 
 	void SendLoginOkPacket(const Session& player) const;
 	void SendSelectWeaponPacket(const Session& player) const;
@@ -48,33 +50,4 @@ public:
 	FLOAT							m_spawnCooldown;	// 스폰 쿨다운
 	CHAR							m_lastMobId;		// 몬스터 ID
 	INT								m_killScore;		// 잡은 몬스터 점수
-};
-
-enum COMP_OP { OP_RECV, OP_SEND, OP_ACCEPT };
-class EXP_OVER {
-public:
-	WSAOVERLAPPED	_wsa_over;
-	COMP_OP			_comp_op;
-	WSABUF			_wsa_buf;
-	unsigned char	_net_buf[BUF_SIZE];
-	int				_target;
-public:
-	EXP_OVER(COMP_OP comp_op, char num_bytes, void* mess) : _comp_op(comp_op)
-	{
-		ZeroMemory(&_wsa_over, sizeof(_wsa_over));
-		_wsa_buf.buf = reinterpret_cast<char*>(_net_buf);
-		_wsa_buf.len = num_bytes;
-		memcpy(_net_buf, mess, num_bytes);
-	}
-
-	EXP_OVER(COMP_OP comp_op) : _comp_op(comp_op) {}
-
-	EXP_OVER()
-	{
-		_comp_op = OP_RECV;
-	}
-
-	~EXP_OVER()
-	{
-	}
 };

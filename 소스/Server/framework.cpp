@@ -32,22 +32,22 @@ int NetworkFramework::OnInit(SOCKET socket)
 	return 0;
 }
 
-int NetworkFramework::OnInit_iocp(SOCKET socket, HANDLE h_iocp)
+int NetworkFramework::OnInit_iocp()
 {
 	std::wcout.imbue(std::locale("korean"));
 	WSADATA WSAData;
 	WSAStartup(MAKEWORD(2, 2), &WSAData);
-	socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+	g_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 	SOCKADDR_IN server_addr;
 	ZeroMemory(&server_addr, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(SERVER_PORT);
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	bind(socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
-	listen(socket, SOMAXCONN);
+	bind(g_socket, reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+	listen(g_socket, SOMAXCONN);
 
-	h_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(socket), h_iocp, 0, 0);
+	g_h_iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
+	CreateIoCompletionPort(reinterpret_cast<HANDLE>(socket), g_h_iocp, 0, 0);
 
 	SOCKET c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 	char accept_buf[sizeof(SOCKADDR_IN) * 2 + 32 + 100];
@@ -56,7 +56,70 @@ int NetworkFramework::OnInit_iocp(SOCKET socket, HANDLE h_iocp)
 	ZeroMemory(&accept_ex._wsa_over, sizeof(accept_ex._wsa_over));
 	accept_ex._comp_op = OP_ACCEPT;
 
-	AcceptEx(socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
+	AcceptEx(g_socket, c_socket, accept_buf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &accept_ex._wsa_over);
+	
+	std::cout << "Accept Called " << std::endl;;
+	std::cout << "main process start" << std::endl;
+
+	std::vector<std::thread> worker_threads;
+	for (int i = 0; i < 10; ++i)
+		worker_threads.emplace_back(&NetworkFramework::WorkThreads, this);
+
+
+	// 1초에 60회 동작하는 루프
+	using frame = std::chrono::duration<int32_t, std::ratio<1, 60>>;
+	using ms = std::chrono::duration<float, std::milli>;
+	std::chrono::time_point<std::chrono::steady_clock> fpsTimer{ std::chrono::steady_clock::now() };
+
+	frame fps{}, frameCount{};
+	while (true)
+	{
+		// 아무도 서버에 접속하지 않았으면 패스
+		if (!g_networkFramework.isAccept)
+		{
+			// 이 부분이 없다면 첫 프레임 때 deltaTime이 '클라에서 처음 접속한 시각 - 서버를 켠 시각' 이 된다.
+			fpsTimer = std::chrono::steady_clock::now();
+			continue;
+		}
+
+		// 이전 사이클에 얼마나 시간이 걸렸는지 계산
+		fps = duration_cast<frame>(std::chrono::steady_clock::now() - fpsTimer);
+
+		// 아직 1/60초가 안지났으면 패스
+		if (fps.count() < 1) continue;
+
+		if (frameCount.count() & 1) // even FrameNumber
+		{
+			// playerData Send
+			g_networkFramework.SendPlayerDataPacket();
+			g_networkFramework.SendBulletHitPacket();
+		}
+		else // odd FrameNumber
+		{
+			// MonsterData Send
+			g_networkFramework.SendMonsterDataPacket();
+		}
+
+		// 서버에서 해야할 모든 계산 실행
+		g_networkFramework.Update(duration_cast<ms>(fps).count() / 1000.0f);
+
+		// 이번 프레임 계산이 끝난 시각 저장
+		frameCount = duration_cast<frame>(frameCount + fps);
+		if (frameCount.count() >= 60)
+			frameCount = frame::zero();
+		fpsTimer = std::chrono::steady_clock::now();
+	}
+
+	for (const auto& c : g_networkFramework.clients)
+	{
+		if (c.data.isActive)
+			g_networkFramework.Disconnect(c.data.id);
+	}
+	for (auto& th : worker_threads)
+		th.join();
+
+	closesocket(g_socket);
+	WSACleanup();
 }
 
 void NetworkFramework::AcceptThread(SOCKET socket)
@@ -89,12 +152,105 @@ void NetworkFramework::AcceptThread(SOCKET socket)
 		char ipInfo[20]{};
 		inet_ntop(AF_INET, &clientAddr.sin_addr, ipInfo, sizeof(ipInfo));
 		std::cout << "[" << static_cast<int>(player.data.id) << " Session] connect IP: " << ipInfo << std::endl;
-		threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
+		//threads.emplace_back(&NetworkFramework::ProcessRecvPacket, this, id);
 		//isAccept = true;
 	}
 }
 
-void  NetworkFramework::SendPacket2AllPlayer(const void* packet, int bufSize) const
+void NetworkFramework::WorkThreads()
+{
+	for (;;) {
+		DWORD num_byte;
+		LONG64 iocp_key;
+		WSAOVERLAPPED* p_over;
+		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, (PULONG_PTR)&iocp_key, &p_over, INFINITE);
+		int client_id = static_cast<int>(iocp_key);
+		EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(p_over);
+
+		if (FALSE == ret)
+		{
+			int err_no = WSAGetLastError();
+			errorDisplay(err_no, "GQCS");
+			Disconnect(client_id);
+			if (exp_over->_comp_op == OP_SEND) delete exp_over;
+			continue;
+		}
+
+		switch (exp_over->_comp_op) {
+		case OP_RECV: {
+			if (num_byte == 0) {
+				Disconnect(client_id);
+				continue;
+			}
+			Session& cl = clients[client_id];
+			int remain_data = num_byte + cl.prev_size;
+			char* packet_start = exp_over->_net_buf;
+			int packet_size = packet_start[0];
+
+			while (packet_size <= remain_data) {
+				ProcessRecvPacket(client_id, packet_start);
+				remain_data -= packet_size;
+				packet_start += packet_size;
+				if (remain_data > 0) packet_size = packet_start[0];
+				else break;
+			}
+
+			if (0 < remain_data) {
+				cl.prev_size = remain_data;
+				memcpy(&exp_over->_net_buf, packet_start, remain_data);
+			}
+			cl.do_recv();
+			break;
+		}
+		case OP_SEND: {
+			if (num_byte != exp_over->_wsa_buf.len) {
+				Disconnect(client_id);
+			}
+			delete exp_over;
+			break;
+		}
+		case OP_ACCEPT: {
+			std::cout << "Accept Completed." << std::endl;
+			SOCKET c_socket = *(reinterpret_cast<SOCKET*>(exp_over->_net_buf));
+			int new_id = GetNewId();
+			if (-1 == new_id) {
+				std::cout << "Maxmum user overflow. Accept aborted." << std::endl;
+			}
+			else {
+				Session& cl = clients[new_id];
+
+				cl.lock.lock();
+				cl.data.id = new_id;
+				cl.data.isActive = true;
+				cl.data.aniType = eAnimationType::IDLE;
+				cl.data.upperAniType = eUpperAnimationType::NONE;
+				cl.socket = c_socket;
+				cl.isReady = false;
+				constexpr char dummyName[10] = "unknown\0";
+				strcpy_s(cl.name, sizeof(dummyName), dummyName);
+				cl.weaponType = eWeaponType::AR;
+				cl.prev_size = 0;
+				cl.recv_over._comp_op = OP_RECV;
+				cl.recv_over._wsa_buf.buf = reinterpret_cast<char*>(cl.recv_over._net_buf);
+				cl.recv_over._wsa_buf.len = sizeof(cl.recv_over._net_buf);
+				ZeroMemory(&cl.recv_over._wsa_over, sizeof(cl.recv_over._wsa_over));
+				cl.lock.unlock();
+
+				CreateIoCompletionPort(reinterpret_cast<HANDLE>(c_socket), g_h_iocp, new_id, 0);
+				cl.do_recv();
+			}
+
+			ZeroMemory(&exp_over->_wsa_over, sizeof(exp_over->_wsa_over));
+			c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
+			*(reinterpret_cast<SOCKET*>(exp_over->_net_buf)) = c_socket;
+			AcceptEx(g_socket, c_socket, exp_over->_net_buf + 8, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, NULL, &exp_over->_wsa_over);
+		}
+		break;
+		}
+	}
+}
+
+void NetworkFramework::SendPacket2AllPlayer(const void* packet, int bufSize) const
 {
 	char buf[BUF_SIZE]{};
 	memcpy(buf, packet, bufSize);
@@ -451,6 +607,49 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			std::cout << "[" << static_cast<int>(cl.data.id) << " Session] Server Received Unknown Packet (type : " << static_cast<int>(type) << ")" << std::endl;
 			break;
 		}
+	}
+}
+
+void NetworkFramework::ProcessRecvPacket(const int id, char* p)
+{
+	unsigned char packet_type = p[1];
+	Session& cl = clients[id];
+
+	switch (packet_type) {
+	case CS_PACKET_LOGIN: {
+		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
+#if DB_MODE
+		bool retval = db_login(packet->name, client_id);
+		if (retval == 1) {
+			Disconnect(client_id);
+			return;
+		}
+#else 
+		strcpy_s(cl.name, packet->name);
+#endif
+		SendLoginOkPacket(cl);
+
+		Session& cl = clients[id];
+		cl.lock.lock();
+		cl.state = STATE::ST_INGAME;
+		cl.lock.unlock();
+		break;
+	}
+	case CS_PACKET_UPDATE_PLAYER: {
+		cs_packet_update_player* packet = reinterpret_cast<cs_packet_update_player*>(p);
+		int x = cl.data.pos.x;
+		int y = cl.data.pos.y;
+		cl.data.aniType = packet->aniType;
+		cl.data.upperAniType = packet->upperAniType;
+		cl.data.pos = packet->pos;
+		cl.data.velocity = packet->velocity;
+		cl.data.yaw = packet->yaw;
+		break;
+	}
+	default:
+		std::cout << "[" << static_cast<int>(cl.data.id) << " Session] Server Received Unknown Packet (size : " << 
+			static_cast<int>(p[0]) << ", type : "<< static_cast<int>(p[1]) <<")" << std::endl;
+		break;
 	}
 }
 

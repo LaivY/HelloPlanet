@@ -3,6 +3,7 @@
 
 NetworkFramework	g_networkFramework{};
 SOCKET				g_socket{};
+HANDLE				g_h_iocp{};
 
 void errorDisplay(const int errNum, const char* msg)
 {
