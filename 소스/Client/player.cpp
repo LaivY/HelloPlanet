@@ -11,7 +11,7 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_addDamage{}, m_attackSpeed{}, m_addAttackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_bonusDamage{}, m_attackSpeed{}, m_bonusAttackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
 {
 	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
@@ -774,12 +774,12 @@ void Player::AddMaxHp(INT hp)
 
 void Player::AddDamage(INT damage)
 {
-	m_addDamage += damage;
+	m_bonusDamage += damage;
 }
 
 void Player::AddAttackSpeed(FLOAT attackSpeed)
 {
-	m_addAttackSpeed += attackSpeed;
+	m_bonusAttackSpeed += attackSpeed;
 }
 
 INT Player::GetId() const

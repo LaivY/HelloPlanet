@@ -1068,8 +1068,9 @@ void GameScene::RecvMosterAttack()
 	if (m_player->GetHp() == 0) return;
 
 	// 체력 감소
-	m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
-	if (m_player->GetHp() <= 0)
+	int hp{ m_player->GetHp() };
+	m_player->SetHp(hp - static_cast<INT>(data.damage));
+	if (hp > 0 && m_player->GetHp() <= 0)
 		OnPlayerDie();
 
 	// 피격 이펙트
@@ -1133,6 +1134,13 @@ void GameScene::RecvRoundResult()
 					case eReward::DEF:
 						break;
 					}
+				#ifdef NETWORK
+					cs_packet_select_reward packet{};
+					packet.type = CS_PACKET_SELECT_REWARD;
+					packet.size = sizeof(packet);
+					packet.playerId = m_player->GetId();
+					send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+				#endif
 					m_windowObjects.back()->Delete();
 				}, m_player, rewards[i]));
 

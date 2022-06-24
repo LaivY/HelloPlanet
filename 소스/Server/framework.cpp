@@ -592,6 +592,19 @@ void NetworkFramework::ProcessRecvPacket(const int id)
 			bullets.push_back(packet.data);
 			break;
 		}
+		case CS_PACKET_SELECT_REWARD: // 플레이어가 보상을 선택했을 때
+		{
+			// 플레이어 아이디
+			char subBuf[1]{};
+			wsabuf = { sizeof(subBuf), subBuf };
+			retVal = WSARecv(cl.socket, &wsabuf, 1, &recvd_byte, &flag, nullptr, nullptr);
+
+			/*
+			이 패킷이 3번 수신되면 다음 단계를 시작하는 코드
+			*/
+
+			break;
+		}
 		case CS_PACKET_LOGOUT:
 		{
 			sc_packet_logout_ok packet{};

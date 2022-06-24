@@ -85,12 +85,13 @@ private:
 	INT								m_maxHp;			// 최대 체력
 	FLOAT							m_speed;			// 이동 속력
 	INT								m_damage;			// 공격력
-	INT								m_addDamage;		// 추가 공격력(+n)
 	FLOAT							m_attackSpeed;		// 공격속도
-	FLOAT							m_addAttackSpeed;	// 추가 공격속도(n%)
 	FLOAT							m_attackTimer;		// 공격속도 타이머
 	INT								m_bulletCount;		// 총알 개수
 	INT								m_maxBulletCount;	// 총알 최대 개수
+
+	INT								m_bonusDamage;		// 추가 공격력(+n)
+	FLOAT							m_bonusAttackSpeed;	// 추가 공격속도(+n%)
 
 	eWeaponType						m_weaponType;		// 총 타입
 	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
