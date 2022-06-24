@@ -1,15 +1,14 @@
 ﻿#pragma once
 
-class Monster
+class Monster abstract
 {
 public:
 	Monster();
-	~Monster() = default;
+	virtual ~Monster() = default;
 
 	virtual void Update(FLOAT deltaTime);
-
-	void OnHit(const BulletData& bullet);
-	void Attack(const int id);
+	virtual void OnHit(const BulletData& bullet);
+	virtual void OnAttack(int clientId);
 
 	void SetId(CHAR id);
 	void SetType(eMobType type);
@@ -29,21 +28,36 @@ public:
 	eMobAnimationType GetAnimationType() const;
 	FLOAT GetAtkTimer() const;
 	
-private:
-	// 클라이언트로 보낼 데이터들
+protected:
+	// struct MonsterData 멤버 변수들
 	CHAR							m_id;
-	eMobType						m_type;
+	eMobType						m_mobType;
 	eMobAnimationType				m_aniType;
 	DirectX::XMFLOAT3				m_position;
 	DirectX::XMFLOAT3				m_velocity;
 	FLOAT							m_yaw;
 
-	// 서버에서 갖고있어야할 데이터들
+	// 몬스터 스탯 변수들
+	INT								m_hp;			// 체력
+	INT								m_damage;		// 데미지
+	FLOAT							m_speed;		// 이동속도
+
+	// 서버 계산에 필요한 변수들
 	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
 	DirectX::BoundingOrientedBox	m_boundingBox;	// 바운딩박스
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
 	FLOAT							m_atkTimer;		// 공격한 시점부터 시작되는 타이머
-	INT								m_hp;			// 체력
-	UCHAR							m_target;		// 타겟
+	UCHAR							m_target;		// 공격 대상 플레이어 id
 	bool							m_wasAttack;	// 공격 애니메이션 때 공격했는지
+};
+
+class GarooMonster : public Monster
+{
+public:
+	GarooMonster();
+	~GarooMonster() = default;
+
+	virtual void Update(FLOAT deltaTime);
+	virtual void OnHit(const BulletData& bullet);
+	virtual void OnAttack(int clientId);
 };

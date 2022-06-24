@@ -430,7 +430,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_UPDATE_MONSTER;
 	for (int i = 0; i < monsters.size(); ++i)
-		packet.data[i] = monsters[i].GetData();
+		packet.data[i] = monsters[i]->GetData();
 	for (int i = monsters.size(); i < MAX_MONSTER; ++i)
 		packet.data[i] = MonsterData{ .id = -1 };
 
@@ -447,7 +447,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	}
 
 	// 죽은 몬스터는 서버에서 삭제
-	erase_if(monsters, [](const Monster& m) { return m.GetHp() <= 0; });
+	erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() <= 0; });
 }
 
 void NetworkFramework::SendMonsterAttackPacket(const int id, const int mobId, const int damage) const
@@ -768,7 +768,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 
 	// 몬스터 업데이트
 	for (auto& m : monsters)
-		m.Update(deltaTime);
+		m->Update(deltaTime);
 
 	// 충돌체크
 	CollisionCheck();
@@ -778,8 +778,8 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	{
 		for (auto& mob : monsters)
 		{
-			mob.SetHp(0);
-			mob.SetAnimationType(eMobAnimationType::DIE);
+			mob->SetHp(0);
+			mob->SetAnimationType(eMobAnimationType::DIE);
 		}
 		std::cout << "[system] Stage1 Clear!" << std::endl;
 		SendRoundResultPacket(eRoundResult::CLEAR);
@@ -790,7 +790,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 		m_spawnCooldown = g_spawnCooldown;
 		m_lastMobId = 0;
 		m_killScore = 0;
-		erase_if(monsters, [](const Monster& m) { return m.GetHp() >= -100; });
+		erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() >= -100; });
 	}
 }
 
@@ -800,14 +800,11 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 	m_spawnCooldown -= deltaTime;
 	if (m_spawnCooldown <= 0.0f)
 	{
-		Monster m;
-		m.SetId(m_lastMobId);
-		m.SetHp(100);
-		m.SetType(eMobType::GAROO);
-		m.SetAnimationType(eMobAnimationType::IDLE);
-		m.SetRandomPosition();
-		m.SetTargetId(DetectPlayer(m.GetPosition()));
-		std::cout << static_cast<int>(m.GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
+		auto m{ std::make_unique<GarooMonster>() };
+		m->SetId(m_lastMobId);
+		m->SetRandomPosition();
+		m->SetTargetId(DetectPlayer(m->GetPosition()));
+		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
 		m_spawnCooldown = g_spawnCooldown;
@@ -840,11 +837,11 @@ void NetworkFramework::CollisionCheck()
 		Monster* hitMonster{ nullptr };	// 피격된 몹
 		float length{ FLT_MAX };		// 피격된 몹과 총알 간의 거리
 
-		for (Monster& m : monsters)
+		for (auto& m : monsters)
 		{
-			if (m.GetHp() <= 0) continue;
+			if (m->GetHp() <= 0) continue;
 
-			BoundingOrientedBox boundingBox{ m.GetBoundingBox() };
+			BoundingOrientedBox boundingBox{ m->GetBoundingBox() };
 			XMVECTOR origin{ XMLoadFloat3(&b.pos) };
 			XMVECTOR direction{ XMLoadFloat3(&b.dir) };
 			float dist{ 3000.0f };
@@ -852,10 +849,10 @@ void NetworkFramework::CollisionCheck()
 			{
 				// 기존 피격된 몹과 총알 간의 거리보다
 				// 새로 피격된 몹과 총알 간의 거리가 더 짧으면 피격 당한 몹을 바꿈
-				float l{ Vector3::Length(Vector3::Sub(b.pos, m.GetPosition())) };
+				float l{ Vector3::Length(Vector3::Sub(b.pos, m->GetPosition())) };
 				if (l < length)
 				{
-					hitMonster = &m;
+					hitMonster = m.get();
 					length = l;
 					//std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
@@ -863,7 +860,7 @@ void NetworkFramework::CollisionCheck()
 				// 해당 플레이어가 총알을 맞췄다는 것을 저장
 				BulletHitData hitData{};
 				hitData.bullet = b;
-				hitData.mobId = m.GetId();
+				hitData.mobId = m->GetId();
 				bulletHits.push_back(std::move(hitData));
 			}
 		}

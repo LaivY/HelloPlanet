@@ -3,147 +3,19 @@
 #include "framework.h"
 using namespace DirectX;
 
-//constexpr int	TARGET_CLIENT_INDEX{ 0 };	// 몬스터가 쫓아갈 플레이어 인덱스
-constexpr float MOB_SPEED{ 50.0f };			// 1초당 움직일 거리
 constexpr float HIT_PERIOD{ 0.7f };			// 맞으면 넉백당하는 시간
 
-Monster::Monster() : m_id{}, m_type{}, m_aniType{}, m_position{}, m_velocity{}, m_yaw{}, m_worldMatrix{}, m_hitTimer{}, m_atkTimer{}, m_hp{}, m_target{}, m_wasAttack{}
+Monster::Monster() : 
+	m_id{}, m_mobType{}, m_aniType{ eMobAnimationType::IDLE }, m_position{}, m_velocity{}, m_yaw{},
+	m_worldMatrix{}, m_boundingBox{}, m_hitTimer{}, m_atkTimer{}, m_target{}, m_wasAttack{},
+	m_hp{}, m_damage{}, m_speed{}
 {
-	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+
 }
 
-void Monster::OnHit(const BulletData& bullet)
-{
-	// 총알의 주인을 타겟으로 한다
-	SetTargetId(bullet.playerId);
-	SetHp(m_hp - bullet.damage);
-
-	if (m_hp <= 0) 
-	{
-		m_aniType = eMobAnimationType::DIE;
-		g_networkFramework.m_killScore++;
-		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
-	}
-	else if (m_aniType == eMobAnimationType::RUNNING)
-		m_aniType = eMobAnimationType::HIT;
-}
-
-void Monster::Attack(const int id)
-{
-	if (m_aniType == eMobAnimationType::RUNNING)
-		m_aniType = eMobAnimationType::ATTACK;
-	//g_networkFramework.clients[id].data.hp -= 10;
-}
-
-void Monster::Update(FLOAT deltaTime)
-{
-	if (m_hp <= 0) return;
-
-	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[GetTargetId()].data.pos) };
-	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };
-	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) }; // 몬스터 -> 플레이어 방향 벡터
-
-	// 몹 월드좌표계 속도
-	XMFLOAT3 velocity{};
-	if (m_aniType == eMobAnimationType::HIT)
-	{
-		// 피격당한 적은 잠깐 뒤로 밀리도록
-		FLOAT value{ std::lerp(0.5f, 0.0f, m_hitTimer / HIT_PERIOD) };
-		XMStoreFloat3(&velocity, -dir * MOB_SPEED * value);
-
-		// 몹 로컬좌표계 속도
-		// 클라이언트에서 속도는 로컬좌표계 기준이다.
-		// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
-		// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
-		m_velocity.x = 0.0f;
-		m_velocity.y = 0.0f;
-		m_velocity.z = -MOB_SPEED * value;
-
-		m_hitTimer += deltaTime;
-		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
-	}
-	else if(m_aniType == eMobAnimationType::ATTACK)
-	{
-		XMStoreFloat3(&velocity, dir * 0);
-		m_velocity.x = 0.0f;
-		m_velocity.y = 0.0f;
-		m_velocity.z = 0.0f;
-
-		m_atkTimer += deltaTime;
-		m_atkTimer = min(m_atkTimer, HIT_PERIOD);
-	}
-	else
-	{
-		// 피격당한게 아니라면 타겟 플레이어를 향해 이동
-		XMStoreFloat3(&velocity, dir * MOB_SPEED);
-
-		m_velocity.x = 0.0f;
-		m_velocity.y = 0.0f;
-		m_velocity.z = MOB_SPEED;
-
-		m_hitTimer = 0.0f;
-	}
-
-	// 몹 위치
-	m_position.x += velocity.x * deltaTime;
-	m_position.y += velocity.y * deltaTime;
-	m_position.z += velocity.z * deltaTime;
-
-	// 몹 각도
-	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
-	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
-	XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
-	angle.x = XMConvertToDegrees(angle.x);
-
-	// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
-	XMFLOAT3 direction{}; XMStoreFloat3(&direction, dir);
-	m_yaw = direction.x < 0 ? -angle.x : angle.x;
-
-	// 몹 애니메이션
-	if (m_aniType == eMobAnimationType::HIT && m_hitTimer < HIT_PERIOD)
-		m_aniType = eMobAnimationType::HIT;
-	else if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer < HIT_PERIOD)
-		m_aniType = eMobAnimationType::ATTACK;
-	else {
-		m_aniType = eMobAnimationType::RUNNING;
-		m_atkTimer = 0.0f;
-		m_wasAttack = false;
-	}
-	// --------------------------------------------------
-
-	XMVECTOR look{ dir };
-	XMVECTOR up{ XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) };
-	XMVECTOR right{ XMVector3Normalize(XMVector3Cross(up, look)) };
-
-	// 월드변환행렬은 1열이 right, 2열이 up, 3열이 look, 4열이 위치. 모두 정규화 되어있어야함.
-	XMMATRIX worldMatrix{ XMMatrixIdentity() };
-	worldMatrix.r[0] = right;
-	worldMatrix.r[1] = up;
-	worldMatrix.r[2] = look;
-	worldMatrix.r[3] = XMVectorSet(m_position.x, m_position.y, m_position.z, 1.0f);
-	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
-
-	if (GetAnimationType() == eMobAnimationType::ATTACK)
-	{
-		if (GetAtkTimer() >= 0.3f && m_wasAttack == false)
-		{
-			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
-			if (range < 27.0f)
-			{
-				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
-				g_networkFramework.SendMonsterAttackPacket(m_target, m_id, 10);
-				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
-			}
-			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
-			m_wasAttack = true;
-		}
-	}
-	else 
-	{
-		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
-		if (range < 25.0f) m_aniType = eMobAnimationType::ATTACK;
-	}
-}
+void Monster::Update(FLOAT deltaTime) { }
+void Monster::OnHit(const BulletData& bullet) { }
+void Monster::OnAttack(const int clientId) { }
 
 void Monster::SetId(CHAR id)
 {
@@ -152,7 +24,7 @@ void Monster::SetId(CHAR id)
 
 void Monster::SetType(eMobType type)
 {
-	m_type = type;
+	m_mobType = type;
 }
 
 void Monster::SetAnimationType(eMobAnimationType type)
@@ -182,19 +54,19 @@ void Monster::SetTargetId(UCHAR id)
 
 void Monster::SetRandomPosition()
 {
-	static std::mt19937 generator(std::random_device{}());
+	static std::mt19937 generator{ std::random_device{}() };
 	constexpr DirectX::XMFLOAT3 mobSpawnAreas[]
 	{ 
 		{ 0.0f,	  0.0f, 400.0f }, { 0.0f,	 0.0f, -400.0f },	{ 400.0f,  0.0f, 0.0f },	{ -400.0f, 0.0f, 0.0f },
 		{ 300.0f, 0.0f, 300.0f }, { -300.0f, 0.0f,  300.0f },	{ -300.0f, 0.0f, -300.0f }, {  300.0f, 0.0f, -300.0f }
 	};
-	const std::uniform_int_distribution<int> areasDistribution{ 0, 7 };
+	const std::uniform_int_distribution<int> areasDistribution{ 0, std::size(mobSpawnAreas) - 1 };
 	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
 }
 
 MonsterData Monster::GetData() const
 {
-	return MonsterData{ m_id, m_type, m_aniType, m_position, m_velocity, m_yaw };
+	return MonsterData{ m_id, m_mobType, m_aniType, m_position, m_velocity, m_yaw };
 }
 
 DirectX::XMFLOAT3 Monster::GetPosition() const
@@ -232,4 +104,141 @@ eMobAnimationType Monster::GetAnimationType() const
 FLOAT Monster::GetAtkTimer() const
 {
 	return m_atkTimer;
+}
+
+GarooMonster::GarooMonster() : Monster{}
+{
+	m_mobType = eMobType::GAROO;
+	m_hp = 100;
+	m_damage = 10;
+	m_speed = 50.0f;
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void GarooMonster::Update(FLOAT deltaTime)
+{
+	if (m_hp <= 0) return;
+
+	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[GetTargetId()].data.pos) };
+	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };
+	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) }; // 몬스터 -> 플레이어 방향 벡터
+
+	// 몹 속도
+	XMFLOAT3 velocity{};
+	switch (m_aniType)
+	{
+	case eMobAnimationType::ATTACK:
+		XMStoreFloat3(&velocity, dir * 0);
+		m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+		m_atkTimer += deltaTime;
+		m_atkTimer = min(m_atkTimer, HIT_PERIOD);
+		break;
+	case eMobAnimationType::HIT:
+	{
+		// 피격당한 적은 잠깐 뒤로 밀리도록
+		FLOAT value{ std::lerp(0.5f, 0.0f, m_hitTimer / HIT_PERIOD) };
+		XMStoreFloat3(&velocity, -dir * value * m_speed);
+
+		// 몹 로컬좌표계 속도
+		// 클라이언트에서 속도는 로컬좌표계 기준이다.
+		// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
+		// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
+		m_velocity = XMFLOAT3{ 0.0f, 0.0f, -m_speed * value };
+		m_hitTimer += deltaTime;
+		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
+		break;
+	}
+	default:
+		// 피격당한게 아니라면 타겟 플레이어를 향해 이동
+		XMStoreFloat3(&velocity, dir * m_speed);
+		m_velocity = XMFLOAT3{ 0.0f, 0.0f, m_speed };
+		m_hitTimer = 0.0f;
+		break;
+	}
+
+	// 몹 이동
+	m_position.x += velocity.x * deltaTime;
+	m_position.y += velocity.y * deltaTime;
+	m_position.z += velocity.z * deltaTime;
+
+	// 몹이 플레이어를 보도록 회전
+	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
+	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
+	XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
+	angle.x = XMConvertToDegrees(angle.x);
+
+	// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
+	XMFLOAT3 direction{};
+	XMStoreFloat3(&direction, dir);
+	m_yaw = direction.x < 0 ? -angle.x : angle.x;
+
+	// 몹 애니메이션
+	if (m_aniType == eMobAnimationType::HIT && m_hitTimer < HIT_PERIOD)
+		m_aniType = eMobAnimationType::HIT;
+	else if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer < HIT_PERIOD)
+		m_aniType = eMobAnimationType::ATTACK;
+	else 
+	{
+		m_aniType = eMobAnimationType::RUNNING;
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+	}
+
+	// --------------------------------------------------
+
+	XMVECTOR look{ dir };
+	XMVECTOR up{ XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) };
+	XMVECTOR right{ XMVector3Normalize(XMVector3Cross(up, look)) };
+
+	// 월드변환행렬은 1열이 right, 2열이 up, 3열이 look, 4열이 위치. 모두 정규화 되어있어야함.
+	XMMATRIX worldMatrix{ XMMatrixIdentity() };
+	worldMatrix.r[0] = right;
+	worldMatrix.r[1] = up;
+	worldMatrix.r[2] = look;
+	worldMatrix.r[3] = XMVectorSet(m_position.x, m_position.y, m_position.z, 1.0f);
+	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
+	
+	if (m_aniType == eMobAnimationType::ATTACK)
+	{
+		if (GetAtkTimer() >= 0.3f && !m_wasAttack)
+		{
+			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+			if (range < 27.0f)
+			{
+				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
+				g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
+				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
+			}
+			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
+			m_wasAttack = true;
+		}
+	}
+	else
+	{
+		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
+		if (range < 25.0f) m_aniType = eMobAnimationType::ATTACK;
+	}
+}
+
+void GarooMonster::OnHit(const BulletData& bullet)
+{
+	// 총알의 주인을 타겟으로 한다
+	SetTargetId(bullet.playerId);
+	SetHp(m_hp - bullet.damage);
+
+	if (m_hp <= 0)
+	{
+		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.m_killScore++;
+		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
+	}
+	else if (m_aniType == eMobAnimationType::RUNNING)
+		m_aniType = eMobAnimationType::HIT;
+}
+
+void GarooMonster::OnAttack(int clientId)
+{
+	if (m_aniType == eMobAnimationType::RUNNING)
+		m_aniType = eMobAnimationType::ATTACK;
+	//g_networkFramework.clients[id].data.hp -= 10;
 }
