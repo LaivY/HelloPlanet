@@ -19,7 +19,7 @@
 #pragma comment (lib, "MSWSock.LIB")
 
 //#define DB_MODE
-//#define IOCP_MODE
+#define IOCP_MODE
 
 void errorDisplay(const int errNum, const char* msg);
 

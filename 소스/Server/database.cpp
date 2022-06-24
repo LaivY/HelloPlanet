@@ -1,4 +1,4 @@
-#include "stdafx.h"
+癤�#include "stdafx.h"
 #include "database.h"
 using namespace std;
 
@@ -30,7 +30,7 @@ int try_login_db(char* mess)
 	SQLHDBC hdbc;
 	SQLHSTMT hstmt = 0;
 	SQLRETURN retcode;
-	// 받아올 데이터의 변수
+	// 
 	SQLWCHAR user_name[NAME_LEN];
 	SQLINTEGER user_id, user_x, user_y;
 	SQLLEN cbUser_name = 0, cbUser_id = 0, cbUser_x = 0, cbUser_y = 0;
