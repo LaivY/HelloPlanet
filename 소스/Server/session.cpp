@@ -1,8 +1,9 @@
 ﻿#include "stdafx.h"
 #include "session.h"
+#include "framework.h"
 
 Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE },
-state{ STATE::ST_FREE }, prev_size{ 0 }
+                     state{ STATE::ST_FREE }, prev_size{ 0 }
 {
 	strcpy_s(name, "Player\0");
 }
@@ -22,7 +23,12 @@ void Session::do_recv()
 	if (SOCKET_ERROR == ret) 
 	{
 		int error_num = WSAGetLastError();
-		if (ERROR_IO_PENDING != error_num) errorDisplay(error_num, "do_recv");
+		if (ERROR_IO_PENDING != error_num)
+		{
+			g_networkFramework.Disconnect(data.id);
+			errorDisplay(error_num, "do_recv");
+		}
+		
 	}
 }
 
