@@ -36,10 +36,20 @@ public:
 
 	virtual void ProcessClient();
 
-	virtual void OnPlayerDie();
+	void OnPlayerDie();
+	void OnPlayerRevive();
 
 	virtual shared_ptr<Player> GetPlayer() const;
 
+	// 이전 씬에서 데이터를 가져옴
+	void SetPlayer(unique_ptr<Player>& player);
+	void SetMultiPlayers(array<shared_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
+
+	// 일부 게임오브젝트들
+	static unordered_map<INT, unique_ptr<Monster>>	s_monsters;
+	static vector<unique_ptr<GameObject>>			s_screenObjects;
+
+private:
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
@@ -48,13 +58,10 @@ public:
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
 	void CreateExitWindow();
-	void CloseWindow();
-
+	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void Update(FLOAT deltaTime);
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
-
-	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 	void RecvPacket();
 	void RecvLoginOk();
@@ -65,14 +72,6 @@ public:
 	void RecvMosterAttack();
 	void RecvRoundResult();
 	void RecvLogoutOkPacket();
-
-	// 이전 씬에서 데이터를 가져옴
-	void SetPlayer(unique_ptr<Player>& player);
-	void SetMultiPlayers(array<shared_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
-
-	// 일부 게임오브젝트들
-	static unordered_map<INT, unique_ptr<Monster>>	s_monsters;
-	static vector<unique_ptr<GameObject>>			s_screenObjects;
 
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼

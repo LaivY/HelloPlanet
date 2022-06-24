@@ -1,8 +1,9 @@
 ﻿#pragma once
 #include "session.h"
 #include "monster.h"
+#include "database.h"
 
-constexpr INT stage1Goal = 1;
+constexpr INT stage1Goal = 10;
 constexpr FLOAT g_spawnCooldown = 2.0f;
 
 class NetworkFramework
@@ -12,8 +13,11 @@ public:
 	~NetworkFramework() = default;
 
 	int OnInit(SOCKET socket);
+	int OnInit_iocp();
 	void AcceptThread(SOCKET socket);
+	void WorkThreads();
 	void ProcessRecvPacket(const int id);
+	void ProcessRecvPacket_iocp(const int id, char* p);
 
 	void SendLoginOkPacket(const Session& player) const;
 	void SendSelectWeaponPacket(const Session& player) const;
@@ -47,4 +51,5 @@ public:
 	FLOAT							m_spawnCooldown;	// 스폰 쿨다운
 	CHAR							m_lastMobId;		// 몬스터 ID
 	INT								m_killScore;		// 잡은 몬스터 점수
+	std::vector<std::thread>		worker_threads;
 };

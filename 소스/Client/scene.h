@@ -60,9 +60,6 @@ public:
 	// 서버 통신 함수
 	virtual void ProcessClient();
 
-	// 게임 로직 관련 이벤트 함수
-	virtual void OnPlayerDie();
-
 	// 게터
 	virtual shared_ptr<Player> GetPlayer() const;
 

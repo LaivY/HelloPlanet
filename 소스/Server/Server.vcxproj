@@ -142,6 +142,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="database.cpp" />
     <ClCompile Include="framework.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="monster.cpp" />
@@ -151,6 +152,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="database.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="monster.h" />

@@ -27,6 +27,5 @@ void Scene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_C
 void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) { }
 void Scene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) { }
 void Scene::ProcessClient() { }
-void Scene::OnPlayerDie() { }
 
 shared_ptr<Player> Scene::GetPlayer() const { return nullptr; }

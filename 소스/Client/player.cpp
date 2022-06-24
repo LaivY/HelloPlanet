@@ -224,7 +224,8 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 					currPureAnimationName == "WALKLEFT" ||
 					currPureAnimationName == "WALKRIGHT" ||
 					currPureAnimationName == "WALKBACK" ||
-					currPureAnimationName == "IDLE")
+					currPureAnimationName == "IDLE" ||
+					currPureAnimationName == "FIRING")
 				{
 					PlayAnimation(currPureAnimationName);
 					break;
@@ -627,8 +628,6 @@ void Player::SetIsMultiplayer(BOOL isMultiPlayer)
 void Player::SetHp(INT hp)
 {
 	m_hp = clamp(hp, 0, m_maxHp);
-	if (m_hp == 0)
-		g_gameFramework.GetScene()->OnPlayerDie();
 }
 
 void Player::SetWeaponType(eWeaponType weaponType)

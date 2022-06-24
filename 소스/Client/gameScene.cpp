@@ -20,6 +20,7 @@ GameScene::GameScene() : m_pcbGameScene{ nullptr }
 
 GameScene::~GameScene()
 {
+	// 서버에게 로그아웃 패킷을 보냄
 	cs_packet_logout packet{};
 	packet.size = sizeof(packet);
 	packet.type = CS_PACKET_LOGOUT;
@@ -29,6 +30,10 @@ GameScene::~GameScene()
 		g_networkThread.join();
 	closesocket(g_socket);
 	WSACleanup();
+
+	// 정적 변수들 초기화
+	s_monsters.clear();
+	s_screenObjects.clear();
 }
 
 void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
@@ -367,6 +372,18 @@ void GameScene::OnPlayerDie()
 	m_player->SendPlayerData();
 }
 
+void GameScene::OnPlayerRevive()
+{
+	// 플레이어가 부활하면 카메라를 1인칭으로 변경
+	m_player->SetHp(m_player->GetMaxHp());
+
+	m_camera.swap(m_observeCamera);
+	m_skybox->SetCamera(m_camera);
+	m_player->SetMesh(s_meshes["ARM"]);
+	m_player->PlayAnimation("IDLE");
+	m_player->SendPlayerData();
+}
+
 shared_ptr<Player> GameScene::GetPlayer() const
 {
 	return m_player;
@@ -617,7 +634,12 @@ void GameScene::CreateExitWindow()
 	cancleText->SetPivot(ePivot::CENTERBOT);
 	cancleText->SetScreenPivot(ePivot::CENTERBOT);
 	cancleText->SetPosition(XMFLOAT2{ 40.0f, -cancleText->GetHeight() / 2.0f + 10.0f });
-	cancleText->SetMouseClickCallBack(bind(&GameScene::CloseWindow, this));
+	//cancleText->SetMouseClickCallBack(bind(&GameScene::CloseWindow, this));
+	cancleText->SetMouseClickCallBack(
+		[&]() 
+		{
+			m_windowObjects.back()->Delete();
+		});
 
 	auto window{ make_unique<WindowObject>(400.0f, 250.0f) };
 	window->SetTexture(s_textures["WHITE"]);
@@ -626,12 +648,6 @@ void GameScene::CreateExitWindow()
 	window->Add(okText);
 	window->Add(cancleText);
 	m_windowObjects.push_back(move(window));
-}
-
-void GameScene::CloseWindow()
-{
-	if (!m_windowObjects.empty())
-		m_windowObjects.pop_back();
 }
 
 void GameScene::Update(FLOAT deltaTime)
@@ -1053,6 +1069,8 @@ void GameScene::RecvMosterAttack()
 
 	// 체력 감소
 	m_player->SetHp(m_player->GetHp() - static_cast<INT>(data.damage));
+	if (m_player->GetHp() <= 0)
+		OnPlayerDie();
 
 	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(data.mobId) };
@@ -1078,6 +1096,10 @@ void GameScene::RecvRoundResult()
 	{
 	case eRoundResult::CLEAR:
 	{
+		// 죽어있다면 부활
+		if (m_player->GetHp() <= 0)
+			OnPlayerRevive();
+
 		// 중복없이 보상 3개 선택
 		const auto r = { eReward::AD, eReward::AS, eReward::HP, eReward::DEF };
 		vector<eReward> rewards;
