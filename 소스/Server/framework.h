@@ -11,13 +11,11 @@ class NetworkFramework
 public:
 	NetworkFramework();
 	~NetworkFramework() = default;
-
-	int OnInit(SOCKET socket);
-	int OnInit_iocp();
+	
+	int OnInit();
 	void AcceptThread(SOCKET socket);
 	void WorkThreads();
-	void ProcessRecvPacket(const int id);
-	void ProcessRecvPacket_iocp(const int id, char* p);
+	void ProcessRecvPacket(const int id, char* p);
 
 	void SendLoginOkPacket(const Session& player) const;
 	void SendSelectWeaponPacket(const Session& player) const;
