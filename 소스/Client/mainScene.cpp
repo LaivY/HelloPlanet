@@ -174,7 +174,6 @@ void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	auto title{ make_unique<UIObject>(801.0f, 377.0f) };
-	title->SetMesh(s_meshes["UI"]);
 	title->SetShader(s_shaders["UI_ATC"]);
 	title->SetTexture(s_textures["TITLE"]);
 	title->SetPivot(ePivot::LEFTCENTER);

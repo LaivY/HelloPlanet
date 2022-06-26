@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "textObject.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "player.h"
@@ -15,15 +16,8 @@ TextObject::TextObject()
 
 }
 
-void TextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
-}
-
-void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
-{
-
-}
+void TextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
+void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
 
 void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
@@ -31,10 +25,7 @@ void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_brush].Get());
 }
 
-void TextObject::Update(FLOAT deltaTime)
-{
-
-}
+void TextObject::Update(FLOAT deltaTime) { }
 
 void TextObject::Delete()
 {
@@ -365,6 +356,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
 	{
+		g_audioEngine.Play(Utile::PATH(TEXT("Sound/uiClick.wav")));
 		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
 	}
@@ -379,7 +371,8 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	p.x -= c.left;
 	p.y -= c.top;
 
-	RECT r{ 
+	RECT r
+	{ 
 		static_cast<LONG>(m_position.x), 
 		static_cast<LONG>(m_position.y),
 		static_cast<LONG>(m_position.x + m_rect.right),
@@ -388,7 +381,11 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 	if (r.left <= p.x && p.x <= r.right &&
 		r.top <= p.y && p.y <= r.bottom)
+	{
+		if (!m_isMouseOver)
+			g_audioEngine.Play(Utile::PATH(TEXT("Sound/uiHover.wav")));
 		m_isMouseOver = TRUE;
+	}
 	else
 		m_isMouseOver = FALSE;
 }

@@ -498,11 +498,16 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	auto particle{ make_unique<DustParticle>() };
 	m_gameObjects.push_back(move(particle));
 
-	// 테스트
-	//auto trail{ make_unique<DustParticle>()};
-	//trail->SetMesh(s_meshes["TRAIL"]);
-	//trail->SetShader(s_shaders["TRAIL"]);
-	//m_gameObjects.push_back(move(trail));
+	// 몬스터
+	auto mob1{ make_unique<Monster>(0, eMobType::SERPENT) };
+	mob1->Move(XMFLOAT3{ 50.0f, 0.0f, 150.0f });
+	mob1->Rotate(0.0f, 0.0f, 180.0f);
+	m_gameObjects.push_back(move(mob1));
+
+	auto mob2{ make_unique<Monster>(1, eMobType::HORROR) };
+	mob2->Move(XMFLOAT3{ -50.0f, 0.0f, 150.0f });
+	mob2->Rotate(0.0f, 0.0f, 180.0f);
+	m_gameObjects.push_back(move(mob2));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -711,7 +716,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 				dis[2] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[2]), XMLoadFloat3(&oCorner[3]), XMLoadFloat3(&pc)));
 				dis[3] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[3]), XMLoadFloat3(&oCorner[0]), XMLoadFloat3(&pc)));
 
-				float* minDis{ min_element(begin(dis), end(dis)) };
+				float* minDis{ ranges::min_element(dis) };
 				XMFLOAT3 v{};
 				if (*minDis == dis[0])
 				{
@@ -1073,10 +1078,11 @@ void GameScene::RecvMosterAttack()
 	if (hp > 0 && m_player->GetHp() <= 0)
 		OnPlayerDie();
 
+	// 피격 애니메이션
+	m_player->PlayAnimation("HIT");
+
 	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(data.mobId) };
-	hit->SetMesh(s_meshes["UI"]);
-	hit->SetShader(s_shaders["UI"]);
 	hit->SetTexture(s_textures["ARROW"]);
 	hit->SetPivot(ePivot::CENTER);
 	hit->SetScreenPivot(ePivot::CENTER);

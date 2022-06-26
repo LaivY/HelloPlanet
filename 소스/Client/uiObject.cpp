@@ -16,15 +16,8 @@ UIObject::UIObject(FLOAT width, FLOAT height) : m_isFitToScreen{ FALSE }, m_pivo
 	m_worldMatrix._22 = height;
 }
 
-void UIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
-}
-
-void UIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
-{
-
-}
+void UIObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
+void UIObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
 
 void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
