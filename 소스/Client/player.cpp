@@ -735,6 +735,10 @@ void Player::ApplyServerData(const PlayerData& playerData)
 		if (GetCurrAnimationName() != "RUNNING" && GetAfterAnimationName() != "RUNNING")
 			PlayAnimation("RUNNING", TRUE);
 		break;
+	case eAnimationType::HIT:
+		if (GetCurrAnimationName() != "HIT" && GetAfterAnimationName() != "HIT")
+			PlayAnimation("HIT", TRUE);
+		break;
 	case eAnimationType::DIE:
 		if (GetCurrAnimationName() != "DIE" && GetAfterAnimationName() != "DIE")
 			PlayAnimation("DIE", TRUE);
@@ -863,6 +867,8 @@ eAnimationType Player::GetAnimationType() const
 			return eAnimationType::WALKRIGHT;
 		else if (aniName == "WALKBACK")
 			return eAnimationType::WALKBACK;
+		else if (aniName == "HIT")
+			return eAnimationType::HIT;
 		else if (aniName == "DIE")
 			return eAnimationType::DIE;
 		return eAnimationType::NONE;

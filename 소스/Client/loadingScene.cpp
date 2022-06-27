@@ -156,8 +156,8 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 플레이어 관련 메쉬 로딩
 	vector<pair<string, string>> animations
 	{
-		{ "idle", "IDLE" }, { "walking", "WALKING" }, { "walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" },
-		{ "walkBack", "WALKBACK" }, { "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }, { "die", "DIE" }
+		{ "idle", "IDLE" }, { "walking", "WALKING" }, { "walkLeft", "WALKLEFT" }, { "walkRight", "WALKRIGHT" }, { "walkBack", "WALKBACK" },
+		{ "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }, { "hit", "HIT" }, { "die", "DIE" }
 	};
 	s_meshes["PLAYER"] = make_shared<Mesh>();
 	s_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));

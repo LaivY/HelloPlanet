@@ -2,8 +2,9 @@
 #include "framework.h"
 using namespace DirectX;
 
-NetworkFramework::NetworkFramework() : isAccept{ false }, isClearStage1{ false }, isInGame{ false }, readyCount{ 0 },
-bulletHits{}, m_spawnCooldown{ g_spawnCooldown }, m_lastMobId{ 0 }, m_killScore{ 0 }
+NetworkFramework::NetworkFramework() :
+	isAccept{ false }, isInGame{ false }, readyCount{ 0 }, 
+	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	// m_spawnCooldown 2.0f은 임의의 상수
 }
@@ -207,7 +208,8 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 	char packet_type = p[1];
 	Session& cl = clients[id];
 
-	switch (packet_type) {
+	switch (packet_type)
+	{
 	case CS_PACKET_LOGIN: {
 		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
 #ifdef DB_MODE
@@ -240,11 +242,10 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 	{
 		// 준비 상태
 		cs_packet_ready* packet = reinterpret_cast<cs_packet_ready*>(p);
-
 		cl.isReady = packet->isReady;
 		SendReadyCheckPacket(cl);
 
-		// 3명 다 레디한다면 게임 시작
+		// 모두 준비되면 게임시작
 		for (const auto& c : clients)
 		{
 			if (!c.data.isActive) continue;
@@ -255,16 +256,15 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 			isAccept = true;
 			SendChangeScenePacket(eSceneType::GAME);
 		}
-
-		std::cout << id << " client is ready" << std::endl;
-
 		readyCount = 0;
+		std::cout << id << " client is ready" << std::endl;
 		break;
 	}
-	case CS_PACKET_UPDATE_PLAYER: {
+	case CS_PACKET_UPDATE_PLAYER:
+	{
 		cs_packet_update_player* packet = reinterpret_cast<cs_packet_update_player*>(p);
-		int x = cl.data.pos.x;
-		int y = cl.data.pos.y;
+		//int x = cl.data.pos.x;
+		//int y = cl.data.pos.y;
 		cl.data.aniType = packet->aniType;
 		cl.data.upperAniType = packet->upperAniType;
 		cl.data.pos = packet->pos;
@@ -295,6 +295,19 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 
 		// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
 		bullets.push_back(send_packet.data);
+		break;
+	}
+	case CS_PACKET_SELECT_REWARD:
+	{
+		auto packet{ reinterpret_cast<cs_packet_select_reward*>(p) };
+		++readyCount;
+
+		// 모든 플레이어가 보상 선택을 완료했다면 다음 라운드 진행
+		if (readyCount >= MAX_USER)
+		{
+			doSpawnMonster = TRUE;
+			readyCount = 0;
+		}
 		break;
 	}
 	case CS_PACKET_LOGOUT:
@@ -330,7 +343,7 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 void NetworkFramework::Update(const FLOAT deltaTime)
 {
 	// 몬스터 스폰
-	if (monsters.size() < MAX_MONSTER && isClearStage1 == false)
+	if (monsters.size() < MAX_MONSTER && doSpawnMonster)
 		SpawnMonsters(deltaTime);
 
 	// 몬스터 업데이트
@@ -341,41 +354,66 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	CollisionCheck();
 
 	// 종료체크
-	if (m_killScore >= stage1Goal && isClearStage1 == false)
+	if (killCount >= roundGoal[round - 1])
 	{
+		std::cout << "[system] Stage" << round << " Clear!" << std::endl;
 		for (auto& mob : monsters)
 		{
 			mob->SetHp(0);
 			mob->SetAnimationType(eMobAnimationType::DIE);
 		}
-		std::cout << "[system] Stage1 Clear!" << std::endl;
+
+		// 라운드 클리어 시 관련 변수 초기화
+		spawnCooldown = g_spawnCooldown;
+		lastMobId = 0;
+		killCount = 0;
+
+		// 마지막 라운드 클리어
+		if (round == 4)
+		{
+			isAccept = FALSE;
+			doSpawnMonster = TRUE;
+			readyCount = 0;
+			SendRoundResultPacket(eRoundResult::ENDING);
+			return;
+		}
+
+		// 나머지 라운드 클리어
+		doSpawnMonster = FALSE;
 		SendRoundResultPacket(eRoundResult::CLEAR);
-		//SendChangeScenePacket(eSceneType::ENDING);
-		isAccept = false;
-		isClearStage1 = false;
-		readyCount = 0;
-		m_spawnCooldown = g_spawnCooldown;
-		m_lastMobId = 0;
-		m_killScore = 0;
-		erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() >= -100; });
+		++round;
 	}
 }
 
 void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 {
 	// 쿨타임 때마다 생성
-	m_spawnCooldown -= deltaTime;
-	if (m_spawnCooldown <= 0.0f)
+	spawnCooldown -= deltaTime;
+	if (spawnCooldown <= 0.0f)
 	{
-		auto m{ std::make_unique<GarooMonster>() };
-		m->SetId(m_lastMobId);
+		std::unique_ptr<Monster> m;
+		switch (round)
+		{
+		case 1:
+			m = std::make_unique<GarooMonster>();
+			break;
+		case 2:
+			m = std::make_unique<SerpentMonster>();
+			break;
+		case 3:
+			m = std::make_unique<HorrorMonster>();
+			break;
+		case 4:
+			m = std::make_unique<HorrorMonster>();
+			break;
+		}
+		m->SetId(lastMobId++);
 		m->SetRandomPosition();
 		m->SetTargetId(DetectPlayer(m->GetPosition()));
 		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
 
-		m_spawnCooldown = g_spawnCooldown;
-		m_lastMobId++;
+		spawnCooldown = g_spawnCooldown;
 	}
 }
 

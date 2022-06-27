@@ -1,3 +1,4 @@
+ï»¿#include "stdafx.h"
 #include "framework.h"
 
 void NetworkFramework::SendPacket2AllPlayer(void* packet, int bufSize) const
@@ -39,7 +40,7 @@ void NetworkFramework::SendLoginOkPacket(const Session& player) const
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD sentByte;
 
-	// ¸ğµç Å¬¶óÀÌ¾ğÆ®¿¡°Ô ·Î±×ÀÎÇÑ Å¬¶óÀÌ¾ğÆ®ÀÇ Á¤º¸ Àü¼Û
+	// ëª¨ë“  í´ë¼ì´ì–¸íŠ¸ì—ê²Œ ë¡œê·¸ì¸í•œ í´ë¼ì´ì–¸íŠ¸ì˜ ì •ë³´ ì „ì†¡
 	for (const auto& other : clients)
 	{
 		if (!other.data.isActive) continue;
@@ -47,7 +48,7 @@ void NetworkFramework::SendLoginOkPacket(const Session& player) const
 		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGIN_CONFIRM)");
 	}
 
-	// ·Î±×ÀÎÇÑ Å¬¶óÀÌ¾ğÆ®¿¡°Ô ÀÌ¹Ì Á¢¼ÓÇØÀÖ´Â Å¬¶óÀÌ¾ğÆ®µéÀÇ Á¤º¸ Àü¼Û
+	// ë¡œê·¸ì¸í•œ í´ë¼ì´ì–¸íŠ¸ì—ê²Œ ì´ë¯¸ ì ‘ì†í•´ìˆëŠ” í´ë¼ì´ì–¸íŠ¸ë“¤ì˜ ì •ë³´ ì „ì†¡
 	for (const auto& other : clients)
 	{
 		if (!other.data.isActive) continue;
@@ -76,7 +77,6 @@ void NetworkFramework::SendSelectWeaponPacket(const Session& player) const
 	packet.type = SC_PACKET_SELECT_WEAPON;
 	packet.id = player.data.id;
 	packet.weaponType = player.weaponType;
-
 	SendPacket2AllPlayer(reinterpret_cast<void*>(&packet), packet.size);
 
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Select Weapon Packet Received" << std::endl;
@@ -89,7 +89,6 @@ void NetworkFramework::SendReadyCheckPacket(const Session& player) const
 	packet.type = SC_PACKET_READY_CHECK;
 	packet.id = player.data.id;
 	packet.isReady = player.isReady;
-
 	SendPacket2AllPlayer(&packet, packet.size);
 
 	std::cout << "[" << static_cast<int>(player.data.id) << " Session] Ready Packet Received" << std::endl;
@@ -97,12 +96,11 @@ void NetworkFramework::SendReadyCheckPacket(const Session& player) const
 
 void NetworkFramework::SendChangeScenePacket(const eSceneType sceneType) const
 {
-	// ¸ğµÎ¿¡°Ô º¸³»´Â ÆĞÅ¶Àü¼ÛÇÔ¼ö
+	// ëª¨ë‘ì—ê²Œ ë³´ë‚´ëŠ” íŒ¨í‚·ì „ì†¡í•¨ìˆ˜
 	sc_packet_change_scene packet{};
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_CHANGE_SCENE;
 	packet.sceneType = sceneType;
-
 	SendPacket2AllPlayer(&packet, packet.size);
 
 	std::cout << "[All Session] Ready To Play" << std::endl;
@@ -133,7 +131,7 @@ void NetworkFramework::SendPlayerDataPacket()
 		}
 	}
 
-	// ÇÃ·¹ÀÌ¾îÀÇ »óÃ¼ ¾Ö´Ï¸ŞÀÌ¼ÇÀº ÇÑ ¹ø º¸³»°í ³ª¸é NONE »óÅÂ·Î ÃÊ±âÈ­
+	// í”Œë ˆì´ì–´ì˜ ìƒì²´ ì• ë‹ˆë©”ì´ì…˜ì€ í•œ ë²ˆ ë³´ë‚´ê³  ë‚˜ë©´ NONE ìƒíƒœë¡œ ì´ˆê¸°í™”
 	for (auto& c : clients)
 		c.data.upperAniType = eUpperAnimationType::NONE;
 }
@@ -166,11 +164,11 @@ void NetworkFramework::SendBulletHitPacket()
 void NetworkFramework::SendMonsterDataPacket()
 {
 	sc_packet_update_monsters packet{};
-	packet.size = sizeof(packet);
+	packet.size = static_cast<UCHAR>(sizeof(packet)); // UCHARì˜ ìµœëŒ€ê°’ì„ ë„˜ì–´ê°.. í•˜ì§€ë§Œ sizeê°’ì„ ì‚¬ìš©í•˜ì§€ ì•Šì„ê±°ë¼ë©´ ìƒê´€ì—†ìŒ
 	packet.type = SC_PACKET_UPDATE_MONSTER;
-	for (int i = 0; i < monsters.size(); ++i)
+	for (size_t i = 0; i < monsters.size(); ++i)
 		packet.data[i] = monsters[i]->GetData();
-	for (int i = monsters.size(); i < MAX_MONSTER; ++i)
+	for (size_t i = monsters.size(); i < MAX_MONSTER; ++i)
 		packet.data[i] = MonsterData{ .id = -1 };
 
 	char buf[sizeof(packet)];
@@ -185,7 +183,7 @@ void NetworkFramework::SendMonsterDataPacket()
 		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_UPDATE_MONSTER)");
 	}
 
-	// Á×Àº ¸ó½ºÅÍ´Â ¼­¹ö¿¡¼­ »èÁ¦
+	// ì£½ì€ ëª¬ìŠ¤í„°ëŠ” ì„œë²„ì—ì„œ ì‚­ì œ
 	erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() <= 0; });
 }
 
@@ -206,7 +204,6 @@ void NetworkFramework::SendRoundResultPacket(const eRoundResult result) const
 	packet.size = sizeof(packet);
 	packet.type = SC_PACKET_ROUND_RESULT;
 	packet.result = result;
-
 	SendPacket2AllPlayer(&packet, packet.size);
 
 	std::cout << "[All Session] Ready To Play" << std::endl;

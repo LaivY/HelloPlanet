@@ -315,21 +315,24 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }
 	case eMobType::SERPENT:
 		SetMesh(Scene::s_meshes["SERPENT"]);
 		SetTexture(Scene::s_textures["SERPENT"]);
+#ifdef RENDER_HITBOX
 		{
-			// 히트박스 확인용 코드
 			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
 			hitbox->SetOwner(this);
 			AddHitbox(hitbox);
 		}
+#endif
 		break;
 	case eMobType::HORROR:
 		SetMesh(Scene::s_meshes["HORROR"]);
 		SetTexture(Scene::s_textures["HORROR"]);
+#ifdef RENDER_HITBOX
 		{
 			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }) };
 			hitbox->SetOwner(this);
 			AddHitbox(hitbox);
 		}
+#endif
 		break;
 	}
 	SetShader(Scene::s_shaders["ANIMATION"]);

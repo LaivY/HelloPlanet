@@ -499,15 +499,15 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_gameObjects.push_back(move(particle));
 
 	// 몬스터
-	auto mob1{ make_unique<Monster>(0, eMobType::SERPENT) };
-	mob1->Move(XMFLOAT3{ 50.0f, 0.0f, 150.0f });
-	mob1->Rotate(0.0f, 0.0f, 180.0f);
-	m_gameObjects.push_back(move(mob1));
+	//auto mob1{ make_unique<Monster>(0, eMobType::SERPENT) };
+	//mob1->Move(XMFLOAT3{ 50.0f, 0.0f, 150.0f });
+	//mob1->Rotate(0.0f, 0.0f, 180.0f);
+	//m_gameObjects.push_back(move(mob1));
 
-	auto mob2{ make_unique<Monster>(1, eMobType::HORROR) };
-	mob2->Move(XMFLOAT3{ -50.0f, 0.0f, 150.0f });
-	mob2->Rotate(0.0f, 0.0f, 180.0f);
-	m_gameObjects.push_back(move(mob2));
+	//auto mob2{ make_unique<Monster>(1, eMobType::HORROR) };
+	//mob2->Move(XMFLOAT3{ -50.0f, 0.0f, 150.0f });
+	//mob2->Rotate(0.0f, 0.0f, 180.0f);
+	//m_gameObjects.push_back(move(mob2));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -1004,8 +1004,6 @@ void GameScene::RecvUpdateMonster()
 			s_monsters.insert(make_pair(m.id, make_unique<Monster>(m.id, m.type)));
 			lock.unlock();
 		}
-		if (m.aniType == eMobAnimationType::RUNNING)
-			m.aniType = eMobAnimationType::WALKING;
 		s_monsters[m.id]->ApplyServerData(m);
 	}
 }

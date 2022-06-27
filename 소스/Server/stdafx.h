@@ -28,11 +28,6 @@ extern NetworkFramework	g_networkFramework;
 extern SOCKET			g_socket;
 extern HANDLE           g_h_iocp;
 
-namespace Utility
-{
-	DirectX::BoundingOrientedBox GetBoundingBox(const MonsterData& monsterData);
-}
-
 namespace Vector3
 {
     using namespace DirectX;

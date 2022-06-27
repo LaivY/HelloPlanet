@@ -28,7 +28,6 @@ void Session::do_recv()
 			g_networkFramework.Disconnect(data.id);
 			errorDisplay(error_num, "do_recv");
 		}
-		
 	}
 }
 

@@ -3,19 +3,16 @@
 #include "framework.h"
 using namespace DirectX;
 
-constexpr float HIT_PERIOD{ 0.7f };			// 맞으면 넉백당하는 시간
-
 Monster::Monster() : 
 	m_id{}, m_mobType{}, m_aniType{ eMobAnimationType::IDLE }, m_position{}, m_velocity{}, m_yaw{},
 	m_worldMatrix{}, m_boundingBox{}, m_hitTimer{}, m_atkTimer{}, m_target{}, m_wasAttack{},
-	m_hp{}, m_damage{}, m_speed{}
+	m_hp{}, m_damage{}, m_speed{}, m_knockbackTime{}
 {
 
 }
 
 void Monster::Update(FLOAT deltaTime) { }
 void Monster::OnHit(const BulletData& bullet) { }
-void Monster::OnAttack(const int clientId) { }
 
 void Monster::SetId(CHAR id)
 {
@@ -60,7 +57,7 @@ void Monster::SetRandomPosition()
 		{ 0.0f,	  0.0f, 400.0f }, { 0.0f,	 0.0f, -400.0f },	{ 400.0f,  0.0f, 0.0f },	{ -400.0f, 0.0f, 0.0f },
 		{ 300.0f, 0.0f, 300.0f }, { -300.0f, 0.0f,  300.0f },	{ -300.0f, 0.0f, -300.0f }, {  300.0f, 0.0f, -300.0f }
 	};
-	const std::uniform_int_distribution<int> areasDistribution{ 0, std::size(mobSpawnAreas) - 1 };
+	const std::uniform_int_distribution<int> areasDistribution{ 0, static_cast<int>(std::size(mobSpawnAreas) - 1) };
 	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
 }
 
@@ -69,9 +66,19 @@ MonsterData Monster::GetData() const
 	return MonsterData{ m_id, m_mobType, m_aniType, m_position, m_velocity, m_yaw };
 }
 
+CHAR Monster::GetId() const
+{
+	return m_id;
+}
+
 DirectX::XMFLOAT3 Monster::GetPosition() const
 {
 	return m_position;
+}
+
+INT Monster::GetHp() const
+{
+	return m_hp;
 }
 
 BoundingOrientedBox Monster::GetBoundingBox() const
@@ -81,76 +88,38 @@ BoundingOrientedBox Monster::GetBoundingBox() const
 	return result;
 }
 
-INT Monster::GetHp() const
-{
-	return m_hp;
-}
-
-CHAR Monster::GetId() const
-{
-	return m_id;
-}
-
 UCHAR Monster::GetTargetId() const
 {
 	return m_target;
 }
 
-eMobAnimationType Monster::GetAnimationType() const
+void Monster::UpdatePosition(FLOAT deltaTime, const XMVECTOR& look)
 {
-	return m_aniType;
-}
-
-FLOAT Monster::GetAtkTimer() const
-{
-	return m_atkTimer;
-}
-
-GarooMonster::GarooMonster() : Monster{}
-{
-	m_mobType = eMobType::GAROO;
-	m_hp = 100;
-	m_damage = 10;
-	m_speed = 50.0f;
-	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
-}
-
-void GarooMonster::Update(FLOAT deltaTime)
-{
-	if (m_hp <= 0) return;
-
-	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[GetTargetId()].data.pos) };
-	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };
-	XMVECTOR dir{ XMVector3Normalize(playerPos - mobPos) }; // 몬스터 -> 플레이어 방향 벡터
-
 	// 몹 속도
+	// 클라이언트에서 몹 속도는 로컬좌표계 기준이다. 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
+	// 이 밑에서 사용하는 velocity는 월드 좌표계 기준, m_velocity는 로컬 좌표계 기준이다.
 	XMFLOAT3 velocity{};
 	switch (m_aniType)
 	{
 	case eMobAnimationType::ATTACK:
-		XMStoreFloat3(&velocity, dir * 0);
+		XMStoreFloat3(&velocity, look * 0);
 		m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
 		m_atkTimer += deltaTime;
-		m_atkTimer = min(m_atkTimer, HIT_PERIOD);
+		m_atkTimer = min(m_atkTimer, m_knockbackTime);
 		break;
 	case eMobAnimationType::HIT:
 	{
 		// 피격당한 적은 잠깐 뒤로 밀리도록
-		FLOAT value{ std::lerp(0.5f, 0.0f, m_hitTimer / HIT_PERIOD) };
-		XMStoreFloat3(&velocity, -dir * value * m_speed);
-
-		// 몹 로컬좌표계 속도
-		// 클라이언트에서 속도는 로컬좌표계 기준이다.
-		// 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
-		// 몹은 플레이어를 향해 앞으로만 가므로 x, y는 0으로 바꾸고 z는 몹의 이동속도로 설정한다.
+		FLOAT value{ std::lerp(0.5f, 0.0f, m_hitTimer / m_knockbackTime) };
+		XMStoreFloat3(&velocity, -look * value * m_speed);
 		m_velocity = XMFLOAT3{ 0.0f, 0.0f, -m_speed * value };
 		m_hitTimer += deltaTime;
-		m_hitTimer = min(m_hitTimer, HIT_PERIOD);
+		m_hitTimer = min(m_hitTimer, m_knockbackTime);
 		break;
 	}
 	default:
 		// 피격당한게 아니라면 타겟 플레이어를 향해 이동
-		XMStoreFloat3(&velocity, dir * m_speed);
+		XMStoreFloat3(&velocity, look * m_speed);
 		m_velocity = XMFLOAT3{ 0.0f, 0.0f, m_speed };
 		m_hitTimer = 0.0f;
 		break;
@@ -160,33 +129,21 @@ void GarooMonster::Update(FLOAT deltaTime)
 	m_position.x += velocity.x * deltaTime;
 	m_position.y += velocity.y * deltaTime;
 	m_position.z += velocity.z * deltaTime;
+}
 
-	// 몹이 플레이어를 보도록 회전
-	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };			// +z축
-	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, dir) };	// +z축과 몬스터 -> 플레이어 방향 벡터 간의 각도
-	XMFLOAT3 angle{}; XMStoreFloat3(&angle, radian);
-	angle.x = XMConvertToDegrees(angle.x);
+void Monster::UpdateRotation(const XMVECTOR& look)
+{
+	// 몹이 look 방향을 보도록 회전
+	XMVECTOR zAxis{ XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f) };
+	XMVECTOR radian{ XMVector3AngleBetweenNormals(zAxis, look) };
+	FLOAT angle{ XMConvertToDegrees(XMVectorGetX(radian)) };
 
 	// x가 0보다 작다는 것은 반시계 방향으로 회전한 것
-	XMFLOAT3 direction{};
-	XMStoreFloat3(&direction, dir);
-	m_yaw = direction.x < 0 ? -angle.x : angle.x;
+	m_yaw = XMVectorGetX(look) < 0 ? -angle : angle;
+}
 
-	// 몹 애니메이션
-	if (m_aniType == eMobAnimationType::HIT && m_hitTimer < HIT_PERIOD)
-		m_aniType = eMobAnimationType::HIT;
-	else if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer < HIT_PERIOD)
-		m_aniType = eMobAnimationType::ATTACK;
-	else 
-	{
-		m_aniType = eMobAnimationType::RUNNING;
-		m_atkTimer = 0.0f;
-		m_wasAttack = false;
-	}
-
-	// --------------------------------------------------
-
-	XMVECTOR look{ dir };
+void Monster::UpdateWorldMatrix(const XMVECTOR& look)
+{
 	XMVECTOR up{ XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) };
 	XMVECTOR right{ XMVector3Normalize(XMVector3Cross(up, look)) };
 
@@ -197,27 +154,46 @@ void GarooMonster::Update(FLOAT deltaTime)
 	worldMatrix.r[2] = look;
 	worldMatrix.r[3] = XMVectorSet(m_position.x, m_position.y, m_position.z, 1.0f);
 	XMStoreFloat4x4(&m_worldMatrix, worldMatrix);
+}
+
+XMVECTOR Monster::GetPlayerVector(UCHAR playerId)
+{
+	XMVECTOR playerPos{ XMLoadFloat3(&g_networkFramework.clients[playerId].data.pos) };
+	XMVECTOR mobPos{ XMLoadFloat3(&m_position) };
+	return XMVector3Normalize(playerPos - mobPos);
+}
+
+GarooMonster::GarooMonster() : Monster{}
+{
+	m_mobType = eMobType::GAROO;
+	m_hp = 100;
+	m_damage = 10;
+	m_speed = 50.0f;
+	m_knockbackTime = 0.7f;
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void GarooMonster::Update(FLOAT deltaTime)
+{
+	if (m_hp <= 0) return;
+
+	// 몹 -> 플레이어 벡터
+	XMVECTOR look{ GetPlayerVector(m_target) };
+
+	// 플레이어 쪽으로 이동
+	UpdatePosition(deltaTime, look);
+
+	// 플레이어를 보도록 회전
+	UpdateRotation(look);
+
+	// 월드 행렬 최신화
+	UpdateWorldMatrix(look);
+
+	// 애니메이션 최신화
+	UpdateAnimation();
 	
-	if (m_aniType == eMobAnimationType::ATTACK)
-	{
-		if (GetAtkTimer() >= 0.3f && !m_wasAttack)
-		{
-			float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
-			if (range < 27.0f)
-			{
-				// 0.3f, 27.0f, 10은 임의의 상수, 추후 수정필요
-				g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
-				//std::cout << static_cast<int>(m_target) << " is under attack!" << std::endl;
-			}
-			//else std::cout << static_cast<int>(m_target) << " is dodge!" << std::endl;
-			m_wasAttack = true;
-		}
-	}
-	else
-	{
-		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, GetPosition())) };
-		if (range < 25.0f) m_aniType = eMobAnimationType::ATTACK;
-	}
+	// 공격 계산
+	CalcAttack();
 }
 
 void GarooMonster::OnHit(const BulletData& bullet)
@@ -229,16 +205,208 @@ void GarooMonster::OnHit(const BulletData& bullet)
 	if (m_hp <= 0)
 	{
 		m_aniType = eMobAnimationType::DIE;
-		g_networkFramework.m_killScore++;
-		std::cout << "[Score] " << g_networkFramework.m_killScore << " / " << stage1Goal << std::endl;
+		g_networkFramework.killCount++;
+		return;
 	}
-	else if (m_aniType == eMobAnimationType::RUNNING)
+	if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
 }
 
-void GarooMonster::OnAttack(int clientId)
+void GarooMonster::UpdateAnimation()
 {
-	if (m_aniType == eMobAnimationType::RUNNING)
+	switch (m_aniType)
+	{
+	case eMobAnimationType::ATTACK:
+		if (m_atkTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::ATTACK;
+		else
+		{
+			m_aniType = eMobAnimationType::RUNNING;
+			m_atkTimer = 0.0f;
+			m_wasAttack = false;
+		}
+		break;
+	case eMobAnimationType::HIT:
+		if (m_hitTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::HIT;
+		break;
+	default:
+		m_aniType = eMobAnimationType::RUNNING;
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+		break;
+	}
+}
+
+void GarooMonster::CalcAttack()
+{
+	// 공격 애니메이션이 재생된지 0.3초가 넘었을 때
+	if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
+	{
+		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+		if (range < 27.0f)
+			g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
+		m_wasAttack = true;
+		return;
+	}
+
+	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	if (range < 25.0f)
 		m_aniType = eMobAnimationType::ATTACK;
-	//g_networkFramework.clients[id].data.hp -= 10;
+}
+
+SerpentMonster::SerpentMonster()
+{
+	m_mobType = eMobType::SERPENT;
+	m_hp = 200;
+	m_damage = 15;
+	m_speed = 40.0f;
+	m_knockbackTime = 0.5f;
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void SerpentMonster::Update(FLOAT deltaTime)
+{
+	if (m_hp <= 0) return;
+
+	// 몹 -> 플레이어 벡터
+	XMVECTOR look{ GetPlayerVector(m_target) };
+
+	// 플레이어 쪽으로 이동
+	UpdatePosition(deltaTime, look);
+
+	// 플레이어를 보도록 회전
+	UpdateRotation(look);
+
+	// 월드 행렬 최신화
+	UpdateWorldMatrix(look);
+
+	// 애니메이션 최신화
+	UpdateAnimation();
+
+	// 공격 계산
+	CalcAttack();
+}
+
+void SerpentMonster::OnHit(const BulletData& bullet)
+{
+	SetTargetId(bullet.playerId);
+	SetHp(m_hp - bullet.damage);
+
+	if (m_hp <= 0)
+	{
+		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.killCount++;
+		return;
+	}
+	if (m_aniType == eMobAnimationType::WALKING)
+		m_aniType = eMobAnimationType::HIT;
+}
+
+void SerpentMonster::UpdateAnimation()
+{
+	switch (m_aniType)
+	{
+	case eMobAnimationType::ATTACK:
+		if (m_atkTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::ATTACK;
+		else
+		{
+			m_aniType = eMobAnimationType::WALKING;
+			m_atkTimer = 0.0f;
+			m_wasAttack = false;
+		}
+		break;
+	case eMobAnimationType::HIT:
+		if (m_hitTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::HIT;
+		break;
+	default:
+		m_aniType = eMobAnimationType::WALKING;
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+		break;
+	}
+}
+
+void SerpentMonster::CalcAttack()
+{
+}
+
+HorrorMonster::HorrorMonster()
+{
+	m_mobType = eMobType::HORROR;
+	m_hp = 300;
+	m_damage = 20;
+	m_speed = 30.0f;
+	m_knockbackTime = 0.3f;
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void HorrorMonster::Update(FLOAT deltaTime)
+{
+	if (m_hp <= 0) return;
+
+	// 몹 -> 플레이어 벡터
+	XMVECTOR look{ GetPlayerVector(m_target) };
+
+	// 플레이어 쪽으로 이동
+	UpdatePosition(deltaTime, look);
+
+	// 플레이어를 보도록 회전
+	UpdateRotation(look);
+
+	// 월드 행렬 최신화
+	UpdateWorldMatrix(look);
+
+	// 애니메이션 최신화
+	UpdateAnimation();
+
+	// 공격 계산
+	CalcAttack();
+}
+
+void HorrorMonster::OnHit(const BulletData& bullet)
+{
+	SetTargetId(bullet.playerId);
+	SetHp(m_hp - bullet.damage);
+
+	if (m_hp <= 0)
+	{
+		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.killCount++;
+		return;
+	}
+	if (m_aniType == eMobAnimationType::WALKING)
+		m_aniType = eMobAnimationType::HIT;
+}
+
+void HorrorMonster::UpdateAnimation()
+{
+	switch (m_aniType)
+	{
+	case eMobAnimationType::ATTACK:
+		if (m_atkTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::ATTACK;
+		else
+		{
+			m_aniType = eMobAnimationType::WALKING;
+			m_atkTimer = 0.0f;
+			m_wasAttack = false;
+		}
+		break;
+	case eMobAnimationType::HIT:
+		if (m_hitTimer < m_knockbackTime)
+			m_aniType = eMobAnimationType::HIT;
+		break;
+	default:
+		m_aniType = eMobAnimationType::WALKING;
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+		break;
+	}
+}
+
+void HorrorMonster::CalcAttack()
+{
 }

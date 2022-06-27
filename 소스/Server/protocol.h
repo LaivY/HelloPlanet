@@ -32,7 +32,7 @@ constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
 {
-	NONE, IDLE,	RUNNING, WALKING, WALKLEFT,	WALKRIGHT, WALKBACK, DIE
+	NONE, IDLE,	RUNNING, WALKING, WALKLEFT,	WALKRIGHT, WALKBACK, HIT, DIE
 };
 
 enum class eUpperAnimationType : char

@@ -8,7 +8,6 @@ public:
 
 	virtual void Update(FLOAT deltaTime);
 	virtual void OnHit(const BulletData& bullet);
-	virtual void OnAttack(int clientId);
 
 	void SetId(CHAR id);
 	void SetType(eMobType type);
@@ -20,14 +19,18 @@ public:
 	void SetRandomPosition();
 
 	MonsterData GetData() const;
-	DirectX::XMFLOAT3 GetPosition() const;
-	DirectX::BoundingOrientedBox GetBoundingBox() const;
-	INT GetHp() const;
 	CHAR GetId() const;
+	DirectX::XMFLOAT3 GetPosition() const;
+	INT GetHp() const;
+	DirectX::BoundingOrientedBox GetBoundingBox() const;
 	UCHAR GetTargetId() const;
-	eMobAnimationType GetAnimationType() const;
-	FLOAT GetAtkTimer() const;
 	
+protected:
+	void UpdatePosition(FLOAT deltaTime, const DirectX::XMVECTOR& look);
+	void UpdateRotation(const DirectX::XMVECTOR& look);
+	void UpdateWorldMatrix(const DirectX::XMVECTOR& look);
+	DirectX::XMVECTOR GetPlayerVector(UCHAR playerId);
+
 protected:
 	// struct MonsterData 멤버 변수들
 	CHAR							m_id;
@@ -41,6 +44,7 @@ protected:
 	INT								m_hp;			// 체력
 	INT								m_damage;		// 데미지
 	FLOAT							m_speed;		// 이동속도
+	FLOAT							m_knockbackTime;// 피격 시 뒤로 밀리는 시간
 
 	// 서버 계산에 필요한 변수들
 	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
@@ -59,5 +63,36 @@ public:
 
 	virtual void Update(FLOAT deltaTime);
 	virtual void OnHit(const BulletData& bullet);
-	virtual void OnAttack(int clientId);
+
+private:
+	void UpdateAnimation();
+	void CalcAttack();
+};
+
+class SerpentMonster : public Monster
+{
+public:
+	SerpentMonster();
+	~SerpentMonster() = default;
+
+	virtual void Update(FLOAT deltaTime);
+	virtual void OnHit(const BulletData& bullet);
+
+private:
+	void UpdateAnimation();
+	void CalcAttack();
+};
+
+class HorrorMonster : public Monster
+{
+public:
+	HorrorMonster();
+	~HorrorMonster() = default;
+
+	virtual void Update(FLOAT deltaTime);
+	virtual void OnHit(const BulletData& bullet);
+
+private:
+	void UpdateAnimation();
+	void CalcAttack();
 };

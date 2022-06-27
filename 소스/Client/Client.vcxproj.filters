@@ -194,9 +194,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".editorconfig" />
-  </ItemGroup>
-  <ItemGroup>
     <FxCompile Include="Resource\Shader\animation.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
