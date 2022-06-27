@@ -218,18 +218,16 @@ void GarooMonster::UpdateAnimation()
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
-			m_aniType = eMobAnimationType::ATTACK;
-		else
 		{
-			m_aniType = eMobAnimationType::RUNNING;
-			m_atkTimer = 0.0f;
-			m_wasAttack = false;
+			m_aniType = eMobAnimationType::ATTACK;
+			break;
 		}
-		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
+		{
 			m_aniType = eMobAnimationType::HIT;
-		break;
+			break;
+		}
 	default:
 		m_aniType = eMobAnimationType::RUNNING;
 		m_atkTimer = 0.0f;
@@ -309,18 +307,16 @@ void SerpentMonster::UpdateAnimation()
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
-			m_aniType = eMobAnimationType::ATTACK;
-		else
 		{
-			m_aniType = eMobAnimationType::WALKING;
-			m_atkTimer = 0.0f;
-			m_wasAttack = false;
+			m_aniType = eMobAnimationType::ATTACK;
+			break;
 		}
-		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
+		{
 			m_aniType = eMobAnimationType::HIT;
-		break;
+			break;
+		}
 	default:
 		m_aniType = eMobAnimationType::WALKING;
 		m_atkTimer = 0.0f;
@@ -387,18 +383,16 @@ void HorrorMonster::UpdateAnimation()
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
-			m_aniType = eMobAnimationType::ATTACK;
-		else
 		{
-			m_aniType = eMobAnimationType::WALKING;
-			m_atkTimer = 0.0f;
-			m_wasAttack = false;
+			m_aniType = eMobAnimationType::ATTACK;
+			break;
 		}
-		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
+		{
 			m_aniType = eMobAnimationType::HIT;
-		break;
+			break;
+		}
 	default:
 		m_aniType = eMobAnimationType::WALKING;
 		m_atkTimer = 0.0f;
