@@ -24,6 +24,8 @@ public:
 
 	HRESULT Load(const wstring& fileName, eAudioType audioType);
 	void Play(const wstring& fileName, bool isLoop = false);
+	void Stop(const wstring& fileName);
+	void ChangeMusic(const wstring& fileName);
 
 	void SetVolume(eAudioType audioType, FLOAT volume);
 	int GetVolume(eAudioType audioType) const;
@@ -37,7 +39,13 @@ private:
 	ComPtr<IXAudio2>					m_xAduio;
 	unique_ptr<IXAudio2MasteringVoice>	m_masterVoice;
 	unordered_map<wstring, AudioData>	m_audios;
+	wstring								m_currMusicName;
 	FLOAT								m_musicVolume;
 	FLOAT								m_soundVolume;
-	FLOAT								m_volumeTimer;
+
+	BOOL								m_isChanging;
+	BOOL								m_isDecreasing;
+	wstring								m_targetMusicName;
+	FLOAT								m_tempVolume;
+	FLOAT								m_timer;
 };

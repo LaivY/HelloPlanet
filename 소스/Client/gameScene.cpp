@@ -55,7 +55,8 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	Texture::CreateShaderResourceView(device);
 
 	// 배경음 재생
-	g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
+	//g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
+	g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/bgm.wav")));
 
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };

@@ -494,7 +494,7 @@ void Player::Fire()
 	}
 
 	// 발사 효과음
-	g_audioEngine.Play(Utile::PATH(TEXT("Sound/shot.wav")));
+	g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")));
 }
 
 void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)

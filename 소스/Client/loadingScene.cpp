@@ -361,8 +361,9 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 
 void LoadingScene::LoadAudios()
 {
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/bgm.wav")), eAudioType::MUSIC);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/shot.wav")), eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/uiClick.wav")), eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/uiHover.wav")), eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")), eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")), eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")), eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_CLICK.wav")), eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_HOVER.wav")), eAudioType::SOUND);
 }

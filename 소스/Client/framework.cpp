@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "framework.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "fadeFilter.h"
 #include "object.h"
@@ -104,6 +105,7 @@ void GameFramework::OnUpdate(FLOAT deltaTime)
 		m_scene->OnMouseEvent(m_hWnd, deltaTime);
 		m_scene->OnKeyboardEvent(deltaTime);
 	}
+	g_audioEngine.Update(deltaTime);
 }
 
 void GameFramework::OnRender()
@@ -676,6 +678,7 @@ void GameFramework::ChangeScene()
 		break;
 	case eSceneType::MAIN:
 		m_scene = make_unique<MainScene>();
+		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")));
 		break;
 	case eSceneType::LOBBY:
 		m_scene = make_unique<LobbyScene>();
@@ -690,6 +693,7 @@ void GameFramework::ChangeScene()
 		gameScene->SetPlayer(player);
 		gameScene->SetMultiPlayers(lobbyScene->GetMultiPlayers());
 		m_scene = move(gameScene);
+		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")));
 		break;
 	}
 	}
