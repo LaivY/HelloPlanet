@@ -401,6 +401,27 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
+OutlineObject::OutlineObject()
+{
+	SetMesh(Scene::s_meshes["FULLSCREEN"]);
+	SetShader(Scene::s_shaders["FULLSCREEN"]);
+
+	SetColor(XMFLOAT3{ 0.1f, 0.1f, 0.1f });
+	SetThickness(1.0f);
+}
+
+void OutlineObject::SetColor(const XMFLOAT3& color)
+{
+	m_worldMatrix.m[3][0] = color.x;
+	m_worldMatrix.m[3][1] = color.y;
+	m_worldMatrix.m[3][2] = color.z;
+}
+
+void OutlineObject::SetThickness(FLOAT thickness)
+{
+	m_worldMatrix.m[3][3] = thickness;
+}
+
 DustParticle::DustParticle()
 {
 	m_mesh = Scene::s_meshes["DUST"];

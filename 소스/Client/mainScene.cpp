@@ -125,7 +125,7 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	}
 }
 
-void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);

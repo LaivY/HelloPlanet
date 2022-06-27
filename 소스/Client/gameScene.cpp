@@ -300,11 +300,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	}
 
 	// 외곽선 렌더링
-	s_textures["DEPTH"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	s_textures["DEPTH"]->UpdateShaderVariable(commandList);
-	s_textures["STENCIL"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	s_textures["STENCIL"]->UpdateShaderVariable(commandList);
-	m_fullScreenQuad->Render(commandList);
+	RenderOutline(commandList);
 
 	// 외곽선 없는 게임오브젝트들 렌더링
 	commandList->OMSetStencilRef(0);
@@ -326,34 +322,29 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		o->Render(commandList);
 
 	// 플레이어 렌더링
+	commandList->OMSetStencilRef(1);
 	m_camera->UpdateShaderVariable(commandList);
 	if (m_player->GetHp() > 0)
 		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-	if (m_player) m_player->Render(commandList);
+	m_player->Render(commandList);
+	RenderOutline(commandList);
+	commandList->OMSetStencilRef(0);
 
 	// UI 렌더링
-	if (m_uiCamera)
-	{
-		m_uiCamera->UpdateShaderVariable(commandList);
-		for (const auto& ui : m_uiObjects)
-			ui->Render(commandList);
-		for (const auto& w : m_windowObjects)
-			w->Render(commandList);
-	}
+	m_uiCamera->UpdateShaderVariable(commandList);
+	for (const auto& ui : m_uiObjects)
+		ui->Render(commandList);
+	for (const auto& w : m_windowObjects)
+		w->Render(commandList);
 }
 
-void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& t : m_textObjects)
 		t->Render(device);
 	for (const auto& w : m_windowObjects)
 		w->Render2D(device);
-}
-
-void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget)
-{
-
 }
 
 void GameScene::ProcessClient()
@@ -394,45 +385,6 @@ void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const C
 	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 	m_cbGameScene->Map(0, NULL, reinterpret_cast<void**>(&m_pcbGameScene));
 	m_cbGameSceneData = make_unique<cbGameScene>();
-}
-
-void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	// UI 카메라 생성
-	XMFLOAT4X4 projMatrix{};
-	m_uiCamera = make_unique<Camera>();
-	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
-	// 조준점
-	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
-	crosshair->SetMesh(s_meshes["UI"]);
-	crosshair->SetShader(s_shaders["UI"]);
-	crosshair->SetTexture(s_textures["WHITE"]);
-	crosshair->SetPlayer(m_player);
-	m_uiObjects.push_back(move(crosshair));
-
-	// 체력바 베이스
-	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
-	hpBarBase->SetMesh(s_meshes["UI"]);
-	hpBarBase->SetShader(s_shaders["UI"]);
-	hpBarBase->SetTexture(s_textures["HPBARBASE"]);
-	hpBarBase->SetPivot(ePivot::LEFTBOT);
-	hpBarBase->SetScreenPivot(ePivot::LEFTBOT);
-	hpBarBase->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
-	m_uiObjects.push_back(move(hpBarBase));
-
-	// 체력바
-	auto hpBar{ make_unique<HpUIObject>(200.0f, 30.0f) };
-	hpBar->SetMesh(s_meshes["UI"]);
-	hpBar->SetShader(s_shaders["UI"]);
-	hpBar->SetTexture(s_textures["HPBAR"]);
-	hpBar->SetPivot(ePivot::LEFTBOT);
-	hpBar->SetScreenPivot(ePivot::LEFTBOT);
-	hpBar->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
-	hpBar->SetPlayer(m_player);
-	m_uiObjects.push_back(move(hpBar));
 }
 
 void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -490,9 +442,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_gameObjects.push_back(move(floor));
 
 	// 화면을 가득 채우는 사각형
-	m_fullScreenQuad = make_unique<GameObject>();
-	m_fullScreenQuad->SetMesh(s_meshes["FULLSCREEN"]);
-	m_fullScreenQuad->SetShader(s_shaders["FULLSCREEN"]);
+	m_outlineObject = make_unique<OutlineObject>();
 
 	// 파티클
 	auto particle{ make_unique<DustParticle>() };
@@ -508,6 +458,45 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	//mob2->Move(XMFLOAT3{ -50.0f, 0.0f, 150.0f });
 	//mob2->Rotate(0.0f, 0.0f, 180.0f);
 	//m_gameObjects.push_back(move(mob2));
+}
+
+void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	// UI 카메라 생성
+	XMFLOAT4X4 projMatrix{};
+	m_uiCamera = make_unique<Camera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
+	m_uiCamera->SetProjMatrix(projMatrix);
+
+	// 조준점
+	auto crosshair{ make_unique<CrosshairUIObject>(2.0f, 10.0f) };
+	crosshair->SetMesh(s_meshes["UI"]);
+	crosshair->SetShader(s_shaders["UI"]);
+	crosshair->SetTexture(s_textures["WHITE"]);
+	crosshair->SetPlayer(m_player);
+	m_uiObjects.push_back(move(crosshair));
+
+	// 체력바 베이스
+	auto hpBarBase{ make_unique<UIObject>(200.0f, 30.0f) };
+	hpBarBase->SetMesh(s_meshes["UI"]);
+	hpBarBase->SetShader(s_shaders["UI"]);
+	hpBarBase->SetTexture(s_textures["HPBARBASE"]);
+	hpBarBase->SetPivot(ePivot::LEFTBOT);
+	hpBarBase->SetScreenPivot(ePivot::LEFTBOT);
+	hpBarBase->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
+	m_uiObjects.push_back(move(hpBarBase));
+
+	// 체력바
+	auto hpBar{ make_unique<HpUIObject>(200.0f, 30.0f) };
+	hpBar->SetMesh(s_meshes["UI"]);
+	hpBar->SetShader(s_shaders["UI"]);
+	hpBar->SetTexture(s_textures["HPBAR"]);
+	hpBar->SetPivot(ePivot::LEFTBOT);
+	hpBar->SetScreenPivot(ePivot::LEFTBOT);
+	hpBar->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
+	hpBar->SetPlayer(m_player);
+	m_uiObjects.push_back(move(hpBar));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -876,6 +865,15 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 
 	// 리소스배리어 설정(셰이더에서 읽기)
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void GameScene::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+{
+	s_textures["DEPTH"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	s_textures["DEPTH"]->UpdateShaderVariable(commandList);
+	s_textures["STENCIL"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	s_textures["STENCIL"]->UpdateShaderVariable(commandList);
+	m_outlineObject->Render(commandList);
 }
 
 void GameScene::RecvPacket()

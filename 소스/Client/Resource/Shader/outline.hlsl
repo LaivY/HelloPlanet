@@ -27,8 +27,9 @@ float4 PS(PS_INPUT input) : SV_TARGET
     float width, height;
     g_stencil.GetDimensions(width, height);
 
-    const float3 outlineColor = float3(0.1f, 0.1f, 0.1f);
-    const float outlineThickness = 1.0f;
+    // 색깔과 두께는 외곽선 오브젝트의 월드 변환 행렬에 설정해둠
+    const float3 outlineColor = g_worldMatrix[3].rgb;
+    const float outlineThickness = g_worldMatrix[3].a;
     const float outlineThreshHold = 1.0f;
 
     // 정수 텍스쳐에서는 샘플링 할 수 없다.

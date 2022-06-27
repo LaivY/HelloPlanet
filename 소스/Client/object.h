@@ -147,6 +147,16 @@ private:
 	INT	m_id;
 };
 
+class OutlineObject : public GameObject
+{
+public:
+	OutlineObject();
+	~OutlineObject() = default;
+
+	void SetColor(const XMFLOAT3& color);
+	void SetThickness(FLOAT thickness);
+};
+
 class DustParticle : public GameObject
 {
 public:

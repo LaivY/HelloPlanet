@@ -31,8 +31,7 @@ public:
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
-	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
-	virtual void PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget);
+	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device) const;
 
 	virtual void ProcessClient();
 
@@ -59,6 +58,7 @@ private:
 
 	void CreateExitWindow();
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	void Update(FLOAT deltaTime);
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
@@ -78,7 +78,7 @@ private:
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
 	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
 
-	unique_ptr<GameObject>					m_fullScreenQuad;	// 화면을 가득 채우는 사각형
+	unique_ptr<GameObject>					m_outlineObject;	// 외곽선 오브젝트
 	unique_ptr<Skybox>						m_skybox;			// 스카이박스
 	shared_ptr<Camera>						m_camera;			// 카메라
 	shared_ptr<Camera>						m_observeCamera;	// 관전 카메라

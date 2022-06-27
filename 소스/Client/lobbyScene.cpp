@@ -153,7 +153,7 @@ void LobbyScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3
 	}
 }
 
-void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);
