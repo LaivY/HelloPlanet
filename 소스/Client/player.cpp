@@ -11,7 +11,7 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_bonusDamage{}, m_attackSpeed{}, m_bonusAttackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
+	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_bonusDamage{}, m_attackSpeed{}, m_bonusAttackSpeed{ 50.0f }, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
 {
 	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
@@ -37,7 +37,7 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 #ifdef FIRSTVIEW
 	if (GetAsyncKeyState(VK_LBUTTON) & 0x8000)
 	{
-		if (m_attackTimer < m_attackSpeed || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
+		if (m_attackTimer < m_attackSpeed * (100.0f / (100.0f + m_bonusAttackSpeed)) || m_bulletCount == 0 || GetCurrAnimationName() == "RUNNING" || GetUpperCurrAnimationName() == "RELOAD")
 			return;
 		PlayAnimation("FIRING", GetUpperCurrAnimationName() != "FIRING");
 		SendPlayerData();
@@ -374,6 +374,9 @@ void Player::Fire()
 	XMFLOAT3 start{ m_camera->GetEye() };
 	XMFLOAT3 center{ Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1000.0f)) };
 
+	// 총알 데미지
+	int damage{ static_cast<int>(m_damage * (1.0f + m_bonusDamage / 100.0f)) };
+
 	switch (m_weaponType)
 	{
 	case eWeaponType::AR:
@@ -387,7 +390,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(center, start)), m_damage, static_cast<char>(GetId())};
+		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(center, start)), damage, static_cast<char>(GetId())};
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -430,7 +433,7 @@ void Player::Fire()
 			cs_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_BULLET_FIRE;
-			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), m_damage, static_cast<char>(GetId()) };
+			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), damage, static_cast<char>(GetId()) };
 			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 
@@ -455,7 +458,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(target, start)), m_damage, static_cast<char>(GetId()) };
+		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(target, start)), damage, static_cast<char>(GetId()) };
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -580,6 +583,7 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			{
 				m_upperAnimationInfo->blendingFrame = 3;
 				m_upperAnimationInfo->fps = 1.0f / 24.0f;
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
 				m_isFired = FALSE;
 			}
 			break;
@@ -589,22 +593,19 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			{
 				m_upperAnimationInfo->blendingFrame = 3;
 				m_upperAnimationInfo->fps = 1.0f / 30.0f;
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
 				m_isFired = FALSE;
 			}
 			break;
 		case eWeaponType::MG:
+			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
 			if (pureAnimationName == "FIRING")
 			{
-				doBlending = FALSE;
+				m_upperAnimationInfo->blendingFrame = 1;
+				m_upperAnimationInfo->fps = 1.0f / 30.0f;
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
 				m_isFired = FALSE;
 			}
-			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
-			//if (pureAnimationName == "FIRING")
-			//{
-			//	m_upperAnimationInfo->blendingFrame = 1;
-			//	m_upperAnimationInfo->fps = 1.0f / 30.0f;
-			//	m_isFired = FALSE;
-			//}
 			break;
 		}
 		return;
@@ -776,7 +777,7 @@ void Player::AddMaxHp(INT hp)
 	m_hp += hp;
 }
 
-void Player::AddDamage(INT damage)
+void Player::AddDamage(FLOAT damage)
 {
 	m_bonusDamage += damage;
 }

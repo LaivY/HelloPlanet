@@ -50,7 +50,7 @@ public:
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	void AddMaxHp(INT hp);
-	void AddDamage(INT damage);
+	void AddDamage(FLOAT damage);
 	void AddAttackSpeed(FLOAT attackSpeed);
 
 	INT GetId() const;
@@ -90,7 +90,7 @@ private:
 	INT								m_bulletCount;		// 총알 개수
 	INT								m_maxBulletCount;	// 총알 최대 개수
 
-	INT								m_bonusDamage;		// 추가 공격력(+n)
+	FLOAT							m_bonusDamage;		// 추가 공격력(+n%)
 	FLOAT							m_bonusAttackSpeed;	// 추가 공격속도(+n%)
 
 	eWeaponType						m_weaponType;		// 총 타입
