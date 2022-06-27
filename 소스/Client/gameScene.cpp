@@ -10,8 +10,8 @@
 #include "uiObject.h"
 #include "windowObject.h"
 
-unordered_map<INT, unique_ptr<Monster>> GameScene::s_monsters;
-vector<unique_ptr<GameObject>>			GameScene::s_screenObjects;
+vector<unique_ptr<Monster>>		GameScene::s_monsters;
+vector<unique_ptr<GameObject>>	GameScene::s_screenObjects;
 
 GameScene::GameScene() : m_pcbGameScene{ nullptr }
 {
@@ -260,7 +260,7 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 		w->Update(deltaTime);
 	for (auto& o : s_screenObjects)
 		o->Update(deltaTime);
-	for (auto& [_, m] : s_monsters)
+	for (auto& m : s_monsters)
 		m->Update(deltaTime);
 }
 
@@ -313,7 +313,7 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 		if (p) p->Render(commandList);
 
 	// 몬스터 렌더링
-	for (const auto& [_, m] : s_monsters)
+	for (const auto& m : s_monsters)
 		m->Render(commandList);
 
 	// 화면 기준으로 그리는 게임오브젝트들
@@ -652,7 +652,7 @@ void GameScene::Update(FLOAT deltaTime)
 	erase_if(m_textObjects, [](unique_ptr<TextObject>& object) { return !object->isValid(); });
 	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
 	erase_if(s_screenObjects, [](unique_ptr<GameObject>& object) { return !object->isValid(); });
-	erase_if(s_monsters, [](const auto& item) { return !item.second->isValid(); });
+	erase_if(s_monsters, [](const unique_ptr<Monster>& object) { return !object->isValid(); });
 	lock.unlock();
 
 	PlayerCollisionCheck(deltaTime);
@@ -838,7 +838,7 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 		if (auto shadowShader{ object->GetShadowShader() })
 			object->Render(commandList, shadowShader);
 	}
-	for (const auto& [_, monster] : s_monsters)
+	for (const auto& monster : s_monsters)
 	{
 		auto shadowShader{ monster->GetShadowShader() };
 		if (shadowShader)
@@ -996,13 +996,20 @@ void GameScene::RecvUpdateMonster()
 		if (m.id < 0) continue;
 
 		// 해당 id의 몬스터가 없는 경우엔 생성
-		if (!s_monsters.contains(m.id))
+		auto it{ ranges::find_if(s_monsters, [&](const unique_ptr<Monster>& monster) { return monster->GetId() == static_cast<int>(m.id); }) };
+		if (it == s_monsters.end())
 		{
+			auto mob{ make_unique<Monster>(m.id, m.type) };
+			mob->ApplyServerData(m);
+
 			unique_lock<mutex> lock{ g_mutex };
-			s_monsters.insert(make_pair(m.id, make_unique<Monster>(m.id, m.type)));
+			s_monsters.push_back(move(mob));
 			lock.unlock();
+			continue;
 		}
-		s_monsters[m.id]->ApplyServerData(m);
+
+		// 있으면 데이터 최신화
+		(*it)->ApplyServerData(m);
 	}
 }
 
@@ -1046,12 +1053,13 @@ void GameScene::RecvBulletHit()
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
 
-	if (s_monsters.contains(static_cast<int>(data.mobId)))
+	auto it{ ranges::find_if(s_monsters, [&](const unique_ptr<Monster>& monster) { return monster->GetId() == static_cast<int>(data.mobId); }) };
+	if (it != s_monsters.end())
 	{
 		wstring dmg{ to_wstring(m_player->GetDamage()) };
 		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
 		dmgText->SetCamera(m_camera);
-		dmgText->SetStartPosition(s_monsters[static_cast<int>(data.mobId)]->GetPosition());
+		dmgText->SetStartPosition((*it)->GetPosition());
 		m_textObjects.push_back(move(dmgText));
 	}
 }

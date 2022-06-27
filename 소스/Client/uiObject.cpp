@@ -444,14 +444,15 @@ void HitUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, c
 
 void HitUIObject::Update(FLOAT deltaTime)
 {
-	if (!GameScene::s_monsters.contains(m_monsterId))
+	auto it{ ranges::find_if(GameScene::s_monsters, [&](const unique_ptr<Monster>& monster) { return monster->GetId() == m_monsterId; }) };
+	if (it == GameScene::s_monsters.end())
 	{
 		Delete();
 		return;
 	}
 
 	auto player{ g_gameFramework.GetScene()->GetPlayer() };
-	auto& monster{ GameScene::s_monsters.at(m_monsterId) };
+	auto& monster{ *it };
 
 	XMFLOAT3 monsterPosition{ monster->GetPosition() };
 	XMFLOAT3 v1{ player->GetLook() };

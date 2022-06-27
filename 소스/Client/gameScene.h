@@ -45,8 +45,8 @@ public:
 	void SetMultiPlayers(array<shared_ptr<Player>, Setting::MAX_PLAYERS>& multiPlayers);
 
 	// 일부 게임오브젝트들
-	static unordered_map<INT, unique_ptr<Monster>>	s_monsters;
-	static vector<unique_ptr<GameObject>>			s_screenObjects;
+	static vector<unique_ptr<Monster>>		s_monsters;
+	static vector<unique_ptr<GameObject>>	s_screenObjects;
 
 private:
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);

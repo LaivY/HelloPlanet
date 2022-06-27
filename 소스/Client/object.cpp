@@ -401,6 +401,11 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
 }
 
+INT Monster::GetId() const
+{
+	return m_id;
+}
+
 OutlineObject::OutlineObject()
 {
 	SetMesh(Scene::s_meshes["FULLSCREEN"]);

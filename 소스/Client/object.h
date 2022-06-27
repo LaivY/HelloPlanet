@@ -143,6 +143,8 @@ public:
 	void OnAnimation(FLOAT currFrame, UINT endFrame);
 	void ApplyServerData(const MonsterData& monsterData);
 
+	INT GetId() const;
+
 private:
 	INT	m_id;
 };
