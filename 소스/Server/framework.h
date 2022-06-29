@@ -1,10 +1,37 @@
 ﻿#pragma once
+#include <d3d12.h>
+#include <wrl/client.h>
+
 #include "session.h"
 #include "monster.h"
 #include "database.h"
 
 //constexpr INT stage1Goal = 10;
 constexpr FLOAT g_spawnCooldown = 2.0f;
+
+class ObjectHitbox
+{
+public:
+	ObjectHitbox(const DirectX::XMFLOAT3& center, const DirectX::XMFLOAT3& extents, const DirectX::XMFLOAT3& rollPitchYaw = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+	~ObjectHitbox() = default;
+
+	void Render(const Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void Update(FLOAT /*deltaTime*/);
+
+	DirectX::BoundingOrientedBox GetBoundingBox() const;
+
+private:
+	DirectX::XMFLOAT3				m_center;
+	DirectX::XMFLOAT3				m_extents;
+	DirectX::XMFLOAT3				m_rollPitchYaw;
+};
+
+struct BulletDataFrame
+{
+	BulletData			data;
+	BOOL				isBulletCast;		// 총알 송신 여부
+	BOOL				isCollisionCheck;	// 충돌체크 여부
+};
 
 class NetworkFramework
 {
@@ -22,6 +49,7 @@ public:
 	void SendReadyCheckPacket(const Session& player) const;
 	void SendChangeScenePacket(const eSceneType sceneType) const;
 	void SendPlayerDataPacket();
+	void SendBulletDataPacket();
 	void SendBulletHitPacket();
 	void SendMonsterDataPacket();
 	void SendMonsterAttackPacket(const int id, const int mobId, const int damage) const;
@@ -47,7 +75,7 @@ public:
 	const INT								roundGoal[4];	// 라운드 별 목표 처치 수(0 ~ 3)
 	//BOOL									isClearStage1;
 	std::array<Session, MAX_USER>			clients;		// 클라이언트
-	std::vector<BulletData>					bullets;		// 총알
+	std::vector<BulletDataFrame>			bullets;		// 총알
 	std::vector<BulletHitData>				bulletHits;		// 총알을 맞춘 정보
 	std::vector<std::unique_ptr<Monster>>	monsters;		// 몬스터
 	BOOL									doSpawnMonster;	// 몬스터 생성 여부
@@ -55,7 +83,11 @@ public:
 	CHAR									lastMobId;		// 다음 몬스터에 부여할 ID
 	INT										killCount;		// 처치한 몬스터 수
 
+	std::vector<std::unique_ptr<ObjectHitbox>>	objectsHits;		// 오브젝트
+
 	// 사용되지 않는 변수들
 	std::vector<std::thread>				threads;
 	BOOL									isInGame;
 };
+
+

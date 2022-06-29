@@ -136,6 +136,32 @@ void NetworkFramework::SendPlayerDataPacket()
 		c.data.upperAniType = eUpperAnimationType::NONE;
 }
 
+void NetworkFramework::SendBulletDataPacket()
+{
+	for(auto& bl:bullets)
+	{
+		if (bl.isBulletCast == true) continue;
+		sc_packet_bullet_fire send_packet{};
+		send_packet.size = sizeof(send_packet);
+		send_packet.type = SC_PACKET_BULLET_FIRE;
+		send_packet.data = bl.data;
+		char sendBuf[sizeof(send_packet)];
+		WSABUF wsabuf = { sizeof(sendBuf), sendBuf };
+		memcpy(sendBuf, &send_packet, sizeof(send_packet));
+		DWORD sent_byte;
+
+		// 총알은 수신하자마자 모든 클라이언트들에게 송신
+		for (const auto& c : clients)
+		{
+			if (!c.data.isActive) continue;
+			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
+			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+		}
+		bl.isBulletCast = true;
+	}
+
+}
+
 void NetworkFramework::SendBulletHitPacket()
 {
 	sc_packet_bullet_hit packet{};

@@ -79,6 +79,7 @@ int NetworkFramework::OnInit()
 		{
 			// playerData Send
 			SendPlayerDataPacket();
+			SendBulletDataPacket();
 			SendBulletHitPacket();
 		}
 		else // odd FrameNumber
@@ -117,7 +118,7 @@ void NetworkFramework::WorkThreads()
 		DWORD num_byte;
 		LONG64 iocp_key;
 		WSAOVERLAPPED* p_over;
-		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, (PULONG_PTR)&iocp_key, &p_over, INFINITE);
+		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, reinterpret_cast<PULONG_PTR>(&iocp_key), &p_over, INFINITE);
 		//std::cout << iocp_key << std::endl;
 		int client_id = static_cast<int>(iocp_key);
 		EXP_OVER* exp_over = reinterpret_cast<EXP_OVER*>(p_over);
@@ -196,7 +197,8 @@ void NetworkFramework::WorkThreads()
 			ZeroMemory(&exp_over->_wsa_over, sizeof(exp_over->_wsa_over));
 			c_socket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, 0, 0, WSA_FLAG_OVERLAPPED);
 			*(reinterpret_cast<SOCKET*>(exp_over->_net_buf)) = c_socket;
-			AcceptEx(g_socket, c_socket, exp_over->_net_buf + 8, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, 0, &exp_over->_wsa_over);
+			AcceptEx(g_socket, c_socket, exp_over->_net_buf + 8, 0, 
+				sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, 0, &exp_over->_wsa_over);
 		}
 		break;
 		}
@@ -275,26 +277,9 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 	case CS_PACKET_BULLET_FIRE:
 	{
 		cs_packet_bullet_fire* packet = reinterpret_cast<cs_packet_bullet_fire*>(p);
-		sc_packet_bullet_fire send_packet{};
-		send_packet.size = sizeof(packet);
-		send_packet.type = SC_PACKET_BULLET_FIRE;
-		send_packet.data = packet->data;
-
-		char sendBuf[sizeof(send_packet)];
-		WSABUF wsabuf = { sizeof(sendBuf), sendBuf };
-		memcpy(sendBuf, &send_packet, sizeof(send_packet));
-		DWORD sent_byte;
-
-		// 총알은 수신하자마자 모든 클라이언트들에게 송신
-		for (const auto& c : clients)
-		{
-			if (!c.data.isActive) continue;
-			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
-		}
-
+		BulletDataFrame bulletData{ packet->data, false, false };
 		// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
-		bullets.push_back(send_packet.data);
+		bullets.push_back(bulletData);
 		break;
 	}
 	case CS_PACKET_SELECT_REWARD:
@@ -437,8 +422,9 @@ void NetworkFramework::CollisionCheck()
 {
 	// 총알과 충돌한 몬스터들 중 총알과 가장 가까운 몬스터와
 	// 충돌한 것으로 처리해야되기 때문에 총알을 바깥 for문으로 돌아야한다.
-	for (const BulletData& b : bullets)
+	for (auto& b : bullets)
 	{
+		if (b.isCollisionCheck == true) continue;
 		Monster* hitMonster{ nullptr };	// 피격된 몹
 		float length{ FLT_MAX };		// 피격된 몹과 총알 간의 거리
 
@@ -447,14 +433,14 @@ void NetworkFramework::CollisionCheck()
 			if (m->GetHp() <= 0) continue;
 
 			BoundingOrientedBox boundingBox{ m->GetBoundingBox() };
-			XMVECTOR origin{ XMLoadFloat3(&b.pos) };
-			XMVECTOR direction{ XMLoadFloat3(&b.dir) };
+			XMVECTOR origin{ XMLoadFloat3(&b.data.pos) };
+			XMVECTOR direction{ XMLoadFloat3(&b.data.dir) };
 			float dist{ 3000.0f };
 			if (boundingBox.Intersects(origin, direction, dist))
 			{
 				// 기존 피격된 몹과 총알 간의 거리보다
 				// 새로 피격된 몹과 총알 간의 거리가 더 짧으면 피격 당한 몹을 바꿈
-				float l{ Vector3::Length(Vector3::Sub(b.pos, m->GetPosition())) };
+				float l{ Vector3::Length(Vector3::Sub(b.data.pos, m->GetPosition())) };
 				if (l < length)
 				{
 					hitMonster = m.get();
@@ -464,16 +450,16 @@ void NetworkFramework::CollisionCheck()
 
 				// 해당 플레이어가 총알을 맞췄다는 것을 저장
 				BulletHitData hitData{};
-				hitData.bullet = b;
+				hitData.bullet = b.data;
 				hitData.mobId = m->GetId();
 				bulletHits.push_back(std::move(hitData));
 			}
 		}
-		if (hitMonster) hitMonster->OnHit(b);
+		if (hitMonster) hitMonster->OnHit(b.data);
+		b.isCollisionCheck = true;
 	}
-
 	// 충돌체크가 완료된 총알들은 삭제
-	bullets.clear();
+	erase_if(bullets, [](BulletDataFrame b) { return b.isCollisionCheck && b.isBulletCast; });
 }
 
 void NetworkFramework::Disconnect(const int id)
