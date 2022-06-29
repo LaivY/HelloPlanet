@@ -1107,138 +1107,8 @@ void GameScene::RecvRoundResult()
 	switch (roundResult)
 	{
 	case eRoundResult::CLEAR:
-	{
-		// 죽어있다면 부활
-		if (m_player->GetHp() <= 0)
-			OnPlayerRevive();
-
-		// 중복없이 보상 3개 선택
-		const auto r = { eReward::AD, eReward::AS, eReward::HP, eReward::DEF };
-		vector<eReward> rewards;
-		ranges::sample(r, back_inserter(rewards), 3, g_randomEngine);
-
-		// 보상 칸 하나 당 가로 길이 비율
-		constexpr float REWARE_WIDTH_RATIO{ 0.18f };
-
-		unique_ptr<RewardUIObject> rewardUIObjects[3]{};
-		unique_ptr<UIObject> rewardImageObjects[3]{};
-		unique_ptr<TextObject> rewardTextObjects[3]{};
-		for (int i = 0; i < 3; ++i)
-		{
-			// 보상 UI
-			rewardUIObjects[i] = make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.5f);
-			rewardUIObjects[i]->SetTexture(s_textures["OUTLINE"]);
-			rewardUIObjects[i]->SetMouseClickCallBack(bind(
-				[&](const shared_ptr<Player>& player, eReward reward)
-				{
-					switch (reward)
-					{
-					case eReward::AD:
-						player->AddDamage(10);
-						break;
-					case eReward::AS:
-						player->AddAttackSpeed(10);
-						break;
-					case eReward::HP:
-						player->AddMaxHp(10);
-						break;
-					case eReward::DEF:
-						break;
-					}
-				#ifdef NETWORK
-					cs_packet_select_reward packet{};
-					packet.type = CS_PACKET_SELECT_REWARD;
-					packet.size = sizeof(packet);
-					packet.playerId = m_player->GetId();
-					send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
-				#endif
-					m_windowObjects.back()->Delete();
-				}, m_player, rewards[i]));
-
-			switch (i)
-			{
-			case 0:
-				rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), 0.0f });
-				break;
-			case 1:
-				break;
-			case 2:
-				rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), 0.0f });
-				break;
-			}
-
-			// 보상 아이콘
-			rewardImageObjects[i] = make_unique<UIObject>(g_width * (REWARE_WIDTH_RATIO - 0.08f), g_width * (REWARE_WIDTH_RATIO - 0.08f));
-			rewardImageObjects[i]->SetTexture(s_textures["WHITE"]);
-			rewardImageObjects[i]->SetPivot(ePivot::CENTERTOP);
-			rewardImageObjects[i]->SetScreenPivot(ePivot::CENTERTOP);
-			switch (i)
-			{
-			case 0:
-				rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
-				break;
-			case 1:
-				rewardImageObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
-				break;
-			case 2:
-				rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
-				break;
-			}
-
-			// 보상 설명 텍스트
-			rewardTextObjects[i] = make_unique<TextObject>();
-			rewardTextObjects[i]->SetFormat("28L");
-			rewardTextObjects[i]->SetBrush("WHITE");
-			switch (rewards[i])
-			{
-			case eReward::AD:
-				rewardTextObjects[i]->SetText(TEXT("공격력 +10%"));
-				break;
-			case eReward::AS:
-				rewardTextObjects[i]->SetText(TEXT("공격 속도 +10%"));
-				break;
-			case eReward::HP:
-				rewardTextObjects[i]->SetText(TEXT("최대 체력 +10"));
-				break;
-			case eReward::DEF:
-				rewardTextObjects[i]->SetText(TEXT("방어력 +5"));
-				break;
-			}
-
-			switch (i)
-			{
-			case 0:
-				rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
-				break;
-			case 1:
-				rewardTextObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
-				break;
-			case 2:
-				rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
-				break;
-			}
-		}
-
-		auto title{ make_unique<TextObject>() };
-		title->SetBrush("BLACK");
-		title->SetFormat("36L");
-		title->SetText(TEXT("보상"));
-		title->SetPivot(ePivot::LEFTBOT);
-		title->SetScreenPivot(ePivot::LEFTTOP);
-		title->SetPosition(XMFLOAT2{ 0.0f, 2.0f });
-
-		auto window{ make_unique<WindowObject>(g_width * 0.6f, g_height * 0.54f) };
-		window->SetTexture(s_textures["OUTLINE"]);
-		window->Add(title);
-		for (int i = 0; i < 3; ++i)
-		{
-			window->Add(rewardUIObjects[i]);
-			window->Add(rewardImageObjects[i]);
-			window->Add(rewardTextObjects[i]);
-		}
-		m_windowObjects.push_back(move(window));
+		RecvRoundClear();
 		break;
-	}
 	case eRoundResult::OVER:
 		break;
 	case eRoundResult::ENDING:
@@ -1307,6 +1177,199 @@ void GameScene::RecvLogoutOkPacket()
 			return;
 		}
 	}
+}
+
+void GameScene::RecvRoundClear()
+{
+	// 죽어있다면 부활
+	if (m_player->GetHp() <= 0)
+		OnPlayerRevive();
+
+	// 중복없이 보상 3개 선택
+	const auto r = { eReward::DAMAGE, eReward::SPEED, eReward::MAXHP, eReward::MAXBULLET, eReward::SPECIAL };
+	vector<eReward> rewards;
+	ranges::sample(r, back_inserter(rewards), 3, g_randomEngine);
+
+	// 보상 칸 하나 당 가로 길이 비율
+	constexpr float REWARE_WIDTH_RATIO{ 0.18f };
+
+	unique_ptr<RewardUIObject> rewardUIObjects[3]{};
+	unique_ptr<UIObject> rewardImageObjects[3]{};
+	unique_ptr<TextObject> rewardTextObjects[3]{};
+	for (int i = 0; i < 3; ++i)
+	{
+		// 보상 UI
+		rewardUIObjects[i] = make_unique<RewardUIObject>(g_width * REWARE_WIDTH_RATIO, g_height * 0.5f);
+		rewardUIObjects[i]->SetTexture(s_textures["OUTLINE"]);
+		rewardUIObjects[i]->SetMouseClickCallBack(bind(
+			[&](const shared_ptr<Player>& player, eReward reward)
+			{
+				eWeaponType weaponType{ player->GetWeaponType() };
+				switch (reward)
+				{
+				case eReward::DAMAGE:
+					switch (weaponType)
+					{
+					case eWeaponType::AR:
+						player->AddBonusDamage(10);
+						break;
+					case eWeaponType::SG:
+					case eWeaponType::MG:
+						player->AddBonusDamage(5);
+						break;
+					}
+					break;
+				case eReward::SPEED:
+					player->AddBonusSpeed(10);
+					break;
+				case eReward::MAXHP:
+					player->AddMaxHp(25);
+					break;
+				case eReward::MAXBULLET:
+					switch (weaponType)
+					{
+					case eWeaponType::AR:
+						player->AddMaxBulletCount(10);
+						break;
+					case eWeaponType::SG:
+						player->AddMaxBulletCount(3);
+						break;
+					case eWeaponType::MG:
+						player->AddMaxBulletCount(20);
+						break;
+					}
+					break;
+				case eReward::SPECIAL:
+					switch (weaponType)
+					{
+					case eWeaponType::AR:
+						player->AddBonusReloadSpeed(20);
+						break;
+					case eWeaponType::SG:
+						player->AddBonusBulletFire(2);
+						break;
+					case eWeaponType::MG:
+						player->AddBonusAttackSpeed(20);
+						break;
+					}
+					break;
+				}
+#ifdef NETWORK
+				cs_packet_select_reward packet{};
+				packet.type = CS_PACKET_SELECT_REWARD;
+				packet.size = sizeof(packet);
+				packet.playerId = m_player->GetId();
+				send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+#endif
+				m_windowObjects.back()->Delete();
+			}, m_player, rewards[i]));
+
+		// 보상 아이콘
+		rewardImageObjects[i] = make_unique<UIObject>(g_width * (REWARE_WIDTH_RATIO - 0.08f), g_width * (REWARE_WIDTH_RATIO - 0.08f));
+		rewardImageObjects[i]->SetPivot(ePivot::CENTERTOP);
+		rewardImageObjects[i]->SetScreenPivot(ePivot::CENTERTOP);
+
+		// 보상 설명 텍스트
+		rewardTextObjects[i] = make_unique<TextObject>();
+		rewardTextObjects[i]->SetFormat("28L");
+		rewardTextObjects[i]->SetBrush("WHITE");
+
+		// 보상 별 설정
+		switch (rewards[i])
+		{
+		case eReward::DAMAGE:
+			rewardImageObjects[i]->SetTexture(s_textures["REWARD_DAMAGE"]);
+			switch (m_player->GetWeaponType())
+			{
+			case eWeaponType::AR:
+				rewardTextObjects[i]->SetText(TEXT("공격력 +10"));
+				break;
+			case eWeaponType::SG:
+			case eWeaponType::MG:
+				rewardTextObjects[i]->SetText(TEXT("공격력 +5"));
+				break;
+			}
+			break;
+		case eReward::SPEED:
+			rewardImageObjects[i]->SetTexture(s_textures["REWARD_SPEED"]);
+			rewardTextObjects[i]->SetText(TEXT("이동 속도 +10%"));
+			break;
+		case eReward::MAXHP:
+			rewardImageObjects[i]->SetTexture(s_textures["REWARD_HP"]);
+			rewardTextObjects[i]->SetText(TEXT("최대 체력 +10"));
+			break;
+		case eReward::MAXBULLET:
+			rewardImageObjects[i]->SetTexture(s_textures["REWARD_BULLET"]);
+			switch (m_player->GetWeaponType())
+			{
+			case eWeaponType::AR:
+				rewardTextObjects[i]->SetText(TEXT("탄창 +10"));
+				break;
+			case eWeaponType::SG:
+				rewardTextObjects[i]->SetText(TEXT("탄창 +3"));
+				break;
+			case eWeaponType::MG:
+				rewardTextObjects[i]->SetText(TEXT("탄창 +20"));
+				break;
+			}
+			break;
+		case eReward::SPECIAL:
+			switch (m_player->GetWeaponType())
+			{
+			case eWeaponType::AR:
+				rewardImageObjects[i]->SetTexture(s_textures["REWARD_AR"]);
+				rewardTextObjects[i]->SetText(TEXT("재장전 속도 +20%"));
+				break;
+			case eWeaponType::SG:
+				rewardImageObjects[i]->SetTexture(s_textures["REWARD_SG"]);
+				rewardTextObjects[i]->SetText(TEXT("발사 탄환 수 +2%"));
+				break;
+			case eWeaponType::MG:
+				rewardImageObjects[i]->SetTexture(s_textures["REWARD_MG"]);
+				rewardTextObjects[i]->SetText(TEXT("공격 속도 +20%"));
+				break;
+			}
+			break;
+		}
+
+		// 순서 별 설정
+		switch (i)
+		{
+		case 0:
+			rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), 0.0f });
+			rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+			rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * -(REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+			break;
+		case 1:
+			rewardImageObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
+			rewardTextObjects[i]->SetPosition(XMFLOAT2{ 0.0f, g_width * -0.04f });
+			break;
+		case 2:
+			rewardUIObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), 0.0f });
+			rewardImageObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+			rewardTextObjects[i]->SetPosition(XMFLOAT2{ g_width * (REWARE_WIDTH_RATIO + 0.02f), g_width * -0.04f });
+			break;
+		}
+	}
+
+	auto title{ make_unique<TextObject>() };
+	title->SetBrush("BLACK");
+	title->SetFormat("36L");
+	title->SetText(TEXT("보상"));
+	title->SetPivot(ePivot::LEFTBOT);
+	title->SetScreenPivot(ePivot::LEFTTOP);
+	title->SetPosition(XMFLOAT2{ 0.0f, 2.0f });
+
+	auto window{ make_unique<WindowObject>(g_width * 0.6f, g_height * 0.54f) };
+	window->SetTexture(s_textures["OUTLINE"]);
+	window->Add(title);
+	for (int i = 0; i < 3; ++i)
+	{
+		window->Add(rewardUIObjects[i]);
+		window->Add(rewardImageObjects[i]);
+		window->Add(rewardTextObjects[i]);
+	}
+	m_windowObjects.push_back(move(window));
 }
 
 void GameScene::SetPlayer(unique_ptr<Player>& player)

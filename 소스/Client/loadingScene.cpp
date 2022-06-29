@@ -101,10 +101,10 @@ void LoadingScene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPt
 void LoadingScene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	s_textures["HPBARBASE"] = make_shared<Texture>();
-	s_textures["HPBARBASE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/HPBarBase.dds")));
+	s_textures["HPBARBASE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/HPBAR_BASE.dds")));
 
 	s_textures["HPBAR"] = make_shared<Texture>();
-	s_textures["HPBAR"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/HPBar.dds")));
+	s_textures["HPBAR"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/HPBAR.dds")));
 	Texture::CreateShaderResourceView(device);
 }
 
@@ -289,23 +289,39 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["OBJECT2"]->Load(device, commandList, 5, Utile::PATH(TEXT("Object/texture2.dds")));
 
 	s_textures["WHITE"] = make_shared<Texture>();
-	s_textures["WHITE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/white.dds")));
+	s_textures["WHITE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/WHITE.dds")));
 
 	s_textures["TITLE"] = make_shared<Texture>();
-	s_textures["TITLE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/title.dds")));
+	s_textures["TITLE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/TITLE.dds")));
 
 	s_textures["HIT"] = make_shared<Texture>();
-	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/hit1.dds")));
-	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/hit2.dds")));
-	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/hit3.dds")));
-	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/hit4.dds")));
+	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/UI_CROSSHAIR_HIT1.dds")));
+	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/UI_CROSSHAIR_HIT2.dds")));
+	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/UI_CROSSHAIR_HIT3.dds")));
+	s_textures["HIT"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/UI_CROSSHAIR_HIT4.dds")));
 
 	s_textures["ARROW"] = make_shared<Texture>();
-	s_textures["ARROW"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/arrow.dds")));
+	s_textures["ARROW"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/HIT_NOTICE_ARROW.dds")));
 
 	// UI 외곽선
 	s_textures["OUTLINE"] = make_shared<Texture>();
-	s_textures["OUTLINE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/outline.dds")));
+	s_textures["OUTLINE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/UI_OUTLINE.dds")));
+
+	// 보상 아이콘
+	s_textures["REWARD_BULLET"] = make_shared<Texture>();
+	s_textures["REWARD_BULLET"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_BULLET.dds")));
+	s_textures["REWARD_DAMAGE"] = make_shared<Texture>();
+	s_textures["REWARD_DAMAGE"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_DAMAGE.dds")));
+	s_textures["REWARD_HP"] = make_shared<Texture>();
+	s_textures["REWARD_HP"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_HP.dds")));
+	s_textures["REWARD_SPEED"] = make_shared<Texture>();
+	s_textures["REWARD_SPEED"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_SPEED.dds")));
+	s_textures["REWARD_AR"] = make_shared<Texture>();
+	s_textures["REWARD_AR"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_AR.dds")));
+	s_textures["REWARD_SG"] = make_shared<Texture>();
+	s_textures["REWARD_SG"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_SG.dds")));
+	s_textures["REWARD_MG"] = make_shared<Texture>();
+	s_textures["REWARD_MG"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_MG.dds")));
 
 	// 총구 이펙트
 	s_textures["MUZZLE_FRONT"] = make_shared<Texture>();
@@ -313,10 +329,10 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_2.dds")));
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_3.dds")));
 
-	s_textures["MUZZLE_SIDE"] = make_shared<Texture>();
-	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_1.dds")));
-	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_2.dds")));
-	s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_3.dds")));
+	//s_textures["MUZZLE_SIDE"] = make_shared<Texture>();
+	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_1.dds")));
+	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_2.dds")));
+	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_3.dds")));
 }
 
 void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext)

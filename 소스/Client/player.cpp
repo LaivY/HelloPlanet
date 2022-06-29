@@ -9,10 +9,11 @@
 #include "shader.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_weaponType{ eWeaponType::AR },
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE },
+	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
+	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
-	m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_bonusDamage{}, m_attackSpeed{}, m_bonusAttackSpeed{ 50.0f }, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
-	m_camera{ nullptr }, m_gunOffset{}, m_gunOffsetTimer{}
+	m_gunOffset{}, m_gunOffsetTimer{}, m_camera{ nullptr }
 {
 	m_mesh = m_isMultiPlayer ? Scene::s_meshes["PLAYER"] : Scene::s_meshes["ARM"];
 	m_shader = Scene::s_shaders["ANIMATION"];
@@ -64,8 +65,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
-		m_velocity.x = -m_speed / 2.0f;
-		m_velocity.z = m_speed / 2.0f;
+		m_velocity.x = -m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
+		m_velocity.z =  m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('W') && GetAsyncKeyState('D') & 0x8000)
@@ -73,8 +74,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
-		m_velocity.x = m_speed / 2.0f;
-		m_velocity.z = m_speed / 2.0f;
+		m_velocity.x = m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
+		m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('A') & 0x8000)
@@ -82,8 +83,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
-		m_velocity.x = -m_speed / 2.0f;
-		m_velocity.z = -m_speed / 2.0f;
+		m_velocity.x = -m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
+		m_velocity.z = -m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') && GetAsyncKeyState('D') & 0x8000)
@@ -91,8 +92,8 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
-		m_velocity.x = m_speed / 2.0f;
-		m_velocity.z = -m_speed / 2.0f;
+		m_velocity.x =  m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
+		m_velocity.z = -m_speed * (1.0f + m_bonusSpeed / 100.0f) / 2.0f;
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
@@ -102,7 +103,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
-			m_velocity.z = m_speed * 5.0f;
+			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) * 5.0f;
 			SendPlayerData();
 		}
 		else
@@ -110,7 +111,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("WALKING", TRUE);
-			m_velocity.z = m_speed;
+			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f);
 			SendPlayerData();
 		}
 	}
@@ -119,7 +120,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKLEFT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKLEFT", TRUE);
-		m_velocity.x = -m_speed;
+		m_velocity.x = -m_speed * (1.0f + m_bonusSpeed / 100.0f);
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('D') & 0x8000)
@@ -127,7 +128,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKRIGHT") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKRIGHT", TRUE);
-		m_velocity.x = m_speed;
+		m_velocity.x = m_speed * (1.0f + m_bonusSpeed / 100.0f);
 		SendPlayerData();
 	}
 	else if (GetAsyncKeyState('S') & 0x8000)
@@ -135,7 +136,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 		if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "WALKBACK") ||
 			(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 			PlayAnimation("WALKBACK", TRUE);
-		m_velocity.z = -m_speed;
+		m_velocity.z = -m_speed * (1.0f + m_bonusSpeed / 100.0f);
 		SendPlayerData();
 	}
 #endif
@@ -177,7 +178,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 			{
 				if (GetUpperCurrAnimationName() != "RELOAD")
 					PlayAnimation("WALKING", TRUE);
-				m_velocity.z = m_speed;
+				m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f);
 			}
 			else PlayAnimation("IDLE", TRUE);
 			break;
@@ -375,7 +376,7 @@ void Player::Fire()
 	XMFLOAT3 center{ Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1000.0f)) };
 
 	// 총알 데미지
-	int damage{ static_cast<int>(m_damage * (1.0f + m_bonusDamage / 100.0f)) };
+	int damage{ static_cast<int>(m_damage + m_bonusDamage) };
 
 	switch (m_weaponType)
 	{
@@ -433,7 +434,22 @@ void Player::Fire()
 			cs_packet_bullet_fire packet{};
 			packet.size = sizeof(packet);
 			packet.type = CS_PACKET_BULLET_FIRE;
-			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), damage, static_cast<char>(GetId()) };
+			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), damage, static_cast<char>(m_id) };
+			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
+		}
+
+		// 추가 발사
+		// 가운데에서 살짝 움직임
+		for (int i = 0; i < m_bonusBulletFire; ++i)
+		{
+			XMFLOAT3 t{ center };
+			t = Vector3::Add(t, Vector3::Mul(GetRight(), Utile::Random(-5.0f, 5.0f)));
+			t = Vector3::Add(t, Vector3::Mul(up, Utile::Random(-5.0f, 5.0f)));
+
+			cs_packet_bullet_fire packet{};
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_BULLET_FIRE;
+			packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(t, start)), damage, static_cast<char>(m_id) };
 			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 		}
 
@@ -583,8 +599,13 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			{
 				m_upperAnimationInfo->blendingFrame = 3;
 				m_upperAnimationInfo->fps = 1.0f / 24.0f;
-				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed); // 공격 속도 증가
 				m_isFired = FALSE;
+			}
+			else
+			{
+				// 재장전 속도 증가
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusReloadSpeed);
 			}
 			break;
 		case eWeaponType::SG:
@@ -596,6 +617,8 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
 				m_isFired = FALSE;
 			}
+			else
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusReloadSpeed);
 			break;
 		case eWeaponType::MG:
 			PlayUpperAnimation("MG/" + pureAnimationName, doBlending);
@@ -606,6 +629,8 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusAttackSpeed);
 				m_isFired = FALSE;
 			}
+			else
+				m_upperAnimationInfo->fps *= 100.0f / (100.0f + m_bonusReloadSpeed);
 			break;
 		}
 		return;
@@ -777,14 +802,35 @@ void Player::AddMaxHp(INT hp)
 	m_hp += hp;
 }
 
-void Player::AddDamage(FLOAT damage)
+void Player::AddBonusSpeed(INT speed)
+{
+	m_bonusSpeed += speed;
+}
+
+void Player::AddBonusDamage(INT damage)
 {
 	m_bonusDamage += damage;
 }
 
-void Player::AddAttackSpeed(FLOAT attackSpeed)
+void Player::AddBonusAttackSpeed(INT speed)
 {
-	m_bonusAttackSpeed += attackSpeed;
+	m_bonusAttackSpeed += speed;
+}
+
+void Player::AddMaxBulletCount(INT count)
+{
+	m_maxBulletCount += count;
+	m_bulletCount += count;
+}
+
+void Player::AddBonusReloadSpeed(INT speed)
+{
+	m_bonusReloadSpeed += speed;
+}
+
+void Player::AddBonusBulletFire(INT count)
+{
+	m_bonusBulletFire += count;
 }
 
 INT Player::GetId() const
@@ -809,7 +855,7 @@ INT Player::GetMaxHp() const
 
 INT Player::GetDamage() const
 {
-	return m_damage;
+	return m_damage + m_bonusDamage;
 }
 
 INT Player::GetBulletCount() const

@@ -5,7 +5,7 @@ class Camera;
 
 enum class eReward
 {
-	AD, AS, HP, DEF
+	DAMAGE, SPEED, MAXHP, MAXBULLET, SPECIAL
 };
 
 class Player : public GameObject
@@ -50,8 +50,12 @@ public:
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
 
 	void AddMaxHp(INT hp);
-	void AddDamage(FLOAT damage);
-	void AddAttackSpeed(FLOAT attackSpeed);
+	void AddBonusSpeed(INT speed);
+	void AddBonusDamage(INT damage);
+	void AddBonusAttackSpeed(INT speed);
+	void AddMaxBulletCount(INT count);
+	void AddBonusReloadSpeed(INT speed);
+	void AddBonusBulletFire(INT count);
 
 	INT GetId() const;
 	eWeaponType GetWeaponType() const;
@@ -71,34 +75,37 @@ public:
 	FLOAT GetGunOffsetTimer() const;
 
 private:
-	INT								m_id;				// 플레이어 고유 아이디
-	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
-	BOOL							m_isFired;			// 발사 여부
+	INT					m_id;				// 플레이어 고유 아이디
+	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
+	BOOL				m_isFired;			// 발사 여부
 
-	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
-	FLOAT							m_delayPitch;		// .. x축 회전각
-	FLOAT							m_delayYaw;			// .. y축 회전각
-	FLOAT							m_delayTime;		// 몇 초에 걸쳐 회전할 건지
-	FLOAT							m_delayTimer;		// 타이머
+	eWeaponType			m_weaponType;		// 총 타입
+	INT					m_hp;				// 현재 체력
+	INT					m_maxHp;			// 최대 체력
+	FLOAT				m_speed;			// 이동 속력
+	INT					m_damage;			// 공격력
+	FLOAT				m_attackSpeed;		// 공격속도
+	FLOAT				m_attackTimer;		// 공격속도 타이머
+	INT					m_bulletCount;		// 총알 개수
+	INT					m_maxBulletCount;	// 총알 최대 개수
 
-	INT								m_hp;				// 현재 체력
-	INT								m_maxHp;			// 최대 체력
-	FLOAT							m_speed;			// 이동 속력
-	INT								m_damage;			// 공격력
-	FLOAT							m_attackSpeed;		// 공격속도
-	FLOAT							m_attackTimer;		// 공격속도 타이머
-	INT								m_bulletCount;		// 총알 개수
-	INT								m_maxBulletCount;	// 총알 최대 개수
+	INT					m_bonusSpeed;		// 추가 이동속도(+n%)
+	INT					m_bonusDamage;		// 추가 공격력(+n)
+	INT					m_bonusAttackSpeed;	// 추가 공격속도(+n%)
+	INT					m_bonusReloadSpeed;	// 추가 재장전 속도(+n%)
+	INT					m_bonusBulletFire;	// 추가 발사 수(+n)
 
-	FLOAT							m_bonusDamage;		// 추가 공격력(+n%)
-	FLOAT							m_bonusAttackSpeed;	// 추가 공격속도(+n%)
+	FLOAT				m_delayRoll;		// 자동으로 회전할 z축 회전각
+	FLOAT				m_delayPitch;		// .. x축 회전각
+	FLOAT				m_delayYaw;			// .. y축 회전각
+	FLOAT				m_delayTime;		// 몇 초에 걸쳐 회전할 건지
+	FLOAT				m_delayTimer;		// 타이머
 
-	eWeaponType						m_weaponType;		// 총 타입
-	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
-	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
-	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
-	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
-	FLOAT							m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
+	shared_ptr<Mesh>	m_gunMesh;			// 총 메쉬
+	shared_ptr<Shader>	m_gunShader;		// 총 셰이더
+	shared_ptr<Shader>	m_gunShadowShader;	// 총 그림자 셰이더
+	XMFLOAT3			m_gunOffset;		// 총 그릴 때 카메라의 위치
+	FLOAT				m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
 
-	shared_ptr<Camera>				m_camera;			// 카메라
+	shared_ptr<Camera>	m_camera;			// 카메라
 };

@@ -73,6 +73,8 @@ private:
 	void RecvRoundResult();
 	void RecvLogoutOkPacket();
 
+	void RecvRoundClear();
+
 private:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터

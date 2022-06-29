@@ -19,7 +19,7 @@
 #define fourccDPDS 'sdpd'
 #endif
 
-AudioEngine::AudioEngine() : m_musicVolume{ 0.1f }, m_soundVolume{ 0.1f }, m_isChanging{ FALSE }, m_isDecreasing{ FALSE }, m_tempVolume{ 0.0f }, m_timer{ 0.0f }
+AudioEngine::AudioEngine() : m_musicVolume{ 0.0f }, m_soundVolume{ 0.0f }, m_isChanging{ FALSE }, m_isDecreasing{ FALSE }, m_tempVolume{ 0.0f }, m_timer{ 0.0f }
 {
 	DX::ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 	DX::ThrowIfFailed(XAudio2Create(&m_xAduio, 0, XAUDIO2_DEFAULT_PROCESSOR));
