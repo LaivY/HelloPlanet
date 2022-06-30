@@ -7,6 +7,7 @@ NetworkFramework::NetworkFramework() :
 	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	// m_spawnCooldown 2.0f은 임의의 상수
+	LoadMapObjects("map.txt");
 }
 
 int NetworkFramework::OnInit()
@@ -424,7 +425,12 @@ void NetworkFramework::CollisionCheck()
 	// 충돌한 것으로 처리해야되기 때문에 총알을 바깥 for문으로 돌아야한다.
 	for (auto& b : bullets)
 	{
-		if (b.isCollisionCheck == true) continue;
+		// 이미 충돌 체크 했으면 패스
+		if (b.isCollisionCheck) continue;
+
+		// 충돌 체크 확인
+		b.isCollisionCheck = TRUE;
+
 		Monster* hitMonster{ nullptr };	// 피격된 몹
 		float length{ FLT_MAX };		// 피격된 몹과 총알 간의 거리
 
@@ -456,10 +462,10 @@ void NetworkFramework::CollisionCheck()
 			}
 		}
 		if (hitMonster) hitMonster->OnHit(b.data);
-		b.isCollisionCheck = true;
 	}
+
 	// 충돌체크가 완료된 총알들은 삭제
-	erase_if(bullets, [](BulletDataFrame b) { return b.isCollisionCheck && b.isBulletCast; });
+	erase_if(bullets, [](const BulletDataFrame& b) { return b.isCollisionCheck && b.isBulletCast; });
 }
 
 void NetworkFramework::Disconnect(const int id)
@@ -489,4 +495,44 @@ CHAR NetworkFramework::GetNewId() const
 	}
 	std::cout << "Maximum Number of Clients" << std::endl;
 	return -1;
+}
+
+void NetworkFramework::LoadMapObjects(const std::string& mapFile)
+{
+	std::ifstream file{ mapFile };
+
+	// 오브젝트 개수
+	int count{};
+	file >> count;
+
+	for (int i = 0; i < count; ++i)
+	{
+		int type{};			// 종류
+		XMFLOAT3 scale{};	// 크기
+		XMFLOAT3 rotat{};	// 회전
+		XMFLOAT3 trans{};	// 이동
+
+		file >> type;
+		file >> scale.x >> scale.y >> scale.z;
+		file >> rotat.x >> rotat.y >> rotat.z;
+		file >> trans.x >> trans.y >> trans.z;
+
+		// 서버에서는 히트박스(12)만 필요함
+		if (type != 12) continue;
+
+		// 저장된 값은 미터 단위기 때문에 센티미터 단위로 변경
+		scale = Vector3::Mul(scale, 100.0f);
+		trans = Vector3::Mul(trans, 100.0f);
+
+		// 크기, 회전, 이동 순서로 적용해야 제대로된 히트박스가 생성됨
+		// 파일에 저장되어 있는 회전각은 유니티 좌표계이므로 x와 z를 바꿔야 DirectX 좌표계랑 동일함. 따라서 roll, pitch, yaw는 z, x, y가 됨
+		XMMATRIX matrix{ XMMatrixIdentity() };
+		matrix *= XMMatrixRotationRollPitchYaw(XMConvertToRadians(rotat.x), XMConvertToRadians(rotat.y), XMConvertToRadians(rotat.z));
+		matrix *= XMMatrixTranslation(trans.x, trans.y, trans.z);
+
+		// 크기는 바운딩박스를 만들때 Extends에 scale의 절반 값을 넘겨줌. 그 이후 회전, 이동 행렬을 곱함.
+		DirectX::BoundingOrientedBox hitbox{ XMFLOAT3{}, Vector3::Mul(scale, 0.5f), XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+		hitbox.Transform(hitbox, matrix);
+		m_hitboxes.push_back(std::move(hitbox));
+	}
 }

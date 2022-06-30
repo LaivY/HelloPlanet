@@ -40,7 +40,7 @@ public:
 	~NetworkFramework() = default;
 	
 	int OnInit();
-	void AcceptThread(SOCKET socket);
+	//void AcceptThread(SOCKET socket);
 	void WorkThreads();
 	void ProcessRecvPacket(const int id, char* p);
 
@@ -64,6 +64,8 @@ public:
 	UCHAR DetectPlayer(const DirectX::XMFLOAT3& pos) const;
 	CHAR GetNewId() const;
 
+	void LoadMapObjects(const std::string& mapFile);
+
 public:
 	// 통신 관련 변수
 	BOOL									isAccept;		// 1명이라도 서버에 들어왔는지
@@ -83,7 +85,8 @@ public:
 	CHAR									lastMobId;		// 다음 몬스터에 부여할 ID
 	INT										killCount;		// 처치한 몬스터 수
 
-	std::vector<std::unique_ptr<ObjectHitbox>>	objectsHits;		// 오브젝트
+	//std::vector<std::unique_ptr<ObjectHitbox>>	objectsHits;		// 오브젝트
+	std::vector<DirectX::BoundingOrientedBox>	m_hitboxes;	// 맵 오브젝트 히트박스
 
 	// 사용되지 않는 변수들
 	std::vector<std::thread>				threads;

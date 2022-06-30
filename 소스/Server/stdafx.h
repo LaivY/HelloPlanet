@@ -11,7 +11,7 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <list>
+#include <fstream>
 #include <atomic>
 #include <sqlext.h>
 #include "protocol.h"

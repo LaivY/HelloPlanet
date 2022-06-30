@@ -138,9 +138,9 @@ void NetworkFramework::SendPlayerDataPacket()
 
 void NetworkFramework::SendBulletDataPacket()
 {
-	for(auto& bl:bullets)
+	for (auto& bl : bullets)
 	{
-		if (bl.isBulletCast == true) continue;
+		if (bl.isBulletCast) continue;
 		sc_packet_bullet_fire send_packet{};
 		send_packet.size = sizeof(send_packet);
 		send_packet.type = SC_PACKET_BULLET_FIRE;
@@ -157,7 +157,7 @@ void NetworkFramework::SendBulletDataPacket()
 			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
 		}
-		bl.isBulletCast = true;
+		bl.isBulletCast = TRUE;
 	}
 
 }
