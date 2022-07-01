@@ -46,7 +46,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 28 + 15 + 16 + 4 + 10 + 2 };
+	constexpr size_t allResourceCount{ 30 + 18 + 23 + 4 + 10 + 6 };
 	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -95,7 +95,7 @@ void LoadingScene::CreateMeshes(const ComPtr<ID3D12Device>& device, const ComPtr
 void LoadingScene::CreateShaders(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature)
 {
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
-	s_shaders["FADE"] = make_shared<FadeShader>(device, postProcessRootSignature, Utile::PATH(TEXT("Shader/fade.hlsl")), "CS");
+	s_shaders["FADE"] = make_shared<ComputeShader>(device, postProcessRootSignature, Utile::PATH(TEXT("Shader/fade.hlsl")), "CS");
 }
 
 void LoadingScene::CreateTextures(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -258,6 +258,10 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	// 파티클
 	s_shaders["DUST"] = make_shared<DustParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/dust.hlsl")), "VS", "GS_STREAM", "GS", "PS");
 	s_shaders["TRAIL"] = make_shared<TrailParticleShader>(device, rootSignature, Utile::PATH(TEXT("Shader/trail.hlsl")), "VS", "GS_STREAM", "GS", "PS");
+
+	// 블러
+	s_shaders["HORZ_BLUR"] = make_shared<ComputeShader>(device, postRootSignature, Utile::PATH(TEXT("Shader/blur.hlsl")), "HorzBlurCS");
+	s_shaders["VERT_BLUR"] = make_shared<ComputeShader>(device, postRootSignature, Utile::PATH(TEXT("Shader/blur.hlsl")), "VertBlurCS");
 
 	// 디버그
 	s_shaders["WIREFRAME"] = make_shared<WireframeShader>(device, rootSignature, Utile::PATH(TEXT("Shader/default.hlsl")), "VS", "PS");

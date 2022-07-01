@@ -160,7 +160,7 @@
     <ClInclude Include="mainScene.h" />
     <ClInclude Include="mesh.h" />
     <ClInclude Include="object.h" />
-    <ClInclude Include="fadeFilter.h" />
+    <ClInclude Include="filter.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="scene.h" />
@@ -205,7 +205,7 @@
     <ClCompile Include="object.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="fadeFilter.cpp">
+    <ClCompile Include="filter.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="player.cpp">
@@ -241,6 +241,9 @@
     <FxCompile Include="Resource\Shader\animation.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\blur.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Resource\Shader\common.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

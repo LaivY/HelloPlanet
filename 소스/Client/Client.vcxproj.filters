@@ -121,7 +121,7 @@
     <ClInclude Include="timer.h">
       <Filter>헤더 파일\Framework</Filter>
     </ClInclude>
-    <ClInclude Include="fadeFilter.h">
+    <ClInclude Include="filter.h">
       <Filter>헤더 파일\Effect</Filter>
     </ClInclude>
     <ClInclude Include="audioEngine.h">
@@ -186,7 +186,7 @@
     <ClCompile Include="timer.cpp">
       <Filter>소스 파일\Framework</Filter>
     </ClCompile>
-    <ClCompile Include="fadeFilter.cpp">
+    <ClCompile Include="filter.cpp">
       <Filter>소스 파일\Effect</Filter>
     </ClCompile>
     <ClCompile Include="audioEngine.cpp">
@@ -228,6 +228,9 @@
       <Filter>셰이더 파일</Filter>
     </FxCompile>
     <FxCompile Include="Resource\Shader\trail.hlsl">
+      <Filter>셰이더 파일</Filter>
+    </FxCompile>
+    <FxCompile Include="Resource\Shader\blur.hlsl">
       <Filter>셰이더 파일</Filter>
     </FxCompile>
   </ItemGroup>

@@ -2,7 +2,7 @@
 #include "framework.h"
 #include "audioEngine.h"
 #include "camera.h"
-#include "fadeFilter.h"
+#include "filter.h"
 #include "object.h"
 #include "player.h"
 #include "scene.h"
@@ -470,10 +470,11 @@ void GameFramework::CreatePostRootSignature()
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[3]{};
+	CD3DX12_ROOT_PARAMETER rootParameter[4]{};
 	rootParameter[0].InitAsConstantBufferView(0);			// cbGameFramework : b0
 	rootParameter[1].InitAsDescriptorTable(1, &ranges[0]);	// Texture2D g_input : t0;
 	rootParameter[2].InitAsDescriptorTable(1, &ranges[1]);	// RWTexture2D<float4> g_output : u0;
+	rootParameter[3].InitAsConstantBufferView(1);			// cbBlurFilter : b1
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 0, NULL, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);

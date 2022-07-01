@@ -58,6 +58,7 @@ public:
 	void AddBonusBulletFire(INT count);
 
 	INT GetId() const;
+	bool GetIsFocusing() const;
 	eWeaponType GetWeaponType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;

@@ -894,6 +894,11 @@ INT Player::GetId() const
 	return m_id;
 }
 
+bool Player::GetIsFocusing() const
+{
+	return m_isFocusing;
+}
+
 eWeaponType Player::GetWeaponType() const
 {
 	return m_weaponType;
@@ -1046,18 +1051,12 @@ void Player::UpdateZoomInOut(FLOAT deltaTime)
 	}
 
 	// 카메라 확대, 축소
+	XMFLOAT4X4 projMatrix{};
 	if (m_isZoomIn)
-	{
-		XMFLOAT4X4 projMatrix{};
 		XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(lerp(0.25f, 0.15f, m_zoomTimer / ZOOM_TIME) * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
-		m_camera->SetProjMatrix(projMatrix);
-	}
 	else
-	{
-		XMFLOAT4X4 projMatrix{};
 		XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(lerp(0.15f, 0.25f, m_zoomTimer / ZOOM_TIME) * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
-		m_camera->SetProjMatrix(projMatrix);
-	}
+	m_camera->SetProjMatrix(projMatrix);
 
 	m_zoomTimer = min(ZOOM_TIME, m_zoomTimer + deltaTime);
 	if (m_zoomTimer == ZOOM_TIME)

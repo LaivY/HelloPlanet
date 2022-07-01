@@ -201,7 +201,7 @@ StencilWriteShader::StencilWriteShader(const ComPtr<ID3D12Device>& device, const
 	DX::ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }
 
-FadeShader::FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs)
+ComputeShader::ComputeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs)
 {
 	ComPtr<ID3DBlob> computeShader, error;
 
@@ -218,7 +218,7 @@ FadeShader::FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Ro
 
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
 	psoDesc.pRootSignature = postRootSignature.Get();
-	psoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
+	psoDesc.CS = CD3DX12_SHADER_BYTECODE{ computeShader.Get() };
 	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	DX::ThrowIfFailed(device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 }

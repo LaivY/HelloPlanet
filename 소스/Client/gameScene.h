@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "scene.h"
 
+class BlurFilter;
 class Camera;
 class ThirdPersonCamera;
 class GameObject;
@@ -32,6 +33,7 @@ public:
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
 	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device) const;
+	virtual void PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) const;
 
 	virtual void ProcessClient();
 
@@ -93,4 +95,6 @@ private:
 	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
 	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
 	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
+
+	unique_ptr<BlurFilter>					m_blurFilter;		// 블러필터
 };

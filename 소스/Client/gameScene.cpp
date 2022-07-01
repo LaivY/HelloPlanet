@@ -2,6 +2,7 @@
 #include "gameScene.h"
 #include "audioEngine.h"
 #include "camera.h"
+#include "filter.h"
 #include "framework.h"
 #include "object.h"
 #include "player.h"
@@ -53,6 +54,9 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	s_textures["STENCIL"] = make_unique<Texture>();
 	s_textures["STENCIL"]->Create(device, DXGI_FORMAT_R24G8_TYPELESS, g_width, g_height, 8, eTextureType::STENCIL);
 	Texture::CreateShaderResourceView(device);
+
+	// 블러 필터
+	m_blurFilter = make_unique<BlurFilter>(device, commandList);
 
 	// 배경음 재생
 	//g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
@@ -346,6 +350,13 @@ void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 		t->Render(device);
 	for (const auto& w : m_windowObjects)
 		w->Render2D(device);
+}
+
+void GameScene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) const
+{
+	// 조준 시 주변 블러링
+	if (m_player->GetIsFocusing())
+		m_blurFilter->Excute(commandList, postRootSignature, renderTarget);
 }
 
 void GameScene::ProcessClient()

@@ -42,11 +42,11 @@ public:
 	~StencilWriteShader() = default;
 };
 
-class FadeShader : public Shader
+class ComputeShader : public Shader
 {
 public:
-	FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs);
-	~FadeShader() = default;
+	ComputeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs);
+	~ComputeShader() = default;
 };
 
 class WireframeShader : public Shader
