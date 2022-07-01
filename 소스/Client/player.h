@@ -75,10 +75,17 @@ public:
 	FLOAT GetGunOffsetTimer() const;
 
 private:
+	void UpdateZoomInOut(FLOAT deltaTime);
+
+private:
 	INT					m_id;				// 플레이어 고유 아이디
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL				m_isFired;			// 발사 여부
 	BOOL				m_isMoved;			// 이동 여부(발소리)
+	bool				m_isFocusing;		// 확대 조준 중인지
+	bool				m_isZooming;		// 줌인, 줌아웃 중인지
+	bool				m_isZoomIn;			// 줌인 중인지
+	FLOAT				m_zoomTimer;		// 줌 타이머
 
 	eWeaponType			m_weaponType;		// 총 타입
 	INT					m_hp;				// 현재 체력

@@ -82,6 +82,10 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	CreateRenderTargetView();
 	CreateDepthStencilView();
 
+	// 페이드 인/아웃 필터 생성
+	// 윈도우 크기가 바뀔 때마다 그 크기에 맞게 텍스쳐를 다시 만들어야함
+	m_fadeFilter = make_unique<FadeFilter>(m_device);
+
 	if (m_scene) m_scene->OnResize(hWnd, message, wParam, lParam);
 }
 
@@ -189,9 +193,6 @@ void GameFramework::LoadPipeline()
 
 	// alt + enter 금지
 	m_factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
-
-	// 페이드 인/아웃 필터 생성
-	m_fadeFilter = make_unique<FadeFilter>(m_device);
 }
 
 void GameFramework::LoadAssets()

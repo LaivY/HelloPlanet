@@ -9,7 +9,7 @@
 #include "shader.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE },
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
 	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{ 6 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
@@ -50,6 +50,24 @@ void Player::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 void Player::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (m_hp <= 0) return;
+
+	switch (message)
+	{
+	case WM_RBUTTONDOWN:
+		if (m_weaponType == eWeaponType::MG)
+			break;
+		if (GetUpperAnimationType() == eUpperAnimationType::RELOAD)
+			break;
+
+		m_isZoomIn = !m_isZoomIn;
+		if (m_isZoomIn)
+			m_isFocusing = true;
+		else
+			m_isFocusing = false;
+		m_isZooming = true;
+		m_zoomTimer = 0.0f;
+		break;
+	}
 }
 
 void Player::OnKeyboardEvent(FLOAT deltaTime)
@@ -98,7 +116,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 	}
 	else if (GetAsyncKeyState('W') & 0x8000)
 	{
-		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_weaponType != eWeaponType::MG && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000))
+		if ((GetAsyncKeyState(VK_SHIFT) & 0x8000) && !m_upperAnimationInfo && m_weaponType != eWeaponType::MG && !(GetAsyncKeyState(VK_LBUTTON) & 0x8000) && !m_isFocusing)
 		{
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
@@ -190,7 +208,7 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		switch (wParam)
 		{
 		case 'r': case 'R':
-			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
+			if ((!m_upperAnimationInfo && !m_isFocusing) || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
 			{
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();
@@ -519,10 +537,16 @@ void Player::Fire()
 		switch (m_weaponType)
 		{
 		case eWeaponType::AR:
-			frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
+			if (m_isZoomIn)
+				frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.0f, 50.0f });
+			else
+				frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
 			break;
 		case eWeaponType::SG:
-			frontEffect->SetPosition(XMFLOAT3{ 10.0f, -5.5f, 50.0f });
+			if (m_isZoomIn)
+				frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.5f, 50.0f });
+			else
+				frontEffect->SetPosition(XMFLOAT3{ 10.0f, -5.5f, 50.0f });
 			break;
 		case eWeaponType::MG:
 			frontEffect->SetPosition(XMFLOAT3{ Utile::Random(12.0f, 14.0f), Utile::Random(-7.0f, -5.0f), 50.0f});
@@ -576,6 +600,8 @@ void Player::Update(FLOAT deltaTime)
 		m_gunOffsetTimer = min(0.5f, m_gunOffsetTimer + deltaTime);
 	else
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
+
+	UpdateZoomInOut(deltaTime);
 
 	// 발사 타이머 진행
 	m_attackTimer += deltaTime;
@@ -981,4 +1007,59 @@ XMFLOAT3 Player::GetGunOffset() const
 FLOAT Player::GetGunOffsetTimer() const
 {
 	return m_gunOffsetTimer;
+}
+
+void Player::UpdateZoomInOut(FLOAT deltaTime)
+{
+	// 줌인, 줌아웃에 걸리는 시간
+	constexpr float ZOOM_TIME{ 0.1f };
+
+	if (!m_isZooming) return;
+
+	// 총 오프셋 변경
+	switch (m_weaponType)
+	{
+	case eWeaponType::AR:
+		if (m_isZoomIn)
+		{
+			m_gunOffset.x = lerp(0.0f, 3.55f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.z = lerp(-1.0f, 2.0f, m_zoomTimer / ZOOM_TIME);
+		}
+		else
+		{
+			m_gunOffset.x = lerp(3.55f, 0.0f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.z = lerp(2.0f, -1.0f, m_zoomTimer / ZOOM_TIME);
+		}
+		break;
+	case eWeaponType::SG:
+		if (m_isZoomIn)
+		{
+			m_gunOffset.x = lerp(0.0f, 3.55f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.z = lerp(-1.0f, 2.0f, m_zoomTimer / ZOOM_TIME);
+		}
+		else
+		{
+			m_gunOffset.x = lerp(3.55f, 0.0f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.z = lerp(2.0f, -1.0f, m_zoomTimer / ZOOM_TIME);
+		}
+		break;
+	}
+
+	// 카메라 확대, 축소
+	if (m_isZoomIn)
+	{
+		XMFLOAT4X4 projMatrix{};
+		XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(lerp(0.25f, 0.15f, m_zoomTimer / ZOOM_TIME) * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
+		m_camera->SetProjMatrix(projMatrix);
+	}
+	else
+	{
+		XMFLOAT4X4 projMatrix{};
+		XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(lerp(0.15f, 0.25f, m_zoomTimer / ZOOM_TIME) * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
+		m_camera->SetProjMatrix(projMatrix);
+	}
+
+	m_zoomTimer = min(ZOOM_TIME, m_zoomTimer + deltaTime);
+	if (m_zoomTimer == ZOOM_TIME)
+		m_isZooming = false;
 }
