@@ -26,6 +26,7 @@ public:
 	~GameFramework();
 
 	void GameLoop();
+
 	void OnInit(HINSTANCE hInstance, HWND hWnd);
 	void OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	void OnMove(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -73,7 +74,7 @@ private:
 	void CreateRootSignature();
 	void CreatePostRootSignature();
 	void CreateShaderVariable();
-	void ChangeScene();
+	void ChangeToNextScene();
 
 	void Update(FLOAT deltaTime);
 	void UpdateShaderVariable() const;
@@ -141,5 +142,6 @@ private:
 	eSceneType							m_nextScene;
 	eSceneType							m_nextTempScene;
 
+	// 페이드 인/아웃
 	unique_ptr<FadeFilter>				m_fadeFilter;
 };

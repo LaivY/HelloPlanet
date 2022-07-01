@@ -17,6 +17,8 @@ GameFramework::GameFramework()
 	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
 	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }, m_nextTempScene{ eSceneType::NONE }
 {
+	m_timer = make_unique<Timer>();
+
 	HWND desktop{ GetDesktopWindow() };
 	GetWindowRect(desktop, &m_fullScreenRect);
 	g_maxWidth = m_fullScreenRect.right;
@@ -30,9 +32,6 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
-	if (m_nextScene != eSceneType::NONE)
-		ChangeScene();
-
 	m_timer->Tick();
 	OnUpdate(m_timer->GetDeltaTime());
 	OnRender();
@@ -43,7 +42,6 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 	GetWindowRect(hWnd, &m_lastWindowRect);
-	m_timer = make_unique<Timer>();
 
 	LoadPipeline();
 	LoadAssets();
@@ -74,9 +72,6 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	GetWindowRect(hWnd, &clientRect);
 	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
-
-	// 페이드 인/아웃 필터 생성
-	m_fadeFilter = make_unique<FadeFilter>(m_device);
 
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
@@ -194,6 +189,9 @@ void GameFramework::LoadPipeline()
 
 	// alt + enter 금지
 	m_factory->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_ALT_ENTER);
+
+	// 페이드 인/아웃 필터 생성
+	m_fadeFilter = make_unique<FadeFilter>(m_device);
 }
 
 void GameFramework::LoadAssets()
@@ -553,6 +551,9 @@ void GameFramework::Render2D() const
 
 void GameFramework::Update(FLOAT deltaTime)
 {
+	if (m_nextScene != eSceneType::NONE)
+		ChangeToNextScene();
+
 	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer->GetFPS())) + TEXT("FPS)") };
 	SetWindowText(m_hWnd, title.c_str());
 
@@ -667,7 +668,7 @@ void GameFramework::WaitForGpu()
 	m_fenceValues[m_frameIndex]++;
 }
 
-void GameFramework::ChangeScene()
+void GameFramework::ChangeToNextScene()
 {
 	WaitForPreviousFrame();
 
