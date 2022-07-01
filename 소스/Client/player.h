@@ -78,6 +78,7 @@ private:
 	INT					m_id;				// 플레이어 고유 아이디
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL				m_isFired;			// 발사 여부
+	BOOL				m_isMoved;			// 이동 여부(발소리)
 
 	eWeaponType			m_weaponType;		// 총 타입
 	INT					m_hp;				// 현재 체력

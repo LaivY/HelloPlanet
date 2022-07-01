@@ -11,7 +11,7 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE },
 	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
-	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
+	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{ 6 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
 	m_gunOffset{}, m_gunOffsetTimer{}, m_camera{ nullptr }
 {
@@ -205,14 +205,34 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 {
+	string currPureAnimationName{ GetCurrAnimationName() };
+
+	// 움직일때 발소리
+	if ((!m_isMultiPlayer && !m_isMoved && m_animationInfo->state != eAnimationState::BLENDING) && 
+		(currPureAnimationName == "WALKING" ||
+		currPureAnimationName == "RUNNING" ||
+		currPureAnimationName == "WALKLEFT" ||
+		currPureAnimationName == "WALKRIGHT" ||
+		currPureAnimationName == "WALKBACK"))
+	{
+		if (currPureAnimationName == "RUNNING" && currFrame >= 9.0f)
+		{
+			m_isMoved = TRUE;
+			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+		}
+		else if (currFrame >= 5.0f)
+		{
+			m_isMoved = TRUE;
+			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+		}
+	}
+
 	if (currFrame >= endFrame)
 	{
 		switch (m_animationInfo->state)
 		{
 		case eAnimationState::PLAY:
 		{
-			string currPureAnimationName{ GetCurrAnimationName() };
-
 			// 사망 애니메이션은 끝나도 계속 사망 상태로 유지함
 			if (currPureAnimationName == "DIE")
 				break;
@@ -634,6 +654,16 @@ void Player::PlayAnimation(const string& animationName, BOOL doBlending)
 			break;
 		}
 		return;
+	}
+
+	// 발소리를 위한 변수 초기화
+	else if (pureAnimationName == "WALKING" ||
+			 pureAnimationName == "RUNNING" ||
+			 pureAnimationName == "WALKLEFT" ||
+			 pureAnimationName == "WALKRIGHT" ||
+			 pureAnimationName == "WALKBACK")
+	{
+		m_isMoved = FALSE;
 	}
 
 	// 그 외는 상하체 모두 애니메이션함

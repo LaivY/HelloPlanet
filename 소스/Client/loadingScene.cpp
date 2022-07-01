@@ -380,6 +380,7 @@ void LoadingScene::LoadAudios()
 	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")), eAudioType::MUSIC);
 	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")), eAudioType::MUSIC);
 	g_audioEngine.Load(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")), eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")), eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_CLICK.wav")), eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_HOVER.wav")), eAudioType::SOUND);
 }

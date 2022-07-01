@@ -580,7 +580,7 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		// 히트박스
 		if (type == 12)
 		{
-			auto hitbox{ make_unique<Hitbox>(trans, Vector3::Mul(scale, 50.0f), XMFLOAT3{rotat.z, rotat.x, rotat.y}) };
+			auto hitbox{ make_unique<Hitbox>(trans, Vector3::Mul(scale, 50.0f), XMFLOAT3{ rotat.z, rotat.x, rotat.y }) };
 			hitbox->SetOwner(dumy.get());
 			dumy->AddHitbox(move(hitbox));
 		}
