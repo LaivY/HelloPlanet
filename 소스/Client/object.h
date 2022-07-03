@@ -144,9 +144,11 @@ public:
 	void ApplyServerData(const MonsterData& monsterData);
 
 	INT GetId() const;
+	eMobType GetType() const;
 
 private:
-	INT	m_id;
+	INT			m_id;
+	eMobType	m_type;
 };
 
 class OutlineObject : public GameObject

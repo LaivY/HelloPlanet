@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "uiObject.h"
+#include "camera.h"
 #include "framework.h"
 #include "gameScene.h"
 #include "player.h"
@@ -434,12 +435,7 @@ void RewardUIObject::Update(FLOAT deltaTime)
 
 HitUIObject::HitUIObject(int monsterId) : UIObject{ 50.0f, 50.0f }, m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
 {
-
-}
-
-void HitUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
-{
-	UIObject::Render(commandList);
+	SetTexture(Scene::s_textures["ARROW"]);
 }
 
 void HitUIObject::Update(FLOAT deltaTime)
@@ -473,4 +469,81 @@ void HitUIObject::Update(FLOAT deltaTime)
 
 	m_timer -= deltaTime;
 	if (m_timer < 0.0f) Delete();
+}
+
+AutoTargetUIObject::AutoTargetUIObject() : UIObject{ 0.0f, 0.0f }
+{
+	SetTexture(Scene::s_textures["TARGET"]);
+	m_isFitToScreen = TRUE;
+	m_player = g_gameFramework.GetScene()->GetPlayer();
+	m_camera = g_gameFramework.GetScene()->GetCamera();
+	SetPosition(XMFLOAT2{ -999.0f, -999.0f });
+}
+
+void AutoTargetUIObject::Update(FLOAT deltaTime)
+{
+	bool isDetected{ false };	// 화면에 있는 몬스터를 감지했는지 여부
+	float distance{ FLT_MAX };	// 화면 중심에서부터 몬스터까지의 거리(스크린 좌표계)
+	XMFLOAT4X4 toScreenMatrix{ Matrix::Mul(m_camera->GetViewMatrix(), m_camera->GetProjMatrix()) };
+
+	for (const auto& mob : GameScene::s_monsters)
+	{
+		if (mob->GetAnimationInfo()->currAnimationName == "DIE")
+			continue;
+
+		// 몬스터들의 y좌표가 다 0으로 되어있기 때문에
+		// 조준 이미지를 적절한 위치에 렌더링하기 위해 각 몬스터들마다 정해진 값을 더해준다.
+		XMFLOAT3 offset{};
+		float scale{};
+		switch (mob->GetType())
+		{
+		case eMobType::GAROO:
+			offset = XMFLOAT3{ 0.0f, 10.0f, 0.0f };
+			scale = 1.0f;
+			break;
+		case eMobType::SERPENT:
+			offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+			scale = 2.0f;
+			break;
+		case eMobType::HORROR:
+			break;
+		}
+
+		// 몬스터 좌표를 스크린 좌표계로 변환
+		XMFLOAT3 mobScreenPos{ Vector3::TransformCoord(Vector3::Add(mob->GetPosition(), offset), toScreenMatrix) };
+		if (mobScreenPos.x < -1.1f || mobScreenPos.x > 1.1f) continue;
+		if (mobScreenPos.y < -0.9f || mobScreenPos.y > 0.9f) continue;
+		if (mobScreenPos.z <  0.0f || mobScreenPos.z > 1.0f) continue;
+
+		float mobZ{ mobScreenPos.z };
+
+		// 화면 중심과 몬스터 간의 거리
+		mobScreenPos.z = 0.0f;
+		float d{ Vector3::Length(mobScreenPos) };
+		if (d < distance)
+		{
+			isDetected = true;
+			distance = d;
+			m_player->SetAutoTarget(mob->GetId());
+			SetPosition(XMFLOAT2{ mobScreenPos.x / 2.0f * g_width, mobScreenPos.y / 2.0f * g_height });
+
+			// z값을 이용하여 가까울수록 크게, 멀리있을수록 작게
+			// 0.97 ~ 0.99 구간을 정규화해서 사용함
+			constexpr float a{ 0.97f }, b{ 0.996f };
+			mobZ = clamp(mobZ, a, b);
+
+			float t{ (mobZ - a) / (b - a) };
+			float value{ lerp(500.0f, 200.0f, t) * scale };
+			SetWidth(value);
+			SetHeight(value);
+
+		}
+	}
+
+	// 화면에 몬스터가 없으면 렌더링되지 않도록 화면 밖으로 보냄
+	if (!isDetected)
+	{
+		SetPosition(XMFLOAT2{ -999.0f, -999.0f });
+		m_player->SetAutoTarget(-1);
+	}
 }

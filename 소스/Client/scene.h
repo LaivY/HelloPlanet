@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+class Camera;
 class Mesh;
 class Player;
 class Shader;
@@ -62,6 +63,7 @@ public:
 
 	// 게터
 	virtual shared_ptr<Player> GetPlayer() const;
+	virtual shared_ptr<Camera> GetCamera() const;
 
 	// 리소스
 	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;

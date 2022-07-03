@@ -333,6 +333,9 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_2.dds")));
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_3.dds")));
 
+	s_textures["TARGET"] = make_shared<Texture>();
+	s_textures["TARGET"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/AUTO_TARGET.dds")));
+
 	//s_textures["MUZZLE_SIDE"] = make_shared<Texture>();
 	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_1.dds")));
 	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_2.dds")));

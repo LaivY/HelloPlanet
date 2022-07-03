@@ -37,10 +37,11 @@ public:
 
 	virtual void ProcessClient();
 
+	virtual shared_ptr<Player> GetPlayer() const;
+	virtual shared_ptr<Camera> GetCamera() const;
+
 	void OnPlayerDie();
 	void OnPlayerRevive();
-
-	virtual shared_ptr<Player> GetPlayer() const;
 
 	// 이전 씬에서 데이터를 가져옴
 	void SetPlayer(unique_ptr<Player>& player);
@@ -77,7 +78,7 @@ private:
 
 	void RecvRoundClear();
 
-private:
+public:
 	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
 	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터

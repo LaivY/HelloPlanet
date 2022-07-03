@@ -29,3 +29,4 @@ void Scene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList,
 void Scene::ProcessClient() { }
 
 shared_ptr<Player> Scene::GetPlayer() const { return nullptr; }
+shared_ptr<Camera> Scene::GetCamera() const { return nullptr; }

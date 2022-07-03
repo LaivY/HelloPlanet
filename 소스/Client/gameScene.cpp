@@ -392,6 +392,11 @@ shared_ptr<Player> GameScene::GetPlayer() const
 	return m_player;
 }
 
+shared_ptr<Camera> GameScene::GetCamera() const
+{
+	return m_camera;
+}
+
 void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	m_cbGameScene = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<cbGameScene>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
@@ -509,6 +514,10 @@ void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	hpBar->SetPosition(XMFLOAT2{ 50.0f, 50.0f });
 	hpBar->SetPlayer(m_player);
 	m_uiObjects.push_back(move(hpBar));
+
+	// 자동 타겟팅
+	auto autoTarget{ make_unique<AutoTargetUIObject>() };
+	m_uiObjects.push_back(move(autoTarget));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -1091,18 +1100,15 @@ void GameScene::RecvMosterAttack()
 	// 체력 감소
 	int hp{ m_player->GetHp() };
 	m_player->SetHp(hp - static_cast<INT>(data.damage));
+
+	// 애니메이션
 	if (hp > 0 && m_player->GetHp() <= 0)
 		OnPlayerDie();
-
-	// 피격 애니메이션
-	m_player->PlayAnimation("HIT");
+	else
+		m_player->PlayAnimation("HIT");
 
 	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(data.mobId) };
-	hit->SetTexture(s_textures["ARROW"]);
-	hit->SetPivot(ePivot::CENTER);
-	hit->SetScreenPivot(ePivot::CENTER);
-	hit->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hit));
 }

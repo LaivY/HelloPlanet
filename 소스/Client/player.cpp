@@ -3,15 +3,16 @@
 #include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
+#include "gameScene.h"
 #include "mesh.h"
 #include "scene.h"
-#include "gameScene.h"
 #include "shader.h"
+#include "uiObject.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
 	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
-	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{ 6 },
+	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{}, m_isSkillActive{ TRUE }, m_autoTargetMobId{ -1 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
 	m_gunOffset{}, m_gunOffsetTimer{}, m_camera{ nullptr }
 {
@@ -421,15 +422,50 @@ void Player::Fire()
 	case eWeaponType::AR:
 	{
 		// 총구에서 나오도록
-		start = Vector3::Add(start, GetRight());
-		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
-		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1.0f));
+		if (m_isFocusing)
+		{
+			start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+			start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 5.0f));
+		}
+		else
+		{
+			start = Vector3::Add(start, GetRight());
+			start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+			start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 1.0f));
+		}
+
+		// 자동조준
+		XMFLOAT3 dir{};
+		if (m_isSkillActive && m_autoTargetMobId >= 0 && !GameScene::s_monsters.empty())
+		{
+			auto mob{ ranges::find_if(GameScene::s_monsters, [&](const unique_ptr<Monster>& m) { return m->GetId() == m_autoTargetMobId; }) };
+			if (mob != GameScene::s_monsters.end())
+			{
+				XMFLOAT3 target{ (*mob)->GetPosition() };
+				XMFLOAT3 offset{};
+				switch ((*mob)->GetType())
+				{
+				case eMobType::GAROO:
+					offset = XMFLOAT3{ 0.0f, 10.0f, 0.0f };
+					break;
+				case eMobType::SERPENT:
+					offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+					break;
+				case eMobType::HORROR:
+					offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+					break;
+				}
+				dir = Vector3::Normalize(Vector3::Sub(Vector3::Add(target, offset), start));
+			}
+			else dir = Vector3::Normalize(Vector3::Sub(center, start));
+		}
+		else dir = Vector3::Normalize(Vector3::Sub(center, start));
 
 		// 총알 발사 정보 서버로 송신
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = BulletData{ start, Vector3::Normalize(Vector3::Sub(center, start)), damage, static_cast<char>(GetId())};
+		packet.data = BulletData{ start, dir, 1, static_cast<char>(GetId()) };
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
@@ -602,6 +638,7 @@ void Player::Update(FLOAT deltaTime)
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 
 	UpdateZoomInOut(deltaTime);
+	UpdateAutoTarget();
 
 	// 발사 타이머 진행
 	m_attackTimer += deltaTime;
@@ -790,6 +827,10 @@ void Player::SendPlayerData() const
 
 void Player::ApplyServerData(const PlayerData& playerData)
 {
+	// 죽는 애니메이션 중이면 패스
+	if (GetCurrAnimationName() == "DIE" || GetAfterAnimationName() == "DIE")
+		return;
+
 	// 애니메이션
 	switch (playerData.aniType)
 	{
@@ -887,6 +928,11 @@ void Player::AddBonusReloadSpeed(INT speed)
 void Player::AddBonusBulletFire(INT count)
 {
 	m_bonusBulletFire += count;
+}
+
+void Player::SetAutoTarget(INT targetId)
+{
+	m_autoTargetMobId = targetId;
 }
 
 INT Player::GetId() const
@@ -1061,4 +1107,9 @@ void Player::UpdateZoomInOut(FLOAT deltaTime)
 	m_zoomTimer = min(ZOOM_TIME, m_zoomTimer + deltaTime);
 	if (m_zoomTimer == ZOOM_TIME)
 		m_isZooming = false;
+}
+
+void Player::UpdateAutoTarget()
+{
+
 }

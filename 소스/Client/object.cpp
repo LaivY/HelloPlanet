@@ -304,7 +304,7 @@ void Bullet::Update(FLOAT deltaTime)
 		Delete();
 }
 
-Monster::Monster(INT id, eMobType type) : m_id{ id }
+Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 {
 	switch (type)
 	{
@@ -404,6 +404,11 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 INT Monster::GetId() const
 {
 	return m_id;
+}
+
+eMobType Monster::GetType() const
+{
+	return m_type;
 }
 
 OutlineObject::OutlineObject()

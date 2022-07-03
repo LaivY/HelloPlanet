@@ -56,6 +56,7 @@ public:
 	void AddMaxBulletCount(INT count);
 	void AddBonusReloadSpeed(INT speed);
 	void AddBonusBulletFire(INT count);
+	void SetAutoTarget(INT targetId);
 
 	INT GetId() const;
 	bool GetIsFocusing() const;
@@ -77,12 +78,14 @@ public:
 
 private:
 	void UpdateZoomInOut(FLOAT deltaTime);
+	void UpdateAutoTarget();
 
 private:
 	INT					m_id;				// 플레이어 고유 아이디
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL				m_isFired;			// 발사 여부
 	BOOL				m_isMoved;			// 이동 여부(발소리)
+
 	bool				m_isFocusing;		// 확대 조준 중인지
 	bool				m_isZooming;		// 줌인, 줌아웃 중인지
 	bool				m_isZoomIn;			// 줌인 중인지
@@ -103,6 +106,9 @@ private:
 	INT					m_bonusAttackSpeed;	// 추가 공격속도(+n%)
 	INT					m_bonusReloadSpeed;	// 추가 재장전 속도(+n%)
 	INT					m_bonusBulletFire;	// 추가 발사 수(+n)
+
+	BOOL				m_isSkillActive;	// 스킬 활성화 여부
+	INT					m_autoTargetMobId;	// AR 오토 타겟 대상 몬스터 id
 
 	FLOAT				m_delayRoll;		// 자동으로 회전할 z축 회전각
 	FLOAT				m_delayPitch;		// .. x축 회전각

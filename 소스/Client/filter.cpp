@@ -163,7 +163,7 @@ BlurFilter::BlurFilter(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	{
 		m_constantBuffer[i] = Utile::CreateBufferResource(device, commandList, NULL, Utile::GetConstantBufferSize<ConstantBuffer>(), 1, D3D12_HEAP_TYPE_UPLOAD, {});
 		m_constantBuffer[i]->Map(0, NULL, reinterpret_cast<void**>(&m_pConstantBuffer[i]));
-		m_pConstantBuffer[i]->radius = g_height * (0.5f + 0.01f * i);
+		m_pConstantBuffer[i]->radius = static_cast<int>(g_height * (0.7f + 0.01f * i));
 	}
 }
 
