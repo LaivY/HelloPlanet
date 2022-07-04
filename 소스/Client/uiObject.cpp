@@ -482,6 +482,14 @@ AutoTargetUIObject::AutoTargetUIObject() : UIObject{ 0.0f, 0.0f }
 
 void AutoTargetUIObject::Update(FLOAT deltaTime)
 {
+	// 플레이어가 AR이고, 스킬 활성화 상태가 아니라면 패스
+	if (m_player->GetWeaponType() == eWeaponType::AR && !m_player->GetIsSkillActive())
+	{
+		SetPosition(XMFLOAT2{ -999.0f, -999.0f });
+		m_player->SetAutoTarget(-1);
+		return;
+	}
+
 	bool isDetected{ false };	// 화면에 있는 몬스터를 감지했는지 여부
 	float distance{ FLT_MAX };	// 화면 중심에서부터 몬스터까지의 거리(스크린 좌표계)
 	XMFLOAT4X4 toScreenMatrix{ Matrix::Mul(m_camera->GetViewMatrix(), m_camera->GetProjMatrix()) };
@@ -546,4 +554,18 @@ void AutoTargetUIObject::Update(FLOAT deltaTime)
 		SetPosition(XMFLOAT2{ -999.0f, -999.0f });
 		m_player->SetAutoTarget(-1);
 	}
+}
+
+SkillGageUIObject::SkillGageUIObject() : UIObject{ 150.0f, 150.0f }
+{
+	SetShader(Scene::s_shaders["UI_SKILL_GAGE"]);
+	m_player = g_gameFramework.GetScene()->GetPlayer();
+}
+
+void SkillGageUIObject::Update(FLOAT deltaTime)
+{
+	// 월드행렬의 (4, 4)에 각도를 넣어줌
+	// 정점 셰이더에서는 (4, 4)는 1로 바꿔서 렌더링함
+	// 픽셀 셰이더에서는 (4, 4)값을 읽어 각도로 사용함
+	m_worldMatrix._44 = lerp(0.0f, 360.0f, m_player->GetSkillGage() / 100.0f);
 }

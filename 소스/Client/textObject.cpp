@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "framework.h"
 #include "player.h"
+#include "scene.h"
 #include "uiObject.h"
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
@@ -481,4 +482,21 @@ void DamageTextObject::SetStartPosition(const XMFLOAT3& position)
 {
 	m_startPosition = position;
 	m_startPosition.y += 20.0f;
+}
+
+SkillGageTextObject::SkillGageTextObject() : m_percent{}
+{
+	m_player = g_gameFramework.GetScene()->GetPlayer();
+	SetBrush("BLACK");
+	SetFormat("36R");
+}
+
+void SkillGageTextObject::Update(FLOAT deltaTime)
+{
+	int value{ m_player->GetSkillGage() };
+	if (value == 100)
+		SetText(TEXT("Q"));
+	else
+		SetText(to_wstring(m_player->GetSkillGage()));
+	SetPosition(GetPivotPosition());
 }

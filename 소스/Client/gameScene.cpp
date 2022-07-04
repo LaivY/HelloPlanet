@@ -436,6 +436,7 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->SetIsMultiplayer(FALSE);
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
+	m_player->SetSkillGage(0);
 	for (auto& p : m_multiPlayers)
 	{
 		if (!p) continue;
@@ -518,6 +519,13 @@ void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	// 자동 타겟팅
 	auto autoTarget{ make_unique<AutoTargetUIObject>() };
 	m_uiObjects.push_back(move(autoTarget));
+
+	// 스킬 게이지
+	auto skillGage{ make_unique<SkillGageUIObject>() };
+	skillGage->SetPivot(ePivot::CENTERBOT);
+	skillGage->SetScreenPivot(ePivot::CENTERBOT);
+	skillGage->SetPosition(XMFLOAT2{ 0.0f, 40.0f });
+	m_uiObjects.push_back(move(skillGage));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -536,6 +544,12 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	hpText->SetScreenPivot(ePivot::LEFTBOT);
 	hpText->SetPosition(XMFLOAT2{ 50.0f, -125.0f });
 	m_textObjects.push_back(move(hpText));
+
+	// 스킬게이지
+	auto skillGage{ make_unique<SkillGageTextObject>() };
+	skillGage->SetScreenPivot(ePivot::CENTERBOT);
+	skillGage->SetPosition(XMFLOAT2{ -1.0f, -113.0f });
+	m_textObjects.push_back(move(skillGage));
 }
 
 void GameScene::CreateLights() const

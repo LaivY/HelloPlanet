@@ -142,3 +142,16 @@ private:
 	XMFLOAT3			m_startPosition;
 	FLOAT				m_timer;
 };
+
+class SkillGageTextObject : public TextObject
+{
+public:
+	SkillGageTextObject();
+	~SkillGageTextObject() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	shared_ptr<Player>	m_player;
+	INT					m_percent;
+};

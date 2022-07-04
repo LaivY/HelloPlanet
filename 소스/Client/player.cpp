@@ -12,7 +12,8 @@
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
 	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
-	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{}, m_isSkillActive{ TRUE }, m_autoTargetMobId{ -1 },
+	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
+	m_isSkillActive{ FALSE }, m_skillActiveTime{}, m_skillGage{}, m_skillGageTimer{}, m_autoTargetMobId{ -1 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
 	m_gunOffset{}, m_gunOffsetTimer{}, m_camera{ nullptr }
 {
@@ -214,6 +215,10 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();
 			}
+			break;
+		case 'q': case 'Q':
+			if (m_skillGage == 100)
+				m_isSkillActive = TRUE;
 			break;
 		}
 		break;
@@ -638,9 +643,9 @@ void Player::Update(FLOAT deltaTime)
 		m_gunOffsetTimer = max(0.0f, m_gunOffsetTimer - 10.0f * deltaTime);
 
 	UpdateZoomInOut(deltaTime);
-	UpdateAutoTarget();
+	UpdateSkill(deltaTime);
 
-	// 발사 타이머 진행
+	// 공격 타이머 진행
 	m_attackTimer += deltaTime;
 }
 
@@ -760,6 +765,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_attackSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
+		m_skillActiveTime = 10.0f;
 		break;
 	case eWeaponType::SG:
 		m_gunMesh = Scene::s_meshes["SG"];
@@ -768,6 +774,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_attackSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
+		m_skillActiveTime = 10.0f;
 		break;
 	case eWeaponType::MG:
 		m_gunMesh = Scene::s_meshes["MG"];
@@ -776,6 +783,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		m_attackSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
+		m_skillActiveTime = 10.0f;
 		break;
 	}
 	m_weaponType = weaponType;
@@ -893,6 +901,11 @@ void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 	m_gunShadowShader = shadowShader;
 }
 
+void Player::SetSkillGage(INT value)
+{
+	m_skillGage = value;
+}
+
 void Player::AddMaxHp(INT hp)
 {
 	m_maxHp += hp;
@@ -940,9 +953,14 @@ INT Player::GetId() const
 	return m_id;
 }
 
-bool Player::GetIsFocusing() const
+BOOL Player::GetIsFocusing() const
 {
 	return m_isFocusing;
+}
+
+BOOL Player::GetIsSkillActive() const
+{
+	return m_isSkillActive;
 }
 
 eWeaponType Player::GetWeaponType() const
@@ -973,6 +991,11 @@ INT Player::GetBulletCount() const
 INT Player::GetMaxBulletCount() const
 {
 	return m_maxBulletCount;
+}
+
+INT Player::GetSkillGage() const
+{
+	return m_skillGage;
 }
 
 string Player::GetPureAnimationName(const string& animationName) const
@@ -1066,6 +1089,8 @@ void Player::UpdateZoomInOut(FLOAT deltaTime)
 	constexpr float ZOOM_TIME{ 0.1f };
 
 	if (!m_isZooming) return;
+	if (m_zoomTimer == ZOOM_TIME)
+		m_isZooming = false;
 
 	// 총 오프셋 변경
 	switch (m_weaponType)
@@ -1073,12 +1098,12 @@ void Player::UpdateZoomInOut(FLOAT deltaTime)
 	case eWeaponType::AR:
 		if (m_isZoomIn)
 		{
-			m_gunOffset.x = lerp(0.0f, 3.55f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.x = lerp(0.0f, 3.5f, m_zoomTimer / ZOOM_TIME);
 			m_gunOffset.z = lerp(-1.0f, 2.0f, m_zoomTimer / ZOOM_TIME);
 		}
 		else
 		{
-			m_gunOffset.x = lerp(3.55f, 0.0f, m_zoomTimer / ZOOM_TIME);
+			m_gunOffset.x = lerp(3.5f, 0.0f, m_zoomTimer / ZOOM_TIME);
 			m_gunOffset.z = lerp(2.0f, -1.0f, m_zoomTimer / ZOOM_TIME);
 		}
 		break;
@@ -1105,11 +1130,37 @@ void Player::UpdateZoomInOut(FLOAT deltaTime)
 	m_camera->SetProjMatrix(projMatrix);
 
 	m_zoomTimer = min(ZOOM_TIME, m_zoomTimer + deltaTime);
-	if (m_zoomTimer == ZOOM_TIME)
-		m_isZooming = false;
 }
 
-void Player::UpdateAutoTarget()
+void Player::UpdateSkill(FLOAT deltaTime)
 {
+	/*
+	일정 시간마다 스킬 게이지가 1씩 증가한다.
+	스킬게이지가 가득 찼을 때 'Q'를 누르게되면 스킬이 발동한다.
+	스킬이 발동하면 스킬 게이지를 감소시키고 0이되면 스킬이 종료된다.
+	*/
 
+	float timerLimit{};
+	if (m_isSkillActive)
+	{
+		// timerLimit초가 지나면 스킬게이지가 1씩 감소한다.
+		timerLimit = m_skillActiveTime / 100.0f;
+		if (m_skillGageTimer >= timerLimit)
+		{
+			m_skillGage -= 1;
+			m_skillGageTimer -= timerLimit;
+			if (m_skillGage <= 0)
+				m_isSkillActive = FALSE;
+		}
+	}
+	else
+	{
+		timerLimit = 0.1f;
+		if (m_skillGageTimer >= timerLimit)
+		{
+			m_skillGage = min(100, m_skillGage + 1);
+			m_skillGageTimer -= timerLimit;
+		}
+	}
+	m_skillGageTimer += deltaTime;
 }

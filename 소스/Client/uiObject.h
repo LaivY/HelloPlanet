@@ -141,3 +141,15 @@ private:
 	shared_ptr<Player> m_player;
 	shared_ptr<Camera> m_camera;
 };
+
+class SkillGageUIObject : public UIObject
+{
+public:
+	SkillGageUIObject();
+	~SkillGageUIObject() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	shared_ptr<Player> m_player;
+};
