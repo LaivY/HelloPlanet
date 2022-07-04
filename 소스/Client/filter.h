@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-class Filter
+class Filter abstract
 {
 public:
 	Filter() = default;

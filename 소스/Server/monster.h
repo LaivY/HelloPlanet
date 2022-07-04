@@ -97,3 +97,17 @@ private:
 	void UpdateAnimation();
 	void CalcAttack();
 };
+
+class UlifoMonster : public Monster
+{
+public:
+	UlifoMonster();
+	~UlifoMonster() = default;
+
+	virtual void Update(FLOAT deltaTime);
+	virtual void OnHit(const BulletData& bullet);
+
+private:
+	void UpdateAnimation();
+	void CalcAttack();
+};

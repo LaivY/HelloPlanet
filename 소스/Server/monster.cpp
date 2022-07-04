@@ -403,4 +403,71 @@ void HorrorMonster::UpdateAnimation()
 
 void HorrorMonster::CalcAttack()
 {
+
+}
+
+UlifoMonster::UlifoMonster()
+{
+	m_mobType = eMobType::ULIFO;
+	m_hp = 1000;
+	m_damage = 30;
+	m_speed = 30.0f;
+	m_knockbackTime = 0.2f;
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+}
+
+void UlifoMonster::Update(FLOAT deltaTime)
+{
+	if (m_hp <= 0) return;
+
+	XMVECTOR look{ GetPlayerVector(m_target) };
+	UpdatePosition(deltaTime, look);
+	UpdateRotation(look);
+	UpdateWorldMatrix(look);
+	UpdateAnimation();
+	CalcAttack();
+}
+
+void UlifoMonster::OnHit(const BulletData& bullet)
+{
+	SetTargetId(bullet.playerId);
+	SetHp(m_hp - bullet.damage);
+
+	if (m_hp <= 0)
+	{
+		m_aniType = eMobAnimationType::DIE;
+		g_networkFramework.killCount++;
+		return;
+	}
+	if (m_aniType == eMobAnimationType::WALKING)
+		m_aniType = eMobAnimationType::HIT;
+}
+
+void UlifoMonster::UpdateAnimation()
+{
+	switch (m_aniType)
+	{
+	//case eMobAnimationType::ATTACK:
+	//	if (m_atkTimer < m_knockbackTime)
+	//	{
+	//		m_aniType = eMobAnimationType::ATTACK;
+	//		break;
+	//	}
+	case eMobAnimationType::HIT:
+		if (m_hitTimer < m_knockbackTime)
+		{
+			m_aniType = eMobAnimationType::HIT;
+			break;
+		}
+	default:
+		m_aniType = eMobAnimationType::WALKING;
+		m_atkTimer = 0.0f;
+		m_wasAttack = false;
+		break;
+	}
+}
+
+void UlifoMonster::CalcAttack()
+{
+
 }

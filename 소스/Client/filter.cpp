@@ -167,15 +167,14 @@ BlurFilter::BlurFilter(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	}
 }
 
-void BlurFilter::Excute(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget)
-{
 	/*
 	1. 렌더타겟을 m_buffer0에 복사한다.
 	2. 계산셰이더에서 m_buffer0을 가로 블러링해서 m_buffer1에 저장한다.
 	3. 계산셰이더에서 m_buffer1을 세로 블러링해서 m_buffer0에 저장한다.
-	3. m_buffer0을 렌더타겟에 복사한다.
+	4. m_buffer0을 렌더타겟에 복사한다.
 	*/
-
+void BlurFilter::Excute(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget)
+{
 	// 루트시그니쳐 설정
 	commandList->SetComputeRootSignature(postRootSignature.Get());
 

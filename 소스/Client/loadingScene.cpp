@@ -46,7 +46,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 30 + 18 + 23 + 4 + 10 + 6 };
+	constexpr size_t allResourceCount{ 31 + 19 + 25 + 4 + 10 + 6 };
 	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -160,50 +160,63 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 		{ "running", "RUNNING" }, { "firing", "FIRING" }, { "reload", "RELOAD" }, { "hit", "HIT" }, { "die", "DIE" }
 	};
 	s_meshes["PLAYER"] = make_shared<Mesh>();
-	s_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("player.bin"));
+	s_meshes["PLAYER"]->LoadMeshBinary(device, commandList, Utile::PATH("Player/player.bin"));
 	for (const string& weaponName : { "AR", "SG", "MG" })
 		for (const auto& [fileName, animationName] : animations)
-			s_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH(weaponName + "/" + fileName + ".bin"), weaponName + "/" + animationName);
+			s_meshes["PLAYER"]->LoadAnimationBinary(device, commandList, Utile::PATH("Player/" + weaponName + "/" + fileName + ".bin"), weaponName + "/" + animationName);
 
 	s_meshes["ARM"] = make_shared<Mesh>();
-	s_meshes["ARM"]->LoadMeshBinary(device, commandList, Utile::PATH("arm.bin"));
+	s_meshes["ARM"]->LoadMeshBinary(device, commandList, Utile::PATH("Player/arm.bin"));
 	s_meshes["ARM"]->Link(s_meshes["PLAYER"]);
 	s_meshes["AR"] = make_shared<Mesh>();
-	s_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("AR/AR.bin"));
+	s_meshes["AR"]->LoadMeshBinary(device, commandList, Utile::PATH("Player/AR/AR.bin"));
 	s_meshes["AR"]->Link(s_meshes["PLAYER"]);
 	s_meshes["SG"] = make_shared<Mesh>();
-	s_meshes["SG"]->LoadMeshBinary(device, commandList, Utile::PATH("SG/SG.bin"));
+	s_meshes["SG"]->LoadMeshBinary(device, commandList, Utile::PATH("Player/SG/SG.bin"));
 	s_meshes["SG"]->Link(s_meshes["PLAYER"]);
 	s_meshes["MG"] = make_shared<Mesh>();
-	s_meshes["MG"]->LoadMeshBinary(device, commandList, Utile::PATH("MG/MG.bin"));
+	s_meshes["MG"]->LoadMeshBinary(device, commandList, Utile::PATH("Player/MG/MG.bin"));
 	s_meshes["MG"]->Link(s_meshes["PLAYER"]);
 
 	// 몬스터 관련 로딩
 	s_meshes["GAROO"] = make_shared<Mesh>();
-	s_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/AlienGaroo/AlienGaroo.txt"));
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/attack.txt"), "ATTACK");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/die.txt"), "DIE");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/hit.txt"), "HIT");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/idle.txt"), "IDLE");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/running.txt"), "RUNNING");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walkBack.txt"), "WALKBACK");
-	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/AlienGaroo/walking.txt"), "WALKING");
+	s_meshes["GAROO"]->LoadMesh(device, commandList, Utile::PATH("Mob/Garoo/AlienGaroo.txt"));
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/attack.txt"), "ATTACK");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/die.txt"), "DIE");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/hit.txt"), "HIT");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/idle.txt"), "IDLE");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/running.txt"), "RUNNING");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/walkBack.txt"), "WALKBACK");
+	s_meshes["GAROO"]->LoadAnimation(device, commandList, Utile::PATH("Mob/Garoo/walking.txt"), "WALKING");
 
 	s_meshes["SERPENT"] = make_shared<Mesh>();
-	s_meshes["SERPENT"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/AlienSerpent.bin"));
-	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/attack.bin"), "ATTACK");
-	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/die.bin"), "DIE");
-	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/hit.bin"), "HIT");
-	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/idle.bin"), "IDLE");
-	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienSerpent/walking.bin"), "WALKING");
+	s_meshes["SERPENT"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/Serpent/AlienSerpent.bin"));
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Serpent/attack.bin"), "ATTACK");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Serpent/die.bin"), "DIE");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Serpent/hit.bin"), "HIT");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Serpent/idle.bin"), "IDLE");
+	s_meshes["SERPENT"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Serpent/walking.bin"), "WALKING");
 
 	s_meshes["HORROR"] = make_shared<Mesh>();
-	s_meshes["HORROR"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/AlienHorror/AlienHorror.bin"));
-	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienHorror/attack.bin"), "ATTACK");
-	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienHorror/die.bin"), "DIE");
-	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienHorror/hit.bin"), "HIT");
-	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienHorror/idle.bin"), "IDLE");
-	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/AlienHorror/walking.bin"), "WALKING");
+	s_meshes["HORROR"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/Horror/AlienHorror.bin"));
+	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Horror/attack.bin"), "ATTACK");
+	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Horror/die.bin"), "DIE");
+	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Horror/hit.bin"), "HIT");
+	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Horror/idle.bin"), "IDLE");
+	s_meshes["HORROR"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Horror/walking.bin"), "WALKING");
+
+	s_meshes["ULIFO"] = make_shared<Mesh>();
+	s_meshes["ULIFO"]->LoadMeshBinary(device, commandList, Utile::PATH("Mob/Ulifo/AlienUlifo.bin"));
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/die.bin"), "DIE");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/down.bin"), "DOWN");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/hit.bin"), "HIT");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/idle.bin"), "IDLE");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/jumpAttack.bin"), "JUMP_ATK");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/legAttack.bin"), "LEG_ATK");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/rest.bin"), "REST");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/roar.bin"), "ROAR");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/standup.bin"), "STANDUP");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/walking.bin"), "WALKING");
 
 	// 게임오브젝트 관련 로딩
 	s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
@@ -219,7 +232,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 
 	// 게임 시스템 관련 로딩
 	s_meshes["SKYBOX"] = make_shared<Mesh>();
-	s_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Skybox/Skybox.txt"));
+	s_meshes["SKYBOX"]->LoadMesh(device, commandList, Utile::PATH("Object/Skybox.txt"));
 
 	// 테두리
 	s_meshes["FULLSCREEN"] = make_shared<FullScreenQuadMesh>(device, commandList);
@@ -273,16 +286,19 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["SHADOW"] = make_shared<ShadowTexture>(device, 1 << 12, 1 << 12);
 
 	s_textures["SKYBOX"] = make_shared<Texture>();
-	s_textures["SKYBOX"]->Load(device, commandList, 5, Utile::PATH(TEXT("Skybox/skybox.dds")));
+	s_textures["SKYBOX"]->Load(device, commandList, 5, Utile::PATH(TEXT("Object/skybox.dds")));
 
 	s_textures["GAROO"] = make_shared<Texture>();
-	s_textures["GAROO"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienGaroo/texture.dds")));
+	s_textures["GAROO"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/Garoo/texture.dds")));
 
 	s_textures["SERPENT"] = make_shared<Texture>();
-	s_textures["SERPENT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienSerpent/texture.dds")));
+	s_textures["SERPENT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/Serpent/texture.dds")));
 
 	s_textures["HORROR"] = make_shared<Texture>();
-	s_textures["HORROR"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/AlienHorror/texture.dds")));
+	s_textures["HORROR"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/Horror/texture.dds")));
+
+	s_textures["ULIFO"] = make_shared<Texture>();
+	s_textures["ULIFO"]->Load(device, commandList, 5, Utile::PATH(TEXT("Mob/Ulifo/texture.dds")));
 
 	s_textures["OBJECT0"] = make_shared<Texture>();
 	s_textures["OBJECT0"]->Load(device, commandList, 5, Utile::PATH(TEXT("Object/texture0.dds")));

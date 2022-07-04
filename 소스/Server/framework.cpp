@@ -4,7 +4,7 @@ using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
 	isAccept{ false }, isInGame{ false }, readyCount{ 0 }, 
-	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	round{ 4 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	// m_spawnCooldown 2.0f은 임의의 상수
 	LoadMapObjects("map.txt");
@@ -213,7 +213,8 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 
 	switch (packet_type)
 	{
-	case CS_PACKET_LOGIN: {
+	case CS_PACKET_LOGIN:
+	{
 		cs_packet_login* packet = reinterpret_cast<cs_packet_login*>(p);
 #ifdef DB_MODE
 		bool retval = try_login_db(packet->name, id);
@@ -277,10 +278,9 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 	}
 	case CS_PACKET_BULLET_FIRE:
 	{
-		cs_packet_bullet_fire* packet = reinterpret_cast<cs_packet_bullet_fire*>(p);
-		BulletDataFrame bulletData{ packet->data, false, false };
 		// 총알 정보를 추가해두고 Update함수 때 피격 판정한다.
-		bullets.push_back(bulletData);
+		auto packet{ reinterpret_cast<cs_packet_bullet_fire*>(p) };
+		bullets.emplace_back(packet->data, FALSE, FALSE);
 		break;
 	}
 	case CS_PACKET_SELECT_REWARD:
@@ -360,6 +360,7 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 			isAccept = FALSE;
 			doSpawnMonster = TRUE;
 			readyCount = 0;
+			round = 0;
 			SendRoundResultPacket(eRoundResult::ENDING);
 			return;
 		}
@@ -390,7 +391,7 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 			m = std::make_unique<HorrorMonster>();
 			break;
 		case 4:
-			m = std::make_unique<HorrorMonster>();
+			m = std::make_unique<UlifoMonster>();
 			break;
 		}
 		m->SetId(lastMobId++);

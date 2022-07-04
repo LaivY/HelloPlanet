@@ -334,6 +334,10 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 		}
 #endif
 		break;
+	case eMobType::ULIFO:
+		SetMesh(Scene::s_meshes["ULIFO"]);
+		SetTexture(Scene::s_textures["ULIFO"]);
+		break;
 	}
 	SetShader(Scene::s_shaders["ANIMATION"]);
 	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);

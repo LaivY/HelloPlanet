@@ -5,7 +5,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 //constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 2;
+constexpr int  MAX_USER = 1;
 constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 
@@ -42,7 +42,7 @@ enum class eUpperAnimationType : char
 
 enum class eMobType : char
 {
-	GAROO, SERPENT, HORROR
+	GAROO, SERPENT, HORROR, ULIFO
 };
 
 enum class eMobAnimationType : char
