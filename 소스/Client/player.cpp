@@ -210,15 +210,24 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		switch (wParam)
 		{
 		case 'r': case 'R':
-			if ((!m_upperAnimationInfo && !m_isFocusing) || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
+			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
 			{
+				// 조준 상태일 때 장전하면 조준 상태를 해제함
+				if (m_isFocusing)
+				{
+					m_isZoomIn = false;
+					m_isFocusing = false;
+					m_isZooming = true;
+					m_zoomTimer = 0.0f;
+				}
+
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();
 			}
 			break;
 		case 'q': case 'Q':
 			if (m_skillGage == 100)
-				m_isSkillActive = TRUE;
+				OnSkillActive();
 			break;
 		}
 		break;
@@ -480,9 +489,17 @@ void Player::Fire()
 	case eWeaponType::SG:
 	{
 		// 총구에서 나오도록
-		start = Vector3::Add(start, Vector3::Mul(GetRight(), 1.0f));
-		start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
-		start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 5.0f));
+		if (m_isFocusing)
+		{
+			start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+			start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 5.0f));
+		}
+		else
+		{
+			start = Vector3::Add(start, Vector3::Mul(GetRight(), 1.0f));
+			start = Vector3::Add(start, Vector3::Mul(GetUp(), -0.5f));
+			start = Vector3::Add(start, Vector3::Mul(m_camera->GetAt(), 5.0f));
+		}
 
 		XMFLOAT3 up{ Vector3::Normalize(Vector3::Cross(m_camera->GetAt(), GetRight())) };
 
@@ -561,44 +578,46 @@ void Player::Fire()
 		break;
 	}
 
-	m_isFired = TRUE;
-	--m_bulletCount;
+	// 총알 소모
+	// 샷건 스킬 사용 중엔 총알이 소모되지 않음
+	if (!(m_isSkillActive && m_weaponType == eWeaponType::SG))
+		--m_bulletCount;
 
 	// 총구 이펙트
-	{
-		// 앞
-		auto frontTextureInfo{ make_unique<TextureInfo>() };
-		frontTextureInfo->loop = FALSE;
+	// 앞
+	auto frontTextureInfo{ make_unique<TextureInfo>() };
+	frontTextureInfo->loop = FALSE;
 
-		auto frontEffect{ make_unique<GameObject>() };
-		frontEffect->SetMesh(Scene::s_meshes["MUZZLE_FRONT"]);
-		frontEffect->SetShader(Scene::s_shaders["BLENDING"]);
-		frontEffect->SetTexture(Scene::s_textures["MUZZLE_FRONT"]);
-		frontEffect->SetTextureInfo(frontTextureInfo);
-		switch (m_weaponType)
-		{
-		case eWeaponType::AR:
-			if (m_isZoomIn)
-				frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.0f, 50.0f });
-			else
-				frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
-			break;
-		case eWeaponType::SG:
-			if (m_isZoomIn)
-				frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.5f, 50.0f });
-			else
-				frontEffect->SetPosition(XMFLOAT3{ 10.0f, -5.5f, 50.0f });
-			break;
-		case eWeaponType::MG:
-			frontEffect->SetPosition(XMFLOAT3{ Utile::Random(12.0f, 14.0f), Utile::Random(-7.0f, -5.0f), 50.0f});
-			break;
-		}
-		frontEffect->Rotate(Utile::Random(-5.0f, 5.0f), 0.0f, 0.0f);
-		GameScene::s_screenObjects.push_back(move(frontEffect));
+	auto frontEffect{ make_unique<GameObject>() };
+	frontEffect->SetMesh(Scene::s_meshes["MUZZLE_FRONT"]);
+	frontEffect->SetShader(Scene::s_shaders["BLENDING"]);
+	frontEffect->SetTexture(Scene::s_textures["MUZZLE_FRONT"]);
+	frontEffect->SetTextureInfo(frontTextureInfo);
+	switch (m_weaponType)
+	{
+	case eWeaponType::AR:
+		if (m_isZoomIn)
+			frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.0f, 50.0f });
+		else
+			frontEffect->SetPosition(XMFLOAT3{ 12.0f, -5.0f, 50.0f });
+		break;
+	case eWeaponType::SG:
+		if (m_isZoomIn)
+			frontEffect->SetPosition(XMFLOAT3{ 0.0f, -15.5f, 50.0f });
+		else
+			frontEffect->SetPosition(XMFLOAT3{ 10.0f, -5.5f, 50.0f });
+		break;
+	case eWeaponType::MG:
+		frontEffect->SetPosition(XMFLOAT3{ Utile::Random(12.0f, 14.0f), Utile::Random(-7.0f, -5.0f), 50.0f});
+		break;
 	}
+	frontEffect->Rotate(Utile::Random(-5.0f, 5.0f), 0.0f, 0.0f);
+	GameScene::s_screenObjects.push_back(move(frontEffect));
 
 	// 발사 효과음
 	g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")));
+
+	m_isFired = TRUE;
 }
 
 void Player::DelayRotate(FLOAT roll, FLOAT pitch, FLOAT yaw, FLOAT time)
@@ -1083,6 +1102,39 @@ FLOAT Player::GetGunOffsetTimer() const
 	return m_gunOffsetTimer;
 }
 
+void Player::OnSkillActive()
+{
+	m_isSkillActive = TRUE;
+	switch (m_weaponType)
+	{
+	case eWeaponType::SG:
+		m_bulletCount = m_maxBulletCount;
+		AddBonusAttackSpeed(50);
+		break;
+	case eWeaponType::MG:
+		AddBonusSpeed(30);
+		AddBonusAttackSpeed(30);
+		AddBonusReloadSpeed(30);
+		break;
+	}
+}
+
+void Player::OnSkillInactive()
+{
+	m_isSkillActive = FALSE;
+	switch(m_weaponType)
+	{
+	case eWeaponType::SG:
+		AddBonusAttackSpeed(-50);
+		break;
+	case eWeaponType::MG:
+		AddBonusSpeed(-30);
+		AddBonusAttackSpeed(-30);
+		AddBonusReloadSpeed(-30);
+		break;
+	}
+}
+
 void Player::UpdateZoomInOut(FLOAT deltaTime)
 {
 	// 줌인, 줌아웃에 걸리는 시간
@@ -1150,7 +1202,7 @@ void Player::UpdateSkill(FLOAT deltaTime)
 			m_skillGage -= 1;
 			m_skillGageTimer -= timerLimit;
 			if (m_skillGage <= 0)
-				m_isSkillActive = FALSE;
+				OnSkillInactive();
 		}
 	}
 	else

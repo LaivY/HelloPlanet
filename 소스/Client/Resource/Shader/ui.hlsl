@@ -37,7 +37,7 @@ float4 PS_SKILL_GAGE(PS_INPUT input) : SV_TARGET
         if (v2.x < 0.0f)
             theta = 360.0f - theta;
 
-        if (9 <= theta % 20 && theta % 20 <= 11)
+        if (0 <= theta % 18 && theta % 18 <= 3)
             return float4(0.0f, 0.0f, 0.0f, 0.0f);
         if (theta <= angle)
             return activeColor;

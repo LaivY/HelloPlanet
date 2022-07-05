@@ -80,6 +80,9 @@ public:
 	FLOAT GetGunOffsetTimer() const;
 
 private:
+	void OnSkillActive();
+	void OnSkillInactive();
+
 	void UpdateZoomInOut(FLOAT deltaTime);
 	void UpdateSkill(FLOAT deltaTime);
 
