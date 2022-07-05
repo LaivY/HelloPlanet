@@ -5,6 +5,7 @@ class BlurFilter;
 class Camera;
 class ThirdPersonCamera;
 class GameObject;
+class OutlineObject;
 class Player;
 class Monster;
 class ShadowMap;
@@ -59,12 +60,19 @@ private:
 	void CreateLights() const;
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
-	void CreateExitWindow();
+	void RenderGameObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void RenderMultiPlayers(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void RenderMonsters(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void RenderScreenObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void RenderPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+	void RenderUIObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
+
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+	void RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList, const unique_ptr<OutlineObject>& outliner) const;
 	void Update(FLOAT deltaTime);
 	void PlayerCollisionCheck(FLOAT deltaTime);
 	void UpdateShadowMatrix();
+	void CreateExitWindow();
 
 	void RecvPacket();
 	void RecvLoginOk();
@@ -82,7 +90,10 @@ public:
 	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
 	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
 
-	unique_ptr<GameObject>					m_outlineObject;	// 외곽선 오브젝트
+	unique_ptr<OutlineObject>				m_redOutliner;		// 빨강 외곽선
+	unique_ptr<OutlineObject>				m_greenOutliner;	// 초록 외곽선
+	unique_ptr<OutlineObject>				m_blackOutliner;	// 검정 외곽선
+
 	unique_ptr<Skybox>						m_skybox;			// 스카이박스
 	shared_ptr<Camera>						m_camera;			// 카메라
 	shared_ptr<Camera>						m_observeCamera;	// 관전 카메라

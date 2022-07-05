@@ -294,53 +294,13 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	// 스카이박스 렌더링
 	if (m_skybox) m_skybox->Render(commandList);
 
-	// 외곽선을 그릴 게임오브젝트 렌더링
-	UINT stencilRef{ 1 };
 	unique_lock<mutex> lock{ g_mutex };
-	for (const auto& o : m_gameObjects
-					   | views::filter([](const auto& o) { return o->isMakeOutline(); }))
-	{
-		commandList->OMSetStencilRef(stencilRef++);
-		o->Render(commandList);
-	}
-
-	// 외곽선 렌더링
-	RenderOutline(commandList);
-
-	// 외곽선 없는 게임오브젝트들 렌더링
-	commandList->OMSetStencilRef(0);
-	for (const auto& o : m_gameObjects
-					   | views::filter([](const auto& o) { return !o->isMakeOutline(); }))
-		o->Render(commandList);
-
-	// 멀티플레이어 렌더링
-	for (const auto& p : m_multiPlayers)
-		if (p) p->Render(commandList);
-
-	// 몬스터 렌더링
-	for (const auto& m : s_monsters)
-		m->Render(commandList);
-
-	// 화면 기준으로 그리는 게임오브젝트들
-	m_screenCamera->UpdateShaderVariable(commandList);
-	for (const auto& o : s_screenObjects)
-		o->Render(commandList);
-
-	// 플레이어 렌더링
-	commandList->OMSetStencilRef(1);
-	m_camera->UpdateShaderVariable(commandList);
-	if (m_player->GetHp() > 0)
-		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
-	m_player->Render(commandList);
-	RenderOutline(commandList);
-	commandList->OMSetStencilRef(0);
-
-	// UI 렌더링
-	m_uiCamera->UpdateShaderVariable(commandList);
-	for (const auto& ui : m_uiObjects)
-		ui->Render(commandList);
-	for (const auto& w : m_windowObjects)
-		w->Render(commandList);
+	RenderGameObjects(commandList, rtvHandle, dsvHandle);
+	RenderMultiPlayers(commandList, rtvHandle, dsvHandle);
+	RenderMonsters(commandList, rtvHandle, dsvHandle);
+	RenderScreenObjects(commandList, rtvHandle, dsvHandle);
+	RenderPlayer(commandList, rtvHandle, dsvHandle);
+	RenderUIObjects(commandList, rtvHandle, dsvHandle);
 }
 
 void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
@@ -459,8 +419,10 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	floor->SetShader(s_shaders["DEFAULT"]);
 	m_gameObjects.push_back(move(floor));
 
-	// 화면을 가득 채우는 사각형
-	m_outlineObject = make_unique<OutlineObject>();
+	// 외곽선 그리는 객체
+	m_redOutliner = make_unique<OutlineObject>(XMFLOAT3{ 1.0f, 0.0f, 0.0f }, 1.0f);
+	m_greenOutliner = make_unique<OutlineObject>(XMFLOAT3{ 0.0f, 1.0f, 0.0f }, 1.0f);
+	m_blackOutliner = make_unique<OutlineObject>(XMFLOAT3{ 0.1f, 0.1f, 0.1f }, 1.0f);
 
 	// 파티클
 	auto particle{ make_unique<DustParticle>() };
@@ -630,6 +592,74 @@ void GameScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 		}
 	}
 	m_gameObjects.push_back(move(dumy));
+}
+
+void GameScene::RenderGameObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	// 외곽선 있는 게임오브젝트들 렌더링
+	UINT stencilRef{ 1 };
+	for (const auto& o : m_gameObjects | views::filter([](const auto& o) { return o->isMakeOutline(); }))
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		o->Render(commandList);
+	}
+	RenderOutline(commandList, m_blackOutliner);
+
+	// 외곽선 없는 게임오브젝트들 렌더링
+	for (const auto& o : m_gameObjects | views::filter([](const auto& o) { return !o->isMakeOutline(); }))
+		o->Render(commandList);
+}
+
+void GameScene::RenderMultiPlayers(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	UINT stencilRef{ 1 };
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	for (const auto& p : m_multiPlayers)
+	{
+		if (!p) continue;
+		commandList->OMSetStencilRef(stencilRef++);
+		p->Render(commandList);
+	}
+	RenderOutline(commandList, m_greenOutliner);
+}
+
+void GameScene::RenderMonsters(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	UINT stencilRef{ 1 };
+	commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	for (const auto& m : s_monsters)
+	{
+		commandList->OMSetStencilRef(stencilRef++);
+		m->Render(commandList);
+	}
+	RenderOutline(commandList, m_redOutliner);
+}
+
+void GameScene::RenderScreenObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	m_screenCamera->UpdateShaderVariable(commandList);
+	for (const auto& o : s_screenObjects)
+		o->Render(commandList);
+}
+
+void GameScene::RenderPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	m_camera->UpdateShaderVariable(commandList);
+	commandList->OMSetStencilRef(1);
+	if (m_player->GetHp() > 0)
+		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	m_player->Render(commandList);
+	RenderOutline(commandList, m_blackOutliner);
+	commandList->OMSetStencilRef(0);
+}
+
+void GameScene::RenderUIObjects(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const
+{
+	m_uiCamera->UpdateShaderVariable(commandList);
+	for (const auto& ui : m_uiObjects)
+		ui->Render(commandList);
+	for (const auto& w : m_windowObjects)
+		w->Render(commandList);
 }
 
 void GameScene::CreateExitWindow()
@@ -912,13 +942,13 @@ void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void GameScene::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
+void GameScene::RenderOutline(const ComPtr<ID3D12GraphicsCommandList>& commandList, const unique_ptr<OutlineObject>& outliner) const
 {
 	s_textures["DEPTH"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	s_textures["DEPTH"]->UpdateShaderVariable(commandList);
 	s_textures["STENCIL"]->Copy(commandList, g_gameFramework.GetDepthStencil(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	s_textures["STENCIL"]->UpdateShaderVariable(commandList);
-	m_outlineObject->Render(commandList);
+	outliner->Render(commandList);
 }
 
 void GameScene::RecvPacket()

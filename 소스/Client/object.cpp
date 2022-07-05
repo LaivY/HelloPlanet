@@ -438,13 +438,13 @@ eMobType Monster::GetType() const
 	return m_type;
 }
 
-OutlineObject::OutlineObject()
+OutlineObject::OutlineObject(const XMFLOAT3& color, FLOAT thickness)
 {
 	SetMesh(Scene::s_meshes["FULLSCREEN"]);
 	SetShader(Scene::s_shaders["FULLSCREEN"]);
 
-	SetColor(XMFLOAT3{ 0.1f, 0.1f, 0.1f });
-	SetThickness(1.0f);
+	SetColor(color);
+	SetThickness(thickness);
 }
 
 void OutlineObject::SetColor(const XMFLOAT3& color)

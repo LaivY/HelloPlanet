@@ -154,7 +154,7 @@ private:
 class OutlineObject : public GameObject
 {
 public:
-	OutlineObject();
+	OutlineObject(const XMFLOAT3& color, FLOAT thickness);
 	~OutlineObject() = default;
 
 	void SetColor(const XMFLOAT3& color);
