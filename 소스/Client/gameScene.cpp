@@ -467,15 +467,25 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_gameObjects.push_back(move(particle));
 
 	// 몬스터
-	//auto mob1{ make_unique<Monster>(0, eMobType::SERPENT) };
-	//mob1->Move(XMFLOAT3{ 50.0f, 0.0f, 150.0f });
+	//auto mob1{ make_unique<Monster>(0, eMobType::GAROO) };
+	//mob1->Move(XMFLOAT3{ -75.0f, 0.0f, 150.0f });
 	//mob1->Rotate(0.0f, 0.0f, 180.0f);
 	//m_gameObjects.push_back(move(mob1));
 
-	//auto mob2{ make_unique<Monster>(1, eMobType::HORROR) };
-	//mob2->Move(XMFLOAT3{ -50.0f, 0.0f, 150.0f });
+	//auto mob2{ make_unique<Monster>(1, eMobType::SERPENT) };
+	//mob2->Move(XMFLOAT3{ -25.0f, 0.0f, 150.0f });
 	//mob2->Rotate(0.0f, 0.0f, 180.0f);
 	//m_gameObjects.push_back(move(mob2));
+
+	//auto mob3{ make_unique<Monster>(3, eMobType::HORROR) };
+	//mob3->Move(XMFLOAT3{ 25.0f, 0.0f, 150.0f });
+	//mob3->Rotate(0.0f, 0.0f, 180.0f);
+	//m_gameObjects.push_back(move(mob3));
+
+	//auto mob4{ make_unique<Monster>(4, eMobType::ULIFO) };
+	//mob4->Move(XMFLOAT3{ 75.0f, 0.0f, 150.0f });
+	//mob4->Rotate(0.0f, 0.0f, 180.0f);
+	//m_gameObjects.push_back(move(mob4));
 }
 
 void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -1093,8 +1103,24 @@ void GameScene::RecvBulletHit()
 	{
 		wstring dmg{ to_wstring(m_player->GetDamage()) };
 		auto dmgText{ make_unique<DamageTextObject>(dmg.c_str()) };
-		dmgText->SetCamera(m_camera);
-		dmgText->SetStartPosition((*it)->GetPosition());
+
+		XMFLOAT3 offset{};
+		switch ((*it)->GetType())
+		{
+		case eMobType::GAROO:
+			offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+			break;
+		case eMobType::SERPENT:
+			offset = XMFLOAT3{ 0.0f, 45.0f, 0.0f };
+			break;
+		case eMobType::HORROR:
+			offset = XMFLOAT3{ 0.0f, 38.0f, 0.0f };
+			break;
+		case eMobType::ULIFO:
+			offset = XMFLOAT3{ 0.0f, 145.0f, 0.0f };
+			break;
+		}
+		dmgText->SetStartPosition(Vector3::Add((*it)->GetPosition(), offset));
 		m_textObjects.push_back(move(dmgText));
 	}
 }

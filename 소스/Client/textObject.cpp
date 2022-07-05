@@ -429,13 +429,13 @@ INT MenuTextObject::GetValue() const
 	return m_value;
 }
 
-DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }
+DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }, m_startPosition{}, m_timer{}
 {
-	m_brush = "BLUE";
-	m_format = "24L";
+	SetBrush("BLUE");
+	SetFormat("24L");
 	SetText(damage);
+	m_camera = g_gameFramework.GetScene()->GetCamera();
 	m_screenPivot = ePivot::LEFTTOP;
-
 	m_direction = Utile::Random(0, 1);
 }
 
@@ -473,15 +473,9 @@ void DamageTextObject::Update(FLOAT deltaTime)
 		Delete();
 }
 
-void DamageTextObject::SetCamera(const shared_ptr<Camera>& camera)
-{
-	m_camera = camera;
-}
-
 void DamageTextObject::SetStartPosition(const XMFLOAT3& position)
 {
 	m_startPosition = position;
-	m_startPosition.y += 20.0f;
 }
 
 SkillGageTextObject::SkillGageTextObject() : m_percent{}

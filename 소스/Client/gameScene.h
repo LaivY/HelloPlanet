@@ -75,7 +75,6 @@ private:
 	void RecvMosterAttack();
 	void RecvRoundResult();
 	void RecvLogoutOkPacket();
-
 	void RecvRoundClear();
 
 public:

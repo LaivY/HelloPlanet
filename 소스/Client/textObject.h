@@ -132,7 +132,6 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
-	void SetCamera(const shared_ptr<Camera>& camera);
 	void SetStartPosition(const XMFLOAT3& position);
 
 private:

@@ -306,41 +306,64 @@ void Bullet::Update(FLOAT deltaTime)
 
 Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 {
+	SetShader(Scene::s_shaders["ANIMATION"]);
+	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);
+
 	switch (type)
 	{
 	case eMobType::GAROO:
+	{
 		SetMesh(Scene::s_meshes["GAROO"]);
 		SetTexture(Scene::s_textures["GAROO"]);
-		break;
-	case eMobType::SERPENT:
-		SetMesh(Scene::s_meshes["SERPENT"]);
-		SetTexture(Scene::s_textures["SERPENT"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 20.0f, -1.0f }, XMFLOAT3{ 5.0f, 20.0f, 7.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+
 #ifdef RENDER_HITBOX
-		{
-			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
-			hitbox->SetOwner(this);
-			AddHitbox(hitbox);
-		}
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 11.5f, -1.0f }, XMFLOAT3{ 5.0f, 4.0f, 7.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
 #endif
-		break;
-	case eMobType::HORROR:
-		SetMesh(Scene::s_meshes["HORROR"]);
-		SetTexture(Scene::s_textures["HORROR"]);
-#ifdef RENDER_HITBOX
-		{
-			auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }) };
-			hitbox->SetOwner(this);
-			AddHitbox(hitbox);
-		}
-#endif
-		break;
-	case eMobType::ULIFO:
-		SetMesh(Scene::s_meshes["ULIFO"]);
-		SetTexture(Scene::s_textures["ULIFO"]);
+
 		break;
 	}
-	SetShader(Scene::s_shaders["ANIMATION"]);
-	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);
+	case eMobType::SERPENT:
+	{
+		SetMesh(Scene::s_meshes["SERPENT"]);
+		SetTexture(Scene::s_textures["SERPENT"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+		break;
+	}
+	case eMobType::HORROR:
+	{
+		SetMesh(Scene::s_meshes["HORROR"]);
+		SetTexture(Scene::s_textures["HORROR"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 20.0f, 5.0f }, XMFLOAT3{ 15.0f, 20.0f, 22.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+
+#ifdef RENDER_HITBOX
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
+#endif
+		break;
+	}
+	case eMobType::ULIFO:
+	{
+		SetMesh(Scene::s_meshes["ULIFO"]);
+		SetTexture(Scene::s_textures["ULIFO"]);
+#ifdef RENDER_HITBOX
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -1.0f, 125.0f, 0.0f }, XMFLOAT3{ 28.0f, 17.0f, 30.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
+#endif
+		break;
+	}
+	}
+
 	PlayAnimation("IDLE");
 }
 

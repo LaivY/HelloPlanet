@@ -506,14 +506,20 @@ void AutoTargetUIObject::Update(FLOAT deltaTime)
 		switch (mob->GetType())
 		{
 		case eMobType::GAROO:
-			offset = XMFLOAT3{ 0.0f, 10.0f, 0.0f };
+			offset = XMFLOAT3{ 0.0f, 11.5f, 0.0f };
 			scale = 1.0f;
 			break;
 		case eMobType::SERPENT:
-			offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+			offset = XMFLOAT3{ 0.0f, 22.0f, 0.0f };
 			scale = 2.0f;
 			break;
 		case eMobType::HORROR:
+			offset = XMFLOAT3{ 0.0f, 26.0f, 0.0f };
+			scale = 1.6f;
+			break;
+		case eMobType::ULIFO:
+			offset = XMFLOAT3{ 0.0f, 125.0f, 0.0f };
+			scale = 1.8f;
 			break;
 		}
 
@@ -544,7 +550,6 @@ void AutoTargetUIObject::Update(FLOAT deltaTime)
 			float value{ lerp(500.0f, 200.0f, t) * scale };
 			SetWidth(value);
 			SetHeight(value);
-
 		}
 	}
 

@@ -3,10 +3,10 @@
 using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
-	isAccept{ false }, isInGame{ false }, readyCount{ 0 }, 
-	round{ 4 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	isAccept{ false }, readyCount{ 0 }, 
+	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
-	// m_spawnCooldown 2.0f은 임의의 상수
+	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");
 }
 
@@ -374,8 +374,14 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 
 void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 {
+	// 해당 라운드의 몬스터를 모두 스폰했다면 더 이상 스폰하지 않음
+	if (roundMobCount[round - 1] <= 0)
+	{
+		spawnCooldown = g_spawnCooldown;
+		return;
+	}
+
 	// 쿨타임 때마다 생성
-	spawnCooldown -= deltaTime;
 	if (spawnCooldown <= 0.0f)
 	{
 		std::unique_ptr<Monster> m;
@@ -401,7 +407,9 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		monsters.push_back(std::move(m));
 
 		spawnCooldown = g_spawnCooldown;
+		--roundMobCount[round - 1];
 	}
+	spawnCooldown -= deltaTime;
 }
 
 UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
@@ -534,6 +542,6 @@ void NetworkFramework::LoadMapObjects(const std::string& mapFile)
 		// 크기는 바운딩박스를 만들때 Extends에 scale의 절반 값을 넘겨줌. 그 이후 회전, 이동 행렬을 곱함.
 		DirectX::BoundingOrientedBox hitbox{ XMFLOAT3{}, Vector3::Mul(scale, 0.5f), XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 		hitbox.Transform(hitbox, matrix);
-		m_hitboxes.push_back(std::move(hitbox));
+		hitboxes.push_back(std::move(hitbox));
 	}
 }

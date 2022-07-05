@@ -170,7 +170,7 @@ GarooMonster::GarooMonster() : Monster{}
 	m_damage = 10;
 	m_speed = 50.0f;
 	m_knockbackTime = 0.7f;
-	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 8.0f, 0.0f }, XMFLOAT3{ 7.0f, 7.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -0.5f, 11.5f, -1.0f }, XMFLOAT3{ 5.0f, 4.0f, 7.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
 void GarooMonster::Update(FLOAT deltaTime)
@@ -413,7 +413,7 @@ UlifoMonster::UlifoMonster()
 	m_damage = 30;
 	m_speed = 30.0f;
 	m_knockbackTime = 0.2f;
-	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
+	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -1.0f, 125.0f, 0.0f }, XMFLOAT3{ 28.0f, 17.0f, 30.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
 void UlifoMonster::Update(FLOAT deltaTime)

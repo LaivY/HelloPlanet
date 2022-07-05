@@ -460,13 +460,16 @@ void Player::Fire()
 				switch ((*mob)->GetType())
 				{
 				case eMobType::GAROO:
-					offset = XMFLOAT3{ 0.0f, 10.0f, 0.0f };
+					offset = XMFLOAT3{ -0.5f, 11.5f, -1.0f };
 					break;
 				case eMobType::SERPENT:
-					offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+					offset = XMFLOAT3{ 0.0f, 22.0f, 10.0f };
 					break;
 				case eMobType::HORROR:
-					offset = XMFLOAT3{ 0.0f, 20.0f, 0.0f };
+					offset = XMFLOAT3{ -3.0f, 26.0f, 5.0f };
+					break;
+				case eMobType::ULIFO:
+					offset = XMFLOAT3{ -1.0f, 125.0f, 0.0f };
 					break;
 				}
 				dir = Vector3::Normalize(Vector3::Sub(Vector3::Add(target, offset), start));
@@ -479,7 +482,7 @@ void Player::Fire()
 		cs_packet_bullet_fire packet{};
 		packet.size = sizeof(packet);
 		packet.type = CS_PACKET_BULLET_FIRE;
-		packet.data = BulletData{ start, dir, 1, static_cast<char>(GetId()) };
+		packet.data = BulletData{ start, dir, damage, static_cast<char>(GetId()) };
 		send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), 0);
 
 		// 반동
