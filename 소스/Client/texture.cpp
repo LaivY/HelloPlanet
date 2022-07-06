@@ -61,7 +61,6 @@ void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
 			break;
 		}
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		
 		device->CreateShaderResourceView(data.buffer.Get(), &srvDesc, srvDescriptorHandle);
 		srvDescriptorHandle.Offset(g_cbvSrvDescriptorIncrementSize);
 	}
@@ -86,16 +85,6 @@ void Texture::Create(const ComPtr<ID3D12Device>& device, DXGI_FORMAT textureFotm
 	));
 	s_resources.emplace_back(buffer, rootParameterIndex, type);
 	++m_count;
-}
-
-void Texture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& src, D3D12_RESOURCE_STATES currSrcResourceState)
-{
-	const auto& dst{ s_resources[m_index].buffer };
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), currSrcResourceState, D3D12_RESOURCE_STATE_COPY_SOURCE));
-	commandList->CopyResource(dst.Get(), src.Get());
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, currSrcResourceState));
 }
 
 void Texture::Load(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT rootParameterIndex, const wstring& fileName)
@@ -130,6 +119,16 @@ void Texture::Load(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Graphi
 	s_resources.emplace_back(buffer, rootParameterIndex, eTextureType::DEFAULT);
 	s_uploadBuffers.push_back(move(uploadBuffer));
 	++m_count;
+}
+
+void Texture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& src, D3D12_RESOURCE_STATES currSrcResourceState)
+{
+	const auto& dst{ s_resources[m_index].buffer };
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), currSrcResourceState, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	commandList->CopyResource(dst.Get(), src.Get());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, currSrcResourceState));
 }
 
 void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT index)

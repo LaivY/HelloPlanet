@@ -29,7 +29,7 @@ public:
 	void SetAt(const XMFLOAT3& at) { m_at = at; }
 	void SetUp(const XMFLOAT3& up) { m_up = up; }
 	void SetOffset(const XMFLOAT3& offset) { m_offset = offset; }
-	void SetPlayer(const shared_ptr<Player>& player) { m_player = player; }
+	void SetPlayer(Player* player) { m_player = player; }
 
 	XMFLOAT4X4 GetViewMatrix() const { return m_viewMatrix; }
 	XMFLOAT4X4 GetProjMatrix() const { return m_projMatrix; }
@@ -56,7 +56,7 @@ protected:
 	FLOAT					m_pitch;		// y축 회전각
 	FLOAT					m_yaw;			// z축 회전각
 
-	shared_ptr<Player>		m_player;		// 플레이어
+	Player*					m_player;		// 플레이어
 	XMFLOAT3				m_offset;		// 플레이어로부터 떨어져있는 위치
 };
 

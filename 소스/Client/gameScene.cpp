@@ -41,6 +41,7 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature,
 					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
+
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
 	CreateUIObjects(device, commandList);
@@ -59,7 +60,6 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	m_blurFilter = make_unique<BlurFilter>(device, commandList);
 
 	// 배경음 재생
-	//g_audioEngine.Play(Utile::PATH(TEXT("Sound/bgm.wav")), true);
 	g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/bgm.wav")));
 
 #ifdef NETWORK
@@ -232,11 +232,11 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 			break;
 		case VK_LEFT:
 			if (m_multiPlayers[0])
-				m_camera->SetPlayer(m_multiPlayers[0]);
+				m_camera->SetPlayer(m_multiPlayers[0].get());
 			break;
 		case VK_RIGHT:
 			if (m_multiPlayers[1])
-				m_camera->SetPlayer(m_multiPlayers[1]);
+				m_camera->SetPlayer(m_multiPlayers[1].get());
 			break;
 		case VK_ESCAPE:
 			CreateExitWindow();
@@ -347,14 +347,14 @@ void GameScene::OnPlayerRevive()
 	m_player->SendPlayerData();
 }
 
-shared_ptr<Player> GameScene::GetPlayer() const
+Player* GameScene::GetPlayer() const
 {
-	return m_player;
+	return m_player.get();
 }
 
-shared_ptr<Camera> GameScene::GetCamera() const
+Camera* GameScene::GetCamera() const
 {
-	return m_camera;
+	return m_camera.get();
 }
 
 void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -367,6 +367,8 @@ void GameScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const C
 void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라 생성
+	XMFLOAT4X4 projMatrix{};
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 #ifdef FREEVIEW
 	m_camera = make_shared<Camera>();
 #endif
@@ -377,8 +379,6 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_camera = make_shared<ThirdPersonCamera>();
 #endif
 	m_camera->CreateShaderVariable(device, commandList);
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 관전 카메라 생성
@@ -405,9 +405,9 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	}
 
 	// 카메라, 플레이어 설정
-	m_player->SetCamera(m_camera);
-	m_camera->SetPlayer(m_player);
-	m_observeCamera->SetPlayer(m_player);
+	m_player->SetCamera(m_camera.get());
+	m_camera->SetPlayer(m_player.get());
+	m_observeCamera->SetPlayer(m_player.get());
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -505,14 +505,12 @@ void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	// 텍스트 오브젝트들의 좌표계는 좌측 상단이 (0, 0), 우측 하단이 (width, height) 이다.
 	// 총알
 	auto bulletText{ make_unique<BulletTextObject>() };
-	bulletText->SetPlayer(m_player);
 	bulletText->SetScreenPivot(ePivot::RIGHTBOT);
 	bulletText->SetPosition(XMFLOAT2{ -160.0f, -80.0f });
 	m_textObjects.push_back(move(bulletText));
 
 	// 체력
 	auto hpText{ make_unique<HPTextObject>() };
-	hpText->SetPlayer(m_player);
 	hpText->SetScreenPivot(ePivot::LEFTBOT);
 	hpText->SetPosition(XMFLOAT2{ 50.0f, -125.0f });
 	m_textObjects.push_back(move(hpText));
@@ -1079,7 +1077,6 @@ void GameScene::RecvUpdateMonster()
 
 			unique_lock<mutex> lock{ g_mutex };
 			s_monsters.push_back(move(mob));
-			lock.unlock();
 			continue;
 		}
 
@@ -1383,7 +1380,7 @@ void GameScene::RecvRoundClear()
 			break;
 		case eReward::MAXHP:
 			rewardImageObjects[i]->SetTexture(s_textures["REWARD_HP"]);
-			rewardTextObjects[i]->SetText(TEXT("최대 체력 +10"));
+			rewardTextObjects[i]->SetText(TEXT("최대 체력 +25"));
 			break;
 		case eReward::MAXBULLET:
 			rewardImageObjects[i]->SetTexture(s_textures["REWARD_BULLET"]);

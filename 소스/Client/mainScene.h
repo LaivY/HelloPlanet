@@ -46,16 +46,16 @@ public:
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 
 private:
-	ComPtr<ID3D12Resource>			m_cbGameScene;
-	cbGameScene*					m_pcbGameScene;
-	unique_ptr<cbGameScene>			m_cbGameSceneData;
+	ComPtr<ID3D12Resource>				m_cbGameScene;
+	cbGameScene*						m_pcbGameScene;
+	unique_ptr<cbGameScene>				m_cbGameSceneData;
 
-	unique_ptr<Skybox>				m_skybox;
-	shared_ptr<Camera>				m_camera;
-	shared_ptr<Camera>				m_uiCamera;
-	vector<unique_ptr<Player>>		m_players;
-	vector<unique_ptr<GameObject>>	m_gameObjects;
-	vector<unique_ptr<UIObject>>	m_uiObjects;
-	vector<unique_ptr<TextObject>>	m_textObjects;
-	vector<unique_ptr<WindowObject>> m_windowObjects;
+	unique_ptr<Skybox>					m_skybox;
+	shared_ptr<Camera>					m_camera;
+	shared_ptr<Camera>					m_uiCamera;
+	vector<unique_ptr<Player>>			m_players;
+	vector<unique_ptr<GameObject>>		m_gameObjects;
+	vector<unique_ptr<UIObject>>		m_uiObjects;
+	vector<unique_ptr<TextObject>>		m_textObjects;
+	vector<unique_ptr<WindowObject>>	m_windowObjects;
 };

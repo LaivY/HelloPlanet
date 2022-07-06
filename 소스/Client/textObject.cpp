@@ -212,6 +212,7 @@ FLOAT TextObject::GetHeight() const
 BulletTextObject::BulletTextObject() : m_bulletCount{ -1 }, m_scale{ 1.0f }, m_timerState{ FALSE }, m_scaleTimer{}
 {
 	m_rect = { 0.0f, 0.0f, 100.0f, 0.0f };
+	m_player = g_gameFramework.GetScene()->GetPlayer();
 }
 
 void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
@@ -274,14 +275,10 @@ void BulletTextObject::Update(FLOAT deltaTime)
 		m_timerState = FALSE;
 }
 
-void BulletTextObject::SetPlayer(const shared_ptr<Player>& player)
-{
-	m_player = player;
-}
-
 HPTextObject::HPTextObject() : m_hp{ -1 }, m_scale{ 1.0f }, m_timerState{ FALSE }, m_scaleTimer{}
 {
 	m_rect = { 0.0f, 0.0f, 100.0f, 0.0f };
+	m_player = g_gameFramework.GetScene()->GetPlayer();
 }
 
 void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
@@ -341,11 +338,6 @@ void HPTextObject::Update(FLOAT deltaTime)
 	if (m_timerState) m_scaleTimer += deltaTime;
 	if (m_scaleTimer > duration)
 		m_timerState = FALSE;
-}
-
-void HPTextObject::SetPlayer(const shared_ptr<Player>& player)
-{
-	m_player = player;
 }
 
 MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale{ 1.0f }, m_scaleTimer{}, m_value{}

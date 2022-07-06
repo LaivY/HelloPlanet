@@ -38,8 +38,8 @@ public:
 
 	virtual void ProcessClient();
 
-	virtual shared_ptr<Player> GetPlayer() const;
-	virtual shared_ptr<Camera> GetCamera() const;
+	virtual Player* GetPlayer() const;
+	virtual Camera* GetCamera() const;
 
 	void OnPlayerDie();
 	void OnPlayerRevive();

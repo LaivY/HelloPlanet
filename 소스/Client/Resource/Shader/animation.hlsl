@@ -34,8 +34,3 @@ float4 PS(PS_INPUT input) : SV_TARGET
     float shadowFactor = CalcShadowFactor(input.positionW);
     return output + lightColor * shadowFactor;
 }
-
-float4 PS_OUTLINE(PS_INPUT input) : SV_TARGET
-{
-    return float4(0.1f, 0.1f, 0.1f, 1.0f);
-}

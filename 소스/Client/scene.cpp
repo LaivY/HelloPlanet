@@ -28,5 +28,5 @@ void Scene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const { }
 void Scene::PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) const { }
 void Scene::ProcessClient() { }
 
-shared_ptr<Player> Scene::GetPlayer() const { return nullptr; }
-shared_ptr<Camera> Scene::GetCamera() const { return nullptr; }
+Player* Scene::GetPlayer() const { return nullptr; }
+Camera* Scene::GetCamera() const { return nullptr; }

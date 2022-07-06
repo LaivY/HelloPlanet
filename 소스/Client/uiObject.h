@@ -138,8 +138,8 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 private:
-	shared_ptr<Player> m_player;
-	shared_ptr<Camera> m_camera;
+	Player* m_player;
+	Camera* m_camera;
 };
 
 class SkillGageUIObject : public UIObject
@@ -151,5 +151,5 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 private:
-	shared_ptr<Player> m_player;
+	Player* m_player;
 };

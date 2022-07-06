@@ -43,7 +43,7 @@ public:
 	void SetHp(INT hp);
 	void SetDamage(INT damage) { m_damage = damage; }
 	void SetWeaponType(eWeaponType gunType);
-	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
+	void SetCamera(Camera* camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
@@ -131,5 +131,5 @@ private:
 	XMFLOAT3			m_gunOffset;		// 총 그릴 때 카메라의 위치
 	FLOAT				m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
 
-	shared_ptr<Camera>	m_camera;			// 카메라
+	Camera*				m_camera;			// 카메라
 };

@@ -23,7 +23,7 @@ mutex                   g_mutex{};
 namespace Utile
 {
 	ComPtr<ID3D12Resource> CreateBufferResource(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
-												const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource* uploadBuffer)
+												const void* data, UINT sizePerData, UINT dataCount, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState, ID3D12Resource** uploadBuffer)
 	{
 		ComPtr<ID3D12Resource> buffer;
 		const UINT bufferSize{ sizePerData * dataCount };
@@ -50,14 +50,14 @@ namespace Utile
 					&CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
 					D3D12_RESOURCE_STATE_GENERIC_READ,
 					NULL,
-					IID_PPV_ARGS(&uploadBuffer)));
+					IID_PPV_ARGS(uploadBuffer)));
 
 				// 업로드 버퍼에서 디폴트 버퍼로 복사
 				D3D12_SUBRESOURCE_DATA bufferData{};
 				bufferData.pData = data;
 				bufferData.RowPitch = bufferSize;
 				bufferData.SlicePitch = bufferData.RowPitch;
-				UpdateSubresources<1>(commandList.Get(), buffer.Get(), uploadBuffer, 0, 0, 1, &bufferData);
+				UpdateSubresources<1>(commandList.Get(), buffer.Get(), *uploadBuffer, 0, 0, 1, &bufferData);
 			}
 
 			// 버퍼 리소스 베리어 설정

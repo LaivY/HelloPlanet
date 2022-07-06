@@ -62,8 +62,8 @@ public:
 	virtual void ProcessClient();
 
 	// 게터
-	virtual shared_ptr<Player> GetPlayer() const;
-	virtual shared_ptr<Camera> GetCamera() const;
+	virtual Player* GetPlayer() const;
+	virtual Camera* GetCamera() const;
 
 	// 리소스
 	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;

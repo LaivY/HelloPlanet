@@ -12,7 +12,7 @@
 
 MainScene::MainScene() : m_pcbGameScene{ nullptr }
 {
-
+	
 }
 
 MainScene::~MainScene()
@@ -71,7 +71,6 @@ void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
 		return;
 	}
-
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
@@ -143,11 +142,17 @@ void MainScene::Update(FLOAT deltaTime)
 void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라
+	XMFLOAT4X4 projMatrix{};
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera = make_shared<Camera>();
 	m_camera->CreateShaderVariable(device, commandList);
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
+
+	// UI 카메라 생성
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
+	m_uiCamera = make_unique<Camera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -166,13 +171,6 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// UI 카메라 생성
-	XMFLOAT4X4 projMatrix{};
-	m_uiCamera = make_unique<Camera>();
-	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
 	auto title{ make_unique<UIObject>(801.0f, 377.0f) };
 	title->SetShader(s_shaders["UI_ATC"]);
 	title->SetTexture(s_textures["TITLE"]);

@@ -66,14 +66,13 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
-	void SetPlayer(const shared_ptr<Player>& player);
 
 private:
-	shared_ptr<Player>	m_player;
-	INT					m_bulletCount;
-	FLOAT				m_scale;
-	BOOL				m_timerState;
-	FLOAT				m_scaleTimer;
+	Player*	m_player;
+	INT		m_bulletCount;
+	FLOAT	m_scale;
+	BOOL	m_timerState;
+	FLOAT	m_scaleTimer;
 };
 
 class HPTextObject : public TextObject
@@ -86,14 +85,13 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
-	void SetPlayer(const shared_ptr<Player>& player);
 
 private:
-	shared_ptr<Player>	m_player;
-	INT					m_hp;
-	FLOAT				m_scale;
-	BOOL				m_timerState;
-	FLOAT				m_scaleTimer;
+	Player*	m_player;
+	INT		m_hp;
+	FLOAT	m_scale;
+	BOOL	m_timerState;
+	FLOAT	m_scaleTimer;
 };
 
 class MenuTextObject : public TextObject
@@ -135,11 +133,11 @@ public:
 	void SetStartPosition(const XMFLOAT3& position);
 
 private:
-	shared_ptr<Camera>	m_camera;
-	BOOL				m_isOnScreen;
-	BOOL				m_direction;
-	XMFLOAT3			m_startPosition;
-	FLOAT				m_timer;
+	Camera*		m_camera;
+	BOOL		m_isOnScreen;
+	BOOL		m_direction;
+	XMFLOAT3	m_startPosition;
+	FLOAT		m_timer;
 };
 
 class SkillGageTextObject : public TextObject
@@ -151,6 +149,6 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 private:
-	shared_ptr<Player>	m_player;
-	INT					m_percent;
+	Player*	m_player;
+	INT		m_percent;
 };

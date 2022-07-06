@@ -2,7 +2,7 @@
 #include "mesh.h"
 #include "object.h"
 
-#define PLAYER_UPPER_JOINT_START 23
+#define PLAYER_UPPER_JOINT_END 23
 
 Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }
 {
@@ -132,21 +132,13 @@ void Mesh::LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<
 	m_animations[animationName] = move(animation);
 }
 
-void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	//ComPtr<ID3D12Resource> dummy;
-	//constexpr UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
-	//m_cbMesh = CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
-	//m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
-}
-
 void Mesh::CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount)
 {
 	// 정점 버퍼 갯수 저장
 	m_nVertices = dataCount;
 
 	// 정점 버퍼 생성
-	m_vertexBuffer = Utile::CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_vertexUploadBuffer.Get());
+	m_vertexBuffer = Utile::CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_vertexUploadBuffer);
 
 	// 정점 버퍼 뷰 설정
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
@@ -160,7 +152,7 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_nIndices = dataCount;
 
 	// 인덱스 버퍼 생성
-	m_indexBuffer = Utile::CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_indexUploadBuffer.Get());
+	m_indexBuffer = Utile::CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_indexUploadBuffer);
 
 	// 인덱스 버퍼 뷰 설정
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
@@ -247,9 +239,9 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
 
 			// 상체 애니메이션이 있으면 기존 애니메이션은 하체만 애니메이션한다.
-			// 상체 애니메이션은 0 ~ PLAYER_UPPER_JOINT_START 뼈만 애니메이션하는 것이다.
+			// 상체 애니메이션은 0 ~ PLAYER_UPPER_JOINT_END 뼈만 애니메이션하는 것이다.
 			// 총도 상체 애니메이션을 따라간다. (마지막 뼈는 총의 애니메이션 변환 행렬이다.)
-			start = PLAYER_UPPER_JOINT_START; --end;
+			start = PLAYER_UPPER_JOINT_END; --end;
 
 			if (upperAnimationInfo->state == eAnimationState::PLAY)
 			{

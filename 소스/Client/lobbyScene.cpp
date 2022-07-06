@@ -41,7 +41,9 @@ LobbyScene::~LobbyScene()
 #endif
 }
 
-void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
@@ -215,7 +217,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_player = make_unique<Player>(TRUE);
 	m_player->SetWeaponType(eWeaponType::AR);
 	m_player->PlayAnimation("RELOAD");
-	m_player->SetCamera(m_camera);
+	m_player->SetCamera(m_camera.get());
 }
 
 void LobbyScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -538,7 +540,6 @@ void LobbyScene::ProcessPacket()
 
 	UCHAR size{ static_cast<UCHAR>(buf[0]) };
 	UCHAR type{ static_cast<UCHAR>(buf[1]) };
-
 	switch (type)
 	{
 	case SC_PACKET_LOGIN_CONFIRM:
@@ -561,7 +562,7 @@ void LobbyScene::ProcessPacket()
 
 void LobbyScene::RecvLoginOkPacket()
 {
-	// 플레이어정보 + 닉네임 + 준비상태 + 무기상태
+	// 플레이어정보 + 닉네임 + 준비 상태 + 무기 종류
 	char buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1 + 1]{};
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD recvByte{}, recvFlag{};
@@ -574,7 +575,7 @@ void LobbyScene::RecvLoginOkPacket()
 	memcpy(&data, buf, sizeof(data));
 	memcpy(&name, &buf[sizeof(PlayerData)], sizeof(name));
 
-	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
+	// 처음 들어왔을때 다른 플레이어들의 준비 상태와 무기 종류를 알 수 있게함
 	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
 	auto weaponType = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
 	
@@ -583,48 +584,50 @@ void LobbyScene::RecvLoginOkPacket()
 		m_player->SetId(static_cast<int>(data.id));
 		return;
 	}
-	if (m_player->GetId() != data.id)
-		for (auto& p : m_multiPlayers)
+	if (m_player->GetId() == data.id)
+		return;
+
+	// 멀티플레이어가 들어왔으면 왼쪽, 오른쪽에 위치시킴
+	for (auto& p : m_multiPlayers)
+	{
+		if (p) continue;
+		p = make_shared<Player>(TRUE);
+		p->SetWeaponType(weaponType);
+		p->SetId(static_cast<int>(data.id));
+		if (m_leftSlotPlayerId == -1)
 		{
-			if (p) continue;
-			p = make_shared<Player>(TRUE);
-			p->SetWeaponType(weaponType);
-			p->SetId(static_cast<int>(data.id));
-			p->PlayAnimation("IDLE");
-			if (m_leftSlotPlayerId == -1)
+			p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
+			m_leftSlotPlayerId = static_cast<int>(data.id);
+			if (isReady)
 			{
-				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
-				m_leftSlotPlayerId = static_cast<int>(data.id);
-				if (isReady)
-				{
-					m_leftSlotReadyText->SetBrush("BLUE");
-					m_leftSlotReadyText->SetText(TEXT("준비완료"));
-				}
-				else
-				{
-					m_leftSlotReadyText->SetBrush("BLACK");
-					m_leftSlotReadyText->SetText(TEXT("준비중"));
-				}
-				m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+				m_leftSlotReadyText->SetBrush("BLUE");
+				m_leftSlotReadyText->SetText(TEXT("준비완료"));
 			}
-			else if (m_rightSlotPlayerId == -1)
+			else
 			{
-				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
-				m_rightSlotPlayerId = static_cast<int>(data.id);
-				if (isReady)
-				{
-					m_rightSlotReadyText->SetBrush("BLUE");
-					m_rightSlotReadyText->SetText(TEXT("준비완료"));
-				}
-				else
-				{
-					m_rightSlotReadyText->SetBrush("BLACK");
-					m_rightSlotReadyText->SetText(TEXT("준비중"));
-				}
-				m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+				m_leftSlotReadyText->SetBrush("BLACK");
+				m_leftSlotReadyText->SetText(TEXT("준비중"));
 			}
-			break;
+			m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
 		}
+		else if (m_rightSlotPlayerId == -1)
+		{
+			p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
+			m_rightSlotPlayerId = static_cast<int>(data.id);
+			if (isReady)
+			{
+				m_rightSlotReadyText->SetBrush("BLUE");
+				m_rightSlotReadyText->SetText(TEXT("준비완료"));
+			}
+			else
+			{
+				m_rightSlotReadyText->SetBrush("BLACK");
+				m_rightSlotReadyText->SetText(TEXT("준비중"));
+			}
+			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+		}
+		break;
+	}
 }
 
 void LobbyScene::RecvReadyPacket()
