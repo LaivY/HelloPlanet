@@ -54,7 +54,6 @@ void GS(point GS_INPUT input[1], inout TriangleStream<GS_OUTPUT> outputStream)
     float age = frac(input[0].age / input[0].lifeTime); // 0 ~ 1
     float value = sin(age * PI);                        // 0 ~ 1
     float PARTICLE_LENGTH = 1.0f * value;
-
     float hw = 0.5f * PARTICLE_LENGTH;
     float hh = 0.5f * PARTICLE_LENGTH;
     
@@ -65,7 +64,6 @@ void GS(point GS_INPUT input[1], inout TriangleStream<GS_OUTPUT> outputStream)
         float4(positionW - (hw * right) - (hh * up), 1.0f), // RB
         float4(positionW - (hw * right) + (hh * up), 1.0f)  // RT
     };
-    
     float2 uv[4] =
     {
         float2(0.0f, 1.0f),
