@@ -41,7 +41,6 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 					   const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postRootSignature,
 					   const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
-
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
 	CreateUIObjects(device, commandList);
@@ -885,7 +884,6 @@ void GameScene::UpdateShadowMatrix()
 
 void GameScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	if (!s_textures.contains("SHADOW")) return;
 	auto shadowTexture{ reinterpret_cast<ShadowTexture*>(s_textures["SHADOW"].get()) };
 
 	// 뷰포트, 가위사각형 설정
@@ -1124,6 +1122,7 @@ void GameScene::RecvBulletHit()
 
 	unique_lock<mutex> lock{ g_mutex };
 	m_uiObjects.push_back(move(hitEffect));
+	lock.unlock();
 
 	auto it{ ranges::find_if(s_monsters, [&](const unique_ptr<Monster>& monster) { return monster->GetId() == static_cast<int>(data.mobId); }) };
 	if (it != s_monsters.end())
@@ -1148,6 +1147,7 @@ void GameScene::RecvBulletHit()
 			break;
 		}
 		dmgText->SetStartPosition(Vector3::Add((*it)->GetPosition(), offset));
+		lock.lock();
 		m_textObjects.push_back(move(dmgText));
 	}
 }

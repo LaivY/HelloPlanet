@@ -568,7 +568,7 @@ FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
 }
 
-ParticleMesh::ParticleMesh() : m_vertexSize{}, m_maxVertexCount{}, m_pFilledSize{ nullptr }, m_streamOutputBufferView{}
+ParticleMesh::ParticleMesh() : m_isFirstRender{ TRUE }, m_vertexSize {}, m_maxVertexCount{}, m_pFilledSize{ nullptr }, m_streamOutputBufferView{}
 {
 
 }
@@ -585,14 +585,11 @@ void ParticleMesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 
 void ParticleMesh::RenderStreamOutput(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// 스트림 출력 렌더링
-
 	// 처음에는 정점 버퍼와 바인딩
 	// 그 이후로는 스트림 출력 결과와 바인딩
-	static bool isFirst{ true };
-	if (isFirst)
+	if (m_isFirstRender)
 	{
-		isFirst = false;
+		m_isFirstRender = FALSE;
 		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 		m_vertexBufferView.StrideInBytes = m_vertexSize;
 		m_vertexBufferView.SizeInBytes = m_vertexSize * m_nVertices;
@@ -632,19 +629,19 @@ void ParticleMesh::CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, 
 {
 	m_streamOutputBuffer = Utile::CreateBufferResource(device, commandList, NULL, m_vertexSize, m_maxVertexCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-	// 스트림출력 버퍼에 얼만큼 쓸건지를 저장하는 버퍼 생성
+	// 스트림 출력 버퍼에 쓰여진 데이터 크기를 받을 버퍼 생성
 	m_streamFilledSizeBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_STREAM_OUT);
 
-	// 스트림출력 버퍼에 데이터를 복사하기 위한 업로드 버퍼 생성
+	// 스트림 출력 버퍼에 데이터를 복사하기 위한 업로드 버퍼 생성
 	m_streamFilledSizeUploadBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
 	m_streamFilledSizeUploadBuffer->Map(0, NULL, reinterpret_cast<void**>(&m_pFilledSize));
 
-	// 스트림출력 버퍼 뷰 생성
+	// 스트림 출력 버퍼 뷰 생성
 	m_streamOutputBufferView.BufferLocation = m_streamOutputBuffer->GetGPUVirtualAddress();
 	m_streamOutputBufferView.SizeInBytes = m_vertexSize * m_maxVertexCount;
 	m_streamOutputBufferView.BufferFilledSizeLocation = m_streamFilledSizeBuffer->GetGPUVirtualAddress();
 
-	// 스트림출력 버퍼에 쓰여진 데이터 크기를 CPU에서 읽기 위한 리드백 버퍼 생성
+	// 스트림 출력 버퍼에 쓰여진 데이터 크기를 CPU에서 읽기 위한 리드백 버퍼 생성
 	m_streamFilledSizeReadBackBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	// 통상적인 렌더링에 사용되는 버퍼 생성

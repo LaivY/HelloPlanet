@@ -133,6 +133,8 @@ public:
 	void CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 protected:
+	BOOL							m_isFirstRender;					// 첫번째 렌더링인지 여부
+
 	UINT							m_vertexSize;						// 정점 구조체 크기
 	UINT							m_maxVertexCount;					// 최대 정점 개수
 

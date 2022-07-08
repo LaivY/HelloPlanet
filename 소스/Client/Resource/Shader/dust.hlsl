@@ -1,5 +1,7 @@
 #include "common.hlsl"
 
+static const float PI = 3.141592f;
+
 struct GS_INPUT
 {
     float3 position     : POSITION;
@@ -28,13 +30,12 @@ void GS_STREAM(point GS_INPUT input[1], inout PointStream<GS_INPUT> output)
     GS_INPUT particle = input[0];
 
     float age = frac(particle.age / particle.lifeTime) * particle.lifeTime;
-    //particle.position = particle.direction * particle.speed * age;
-    particle.position.x -= 4.0f * sin(age * 3.141592f);
+    particle.position.x -= 4.0f * sin(age * PI);
     particle.position.y -= particle.speed * age;
-    particle.age += g_deltaTime;
 
+    particle.age += g_deltaTime;
     age = frac(particle.age / particle.lifeTime) * particle.lifeTime;
-    particle.position.x += 4.0f * sin(age * 3.141592f);
+    particle.position.x += 4.0f * sin(age * PI);
     particle.position.y += particle.speed * age;
 
     output.Append(particle);
@@ -51,9 +52,9 @@ void GS(point GS_INPUT input[1], inout TriangleStream<GS_OUTPUT> outputStream)
     up = normalize(cross(look, right));
     
     float age = frac(input[0].age / input[0].lifeTime); // 0 ~ 1
-    float value = sin(age * 3.141592f);                 // 0 ~ 1
+    float value = sin(age * PI);                        // 0 ~ 1
     float PARTICLE_LENGTH = 1.0f * value;
-    //PARTICLE_LENGTH *= distance(g_eye, positionW) / 100.0f;
+
     float hw = 0.5f * PARTICLE_LENGTH;
     float hh = 0.5f * PARTICLE_LENGTH;
     
@@ -95,7 +96,7 @@ float4 PS(GS_OUTPUT input) : SV_TARGET
 
         // 수명의 시작과 끝은 옅고, 중간에 가장 진하도록
         float age = frac(input.age / input.lifeTime);
-        alpha *= 0.5f - 0.5f * cos(age * 2.0f * 3.141592f);
+        alpha *= 0.5f - 0.5f * cos(age * 2.0f * PI);
 
         return float4(1.0f, 1.0f, 1.0f, alpha);
     }
