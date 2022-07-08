@@ -27,7 +27,7 @@ public:
 	UCHAR GetTargetId() const;
 	
 protected:
-	void UpdatePosition(FLOAT deltaTime, const DirectX::XMVECTOR& look);
+	void UpdatePosition(FLOAT deltaTime, DirectX::XMVECTOR& look);
 	void UpdateRotation(const DirectX::XMVECTOR& look);
 	void UpdateWorldMatrix(const DirectX::XMVECTOR& look);
 	DirectX::XMVECTOR GetPlayerVector(UCHAR playerId);
