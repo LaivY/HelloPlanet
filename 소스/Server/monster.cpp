@@ -93,7 +93,7 @@ UCHAR Monster::GetTargetId() const
 	return m_target;
 }
 
-void Monster::UpdatePosition(FLOAT deltaTime, const XMVECTOR& look)
+void Monster::UpdatePosition(FLOAT deltaTime, XMVECTOR& look)
 {
 	// 몹 속도
 	// 클라이언트에서 몹 속도는 로컬좌표계 기준이다. 객체 기준 x값만큼 오른쪽으로, y값만큼 위로, z값만큼 앞으로 간다.
@@ -118,11 +118,71 @@ void Monster::UpdatePosition(FLOAT deltaTime, const XMVECTOR& look)
 		break;
 	}
 	default:
-		// 피격당한게 아니라면 타겟 플레이어를 향해 이동
-		XMStoreFloat3(&velocity, look * m_speed);
-		m_velocity = XMFLOAT3{ 0.0f, 0.0f, m_speed };
-		m_hitTimer = 0.0f;
-		break;
+		// 이동한 뒤 부딪힌다면 경로수정
+		bool isCollision{ false };
+		// 몬스터 바운딩박스의 모서리를 담을 배열
+		XMFLOAT3 temp[8]{};
+		// 로컬좌표인 바운딩박스를 월드좌표로 변환: GetBoundingBox()
+		auto monsterBoundingBox{ GetBoundingBox() };
+		monsterBoundingBox.GetCorners(temp);
+
+		XMFLOAT3 corner[4]{};
+		corner[0] = XMFLOAT3{ temp[0].x, 0.0f, temp[0].z };
+		corner[1] = XMFLOAT3{ temp[1].x, 0.0f, temp[1].z };
+		corner[2] = XMFLOAT3{ temp[5].x, 0.0f, temp[5].z };
+		corner[3] = XMFLOAT3{ temp[4].x, 0.0f, temp[4].z };
+
+		for (const auto& objectBoundingBox : g_networkFramework.hitboxes)
+		{
+			// 충돌 검사
+			if (!monsterBoundingBox.Intersects(objectBoundingBox)) continue;
+			// 충돌 되었다면...
+			objectBoundingBox.GetCorners(temp);
+
+			XMFLOAT3 oCorner[4]{};
+			oCorner[0] = XMFLOAT3{ temp[0].x, 0.0f, temp[0].z };
+			oCorner[1] = XMFLOAT3{ temp[1].x, 0.0f, temp[1].z };
+			oCorner[2] = XMFLOAT3{ temp[5].x, 0.0f, temp[5].z };
+			oCorner[3] = XMFLOAT3{ temp[4].x, 0.0f, temp[4].z };
+			for (const auto& pc : corner)
+			{
+				if (!objectBoundingBox.Contains(XMLoadFloat3(&pc))) continue;
+				float dis[4]{};
+				dis[0] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[0]), XMLoadFloat3(&oCorner[1]), XMLoadFloat3(&pc)));
+				dis[1] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[1]), XMLoadFloat3(&oCorner[2]), XMLoadFloat3(&pc)));
+				dis[2] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[2]), XMLoadFloat3(&oCorner[3]), XMLoadFloat3(&pc)));
+				dis[3] = XMVectorGetX(XMVector3LinePointDistance(XMLoadFloat3(&oCorner[3]), XMLoadFloat3(&oCorner[0]), XMLoadFloat3(&pc)));
+
+				float* minDis{std::ranges::min_element(dis) };
+				XMFLOAT3 v{};
+				if (*minDis == dis[0])
+				{
+					v = Vector3::Normalize(Vector3::Sub(oCorner[0], pc));
+				}
+				else if (*minDis == dis[1])
+				{
+					v = Vector3::Normalize(Vector3::Sub(oCorner[1], pc));
+				}
+				else if (*minDis == dis[2])
+				{
+					v = Vector3::Normalize(Vector3::Sub(oCorner[2], pc));
+				}
+				else if (*minDis == dis[3])
+				{
+					v = Vector3::Normalize(Vector3::Sub(oCorner[3], pc));
+				}
+				look = XMLoadFloat3(&v);
+				XMStoreFloat3(&velocity, XMLoadFloat3(&v) * m_speed );
+				isCollision = true;
+			}
+		}
+		if (!isCollision) {
+			// 피격당한게 아니라면 타겟 플레이어를 향해 이동
+			XMStoreFloat3(&velocity, look * m_speed);
+			m_velocity = XMFLOAT3{ 0.0f, 0.0f, m_speed };
+			m_hitTimer = 0.0f;
+			break;
+		}
 	}
 
 	// 몹 이동

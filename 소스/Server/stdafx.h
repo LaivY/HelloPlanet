@@ -44,6 +44,12 @@ namespace Vector3
     {
         return XMFLOAT3{ a.x * scalar, a.y * scalar, a.z * scalar };
     }
+	inline XMFLOAT3 Normalize(const XMFLOAT3& a)
+	{
+		XMFLOAT3 result;
+		XMStoreFloat3(&result, XMVector3Normalize(XMLoadFloat3(&a)));
+		return result;
+	}
     inline FLOAT Length(const XMFLOAT3& a)
     {
         XMFLOAT3 result;
