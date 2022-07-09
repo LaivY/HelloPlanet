@@ -4,8 +4,8 @@
 #include "framework.h"
 #include "object.h"
 #include "player.h"
-#include "shadow.h"
 #include "textObject.h"
+#include "texture.h"
 #include "uiObject.h"
 #include "windowObject.h"
 
@@ -41,7 +41,9 @@ LobbyScene::~LobbyScene()
 #endif
 }
 
-void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature, const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
+void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList,
+						const ComPtr<ID3D12RootSignature>& rootSignature, const ComPtr<ID3D12RootSignature>& postProcessRootSignature,
+						const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
@@ -49,7 +51,6 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
-	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 
 #ifdef NETWORK
 	g_networkThread = thread{ &LobbyScene::RecvPacket, this };
@@ -154,7 +155,7 @@ void LobbyScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3
 	}
 }
 
-void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+void LobbyScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);
@@ -216,7 +217,7 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_player = make_unique<Player>(TRUE);
 	m_player->SetWeaponType(eWeaponType::AR);
 	m_player->PlayAnimation("RELOAD");
-	m_player->SetCamera(m_camera);
+	m_player->SetCamera(m_camera.get());
 }
 
 void LobbyScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -304,7 +305,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto ready{ make_unique<MenuTextObject>() };
 	ready->SetBrush("BLACK");
 	ready->SetMouseOverBrush("BLACK");
-	ready->SetFormat("48_RIGHT");
+	ready->SetFormat("48R");
 	ready->SetText(TEXT("준비"));
 	ready->SetPivot(ePivot::CENTERBOT);
 	ready->SetScreenPivot(ePivot::CENTERBOT);
@@ -314,7 +315,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto leftText{ make_unique<MenuTextObject>() };
 	leftText->SetBrush("BLACK");
 	leftText->SetMouseOverBrush("BLUE");
-	leftText->SetFormat("48_RIGHT");
+	leftText->SetFormat("48R");
 	leftText->SetText(TEXT("<"));
 	leftText->SetPivot(ePivot::CENTERBOT);
 	leftText->SetScreenPivot(ePivot::CENTERBOT);
@@ -325,7 +326,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto rightText{ make_unique<MenuTextObject>() };
 	rightText->SetBrush("BLACK");
 	rightText->SetMouseOverBrush("BLUE");
-	rightText->SetFormat("48_RIGHT");
+	rightText->SetFormat("48R");
 	rightText->SetText(TEXT(">"));
 	rightText->SetPivot(ePivot::CENTERBOT);
 	rightText->SetScreenPivot(ePivot::CENTERBOT);
@@ -337,7 +338,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	auto exit{ make_unique<MenuTextObject>() };
 	exit->SetBrush("RED");
 	exit->SetMouseOverBrush("RED");
-	exit->SetFormat("48_RIGHT");
+	exit->SetFormat("48R");
 	exit->SetText(TEXT("나가기"));
 	exit->SetPivot(ePivot::RIGHTBOT);
 	exit->SetScreenPivot(ePivot::RIGHTBOT);
@@ -352,7 +353,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 	auto leftReadyText{ make_unique<TextObject>() };
 	leftReadyText->SetBrush("BLACK");
-	leftReadyText->SetFormat("48_RIGHT");
+	leftReadyText->SetFormat("48R");
 	leftReadyText->SetText(TEXT("대기중"));
 	leftReadyText->SetPivot(ePivot::CENTERBOT);
 	leftReadyText->SetScreenPivot(ePivot::CENTERBOT);
@@ -362,7 +363,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 
 	auto rightReadyText{ make_unique<TextObject>() };
 	rightReadyText->SetBrush("BLACK");
-	rightReadyText->SetFormat("48_RIGHT");
+	rightReadyText->SetFormat("48R");
 	rightReadyText->SetText(TEXT("대기중"));
 	rightReadyText->SetPivot(ePivot::CENTERBOT);
 	rightReadyText->SetScreenPivot(ePivot::CENTERBOT);
@@ -428,7 +429,7 @@ void LobbyScene::CloseWindow()
 
 void LobbyScene::Update(FLOAT deltaTime)
 {
-	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
 	UpdateShadowMatrix();
 }
 
@@ -494,25 +495,24 @@ void LobbyScene::UpdateShadowMatrix()
 
 void LobbyScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	if (!m_shadowMap) return;
+	if (!s_textures.contains("SHADOW")) return;
+	auto shadowTexture{ reinterpret_cast<ShadowTexture*>(s_textures["SHADOW"].get()) };
 
 	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	commandList->RSSetViewports(1, &shadowTexture->GetViewport());
+	commandList->RSSetScissorRects(1, &shadowTexture->GetScissorRect());
 
 	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	shadowTexture->UpdateShaderVariable(commandList);
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	commandList->ClearDepthStencilView(shadowTexture->GetDsvCpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &shadowTexture->GetDsvCpuHandle());
 
 	// 렌더링
 	for (const auto& o : m_gameObjects)
@@ -521,12 +521,13 @@ void LobbyScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comm
 		if (shadowShader)
 			o->Render(commandList, shadowShader);
 	}
-	if (m_player) m_player->RenderToShadowMap(commandList);
 	for (const auto& p : m_multiPlayers)
 		if (p) p->RenderToShadowMap(commandList);
+	if (m_player)
+		m_player->RenderToShadowMap(commandList);
 
 	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 void LobbyScene::ProcessPacket()
@@ -539,7 +540,6 @@ void LobbyScene::ProcessPacket()
 
 	UCHAR size{ static_cast<UCHAR>(buf[0]) };
 	UCHAR type{ static_cast<UCHAR>(buf[1]) };
-
 	switch (type)
 	{
 	case SC_PACKET_LOGIN_CONFIRM:
@@ -562,7 +562,7 @@ void LobbyScene::ProcessPacket()
 
 void LobbyScene::RecvLoginOkPacket()
 {
-	// 플레이어정보 + 닉네임 + 준비상태 + 무기상태
+	// 플레이어정보 + 닉네임 + 준비 상태 + 무기 종류
 	char buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1 + 1]{};
 	WSABUF wsabuf{ sizeof(buf), buf };
 	DWORD recvByte{}, recvFlag{};
@@ -575,7 +575,7 @@ void LobbyScene::RecvLoginOkPacket()
 	memcpy(&data, buf, sizeof(data));
 	memcpy(&name, &buf[sizeof(PlayerData)], sizeof(name));
 
-	// 처음 들어왔을때 다른 플레이어들의 레디, 무기 상태를 알 수 있게 추가 함
+	// 처음 들어왔을때 다른 플레이어들의 준비 상태와 무기 종류를 알 수 있게함
 	bool isReady = buf[sizeof(PlayerData) + MAX_NAME_SIZE];
 	auto weaponType = static_cast<eWeaponType>(buf[sizeof(PlayerData) + MAX_NAME_SIZE + 1]);
 	
@@ -584,48 +584,50 @@ void LobbyScene::RecvLoginOkPacket()
 		m_player->SetId(static_cast<int>(data.id));
 		return;
 	}
-	if (m_player->GetId() != data.id)
-		for (auto& p : m_multiPlayers)
+	if (m_player->GetId() == data.id)
+		return;
+
+	// 멀티플레이어가 들어왔으면 왼쪽, 오른쪽에 위치시킴
+	for (auto& p : m_multiPlayers)
+	{
+		if (p) continue;
+		p = make_shared<Player>(TRUE);
+		p->SetWeaponType(weaponType);
+		p->SetId(static_cast<int>(data.id));
+		if (m_leftSlotPlayerId == -1)
 		{
-			if (p) continue;
-			p = make_unique<Player>(TRUE);
-			p->SetWeaponType(weaponType);
-			p->SetId(static_cast<int>(data.id));
-			p->PlayAnimation("IDLE");
-			if (m_leftSlotPlayerId == -1)
+			p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
+			m_leftSlotPlayerId = static_cast<int>(data.id);
+			if (isReady)
 			{
-				p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
-				m_leftSlotPlayerId = static_cast<int>(data.id);
-				if (isReady)
-				{
-					m_leftSlotReadyText->SetBrush("BLUE");
-					m_leftSlotReadyText->SetText(TEXT("준비완료"));
-				}
-				else
-				{
-					m_leftSlotReadyText->SetBrush("BLACK");
-					m_leftSlotReadyText->SetText(TEXT("준비중"));
-				}
-				m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
+				m_leftSlotReadyText->SetBrush("BLUE");
+				m_leftSlotReadyText->SetText(TEXT("준비완료"));
 			}
-			else if (m_rightSlotPlayerId == -1)
+			else
 			{
-				p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
-				m_rightSlotPlayerId = static_cast<int>(data.id);
-				if (isReady)
-				{
-					m_rightSlotReadyText->SetBrush("BLUE");
-					m_rightSlotReadyText->SetText(TEXT("준비완료"));
-				}
-				else
-				{
-					m_rightSlotReadyText->SetBrush("BLACK");
-					m_rightSlotReadyText->SetText(TEXT("준비중"));
-				}
-				m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+				m_leftSlotReadyText->SetBrush("BLACK");
+				m_leftSlotReadyText->SetText(TEXT("준비중"));
 			}
-			break;
+			m_leftSlotReadyText->SetPosition(m_leftSlotReadyText->GetPivotPosition());
 		}
+		else if (m_rightSlotPlayerId == -1)
+		{
+			p->Move(XMFLOAT3{ -25.0f, 0.0f, -20.0f });
+			m_rightSlotPlayerId = static_cast<int>(data.id);
+			if (isReady)
+			{
+				m_rightSlotReadyText->SetBrush("BLUE");
+				m_rightSlotReadyText->SetText(TEXT("준비완료"));
+			}
+			else
+			{
+				m_rightSlotReadyText->SetBrush("BLACK");
+				m_rightSlotReadyText->SetText(TEXT("준비중"));
+			}
+			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
+		}
+		break;
+	}
 }
 
 void LobbyScene::RecvReadyPacket()
@@ -764,7 +766,7 @@ unique_ptr<Player>& LobbyScene::GetPlayer()
 	return m_player;
 }
 
-array<unique_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
+array<shared_ptr<Player>, Setting::MAX_PLAYERS>& LobbyScene::GetMultiPlayers()
 {
 	return m_multiPlayers;
 }

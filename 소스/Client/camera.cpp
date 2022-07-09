@@ -3,7 +3,7 @@
 #include "player.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_pcbCamera2{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
-				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_offset{ 0.0f, 29.5f, 0.0f }
+				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_player{ nullptr }, m_offset{0.0f, 29.5f, 0.0f}
 {
 	XMStoreFloat4x4(&m_viewMatrix, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_projMatrix, XMMatrixIdentity());

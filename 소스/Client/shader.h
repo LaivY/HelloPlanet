@@ -42,11 +42,11 @@ public:
 	~StencilWriteShader() = default;
 };
 
-class FadeShader : public Shader
+class ComputeShader : public Shader
 {
 public:
-	FadeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs);
-	~FadeShader() = default;
+	ComputeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& postRootSignature, const wstring& shaderFile, const string& cs);
+	~ComputeShader() = default;
 };
 
 class WireframeShader : public Shader
@@ -54,4 +54,29 @@ class WireframeShader : public Shader
 public:
 	WireframeShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& ps);
 	~WireframeShader() = default;
+};
+
+class ParticleShader abstract : public Shader
+{
+public:
+	virtual ~ParticleShader() = default;
+
+	ComPtr<ID3D12PipelineState> GetStreamPipelineState() const;
+
+protected:
+	ComPtr<ID3D12PipelineState> m_streamPipelineState;
+};
+
+class DustParticleShader : public ParticleShader
+{
+public:
+	DustParticleShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& streamGs, const string& gs, const string& ps);
+	~DustParticleShader() = default;
+};
+
+class TrailParticleShader : public ParticleShader
+{
+public:
+	TrailParticleShader(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12RootSignature>& rootSignature, const wstring& shaderFile, const string& vs, const string& streamGs, const string& gs, const string& ps);
+	~TrailParticleShader() = default;
 };

@@ -2,7 +2,76 @@
 #include "DDSTextureLoader12.h"
 #include "texture.h"
 
-void Texture::CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT textureFotmat, DXGI_FORMAT shaderResourceViewFormat, UINT width, UINT height, UINT rootParameterIndex)
+ComPtr<ID3D12DescriptorHeap>	Texture::s_srvHeap;
+vector<Texture::Resource>		Texture::s_resources;
+vector<ComPtr<ID3D12Resource>>	Texture::s_uploadBuffers;
+
+Texture::Texture() : m_count{ 0 }
+{
+	m_index = s_resources.size();
+}
+
+void Texture::CreateShaderResourceView(const ComPtr<ID3D12Device>& device)
+{
+	// 이미 셰이더 리소스 뷰가 있다면 해제
+	if (s_srvHeap) s_srvHeap.Reset();
+
+	// 셰이더 리소스 뷰 서술자 생성
+	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
+	srvHeapDesc.NumDescriptors = static_cast<UINT>(s_resources.size());
+	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&s_srvHeap));
+
+	// 셰이더 리소스 뷰 생성
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ s_srvHeap->GetCPUDescriptorHandleForHeapStart() };
+	for (const auto& data : s_resources)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		switch (data.type)
+		{
+		case eTextureType::DEFAULT:
+			srvDesc.Format = data.buffer->GetDesc().Format;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MipLevels = -1;
+			break;
+		case eTextureType::SHADOW:
+			srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+			srvDesc.Texture2DArray.MostDetailedMip = 0;
+			srvDesc.Texture2DArray.MipLevels = 1;
+			srvDesc.Texture2DArray.FirstArraySlice = 0;
+			srvDesc.Texture2DArray.ArraySize = Setting::SHADOWMAP_COUNT;
+			srvDesc.Texture2DArray.PlaneSlice = 0;
+			srvDesc.Texture2DArray.ResourceMinLODClamp = 0.0f;
+			break;
+		case eTextureType::DEPTH:
+			srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			break;
+		case eTextureType::STENCIL:
+			srvDesc.Format = DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 1;
+			break;
+		}
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		device->CreateShaderResourceView(data.buffer.Get(), &srvDesc, srvDescriptorHandle);
+		srvDescriptorHandle.Offset(g_cbvSrvDescriptorIncrementSize);
+	}
+}
+
+void Texture::ReleaseUploadBuffer()
+{
+	s_uploadBuffers.clear();
+}
+
+void Texture::Create(const ComPtr<ID3D12Device>& device, DXGI_FORMAT textureFotmat, UINT width, UINT height, UINT rootParameterIndex, eTextureType type)
 {
 	// 버퍼 생성
 	ComPtr<ID3D12Resource> buffer;
@@ -14,30 +83,47 @@ void Texture::CreateTexture(const ComPtr<ID3D12Device>& device, DXGI_FORMAT text
 		NULL,
 		IID_PPV_ARGS(&buffer)
 	));
+	s_resources.emplace_back(buffer, rootParameterIndex, type);
+	++m_count;
+}
 
-	// 셰이더 리소스 뷰 서술자힙 생성
-	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-	srvHeapDesc.NumDescriptors = 1;
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	DX::ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
+void Texture::Load(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT rootParameterIndex, const wstring& fileName)
+{
+	ComPtr<ID3D12Resource> buffer, uploadBuffer;
 
-	// 셰이더 리소스 뷰 생성
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = shaderResourceViewFormat;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = 1;
-	srvDesc.Texture2D.PlaneSlice = (shaderResourceViewFormat == DXGI_FORMAT_X24_TYPELESS_G8_UINT) ? 1 : 0;
-	device->CreateShaderResourceView(buffer.Get(), &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+	// DDS 텍스쳐 로딩
+	unique_ptr<uint8_t[]> ddsData;
+	vector<D3D12_SUBRESOURCE_DATA> subresources;
+	DDS_ALPHA_MODE ddsAlphaMode{ DDS_ALPHA_MODE_UNKNOWN };
+	DX::ThrowIfFailed(LoadDDSTextureFromFileEx(device.Get(), fileName.c_str(), 0, D3D12_RESOURCE_FLAG_NONE, DDS_LOADER_DEFAULT, &buffer, ddsData, subresources, &ddsAlphaMode));
 
-	m_textures.push_back(make_pair(rootParameterIndex, buffer));
+	// 디폴트 힙으로 데이터 복사하기 위한 업로드 힙 생성
+	UINT nSubresources{ static_cast<UINT>(subresources.size()) };
+	UINT64 nBytes{ GetRequiredIntermediateSize(buffer.Get(), 0, nSubresources) };
+	DX::ThrowIfFailed(device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(nBytes),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		NULL,
+		IID_PPV_ARGS(&uploadBuffer)
+	));
+
+	// subresources에 있는 데이터를 textureBuffer로 복사
+	UpdateSubresources(commandList.Get(), buffer.Get(), uploadBuffer.Get(), 0, 0, nSubresources, subresources.data());
+
+	// 리소스 베리어 설정
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(buffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
+
+	// 저장
+	s_resources.emplace_back(buffer, rootParameterIndex, eTextureType::DEFAULT);
+	s_uploadBuffers.push_back(move(uploadBuffer));
+	++m_count;
 }
 
 void Texture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12Resource>& src, D3D12_RESOURCE_STATES currSrcResourceState)
 {
-	const auto& dst{ m_textures.front().second };
+	const auto& dst{ s_resources[m_index].buffer };
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(dst.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST));
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), currSrcResourceState, D3D12_RESOURCE_STATE_COPY_SOURCE));
 	commandList->CopyResource(dst.Get(), src.Get());
@@ -45,86 +131,70 @@ void Texture::Copy(const ComPtr<ID3D12GraphicsCommandList>& commandList, const C
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(src.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, currSrcResourceState));
 }
 
-void Texture::LoadTextureFile(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT rootParameterIndex, const wstring& fileName)
+void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, UINT index)
 {
-	ComPtr<ID3D12Resource> textureBuffer, textureUploadBuffer;
+	int i{ static_cast<int>(m_index + min(index, m_count - 1)) };
+	CD3DX12_GPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ s_srvHeap->GetGPUDescriptorHandleForHeapStart() };
+	srvDescriptorHandle.Offset(i, g_cbvSrvDescriptorIncrementSize);
+	commandList->SetGraphicsRootDescriptorTable(s_resources[i].rootParameterIndex, srvDescriptorHandle);
+}
 
-	// DDS 텍스쳐 로딩
-	unique_ptr<uint8_t[]> ddsData;
-	vector<D3D12_SUBRESOURCE_DATA> subresources;
-	DDS_ALPHA_MODE ddsAlphaMode{ DDS_ALPHA_MODE_UNKNOWN };
-	DX::ThrowIfFailed(LoadDDSTextureFromFileEx(device.Get(), fileName.c_str(), 0, D3D12_RESOURCE_FLAG_NONE, DDS_LOADER_DEFAULT, &textureBuffer, ddsData, subresources, &ddsAlphaMode));
+ComPtr<ID3D12Resource> Texture::GetBuffer(UINT index) const
+{
+	int i{ static_cast<int>(m_index + min(index, m_count - 1)) };
+	return s_resources[i].buffer;
+}
 
-	// 디폴트 힙으로 데이터 복사하기 위한 업로드 힙 생성
-	UINT nSubresources{ (UINT)subresources.size() };
-	UINT64 nBytes{ GetRequiredIntermediateSize(textureBuffer.Get(), 0, nSubresources) };
+size_t Texture::GetCount() const
+{
+	return m_count;
+}
+
+ShadowTexture::ShadowTexture(const ComPtr<ID3D12Device>& device, UINT width, UINT height, INT count)
+	: m_viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f },
+	  m_scissorRect{ 0, 0, static_cast<int>(width), static_cast<int>(height) }
+{
+	ComPtr<ID3D12Resource> buffer;
 	DX::ThrowIfFailed(device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(nBytes),
+		&CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R24G8_TYPELESS, width, height, count, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
 		D3D12_RESOURCE_STATE_GENERIC_READ,
-		NULL,
-		IID_PPV_ARGS(&textureUploadBuffer)
+		&CD3DX12_CLEAR_VALUE{ DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0 },
+		IID_PPV_ARGS(&buffer)
 	));
+	s_resources.emplace_back(buffer, 6, eTextureType::SHADOW);
+	m_count = 1;
 
-	// subresources에 있는 데이터를 textureBuffer로 복사
-	UpdateSubresources(commandList.Get(), textureBuffer.Get(), textureUploadBuffer.Get(), 0, 0, nSubresources, subresources.data());
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvHeapDesc.NodeMask = 0;
+	DX::ThrowIfFailed(device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
+	m_dsvCpuHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	// 리소스 베리어 설정
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(textureBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ));
-
-	// 저장
-	m_textures.push_back(make_pair(rootParameterIndex, textureBuffer));
-	m_textureUploadBuffers.push_back(textureUploadBuffer);
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+	dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+	dsvDesc.Texture2DArray.MipSlice = 0;
+	dsvDesc.Texture2DArray.FirstArraySlice = 0;
+	dsvDesc.Texture2DArray.ArraySize = count;
+	device->CreateDepthStencilView(buffer.Get(), &dsvDesc, m_dsvCpuHandle);
 }
 
-void Texture::CreateTextureFromLoadedFiles(const ComPtr<ID3D12Device>& device)
+CD3DX12_CPU_DESCRIPTOR_HANDLE ShadowTexture::GetDsvCpuHandle() const
 {
-	// 셰이더 리소스 뷰 서술자 생성
-	if (m_srvHeap) m_srvHeap.Reset();
-	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
-	srvHeapDesc.NumDescriptors = static_cast<UINT>(m_textures.size()); // SRV 개수
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap));
-
-	// 셰이더 리소스 뷰 생성
-	CD3DX12_CPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ m_srvHeap->GetCPUDescriptorHandleForHeapStart() };
-	for (const auto& [_, texture] : m_textures)
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = texture->GetDesc().Format;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = -1;
-		device->CreateShaderResourceView(texture.Get(), &srvDesc, srvDescriptorHandle);
-		srvDescriptorHandle.Offset(g_cbvSrvDescriptorIncrementSize);
-	}
+	return m_dsvCpuHandle;
 }
 
-void Texture::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, int index)
+D3D12_VIEWPORT ShadowTexture::GetViewport() const
 {
-	ID3D12DescriptorHeap* ppHeaps[]{ m_srvHeap.Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	CD3DX12_GPU_DESCRIPTOR_HANDLE srvDescriptorHandle{ m_srvHeap->GetGPUDescriptorHandleForHeapStart() };
-
-	if (index) // index번째의 텍스쳐를 업데이트함
-	{
-		srvDescriptorHandle.Offset(index, g_cbvSrvDescriptorIncrementSize);
-		commandList->SetGraphicsRootDescriptorTable(m_textures[index].first, srvDescriptorHandle);
-	}
-	else // 모든 텍스쳐들을 업데이트함
-	{
-		for (const auto& [rootParameterIndex, _] : m_textures)
-		{
-			commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, srvDescriptorHandle);
-			srvDescriptorHandle.Offset(g_cbvSrvDescriptorIncrementSize);
-		}
-	}
+	return m_viewport;
 }
 
-void Texture::ReleaseUploadBuffer()
+D3D12_RECT ShadowTexture::GetScissorRect() const
 {
-	for (auto& textureUploadBuffer : m_textureUploadBuffers)
-		textureUploadBuffer.Reset();
+	return m_scissorRect;
 }

@@ -6,7 +6,7 @@
 #include "shader.h"
 #include "texture.h"
 
-GameObject::GameObject() : m_isDeleted{ FALSE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
+GameObject::GameObject() : m_isValid{ TRUE }, m_isMakeOutline{ FALSE }, m_roll{}, m_pitch{}, m_yaw{}, m_scale{ 1.0f, 1.0f, 1.0f }, m_velocity{}, m_textureInfo{ nullptr }, m_animationInfo{ nullptr }
 {
 	XMStoreFloat4x4(&m_worldMatrix, XMMatrixIdentity());
 }
@@ -23,9 +23,6 @@ void GameObject::Update(FLOAT deltaTime)
 	// 텍스쳐 타이머 진행
 	if (m_texture && m_textureInfo)
 	{
-		// 타이머 진행
-		m_textureInfo->timer += deltaTime;
-
 		// 프레임 증가
 		if (m_textureInfo->timer > m_textureInfo->interver)
 		{
@@ -34,16 +31,19 @@ void GameObject::Update(FLOAT deltaTime)
 		}
 
 		// 텍스쳐 애니메이션이 마지막일 경우
-		if (m_textureInfo->frame >= m_texture->GetTextureCount())
+		if (m_textureInfo->frame >= m_texture->GetCount())
 		{
-			if (m_textureInfo->doRepeat)
+			if (m_textureInfo->loop)
 				m_textureInfo->frame = 0;
 			else
 			{
-				m_textureInfo->frame = static_cast<int>(m_texture->GetTextureCount() - 1);
-				m_isDeleted = true;
+				m_textureInfo->frame = static_cast<int>(m_texture->GetCount() - 1);
+				m_isValid = FALSE;
 			}
 		}
+
+		// 타이머 진행
+		m_textureInfo->timer += deltaTime;
 	}
 
 	// 애니메이션 타이머 진행
@@ -134,7 +134,7 @@ void GameObject::PlayAnimation(const string& animationName, BOOL doBlending)
 
 void GameObject::Delete()
 {
-	m_isDeleted = TRUE;
+	m_isValid = FALSE;
 }
 
 void GameObject::SetOutline(BOOL isMakeOutline)
@@ -202,9 +202,9 @@ void GameObject::AddHitbox(unique_ptr<Hitbox>& hitbox)
 	m_hitboxes.push_back(move(hitbox));
 }
 
-BOOL GameObject::isDeleted() const
+BOOL GameObject::isValid() const
 {
-	return m_isDeleted;
+	return m_isValid;
 }
 
 BOOL GameObject::isMakeOutline() const
@@ -215,6 +215,11 @@ BOOL GameObject::isMakeOutline() const
 XMFLOAT4X4 GameObject::GetWorldMatrix() const
 {
 	return m_worldMatrix;
+}
+
+XMFLOAT3 GameObject::GetRollPitchYaw() const
+{
+	return XMFLOAT3{ m_roll, m_pitch, m_yaw };
 }
 
 XMFLOAT3 GameObject::GetRight() const
@@ -296,7 +301,70 @@ void Bullet::Update(FLOAT deltaTime)
 	Move(Vector3::Mul(m_direction, m_speed * deltaTime));
 	m_lifeTimer += deltaTime;
 	if (m_lifeTimer > m_lifeTime)
-		m_isDeleted = TRUE;
+		Delete();
+}
+
+Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
+{
+	SetShader(Scene::s_shaders["ANIMATION"]);
+	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);
+
+	switch (type)
+	{
+	case eMobType::GAROO:
+	{
+		SetMesh(Scene::s_meshes["GAROO"]);
+		SetTexture(Scene::s_textures["GAROO"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 20.0f, -1.0f }, XMFLOAT3{ 5.0f, 20.0f, 7.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+
+#ifdef RENDER_HITBOX
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 11.5f, -1.0f }, XMFLOAT3{ 5.0f, 4.0f, 7.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
+#endif
+
+		break;
+	}
+	case eMobType::SERPENT:
+	{
+		SetMesh(Scene::s_meshes["SERPENT"]);
+		SetTexture(Scene::s_textures["SERPENT"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+		break;
+	}
+	case eMobType::HORROR:
+	{
+		SetMesh(Scene::s_meshes["HORROR"]);
+		SetTexture(Scene::s_textures["HORROR"]);
+		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 20.0f, 5.0f }, XMFLOAT3{ 15.0f, 20.0f, 22.0f }) };
+		collisionBox->SetOwner(this);
+		AddHitbox(collisionBox);
+
+#ifdef RENDER_HITBOX
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
+#endif
+		break;
+	}
+	case eMobType::ULIFO:
+	{
+		SetMesh(Scene::s_meshes["ULIFO"]);
+		SetTexture(Scene::s_textures["ULIFO"]);
+#ifdef RENDER_HITBOX
+		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -1.0f, 125.0f, 0.0f }, XMFLOAT3{ 28.0f, 17.0f, 30.0f }) };
+		hitbox->SetOwner(this);
+		AddHitbox(hitbox);
+#endif
+		break;
+	}
+	}
+
+	PlayAnimation("IDLE");
 }
 
 void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
@@ -308,7 +376,7 @@ void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
 		case eAnimationState::PLAY:
 			if (m_animationInfo->currAnimationName == "DIE")
 			{
-				m_isDeleted = TRUE;
+				Delete();
 				break;
 			}
 			PlayAnimation(m_animationInfo->currAnimationName);
@@ -330,6 +398,10 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	case eMobAnimationType::IDLE:
 		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
 			PlayAnimation("IDLE", TRUE);
+		break;
+	case eMobAnimationType::WALKING:
+		if (m_animationInfo->currAnimationName != "WALKING" && m_animationInfo->afterAnimationName != "WALKING")
+			PlayAnimation("WALKING", TRUE);
 		break;
 	case eMobAnimationType::RUNNING:
 		if (m_animationInfo->currAnimationName != "RUNNING" && m_animationInfo->afterAnimationName != "RUNNING")
@@ -354,6 +426,54 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 	SetPosition(monsterData.pos);
 	SetVelocity(monsterData.velocity);
 	Rotate(0.0f, 0.0f, monsterData.yaw - m_yaw);
+}
+
+INT Monster::GetId() const
+{
+	return m_id;
+}
+
+eMobType Monster::GetType() const
+{
+	return m_type;
+}
+
+OutlineObject::OutlineObject(const XMFLOAT3& color, FLOAT thickness)
+{
+	SetMesh(Scene::s_meshes["FULLSCREEN"]);
+	SetShader(Scene::s_shaders["FULLSCREEN"]);
+
+	SetColor(color);
+	SetThickness(thickness);
+}
+
+void OutlineObject::SetColor(const XMFLOAT3& color)
+{
+	m_worldMatrix.m[3][0] = color.x;
+	m_worldMatrix.m[3][1] = color.y;
+	m_worldMatrix.m[3][2] = color.z;
+}
+
+void OutlineObject::SetThickness(FLOAT thickness)
+{
+	m_worldMatrix.m[3][3] = thickness;
+}
+
+DustParticle::DustParticle()
+{
+	m_mesh = Scene::s_meshes["DUST"];
+	m_shader = Scene::s_shaders["DUST"];
+}
+
+void DustParticle::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	UpdateShaderVariable(commandList);
+	auto m{ reinterpret_cast<ParticleMesh*>(m_mesh.get()) };
+	auto s{ reinterpret_cast<ParticleShader*>(m_shader.get()) };
+	commandList->SetPipelineState(s->GetStreamPipelineState().Get());
+	m->RenderStreamOutput(commandList);
+	commandList->SetPipelineState(s->GetPipelineState().Get());
+	m->Render(commandList);
 }
 
 Hitbox::Hitbox(const XMFLOAT3& center, const XMFLOAT3& extents, const XMFLOAT3& rollPitchYaw) : m_owner{ nullptr }, m_center{ center }, m_extents{ extents }, m_rollPitchYaw{ rollPitchYaw }

@@ -2,6 +2,7 @@
 
 class Camera;
 class Mesh;
+class ParticleMesh;
 class Player;
 class Shader;
 class Texture;
@@ -14,12 +15,12 @@ enum class eAnimationState
 
 struct TextureInfo
 {
-	TextureInfo() : frame{}, timer{}, interver{ 1.0f / 60.0f }, doRepeat{ TRUE } { }
+	TextureInfo() : frame{}, timer{}, interver{ 1.0f / 60.0f }, loop{ TRUE } { }
 
 	INT		frame;
 	FLOAT	timer;
 	FLOAT	interver;
-	BOOL	doRepeat;
+	BOOL	loop;
 };
 
 struct AnimationInfo
@@ -69,9 +70,10 @@ public:
 	void SetTextureInfo(unique_ptr<TextureInfo>& textureInfo);
 	void AddHitbox(unique_ptr<Hitbox>& hitbox);
 
-	BOOL isDeleted() const;
+	BOOL isValid() const;
 	BOOL isMakeOutline() const;
 	XMFLOAT4X4 GetWorldMatrix() const;
+	XMFLOAT3 GetRollPitchYaw() const;
 	XMFLOAT3 GetRight() const;
 	XMFLOAT3 GetUp() const;
 	XMFLOAT3 GetLook() const;
@@ -84,7 +86,7 @@ public:
 	AnimationInfo* GetUpperAnimationInfo() const;
 
 protected:
-	BOOL							m_isDeleted;			// 삭제 여부
+	BOOL							m_isValid;			    // 유효 여부
 	BOOL							m_isMakeOutline;		// 외곽선 여부
 
 	XMFLOAT4X4						m_worldMatrix;			// 월드 변환 행렬
@@ -135,14 +137,37 @@ private:
 class Monster : public GameObject
 {
 public:
-	Monster() : m_id{ -1 } { }
+	Monster(INT id, eMobType type);
 	~Monster() = default;
 
 	void OnAnimation(FLOAT currFrame, UINT endFrame);
 	void ApplyServerData(const MonsterData& monsterData);
 
+	INT GetId() const;
+	eMobType GetType() const;
+
 private:
-	INT	m_id;
+	INT			m_id;
+	eMobType	m_type;
+};
+
+class OutlineObject : public GameObject
+{
+public:
+	OutlineObject(const XMFLOAT3& color, FLOAT thickness);
+	~OutlineObject() = default;
+
+	void SetColor(const XMFLOAT3& color);
+	void SetThickness(FLOAT thickness);
+};
+
+class DustParticle : public GameObject
+{
+public:
+	DustParticle();
+	~DustParticle() = default;
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 };
 
 class Hitbox

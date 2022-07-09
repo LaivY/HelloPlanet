@@ -23,11 +23,11 @@ float4 PS(PS_INPUT input) : SV_TARGET
         output = g_materials[input.materialIndex].baseColor;
     }
 
-    float4 gradiant = float4(0.1f, 0.1f, 0.1f, 1.0f);
+    float3 gradiant = float3(0.1f, 0.1f, 0.1f);
     float l = length(g_eye - input.positionW.xyz);
     l /= 7000.0f;
-    gradiant.xyz += l;
+    gradiant += l;
 
     float shadowFactor = CalcShadowFactor(input.positionW);
-    return output + gradiant * shadowFactor;
+    return float4(output.rgb + gradiant * shadowFactor, output.a);
 }

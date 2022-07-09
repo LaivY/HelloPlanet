@@ -1,19 +1,16 @@
 ﻿#pragma once
 #include "object.h"
 
-class Player;
-
 enum class ePivot
 {
-	LEFTTOP, CENTERTOP, RIGHTTOP,
-	LEFTCENTER, CENTER, RIGHTCENTER,
-	LEFTBOT, CENTERBOT, RIGHTBOT
+	LEFTTOP,	CENTERTOP,	RIGHTTOP,
+	LEFTCENTER, CENTER,		RIGHTCENTER,
+	LEFTBOT,	CENTERBOT,	RIGHTBOT
 };
 
 class UIObject : public GameObject
 {
 public:
-	UIObject();
 	UIObject(FLOAT width, FLOAT height);
 	virtual ~UIObject() = default;
 
@@ -124,11 +121,35 @@ public:
 	HitUIObject(int monsterId);
 	~HitUIObject() = default;
 
-	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
 	virtual void Update(FLOAT deltaTime);
 
 private:
 	INT		m_monsterId;
 	FLOAT	m_angle;
 	FLOAT	m_timer;
+};
+
+class AutoTargetUIObject : public UIObject
+{
+public:
+	AutoTargetUIObject();
+	~AutoTargetUIObject() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	Player* m_player;
+	Camera* m_camera;
+};
+
+class SkillGageUIObject : public UIObject
+{
+public:
+	SkillGageUIObject();
+	~SkillGageUIObject() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	Player* m_player;
 };

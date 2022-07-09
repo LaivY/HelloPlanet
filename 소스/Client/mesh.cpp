@@ -2,7 +2,7 @@
 #include "mesh.h"
 #include "object.h"
 
-#define PLAYER_UPPER_JOINT_START 23
+#define PLAYER_UPPER_JOINT_END 23
 
 Mesh::Mesh() : m_nVertices{ 0 }, m_nIndices{ 0 }, m_vertexBufferView{}, m_indexBufferView{}, m_primitiveTopology{ D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST }
 {
@@ -132,21 +132,13 @@ void Mesh::LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<
 	m_animations[animationName] = move(animation);
 }
 
-void Mesh::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-	//ComPtr<ID3D12Resource> dummy;
-	//constexpr UINT cbMeshByteSize{ (sizeof(cbMesh) + 255) & ~255 };
-	//m_cbMesh = CreateBufferResource(device, commandList, NULL, cbMeshByteSize, 1, D3D12_HEAP_TYPE_UPLOAD, {}, dummy);
-	//m_cbMesh->Map(0, NULL, reinterpret_cast<void**>(&m_pcbMesh));
-}
-
 void Mesh::CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount)
 {
 	// 정점 버퍼 갯수 저장
 	m_nVertices = dataCount;
 
 	// 정점 버퍼 생성
-	m_vertexBuffer = Utile::CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_vertexUploadBuffer.Get());
+	m_vertexBuffer = Utile::CreateBufferResource(device, commandList, data, sizePerData, dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_vertexUploadBuffer);
 
 	// 정점 버퍼 뷰 설정
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
@@ -160,7 +152,7 @@ void Mesh::CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID
 	m_nIndices = dataCount;
 
 	// 인덱스 버퍼 생성
-	m_indexBuffer = Utile::CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, m_indexUploadBuffer.Get());
+	m_indexBuffer = Utile::CreateBufferResource(device, commandList, data, sizeof(UINT), dataCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_indexUploadBuffer);
 
 	// 인덱스 버퍼 뷰 설정
 	m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
@@ -247,9 +239,9 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			const float upperT{ upperCurrFrame - static_cast<int>(upperCurrFrame) };
 
 			// 상체 애니메이션이 있으면 기존 애니메이션은 하체만 애니메이션한다.
-			// 상체 애니메이션은 0 ~ PLAYER_UPPER_JOINT_START 뼈만 애니메이션하는 것이다.
+			// 상체 애니메이션은 0 ~ PLAYER_UPPER_JOINT_END 뼈만 애니메이션하는 것이다.
 			// 총도 상체 애니메이션을 따라간다. (마지막 뼈는 총의 애니메이션 변환 행렬이다.)
-			start = PLAYER_UPPER_JOINT_START; --end;
+			start = PLAYER_UPPER_JOINT_END; --end;
 
 			if (upperAnimationInfo->state == eAnimationState::PLAY)
 			{
@@ -566,12 +558,132 @@ FullScreenQuadMesh::FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const
 	Vertex v{};
 	v.materialIndex = 0;
 	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { 1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
-	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = {  1.0f,  1.0f, 0.0f }; v.uv = { 1.0f, 0.0f }; vertices.push_back(v);
+	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 
 	v.position = { -1.0f,  1.0f, 0.0f }; v.uv = { 0.0f, 0.0f }; vertices.push_back(v);
-	v.position = { 1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
+	v.position = {  1.0f, -1.0f, 0.0f }; v.uv = { 1.0f, 1.0f }; vertices.push_back(v);
 	v.position = { -1.0f, -1.0f, 0.0f }; v.uv = { 0.0f, 1.0f }; vertices.push_back(v);
 
 	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(Vertex), static_cast<UINT>(vertices.size()));
+}
+
+ParticleMesh::ParticleMesh() : m_isFirstRender{ TRUE }, m_vertexSize {}, m_maxVertexCount{}, m_pFilledSize{ nullptr }, m_streamOutputBufferView{}
+{
+
+}
+
+void ParticleMesh::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	// 통상 렌더링
+	m_vertexBufferView.BufferLocation = m_drawBuffer->GetGPUVirtualAddress();
+	m_vertexBufferView.StrideInBytes = m_vertexSize;
+	m_vertexBufferView.SizeInBytes = m_vertexSize * m_nVertices;
+	commandList->SOSetTargets(0, 1, NULL);
+	Mesh::Render(commandList);
+}
+
+void ParticleMesh::RenderStreamOutput(const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	// 처음에는 정점 버퍼와 바인딩
+	// 그 이후로는 스트림 출력 결과와 바인딩
+	if (m_isFirstRender)
+	{
+		m_isFirstRender = FALSE;
+		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+		m_vertexBufferView.StrideInBytes = m_vertexSize;
+		m_vertexBufferView.SizeInBytes = m_vertexSize * m_nVertices;
+	}
+
+	// m_pFilledSize를 m_streamFilledSizeBuffer에 복사
+	*m_pFilledSize = 0;
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamFilledSizeBuffer.Get(), D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST));
+	commandList->CopyResource(m_streamFilledSizeBuffer.Get(), m_streamFilledSizeUploadBuffer.Get());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamFilledSizeBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT));
+
+	// 스트림 출력
+	D3D12_STREAM_OUTPUT_BUFFER_VIEW streamOutputBufferViews[]{ m_streamOutputBufferView };
+	commandList->SOSetTargets(0, _countof(streamOutputBufferViews), streamOutputBufferViews);
+	Mesh::Render(commandList);
+
+	// 리드백 버퍼로 스트림 출력으로 얼마만큼 데이터를 썼는지 받아옴
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamFilledSizeBuffer.Get(), D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	commandList->CopyResource(m_streamFilledSizeReadBackBuffer.Get(), m_streamFilledSizeBuffer.Get());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamFilledSizeBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT));
+
+	// 리드백 버퍼에 받아온 데이터 크기로 정점 개수 재설정
+	UINT64* pFilledSize{ NULL };
+	m_streamFilledSizeReadBackBuffer->Map(0, NULL, reinterpret_cast<void**>(&pFilledSize));
+	m_nVertices = static_cast<UINT>(*pFilledSize) / m_vertexSize;
+	m_streamFilledSizeReadBackBuffer->Unmap(0, NULL);
+
+	// 스트림 출력 결과를 m_drawBuffer로 복사
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_drawBuffer.Get(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_COPY_DEST));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamOutputBuffer.Get(), D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_SOURCE));
+	commandList->CopyResource(m_drawBuffer.Get(), m_streamOutputBuffer.Get());
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_drawBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_streamOutputBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_STREAM_OUT));
+}
+
+void ParticleMesh::CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_streamOutputBuffer = Utile::CreateBufferResource(device, commandList, NULL, m_vertexSize, m_maxVertexCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_STREAM_OUT);
+
+	// 스트림 출력 버퍼에 쓰여진 데이터 크기를 받을 버퍼 생성
+	m_streamFilledSizeBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_STREAM_OUT);
+
+	// 스트림 출력 버퍼에 데이터를 복사하기 위한 업로드 버퍼 생성
+	m_streamFilledSizeUploadBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+	m_streamFilledSizeUploadBuffer->Map(0, NULL, reinterpret_cast<void**>(&m_pFilledSize));
+
+	// 스트림 출력 버퍼 뷰 생성
+	m_streamOutputBufferView.BufferLocation = m_streamOutputBuffer->GetGPUVirtualAddress();
+	m_streamOutputBufferView.SizeInBytes = m_vertexSize * m_maxVertexCount;
+	m_streamOutputBufferView.BufferFilledSizeLocation = m_streamFilledSizeBuffer->GetGPUVirtualAddress();
+
+	// 스트림 출력 버퍼에 쓰여진 데이터 크기를 CPU에서 읽기 위한 리드백 버퍼 생성
+	m_streamFilledSizeReadBackBuffer = Utile::CreateBufferResource(device, commandList, NULL, sizeof(UINT64), 1, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_STATE_COPY_DEST);
+
+	// 통상적인 렌더링에 사용되는 버퍼 생성
+	m_drawBuffer = Utile::CreateBufferResource(device, commandList, NULL, m_vertexSize, m_maxVertexCount, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+}
+
+DustParticleMesh::DustParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
+{
+	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+	m_vertexSize = sizeof(DustParticleVertex);
+	m_maxVertexCount = 1000;
+
+	vector<DustParticleVertex> vertices{ m_maxVertexCount };
+	for (UINT i = 0; i < m_maxVertexCount; ++i)
+	{
+		DustParticleVertex v{};
+		v.position.x = Utile::Random(-800.0f, 800.0f);
+		v.position.y = Utile::Random(-100.0f, 100.0f);
+		v.position.z = Utile::Random(-800.0f, 800.0f);
+		v.direction = XMFLOAT3{ Utile::Random(-1.0f, 1.0f), Utile::Random(-1.0f, 1.0f), Utile::Random(-1.0f, 1.0f) };
+		v.direction = Vector3::Normalize(v.direction);
+		v.speed = Utile::Random(40.0f, 50.0f);
+		v.lifeTime = Utile::Random(1.0f, 3.0f);
+		v.age = 0.0f;
+		vertices[i] = move(v);
+	}
+	CreateVertexBuffer(device, commandList, vertices.data(), sizeof(DustParticleVertex), static_cast<UINT>(vertices.size()));
+	CreateStreamOutputBuffer(device, commandList);
+}
+
+TrailParticleMesh::TrailParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT3& direction)
+{
+	m_primitiveTopology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+	m_vertexSize = sizeof(TrailParticleVertex);
+	m_maxVertexCount = 1000;
+
+	TrailParticleVertex v{};
+	v.position = position;
+	v.direction = direction;
+	v.lifeTime = 3.0f;
+	v.type = 0;
+
+	CreateVertexBuffer(device, commandList, &v, sizeof(TrailParticleVertex), 1);
+	CreateStreamOutputBuffer(device, commandList);
 }

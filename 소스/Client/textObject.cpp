@@ -1,45 +1,36 @@
 ﻿#include "stdafx.h"
 #include "textObject.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "player.h"
+#include "scene.h"
 #include "uiObject.h"
 
 unordered_map<string, ComPtr<ID2D1SolidColorBrush>>	TextObject::s_brushes;
 unordered_map<string, ComPtr<IDWriteTextFormat>>	TextObject::s_formats;
 
 TextObject::TextObject() 
-	: m_isDeleted{ FALSE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
+	: m_isValid{ TRUE }, m_isMouseOver{ FALSE }, m_rect{ 0.0f, 0.0f, static_cast<float>(g_width), static_cast<float>(g_height) },
 	  m_position{}, m_pivotPosition{}, m_pivot{ ePivot::CENTER }, m_screenPivot{ ePivot::CENTER }, m_width{}, m_height{}
 {
 
 }
 
-void TextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-
-}
-
-void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
-{
-
-}
+void TextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) { }
+void TextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime) { }
 
 void TextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	device->DrawText(
-		m_text.c_str(),
-		static_cast<UINT32>(m_text.size()),
-		s_formats[m_format].Get(),
-		&m_rect,
-		s_brushes[m_brush].Get()
-	);
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_brush].Get());
 }
 
-void TextObject::Update(FLOAT deltaTime)
-{
+void TextObject::Update(FLOAT deltaTime) { }
 
+void TextObject::Delete()
+{
+	m_isValid = FALSE;
 }
 
 void TextObject::CalcWidthHeight()
@@ -81,11 +72,11 @@ void TextObject::SetFormat(const string& format)
 void TextObject::SetText(const wstring& text)
 {
 	m_text = text;
-	if (!m_brush.empty() && !m_format.empty())
-	{
-		CalcWidthHeight();
-		m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
-	}
+	if (m_brush.empty()) return;
+	if (m_format.empty()) return;
+
+	CalcWidthHeight();
+	m_rect = D2D1_RECT_F{ 0.0f, 0.0f, m_width + 1.0f, m_height };
 }
 
 void TextObject::SetPivot(const ePivot& pivot)
@@ -178,9 +169,9 @@ void TextObject::SetScreenPivot(const ePivot& pivot)
 	m_screenPivot = pivot;
 }
 
-BOOL TextObject::isDeleted() const
+BOOL TextObject::isValid() const
 {
-	return m_isDeleted;
+	return m_isValid;
 }
 
 wstring TextObject::GetText() const
@@ -221,6 +212,7 @@ FLOAT TextObject::GetHeight() const
 BulletTextObject::BulletTextObject() : m_bulletCount{ -1 }, m_scale{ 1.0f }, m_timerState{ FALSE }, m_scaleTimer{}
 {
 	m_rect = { 0.0f, 0.0f, 100.0f, 0.0f };
+	m_player = g_gameFramework.GetScene()->GetPlayer();
 }
 
 void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
@@ -231,19 +223,19 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	// 포멧은 좌측 하단 정렬이고, 전체 총알 수를 표시한 후 그 왼쪽에 현재 총알 수를 그린다.
 	wstring maxBulletCount{ to_wstring(m_player->GetMaxBulletCount()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
-	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["24_RIGHT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(maxBulletCount.c_str(), static_cast<UINT32>(maxBulletCount.size()), s_formats["24R"].Get(), &m_rect, s_brushes["BLACK"].Get());
 
 	m_text = maxBulletCount;
-	m_format = "24_RIGHT";
+	m_format = "24R";
 	CalcWidthHeight();
 	float maxBulletTextWidth{ m_width };
 
 	wstring slash{ TEXT("/") };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x - maxBulletTextWidth, m_position.y));
-	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24_RIGHT"].Get(), &m_rect, s_brushes["BLUE"].Get());
+	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24R"].Get(), &m_rect, s_brushes["BLUE"].Get());
 
 	m_text = slash;
-	m_format = "24_RIGHT";
+	m_format = "24R";
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
@@ -252,7 +244,7 @@ void BulletTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	D2D1::Matrix3x2F matrix{};
 	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { m_rect.right, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x - maxBulletTextWidth - slashTextWidth, m_position.y));
 	device->SetTransform(matrix);
-	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["36_RIGHT"].Get(), &m_rect, m_bulletCount == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats["36R"].Get(), &m_rect, m_bulletCount == 0 ? s_brushes["RED"].Get() : s_brushes["BLACK"].Get());
 }
 
 void BulletTextObject::Update(FLOAT deltaTime)
@@ -268,7 +260,7 @@ void BulletTextObject::Update(FLOAT deltaTime)
 
 	// 총알 수 변함에 따라 사각형 범위 재계산
 	m_text = to_wstring(bulletCount);
-	m_format = "36_RIGHT";
+	m_format = "36R";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
@@ -283,14 +275,10 @@ void BulletTextObject::Update(FLOAT deltaTime)
 		m_timerState = FALSE;
 }
 
-void BulletTextObject::SetPlayer(const shared_ptr<Player>& player)
-{
-	m_player = player;
-}
-
 HPTextObject::HPTextObject() : m_hp{ -1 }, m_scale{ 1.0f }, m_timerState{ FALSE }, m_scaleTimer{}
 {
 	m_rect = { 0.0f, 0.0f, 100.0f, 0.0f };
+	m_player = g_gameFramework.GetScene()->GetPlayer();
 }
 
 void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
@@ -301,27 +289,27 @@ void HPTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 	// 포멧은 우측 하단 정렬이고, 현재 체력을 표시하고 그 오른쪽에 전체 체력을 표시한다.
 	wstring hpText{ to_wstring(m_hp) };
 	m_text = hpText;
-	m_format = "36_LEFT";
+	m_format = "36L";
 	CalcWidthHeight();
 	float hpTextWidth{ m_width };
 
 	D2D1::Matrix3x2F matrix{};
 	matrix.SetProduct(D2D1::Matrix3x2F::Scale(m_scale, m_scale, { hpTextWidth, m_rect.bottom }), D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
 	device->SetTransform(matrix);
-	device->DrawText(hpText.c_str(), static_cast<UINT32>(hpText.size()), s_formats["36_LEFT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(hpText.c_str(), static_cast<UINT32>(hpText.size()), s_formats["36L"].Get(), &m_rect, s_brushes["BLACK"].Get());
 
 	wstring slash{ TEXT("/") };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth, m_position.y));
-	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24_LEFT"].Get(), &m_rect, s_brushes["BLUE"].Get());
+	device->DrawText(slash.c_str(), static_cast<UINT32>(slash.size()), s_formats["24L"].Get(), &m_rect, s_brushes["BLUE"].Get());
 
 	m_text = slash;
-	m_format = "24_LEFT";
+	m_format = "24L";
 	CalcWidthHeight();
 	float slashTextWidth{ m_width };
 
 	wstring maxHpText{ to_wstring(m_player->GetMaxHp()) };
 	device->SetTransform(D2D1::Matrix3x2F::Translation(m_position.x + hpTextWidth + slashTextWidth, m_position.y));
-	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["24_LEFT"].Get(), &m_rect, s_brushes["BLACK"].Get());
+	device->DrawText(maxHpText.c_str(), static_cast<UINT32>(maxHpText.size()), s_formats["24L"].Get(), &m_rect, s_brushes["BLACK"].Get());
 }
 
 void HPTextObject::Update(FLOAT deltaTime)
@@ -337,7 +325,7 @@ void HPTextObject::Update(FLOAT deltaTime)
 
 	// 체력 수치가 변함에 따라 사각형 범위 재계산
 	m_text = to_wstring(hp);
-	m_format = "36_RIGHT";
+	m_format = "36R";
 	CalcWidthHeight();
 	float width{ m_width };
 	m_rect.bottom = m_height;
@@ -352,12 +340,7 @@ void HPTextObject::Update(FLOAT deltaTime)
 		m_timerState = FALSE;
 }
 
-void HPTextObject::SetPlayer(const shared_ptr<Player>& player)
-{
-	m_player = player;
-}
-
-MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale { 1.0f }, m_scaleTimer{}
+MenuTextObject::MenuTextObject() : m_isMouseOver{ FALSE }, m_scale{ 1.0f }, m_scaleTimer{}, m_value{}
 {
 	m_mouseClickCallBack = []() {};
 }
@@ -366,6 +349,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
 	{
+		g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_CLICK.wav")));
 		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
 	}
@@ -380,7 +364,8 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 	p.x -= c.left;
 	p.y -= c.top;
 
-	RECT r{ 
+	RECT r
+	{ 
 		static_cast<LONG>(m_position.x), 
 		static_cast<LONG>(m_position.y),
 		static_cast<LONG>(m_position.x + m_rect.right),
@@ -389,7 +374,11 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 
 	if (r.left <= p.x && p.x <= r.right &&
 		r.top <= p.y && p.y <= r.bottom)
+	{
+		if (!m_isMouseOver)
+			g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_HOVER.wav")));
 		m_isMouseOver = TRUE;
+	}
 	else
 		m_isMouseOver = FALSE;
 }
@@ -412,6 +401,11 @@ void MenuTextObject::Update(FLOAT deltaTime)
 		m_scale = max(minScale, m_scale - speed * deltaTime);
 }
 
+void MenuTextObject::SetValue(INT value)
+{
+	m_value = value;
+}
+
 void MenuTextObject::SetMouseOverBrush(const string& brush)
 {
 	m_mouseOverBrush = brush;
@@ -422,13 +416,18 @@ void MenuTextObject::SetMouseClickCallBack(const function<void()>& callBackFunc)
 	m_mouseClickCallBack = callBackFunc;
 }
 
-DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }
+INT MenuTextObject::GetValue() const
 {
-	m_brush = "BLUE";
-	m_format = "24_LEFT";
-	SetText(damage);
-	m_screenPivot = ePivot::LEFTTOP;
+	return m_value;
+}
 
+DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }, m_startPosition{}, m_timer{}
+{
+	SetBrush("BLUE");
+	SetFormat("24L");
+	SetText(damage);
+	m_camera = g_gameFramework.GetScene()->GetCamera();
+	m_screenPivot = ePivot::LEFTTOP;
 	m_direction = Utile::Random(0, 1);
 }
 
@@ -463,16 +462,27 @@ void DamageTextObject::Update(FLOAT deltaTime)
 
 	m_timer += deltaTime;
 	if (m_timer >= lifeTime)
-		m_isDeleted = TRUE;
-}
-
-void DamageTextObject::SetCamera(const shared_ptr<Camera>& camera)
-{
-	m_camera = camera;
+		Delete();
 }
 
 void DamageTextObject::SetStartPosition(const XMFLOAT3& position)
 {
 	m_startPosition = position;
-	m_startPosition.y += 20.0f;
+}
+
+SkillGageTextObject::SkillGageTextObject() : m_percent{}
+{
+	m_player = g_gameFramework.GetScene()->GetPlayer();
+	SetBrush("BLACK");
+	SetFormat("36R");
+}
+
+void SkillGageTextObject::Update(FLOAT deltaTime)
+{
+	int value{ m_player->GetSkillGage() };
+	if (value == 100)
+		SetText(TEXT("Q"));
+	else
+		SetText(to_wstring(m_player->GetSkillGage()));
+	SetPosition(GetPivotPosition());
 }

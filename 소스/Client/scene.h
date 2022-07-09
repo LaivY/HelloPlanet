@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+class Camera;
 class Mesh;
 class Player;
 class Shader;
@@ -54,15 +55,17 @@ public:
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
-	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
-	virtual void PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget);
+	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device) const;
+	virtual void PostProcessing(const ComPtr<ID3D12GraphicsCommandList>& commandList, const ComPtr<ID3D12RootSignature>& postRootSignature, const ComPtr<ID3D12Resource>& renderTarget) const;
 
 	// 서버 통신 함수
 	virtual void ProcessClient();
 
 	// 게터
-	virtual shared_ptr<Player> GetPlayer() const;
+	virtual Player* GetPlayer() const;
+	virtual Camera* GetCamera() const;
 
+	// 리소스
 	static unordered_map<string, shared_ptr<Mesh>>		s_meshes;
 	static unordered_map<string, shared_ptr<Shader>>	s_shaders;
 	static unordered_map<string, shared_ptr<Texture>>	s_textures;

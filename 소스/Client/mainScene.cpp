@@ -1,17 +1,18 @@
 ﻿#include "stdafx.h"
 #include "mainScene.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "object.h"
 #include "player.h"
-#include "shadow.h"
 #include "textObject.h"
 #include "uiObject.h"
 #include "windowObject.h"
+#include "texture.h"
 
 MainScene::MainScene() : m_pcbGameScene{ nullptr }
 {
-
+	
 }
 
 MainScene::~MainScene()
@@ -29,7 +30,6 @@ void MainScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
-	m_shadowMap = make_unique<ShadowMap>(device, 1 << 12, 1 << 12, Setting::SHADOWMAP_COUNT);
 }
 
 void MainScene::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -71,7 +71,6 @@ void MainScene::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		m_windowObjects.back()->OnMouseEvent(hWnd, message, wParam, lParam);
 		return;
 	}
-
 	for (auto& t : m_textObjects)
 		t->OnMouseEvent(hWnd, message, wParam, lParam);
 }
@@ -125,7 +124,7 @@ void MainScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	}
 }
 
-void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
+void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
 	for (const auto& t : m_textObjects)
 		t->Render(device);
@@ -135,7 +134,7 @@ void MainScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device)
 
 void MainScene::Update(FLOAT deltaTime)
 {
-	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return object->isDeleted(); });
+	erase_if(m_windowObjects, [](unique_ptr<WindowObject>& object) { return !object->isValid(); });
 	UpdateCameraPosition(deltaTime);
 	UpdateShadowMatrix();
 }
@@ -143,11 +142,17 @@ void MainScene::Update(FLOAT deltaTime)
 void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라
+	XMFLOAT4X4 projMatrix{};
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera = make_shared<Camera>();
 	m_camera->CreateShaderVariable(device, commandList);
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
+
+	// UI 카메라 생성
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
+	m_uiCamera = make_unique<Camera>();
+	m_uiCamera->CreateShaderVariable(device, commandList);
+	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 스카이박스
 	m_skybox = make_unique<Skybox>();
@@ -166,15 +171,7 @@ void MainScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 
 void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	// UI 카메라 생성
-	XMFLOAT4X4 projMatrix{};
-	m_uiCamera = make_unique<Camera>();
-	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
-	m_uiCamera->SetProjMatrix(projMatrix);
-
 	auto title{ make_unique<UIObject>(801.0f, 377.0f) };
-	title->SetMesh(s_meshes["UI"]);
 	title->SetShader(s_shaders["UI_ATC"]);
 	title->SetTexture(s_textures["TITLE"]);
 	title->SetPivot(ePivot::LEFTCENTER);
@@ -190,7 +187,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto gameStartText{ make_unique<MenuTextObject>() };
 	gameStartText->SetBrush("BLACK");
 	gameStartText->SetMouseOverBrush("WHITE");
-	gameStartText->SetFormat("48_RIGHT");
+	gameStartText->SetFormat("48R");
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
@@ -212,7 +209,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto settingText{ make_unique<MenuTextObject>() };
 	settingText->SetBrush("BLACK");
 	settingText->SetMouseOverBrush("WHITE");
-	settingText->SetFormat("48_RIGHT");
+	settingText->SetFormat("48R");
 	settingText->SetText(TEXT("설정"));
 	settingText->SetPivot(ePivot::LEFTBOT);
 	settingText->SetScreenPivot(ePivot::LEFTBOT);
@@ -223,7 +220,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	auto exitText{ make_unique<MenuTextObject>() };
 	exitText->SetBrush("BLACK");
 	exitText->SetMouseOverBrush("WHITE");
-	exitText->SetFormat("48_RIGHT");
+	exitText->SetFormat("48R");
 	exitText->SetText(TEXT("종료"));
 	exitText->SetPivot(ePivot::LEFTBOT);
 	exitText->SetScreenPivot(ePivot::LEFTBOT);
@@ -288,36 +285,52 @@ void MainScene::LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<
 
 void MainScene::CreateSettingWindow()
 {
+	auto title{ make_unique<TextObject>() };
+	title->SetBrush("BLACK");
+	title->SetFormat("36R");
+	title->SetText(TEXT("설정"));
+	title->SetPivot(ePivot::LEFTCENTER);
+	title->SetScreenPivot(ePivot::LEFTTOP);
+	title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+
+	auto resolution{ make_unique<TextObject>() };
+	resolution->SetBrush("BLACK");
+	resolution->SetFormat("36R");
+	resolution->SetText(TEXT("해상도"));
+	resolution->SetPivot(ePivot::CENTER);
+	resolution->SetScreenPivot(ePivot::CENTERTOP);
+	resolution->SetPosition(XMFLOAT2{ -150.0f, -resolution->GetHeight() / 2.0f - 10.0f });
+
+	auto volume{ make_unique<TextObject>() };
+	volume->SetBrush("BLACK");
+	volume->SetFormat("36R");
+	volume->SetText(TEXT("사운드"));
+	volume->SetPivot(ePivot::CENTER);
+	volume->SetScreenPivot(ePivot::CENTERTOP);
+	volume->SetPosition(XMFLOAT2{ 150.0f, -volume->GetHeight() / 2.0f - 10.0f });
+
 	auto close{ make_unique<MenuTextObject>() };
 	close->SetBrush("BLACK");
 	close->SetMouseOverBrush("BLUE");
-	close->SetFormat("48_RIGHT");
+	close->SetFormat("36R");
 	close->SetText(TEXT("확인"));
 	close->SetScreenPivot(ePivot::CENTERBOT);
 	close->SetPivot(ePivot::CENTERBOT);
-	close->SetPosition(XMFLOAT2{ 0.0f, -25.0f });
+	close->SetPosition(XMFLOAT2{ 0.0f, -close->GetHeight() / 2.0f + 10.0f });
 	close->SetMouseClickCallBack(
 		[&]()
 		{
 			m_windowObjects.back()->Delete();
 		});
 
-	auto text{ make_unique<TextObject>() };
-	text->SetBrush("BLACK");
-	text->SetFormat("48_RIGHT");
-	text->SetText(TEXT("설정"));
-	text->SetPivot(ePivot::CENTERTOP);
-	text->SetScreenPivot(ePivot::CENTERTOP);
-	text->SetPosition(XMFLOAT2{ 0.0f, -10.0f });
-
 	auto windowSizeText1{ make_unique<MenuTextObject>() };
 	windowSizeText1->SetBrush("BLACK");
 	windowSizeText1->SetMouseOverBrush("BLUE");
-	windowSizeText1->SetFormat("48_RIGHT");
+	windowSizeText1->SetFormat("32R");
 	windowSizeText1->SetText(TEXT("1280x720"));
 	windowSizeText1->SetPivot(ePivot::CENTER);
 	windowSizeText1->SetScreenPivot(ePivot::CENTER);
-	windowSizeText1->SetPosition(XMFLOAT2{ 0.0f, 60.0f });
+	windowSizeText1->SetPosition(XMFLOAT2{ -150.0f, 40.0f });
 	windowSizeText1->SetMouseClickCallBack(
 		[]()
 		{
@@ -330,11 +343,11 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText2{ make_unique<MenuTextObject>() };
 	windowSizeText2->SetBrush("BLACK");
 	windowSizeText2->SetMouseOverBrush("BLUE");
-	windowSizeText2->SetFormat("48_RIGHT");
+	windowSizeText2->SetFormat("32R");
 	windowSizeText2->SetText(TEXT("1680x1050"));
 	windowSizeText2->SetPivot(ePivot::CENTER);
 	windowSizeText2->SetScreenPivot(ePivot::CENTER);
-	windowSizeText2->SetPosition(XMFLOAT2{ 0.0f, 0.0f });
+	windowSizeText2->SetPosition(XMFLOAT2{ -150.0f, 0.0f });
 	windowSizeText2->SetMouseClickCallBack(
 		[]()
 		{
@@ -347,11 +360,11 @@ void MainScene::CreateSettingWindow()
 	auto windowSizeText3{ make_unique<MenuTextObject>() };
 	windowSizeText3->SetBrush("BLACK");
 	windowSizeText3->SetMouseOverBrush("BLUE");
-	windowSizeText3->SetFormat("48_RIGHT");
+	windowSizeText3->SetFormat("32R");
 	windowSizeText3->SetText(TEXT("전체화면"));
 	windowSizeText3->SetPivot(ePivot::CENTER);
 	windowSizeText3->SetScreenPivot(ePivot::CENTER);
-	windowSizeText3->SetPosition(XMFLOAT2{ 0.0f, -60.0f });
+	windowSizeText3->SetPosition(XMFLOAT2{ -150.0f, -40.0f });
 	windowSizeText3->SetMouseClickCallBack(
 		[]()
 		{
@@ -365,16 +378,97 @@ void MainScene::CreateSettingWindow()
 			SetWindowPos(g_gameFramework.GetWindow(), NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
 		});
 
-	auto setting{ make_unique<WindowObject>(500.0f, 500.0f) };
-	setting->SetMesh(s_meshes["UI"]);
-	setting->SetShader(s_shaders["UI"]);
+	auto music{ make_unique<TextObject>() };
+	music->SetBrush("BLACK");
+	music->SetFormat("32R");
+	music->SetText(TEXT("배경음 : "));
+	music->SetPivot(ePivot::CENTER);
+	music->SetScreenPivot(ePivot::CENTER);
+
+	auto sound{ make_unique<TextObject>() };
+	sound->SetBrush("BLACK");
+	sound->SetFormat("32R");
+	sound->SetText(TEXT("효과음 : "));
+	sound->SetPivot(ePivot::CENTER);
+	sound->SetScreenPivot(ePivot::CENTER);
+
+	int musicVolume{ g_audioEngine.GetVolume(eAudioType::MUSIC) };
+	auto musicOnOff{ make_unique<MenuTextObject>() };
+	musicOnOff->SetBrush("BLUE");
+	musicOnOff->SetMouseOverBrush("BLUE");
+	musicOnOff->SetFormat("32R");
+	musicOnOff->SetText(to_wstring(musicVolume) + TEXT("%"));
+	musicOnOff->SetPivot(ePivot::CENTER);
+	musicOnOff->SetScreenPivot(ePivot::CENTER);
+	musicOnOff->SetValue(musicVolume);
+	musicOnOff->SetMouseClickCallBack(bind(
+		[](MenuTextObject* object)
+		{
+			int volume{ object->GetValue() };
+			volume = (volume + 10) % 110;
+			if (volume == 0)
+			{
+				object->SetBrush("RED");
+				object->SetMouseOverBrush("RED");
+			}
+			else
+			{
+				object->SetBrush("BLUE");
+				object->SetMouseOverBrush("BLUE");
+			}
+			object->SetText(to_wstring(volume) + TEXT("%"));
+			object->SetValue(volume);
+			g_audioEngine.SetVolume(eAudioType::MUSIC, static_cast<float>(volume) / 100.0f);
+		}, musicOnOff.get()));
+
+	int soundVolume{ g_audioEngine.GetVolume(eAudioType::SOUND) };
+	auto soundOnOff{ make_unique<MenuTextObject>() };
+	soundOnOff->SetBrush("BLUE");
+	soundOnOff->SetMouseOverBrush("BLUE");
+	soundOnOff->SetFormat("32R");
+	soundOnOff->SetText(to_wstring(soundVolume) + TEXT("%"));
+	soundOnOff->SetPivot(ePivot::CENTER);
+	soundOnOff->SetScreenPivot(ePivot::CENTER);
+	soundOnOff->SetValue(soundVolume);
+	soundOnOff->SetMouseClickCallBack(bind(
+		[](MenuTextObject* object)
+		{
+			int volume{ object->GetValue() };
+			volume = (volume + 10) % 110;
+			if (volume == 0)
+			{
+				object->SetBrush("RED");
+				object->SetMouseOverBrush("RED");
+			}
+			else
+			{
+				object->SetBrush("BLUE");
+				object->SetMouseOverBrush("BLUE");
+			}
+			object->SetText(to_wstring(volume) + TEXT("%"));
+			object->SetValue(volume);
+			g_audioEngine.SetVolume(eAudioType::SOUND, static_cast<float>(volume) / 100.0f);
+		}, soundOnOff.get()));
+
+	music->SetPosition(XMFLOAT2{ 150.0f - musicOnOff->GetWidth() / 2.0f,  20.0f });
+	sound->SetPosition(XMFLOAT2{ 150.0f - soundOnOff->GetWidth() / 2.0f, -20.0f });
+	musicOnOff->SetPosition(XMFLOAT2{ 150.0f + (music->GetWidth() + 20.0f) / 2.0f,  20.0f });
+	soundOnOff->SetPosition(XMFLOAT2{ 150.0f + (sound->GetWidth() + 20.0f) / 2.0f, -20.0f });
+
+	auto setting{ make_unique<WindowObject>(600.0f, 320.0f) };
 	setting->SetTexture(s_textures["WHITE"]);
 	setting->SetPosition(XMFLOAT2{});
+	setting->Add(title);
+	setting->Add(resolution);
+	setting->Add(volume);
 	setting->Add(close);
-	setting->Add(text);
 	setting->Add(windowSizeText1);
 	setting->Add(windowSizeText2);
 	setting->Add(windowSizeText3);
+	setting->Add(music);
+	setting->Add(sound);
+	setting->Add(musicOnOff);
+	setting->Add(soundOnOff);
 	m_windowObjects.push_back(move(setting));
 }
 
@@ -464,25 +558,24 @@ void MainScene::UpdateShadowMatrix()
 
 void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
-	if (!m_shadowMap) return;
+	if (!s_textures.contains("SHADOW")) return;
+	auto shadowTexture{ reinterpret_cast<ShadowTexture*>(s_textures["SHADOW"].get()) };
 
 	// 뷰포트, 가위사각형 설정
-	commandList->RSSetViewports(1, &m_shadowMap->GetViewport());
-	commandList->RSSetScissorRects(1, &m_shadowMap->GetScissorRect());
+	commandList->RSSetViewports(1, &shadowTexture->GetViewport());
+	commandList->RSSetScissorRects(1, &shadowTexture->GetScissorRect());
 
 	// 셰이더에 묶기
-	ID3D12DescriptorHeap* ppHeaps[]{ m_shadowMap->GetSrvHeap().Get() };
-	commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	commandList->SetGraphicsRootDescriptorTable(6, m_shadowMap->GetGpuSrvHandle());
+	shadowTexture->UpdateShaderVariable(commandList);
 
 	// 리소스배리어 설정(깊이버퍼쓰기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	// 깊이스텐실 버퍼 초기화
-	commandList->ClearDepthStencilView(m_shadowMap->GetCpuDsvHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+	commandList->ClearDepthStencilView(shadowTexture->GetDsvCpuHandle(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
 
 	// 렌더타겟 설정
-	commandList->OMSetRenderTargets(0, NULL, FALSE, &m_shadowMap->GetCpuDsvHandle());
+	commandList->OMSetRenderTargets(0, NULL, FALSE, &shadowTexture->GetDsvCpuHandle());
 
 	// 렌더링
 	for (const auto& o : m_gameObjects)
@@ -495,5 +588,5 @@ void MainScene::RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& comma
 		p->RenderToShadowMap(commandList);
 
 	// 리소스배리어 설정(셰이더에서 읽기)
-	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMap->GetShadowMap().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(shadowTexture->GetBuffer().Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }

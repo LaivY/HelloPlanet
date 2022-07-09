@@ -11,21 +11,22 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <list>
+#include <fstream>
+#include <atomic>
+#include <sqlext.h>
 #include "protocol.h"
 #pragma comment (lib, "WS2_32.LIB")
 #pragma comment (lib, "MSWSock.LIB")
+
+//#define DB_MODE
+#define IOCP_MODE
 
 void errorDisplay(const int errNum, const char* msg);
 
 class NetworkFramework;
 extern NetworkFramework	g_networkFramework;
 extern SOCKET			g_socket;
-
-namespace Utility
-{
-	DirectX::BoundingOrientedBox GetBoundingBox(const MonsterData& monsterData);
-}
+extern HANDLE           g_h_iocp;
 
 namespace Vector3
 {
@@ -43,6 +44,12 @@ namespace Vector3
     {
         return XMFLOAT3{ a.x * scalar, a.y * scalar, a.z * scalar };
     }
+	inline XMFLOAT3 Normalize(const XMFLOAT3& a)
+	{
+		XMFLOAT3 result;
+		XMStoreFloat3(&result, XMVector3Normalize(XMLoadFloat3(&a)));
+		return result;
+	}
     inline FLOAT Length(const XMFLOAT3& a)
     {
         XMFLOAT3 result;

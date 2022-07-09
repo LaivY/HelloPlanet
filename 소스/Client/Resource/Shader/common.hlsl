@@ -8,7 +8,7 @@ Texture2D<float> g_depth				: register(t2);
 Texture2D<uint2> g_stencil				: register(t3);
 
 SamplerState g_sampler                  : register(s0);
-SamplerComparisonState g_shadowSampler  : register(s1);
+SamplerComparisonState g_shadowSampler	: register(s1);
 
 cbuffer cbGameObject : register(b0)
 {
@@ -38,9 +38,8 @@ cbuffer cbScene : register(b3)
 cbuffer cbGameFramework : register(b4)
 {
 	float g_deltaTime;
-	int	g_fadeType;
-	float g_fadeTime;
-	float g_fadeTimer;
+	uint g_screenWidth;
+	uint g_screenHeight;
 }
 
 struct VS_INPUT

@@ -5,7 +5,7 @@ class Camera;
 
 enum class eReward
 {
-	AD, AS, HP, DEF
+	DAMAGE, SPEED, MAXHP, MAXBULLET, SPECIAL
 };
 
 class Player : public GameObject
@@ -40,26 +40,35 @@ public:
 
 	void SetId(INT id) { m_id = id; }
 	void SetIsMultiplayer(BOOL isMultiPlayer);
-	void SetHp(INT hp) { m_hp = clamp(hp, 0, m_maxHp); }
+	void SetHp(INT hp);
 	void SetDamage(INT damage) { m_damage = damage; }
 	void SetWeaponType(eWeaponType gunType);
-	void SetCamera(const shared_ptr<Camera>& camera) { m_camera = camera; }
+	void SetCamera(Camera* camera) { m_camera = camera; }
 	void SetGunMesh(const shared_ptr<Mesh>& mesh) { m_gunMesh = mesh; }
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
+	void SetSkillGage(INT value);
 
 	void AddMaxHp(INT hp);
-	void AddDamage(INT damage);
-	void AddAttackSpeed(FLOAT attackSpeed);
+	void AddBonusSpeed(INT speed);
+	void AddBonusDamage(INT damage);
+	void AddBonusAttackSpeed(INT speed);
+	void AddMaxBulletCount(INT count);
+	void AddBonusReloadSpeed(INT speed);
+	void AddBonusBulletFire(INT count);
+	void SetAutoTarget(INT targetId);
 
 	INT GetId() const;
+	BOOL GetIsFocusing() const;
+	BOOL GetIsSkillActive() const;
 	eWeaponType GetWeaponType() const;
 	INT GetHp() const;
 	INT GetMaxHp() const;
 	INT GetDamage() const;
 	INT GetBulletCount() const;
 	INT GetMaxBulletCount() const;
+	INT GetSkillGage() const;
 	string GetPureAnimationName(const string& animationName) const;
 	string GetCurrAnimationName() const;
 	string GetAfterAnimationName() const;
@@ -71,33 +80,56 @@ public:
 	FLOAT GetGunOffsetTimer() const;
 
 private:
-	INT								m_id;				// 플레이어 고유 아이디
-	BOOL							m_isMultiPlayer;	// 멀티플레이어 여부
-	BOOL							m_isFired;			// 발사 여부
+	void OnSkillActive();
+	void OnSkillInactive();
 
-	FLOAT							m_delayRoll;		// 자동으로 회전할 z축 회전각
-	FLOAT							m_delayPitch;		// .. x축 회전각
-	FLOAT							m_delayYaw;			// .. y축 회전각
-	FLOAT							m_delayTime;		// 몇 초에 걸쳐 회전할 건지
-	FLOAT							m_delayTimer;		// 타이머
+	void UpdateZoomInOut(FLOAT deltaTime);
+	void UpdateSkill(FLOAT deltaTime);
 
-	INT								m_hp;				// 현재 체력
-	INT								m_maxHp;			// 최대 체력
-	FLOAT							m_speed;			// 이동 속력
-	INT								m_damage;			// 공격력
-	INT								m_addDamage;		// 추가 공격력(+n)
-	FLOAT							m_attackSpeed;		// 공격속도
-	FLOAT							m_addAttackSpeed;	// 추가 공격속도(n%)
-	FLOAT							m_attackTimer;		// 공격속도 타이머
-	INT								m_bulletCount;		// 총알 개수
-	INT								m_maxBulletCount;	// 총알 최대 개수
+private:
+	INT					m_id;				// 플레이어 고유 아이디
+	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
+	BOOL				m_isFired;			// 발사 여부
+	BOOL				m_isMoved;			// 이동 여부(발소리)
 
-	eWeaponType						m_weaponType;		// 총 타입
-	shared_ptr<Mesh>				m_gunMesh;			// 총 메쉬
-	shared_ptr<Shader>				m_gunShader;		// 총 셰이더
-	shared_ptr<Shader>				m_gunShadowShader;	// 총 그림자 셰이더
-	XMFLOAT3						m_gunOffset;		// 총 그릴 때 카메라의 위치
-	FLOAT							m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
+	bool				m_isFocusing;		// 확대 조준 중인지
+	bool				m_isZooming;		// 줌인, 줌아웃 중인지
+	bool				m_isZoomIn;			// 줌인 중인지
+	FLOAT				m_zoomTimer;		// 줌 타이머
 
-	shared_ptr<Camera>				m_camera;			// 카메라
+	eWeaponType			m_weaponType;		// 총 타입
+	INT					m_hp;				// 현재 체력
+	INT					m_maxHp;			// 최대 체력
+	FLOAT				m_speed;			// 이동 속력
+	INT					m_damage;			// 공격력
+	FLOAT				m_attackSpeed;		// 공격속도
+	FLOAT				m_attackTimer;		// 공격속도 타이머
+	INT					m_bulletCount;		// 총알 개수
+	INT					m_maxBulletCount;	// 총알 최대 개수
+
+	INT					m_bonusSpeed;		// 추가 이동속도(+n%)
+	INT					m_bonusDamage;		// 추가 공격력(+n)
+	INT					m_bonusAttackSpeed;	// 추가 공격속도(+n%)
+	INT					m_bonusReloadSpeed;	// 추가 재장전 속도(+n%)
+	INT					m_bonusBulletFire;	// 추가 발사 수(+n)
+
+	BOOL				m_isSkillActive;	// 스킬 활성화 여부
+	FLOAT				m_skillActiveTime;	// 스킬 지속 시간
+	INT					m_skillGage;		// 스킬 게이지 양
+	FLOAT				m_skillGageTimer;	// 자동으로 스킬 게이지를 채우기 위한 타이머
+	INT					m_autoTargetMobId;	// AR 오토 타겟 대상 몬스터 id
+
+	FLOAT				m_delayRoll;		// 자동으로 회전할 z축 회전각
+	FLOAT				m_delayPitch;		// .. x축 회전각
+	FLOAT				m_delayYaw;			// .. y축 회전각
+	FLOAT				m_delayTime;		// 몇 초에 걸쳐 회전할 건지
+	FLOAT				m_delayTimer;		// 타이머
+
+	shared_ptr<Mesh>	m_gunMesh;			// 총 메쉬
+	shared_ptr<Shader>	m_gunShader;		// 총 셰이더
+	shared_ptr<Shader>	m_gunShadowShader;	// 총 그림자 셰이더
+	XMFLOAT3			m_gunOffset;		// 총 그릴 때 카메라의 위치
+	FLOAT				m_gunOffsetTimer;	// 총 오프셋 변환에 쓰이는 타이머
+
+	Camera*				m_camera;			// 카메라
 };

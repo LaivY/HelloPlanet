@@ -19,7 +19,7 @@
 #define fourccDPDS 'sdpd'
 #endif
 
-AudioEngine::AudioEngine() : m_musicVolume{ 1.0f }, m_soundVolume{ 1.0f }, m_volumeTimer{ 0.0f }
+AudioEngine::AudioEngine() : m_musicVolume{ 0.0f }, m_soundVolume{ 0.5f }, m_isChanging{ FALSE }, m_isDecreasing{ FALSE }, m_tempVolume{ 0.0f }, m_timer{ 0.0f }
 {
 	DX::ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 	DX::ThrowIfFailed(XAudio2Create(&m_xAduio, 0, XAUDIO2_DEFAULT_PROCESSOR));
@@ -40,10 +40,32 @@ AudioEngine::~AudioEngine()
 
 void AudioEngine::Update(FLOAT deltaTime)
 {
+	constexpr float CHANGE_TIME{ 0.5f };
 
+	if (!m_isChanging) return;
+	if (m_isDecreasing)
+	{
+		SetVolume(eAudioType::MUSIC, lerp(m_tempVolume, 0.0f, m_timer / CHANGE_TIME));
+		if (m_timer >= CHANGE_TIME)
+		{
+			Stop(m_currMusicName);
+			Play(m_targetMusicName, true);
+			m_isDecreasing = FALSE;
+			m_timer = 0.0f;
+		}
+	}
+	else
+	{
+		SetVolume(eAudioType::MUSIC, lerp(0.0f, m_tempVolume, m_timer / CHANGE_TIME));
+		if (m_timer >= CHANGE_TIME)
+		{
+			m_isChanging = FALSE;
+		}
+	}
+	m_timer = min(CHANGE_TIME, m_timer + deltaTime);
 }
 
-HRESULT AudioEngine::Load(const wstring& fileName, AudioType audioType)
+HRESULT AudioEngine::Load(const wstring& fileName, eAudioType audioType)
 {
 	AudioData audioData{};
 	audioData.audioType = audioType;
@@ -87,41 +109,69 @@ void AudioEngine::Play(const wstring& fileName, bool isLoop)
 {
 	auto& audioData{ m_audios.at(fileName) };
 	if (isLoop)
-	{
 		audioData.buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
-	}
 	audioData.pSourceVoice->Stop();
 	audioData.pSourceVoice->FlushSourceBuffers();
 	audioData.pSourceVoice->SubmitSourceBuffer(&audioData.buffer);
 
 	switch (audioData.audioType)
 	{
-	case AudioType::MUSIC:
+	case eAudioType::MUSIC:
 		audioData.pSourceVoice->SetVolume(m_musicVolume);
+		m_currMusicName = fileName;
 		break;
-	case AudioType::SOUND:
+	case eAudioType::SOUND:
 		audioData.pSourceVoice->SetVolume(m_soundVolume);
 		break;
 	}
 	audioData.pSourceVoice->Start();
 }
 
-void AudioEngine::SetVolume(AudioType audioType, FLOAT volume)
+void AudioEngine::Stop(const wstring& fileName)
+{
+	if (!m_audios.contains(fileName)) return;
+	m_audios[fileName].pSourceVoice->Stop();
+}
+
+void AudioEngine::ChangeMusic(const wstring& fileName)
+{
+	if (!m_audios.contains(fileName)) return;
+	if (m_currMusicName == fileName) return;
+	m_isChanging = TRUE;
+	m_isDecreasing = TRUE;
+	m_targetMusicName = fileName;
+	m_tempVolume = m_musicVolume;
+	m_timer = 0.0f;
+}
+
+void AudioEngine::SetVolume(eAudioType audioType, FLOAT volume)
 {
 	for (auto& [k, v] : m_audios)
 	{
 		if (v.audioType != audioType) continue;
 		v.pSourceVoice->SetVolume(volume);
 	}
-	if (audioType == AudioType::MUSIC)
+	if (audioType == eAudioType::MUSIC)
 		m_musicVolume = volume;
-	else if (audioType == AudioType::SOUND)
+	else if (audioType == eAudioType::SOUND)
 		m_soundVolume = volume;
 }
 
-void AudioEngine::TurnOnVolume(FLOAT time)
+int AudioEngine::GetVolume(eAudioType audioType) const
 {
+	switch (audioType)
+	{
+	case eAudioType::MUSIC:
+		return static_cast<int>(m_musicVolume * 100);
+	case eAudioType::SOUND:
+		return static_cast<int>(m_soundVolume * 100);
+	}
+	return 0;
+}
 
+int AudioEngine::GetAudioCount() const
+{
+	return static_cast<int>(m_audios.size());
 }
 
 HRESULT AudioEngine::FindChunk(HANDLE hFile, DWORD fourcc, DWORD& dwChunkSize, DWORD& dwChunkDataPosition)

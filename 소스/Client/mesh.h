@@ -56,15 +56,15 @@ public:
 	Mesh();
 	virtual ~Mesh() = default;
 
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+
 	void LoadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
 	void LoadMeshBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName);
 	void LoadAnimation(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
 	void LoadAnimationBinary(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& fileName, const string& animationName);
-	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void CreateVertexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT sizePerData, UINT dataCount);
 	void CreateIndexBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, void* data, UINT dataCount);
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList, GameObject* object);
-	void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void ReleaseUploadBuffer();
 
 	void Link(const shared_ptr<Mesh>& mesh) { m_linkMesh = mesh; }
@@ -119,4 +119,64 @@ class FullScreenQuadMesh : public Mesh
 public:
 	FullScreenQuadMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT4& color = { 1.0f, 1.0f, 1.0f, 1.0f });
 	~FullScreenQuadMesh() = default;
+};
+
+class ParticleMesh abstract : public Mesh
+{
+public:
+	ParticleMesh();
+	virtual ~ParticleMesh() = default;
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	void RenderStreamOutput(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+
+	void CreateStreamOutputBuffer(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
+
+protected:
+	BOOL							m_isFirstRender;					// 첫번째 렌더링인지 여부
+
+	UINT							m_vertexSize;						// 정점 구조체 크기
+	UINT							m_maxVertexCount;					// 최대 정점 개수
+
+	ComPtr<ID3D12Resource>          m_streamOutputBuffer;               // 스트림 출력 버퍼
+	D3D12_STREAM_OUTPUT_BUFFER_VIEW m_streamOutputBufferView;           // 스트림 출력 버퍼 뷰
+
+	UINT*                           m_pFilledSize;						// 스트림 버퍼에 쓰여진 데이터 크기
+	ComPtr<ID3D12Resource>			m_streamFilledSizeBuffer;			// 스트림 버퍼에 쓰여진 데이터 크기를 받을 버퍼
+	ComPtr<ID3D12Resource>			m_streamFilledSizeUploadBuffer;		// 위의 버퍼에 복사할 때 쓰일 업로드 버퍼
+	ComPtr<ID3D12Resource>			m_streamFilledSizeReadBackBuffer;	// 쓰여진 데이터 크기를 읽어올 때 쓰일 리드백 버퍼
+	ComPtr<ID3D12Resource>			m_drawBuffer;						// 스트림 출력된 결과를 복사해서 출력할 때 쓰일 버퍼
+};
+
+class DustParticleMesh : public ParticleMesh
+{
+public:
+	struct DustParticleVertex
+	{
+		XMFLOAT3	position;
+		XMFLOAT3	direction;
+		FLOAT		speed;
+		FLOAT		lifeTime;
+		FLOAT		age;
+	};
+
+public:
+	DustParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
+	~DustParticleMesh() = default;
+};
+
+class TrailParticleMesh : public ParticleMesh
+{
+public:
+	struct TrailParticleVertex
+	{
+		XMFLOAT3	position;
+		XMFLOAT3	direction;
+		FLOAT		lifeTime;
+		INT			type;
+	};
+
+public:
+	TrailParticleMesh(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const XMFLOAT3& position, const XMFLOAT3& direction);
+	~TrailParticleMesh() = default;
 };

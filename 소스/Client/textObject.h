@@ -16,6 +16,8 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
+	void Delete();
+
 	void CalcWidthHeight();
 	void SetRect(const D2D1_RECT_F& rect);
 	void SetBrush(const string& brush);
@@ -25,7 +27,7 @@ public:
 	void SetScreenPivot(const ePivot& pivot);
 	void SetPosition(const XMFLOAT2& position);
 
-	BOOL isDeleted() const;
+	BOOL isValid() const;
 	wstring GetText() const;
 	ePivot GetPivot() const;
 	ePivot GetScreenPivot() const;
@@ -38,7 +40,7 @@ public:
 	static unordered_map<string, ComPtr<IDWriteTextFormat>>		s_formats;
 
 protected:
-	BOOL		m_isDeleted;
+	BOOL		m_isValid;
 	BOOL		m_isMouseOver;
 
 	D2D1_RECT_F	m_rect;
@@ -64,14 +66,13 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
-	void SetPlayer(const shared_ptr<Player>& player);
 
 private:
-	shared_ptr<Player>	m_player;
-	INT					m_bulletCount;
-	FLOAT				m_scale;
-	BOOL				m_timerState;
-	FLOAT				m_scaleTimer;
+	Player*	m_player;
+	INT		m_bulletCount;
+	FLOAT	m_scale;
+	BOOL	m_timerState;
+	FLOAT	m_scaleTimer;
 };
 
 class HPTextObject : public TextObject
@@ -84,14 +85,13 @@ public:
 	virtual void Update(FLOAT deltaTime);
 
 	void SetText(const wstring&) = delete;
-	void SetPlayer(const shared_ptr<Player>& player);
 
 private:
-	shared_ptr<Player>	m_player;
-	INT					m_hp;
-	FLOAT				m_scale;
-	BOOL				m_timerState;
-	FLOAT				m_scaleTimer;
+	Player*	m_player;
+	INT		m_hp;
+	FLOAT	m_scale;
+	BOOL	m_timerState;
+	FLOAT	m_scaleTimer;
 };
 
 class MenuTextObject : public TextObject
@@ -106,13 +106,17 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
+	void SetValue(INT value);
 	void SetMouseOverBrush(const string& brush);
 	void SetMouseClickCallBack(const function<void()>& callBackFunc);
+
+	INT GetValue() const;
 
 private:
 	BOOL				m_isMouseOver;
 	FLOAT				m_scale;
 	FLOAT				m_scaleTimer;
+	INT					m_value;
 	string				m_mouseOverBrush;
 	function<void()>	m_mouseClickCallBack;
 };
@@ -126,13 +130,25 @@ public:
 	virtual void Render(const ComPtr<ID2D1DeviceContext2>& device);
 	virtual void Update(FLOAT deltaTime);
 
-	void SetCamera(const shared_ptr<Camera>& camera);
 	void SetStartPosition(const XMFLOAT3& position);
 
 private:
-	shared_ptr<Camera>	m_camera;
-	BOOL				m_isOnScreen;
-	BOOL				m_direction;
-	XMFLOAT3			m_startPosition;
-	FLOAT				m_timer;
+	Camera*		m_camera;
+	BOOL		m_isOnScreen;
+	BOOL		m_direction;
+	XMFLOAT3	m_startPosition;
+	FLOAT		m_timer;
+};
+
+class SkillGageTextObject : public TextObject
+{
+public:
+	SkillGageTextObject();
+	~SkillGageTextObject() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	Player*	m_player;
+	INT		m_percent;
 };

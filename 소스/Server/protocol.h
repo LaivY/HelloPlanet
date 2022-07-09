@@ -15,6 +15,7 @@ constexpr char CS_PACKET_READY = 3;
 constexpr char CS_PACKET_UPDATE_PLAYER = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
+constexpr char CS_PACKET_SELECT_REWARD = 7;
 constexpr char CS_PACKET_LOGOUT = 127;
 
 constexpr char SC_PACKET_LOGIN_CONFIRM = 1;
@@ -31,12 +32,17 @@ constexpr char SC_PACKET_LOGOUT_OK = 127;
 
 enum class eAnimationType : char
 {
-	NONE, IDLE,	RUNNING, WALKING, WALKLEFT,	WALKRIGHT, WALKBACK
+	NONE, IDLE,	RUNNING, WALKING, WALKLEFT,	WALKRIGHT, WALKBACK, HIT, DIE
 };
 
 enum class eUpperAnimationType : char
 {
 	NONE, RELOAD, FIRING
+};
+
+enum class eMobType : char
+{
+	GAROO, SERPENT, HORROR, ULIFO
 };
 
 enum class eMobAnimationType : char
@@ -88,7 +94,7 @@ struct BulletHitData
 struct MonsterData
 {
 	CHAR				id;			// 몬스터 고유 번호
-	CHAR				type;		// 몬스터 타입
+	eMobType			type;		// 몬스터 타입
 	eMobAnimationType	aniType;	// 애니메이션 종류
 	DirectX::XMFLOAT3	pos;		// 위치
 	DirectX::XMFLOAT3	velocity;	// 속도
@@ -147,6 +153,13 @@ struct cs_packet_bullet_fire
 	UCHAR		size;
 	UCHAR		type;
 	BulletData	data;
+};
+
+struct cs_packet_select_reward
+{
+	UCHAR	size;
+	UCHAR	type;
+	CHAR	playerId;
 };
 
 // ---------------------------------

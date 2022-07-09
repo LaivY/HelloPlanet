@@ -1,7 +1,8 @@
 ﻿#include "stdafx.h"
 #include "framework.h"
+#include "audioEngine.h"
 #include "camera.h"
-#include "fadeFilter.h"
+#include "filter.h"
 #include "object.h"
 #include "player.h"
 #include "scene.h"
@@ -10,11 +11,14 @@
 #include "lobbyScene.h"
 #include "mainScene.h"
 #include "timer.h"
+#include "texture.h"
 
 GameFramework::GameFramework() 
 	: m_hInstance{}, m_hWnd{}, m_isActive{ TRUE }, m_isFullScreen{ FALSE }, m_lastWindowRect{}, m_MSAA4xQualityLevel{},
 	  m_frameIndex{ 0 }, m_fenceValues{}, m_fenceEvent{}, m_rtvDescriptorSize{ 0 }, m_pcbGameFramework{ nullptr }, m_nextScene{ eSceneType::NONE }, m_nextTempScene{ eSceneType::NONE }
 {
+	m_timer = make_unique<Timer>();
+
 	HWND desktop{ GetDesktopWindow() };
 	GetWindowRect(desktop, &m_fullScreenRect);
 	g_maxWidth = m_fullScreenRect.right;
@@ -28,9 +32,6 @@ GameFramework::~GameFramework()
 
 void GameFramework::GameLoop()
 {
-	if (m_nextScene != eSceneType::NONE)
-		ChangeScene();
-
 	m_timer->Tick();
 	OnUpdate(m_timer->GetDeltaTime());
 	OnRender();
@@ -41,7 +42,6 @@ void GameFramework::OnInit(HINSTANCE hInstance, HWND hWnd)
 	m_hInstance = hInstance;
 	m_hWnd = hWnd;
 	GetWindowRect(hWnd, &m_lastWindowRect);
-	m_timer = make_unique<Timer>();
 
 	LoadPipeline();
 	LoadAssets();
@@ -73,9 +73,6 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	g_width = static_cast<UINT>(clientRect.right - clientRect.left);
 	g_height = static_cast<UINT>(clientRect.bottom - clientRect.top);
 
-	// 페이드 인/아웃 필터 생성
-	m_fadeFilter = make_unique<FadeFilter>(m_device);
-
 	DXGI_SWAP_CHAIN_DESC desc{};
 	m_swapChain->GetDesc(&desc);
 	DX::ThrowIfFailed(m_swapChain->ResizeBuffers(FrameCount, g_width, g_height, desc.BufferDesc.Format, desc.Flags));
@@ -84,6 +81,10 @@ void GameFramework::OnResize(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 	CreateRenderTargetView();
 	CreateDepthStencilView();
+
+	// 페이드 인/아웃 필터 생성
+	// 윈도우 크기가 바뀔 때마다 그 크기에 맞게 텍스쳐를 다시 만들어야함
+	m_fadeFilter = make_unique<FadeFilter>(m_device);
 
 	if (m_scene) m_scene->OnResize(hWnd, message, wParam, lParam);
 }
@@ -103,6 +104,7 @@ void GameFramework::OnUpdate(FLOAT deltaTime)
 		m_scene->OnMouseEvent(m_hWnd, deltaTime);
 		m_scene->OnKeyboardEvent(deltaTime);
 	}
+	g_audioEngine.Update(deltaTime);
 }
 
 void GameFramework::OnRender()
@@ -427,7 +429,7 @@ void GameFramework::CreateRootSignature()
 	rootParameter[7].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<float> g_detph : t2
 	rootParameter[8].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);	// Texture2D<uint2> g_stencil : t3
 
-	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2];
+	CD3DX12_STATIC_SAMPLER_DESC samplerDesc[2]{};
 	samplerDesc[0].Init(
 		0,								 				// ShaderRegister
 		D3D12_FILTER_MIN_MAG_MIP_LINEAR, 				// filter
@@ -464,14 +466,15 @@ void GameFramework::CreateRootSignature()
 
 void GameFramework::CreatePostRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE ranges[2];
+	CD3DX12_DESCRIPTOR_RANGE ranges[2]{};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
-	CD3DX12_ROOT_PARAMETER rootParameter[3];
+	CD3DX12_ROOT_PARAMETER rootParameter[4]{};
 	rootParameter[0].InitAsConstantBufferView(0);			// cbGameFramework : b0
 	rootParameter[1].InitAsDescriptorTable(1, &ranges[0]);	// Texture2D g_input : t0;
 	rootParameter[2].InitAsDescriptorTable(1, &ranges[1]);	// RWTexture2D<float4> g_output : u0;
+	rootParameter[3].InitAsConstantBufferView(1);			// cbBlurFilter : b1
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 	rootSignatureDesc.Init(_countof(rootParameter), rootParameter, 0, NULL, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -550,11 +553,16 @@ void GameFramework::Render2D() const
 
 void GameFramework::Update(FLOAT deltaTime)
 {
+	if (m_nextScene != eSceneType::NONE)
+		ChangeToNextScene();
+
 	wstring title{ TEXT("Hello, Planet! (") + to_wstring(static_cast<int>(m_timer->GetFPS())) + TEXT("FPS)") };
 	SetWindowText(m_hWnd, title.c_str());
 
 	// 상수버퍼
 	m_cbGameFrameworkData->deltaTime = deltaTime;
+	m_cbGameFrameworkData->screenWidth = g_width;
+	m_cbGameFrameworkData->screenWidth = g_height;
 
 	// 후처리 상수버퍼
 	if (m_cbPostGameFrameworkData->fadeType == -1 &&
@@ -575,6 +583,9 @@ void GameFramework::UpdateShaderVariable() const
 {
 	memcpy(m_pcbGameFramework, m_cbGameFrameworkData.get(), sizeof(cbGameFramework));
 	m_commandList->SetGraphicsRootConstantBufferView(4, m_cbGameFramework->GetGPUVirtualAddress());
+
+	ID3D12DescriptorHeap* ppHeaps[]{ Texture::s_srvHeap.Get() };
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 }
 
 void GameFramework::UpdatePostShaderVariable() const
@@ -615,6 +626,7 @@ void GameFramework::PopulateCommandList() const
 	}
 
 	// 페이드 인/아웃
+	if (m_cbPostGameFrameworkData->fadeType != 0)
 	{
 		m_commandList->SetComputeRootSignature(m_postRootSignature.Get());
 		UpdatePostShaderVariable();
@@ -658,7 +670,7 @@ void GameFramework::WaitForGpu()
 	m_fenceValues[m_frameIndex]++;
 }
 
-void GameFramework::ChangeScene()
+void GameFramework::ChangeToNextScene()
 {
 	WaitForPreviousFrame();
 
@@ -669,6 +681,7 @@ void GameFramework::ChangeScene()
 		break;
 	case eSceneType::MAIN:
 		m_scene = make_unique<MainScene>();
+		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")));
 		break;
 	case eSceneType::LOBBY:
 		m_scene = make_unique<LobbyScene>();
@@ -676,13 +689,14 @@ void GameFramework::ChangeScene()
 	case eSceneType::GAME:
 	{
 		// 로비 씬에서 만든 플레이어와 멀티플레이어를 게임씬으로 옮김
-		auto scene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
-		auto nextScene{ make_unique<GameScene>() };
-		auto& player{ scene->GetPlayer() };
+		auto lobbyScene{ reinterpret_cast<LobbyScene*>(m_scene.get()) };
+		auto gameScene{ make_unique<GameScene>() };
+		auto& player{ lobbyScene->GetPlayer() };
 		player->SetIsMultiplayer(FALSE);
-		nextScene->SetPlayer(player);
-		nextScene->SetMultiPlayers(scene->GetMultiPlayers());
-		m_scene = move(nextScene);
+		gameScene->SetPlayer(player);
+		gameScene->SetMultiPlayers(lobbyScene->GetMultiPlayers());
+		m_scene = move(gameScene);
+		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")));
 		break;
 	}
 	}

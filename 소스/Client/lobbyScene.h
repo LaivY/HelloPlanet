@@ -30,7 +30,7 @@ public:
 	virtual void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void PreRender(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
 	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) const;
-	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device);
+	virtual void Render2D(const ComPtr<ID2D1DeviceContext2>& device) const;
 
 	virtual void RecvPacket();
 
@@ -54,7 +54,7 @@ public:
 	void RecvLogoutOkPacket();
 
 	unique_ptr<Player>& GetPlayer();
-	array<unique_ptr<Player>, Setting::MAX_PLAYERS>& GetMultiPlayers();
+	array<shared_ptr<Player>, Setting::MAX_PLAYERS>& GetMultiPlayers();
 
 private:
 	BOOL								m_isReadyToPlay;
@@ -68,13 +68,12 @@ private:
 	cbGameScene*						m_pcbGameScene;
 	unique_ptr<cbGameScene>				m_cbGameSceneData;
 
-	unique_ptr<ShadowMap>				m_shadowMap;
 	unique_ptr<Skybox>					m_skybox;
 	shared_ptr<Camera>					m_camera;
 	shared_ptr<Camera>					m_uiCamera;
 	unique_ptr<MenuTextObject>			m_readyTextObject;
 	unique_ptr<Player>					m_player;
-	array<unique_ptr<Player>,
+	array<shared_ptr<Player>,
 		  Setting::MAX_PLAYERS>			m_multiPlayers;
 	vector<unique_ptr<GameObject>>		m_gameObjects;
 	vector<unique_ptr<UIObject>>		m_uiObjects;
