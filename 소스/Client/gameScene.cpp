@@ -1146,6 +1146,8 @@ void GameScene::RecvBulletHit()
 			offset = XMFLOAT3{ 0.0f, 145.0f, 0.0f };
 			break;
 		}
+		// 랜덤하게 좀 더 움직임
+		offset = Vector3::Add(offset, XMFLOAT3{ Utile::Random(-5.0f, 5.0f), Utile::Random(-5.0f, 5.0f), 0.0f });
 		dmgText->SetStartPosition(Vector3::Add((*it)->GetPosition(), offset));
 		lock.lock();
 		m_textObjects.push_back(move(dmgText));

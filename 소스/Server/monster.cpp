@@ -482,12 +482,12 @@ void UlifoMonster::UpdateAnimation()
 	bool isDefault{ true };
 	switch (m_aniType)
 	{
-	case eMobAnimationType::ATTACK:
-		if (m_atkTimer < m_knockbackTime)
-		{
-			m_aniType = eMobAnimationType::ATTACK;
-		}
-		break;
+	//case eMobAnimationType::ATTACK:
+	//	if (m_atkTimer < m_knockbackTime)
+	//	{
+	//		m_aniType = eMobAnimationType::ATTACK;
+	//	}
+	//	break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
 		{
@@ -506,14 +506,5 @@ void UlifoMonster::UpdateAnimation()
 
 void UlifoMonster::CalcAttack()
 {
-	//float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
-	//if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
-	//{
-	//	if (range < 27.0f)
-	//		g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
-	//	m_wasAttack = true;
-	//	return;
-	//}
-	//if (range < 25.0f)
-	//	m_aniType = eMobAnimationType::ATTACK;
+
 }
