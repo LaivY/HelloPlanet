@@ -214,41 +214,48 @@ void GarooMonster::OnHit(const BulletData& bullet)
 
 void GarooMonster::UpdateAnimation()
 {
+	// 다른 애니메이션의 if문에 하나도 걸리지 않은 경우
+	bool isDefault{ true };
 	switch (m_aniType)
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::ATTACK;
+			isDefault = false;
 		}
 		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::HIT;
+			isDefault = false;
 		}
 		break;
-	default:
+	}
+	if (isDefault)
+	{
 		m_aniType = eMobAnimationType::RUNNING;
 		m_atkTimer = 0.0f;
 		m_wasAttack = false;
-		break;
 	}
 }
 
 void GarooMonster::CalcAttack()
 {
-	// 공격 애니메이션이 재생된지 0.3초가 넘었을 때
+	// 플레이어와 몬스터 사이의 거리
+	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+
+	// 플레이어 피격 판정
 	if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
 	{
-		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
 		if (range < 27.0f)
 			g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
 		m_wasAttack = true;
 		return;
 	}
 
-	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	// 플레이어 공격
 	if (range < 25.0f)
 		m_aniType = eMobAnimationType::ATTACK;
 }
@@ -303,30 +310,44 @@ void SerpentMonster::OnHit(const BulletData& bullet)
 
 void SerpentMonster::UpdateAnimation()
 {
+	bool isDefault{ true };
 	switch (m_aniType)
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::ATTACK;
+			isDefault = false;
 		}
 		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::HIT;
+			isDefault = false;
 		}
 		break;
-	default:
+	}
+	if (isDefault)
+	{
 		m_aniType = eMobAnimationType::WALKING;
 		m_atkTimer = 0.0f;
 		m_wasAttack = false;
-		break;
 	}
 }
 
 void SerpentMonster::CalcAttack()
 {
+	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
+	{
+		if (range < 27.0f)
+			g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
+		m_wasAttack = true;
+		return;
+	}
+	if (range < 25.0f)
+		m_aniType = eMobAnimationType::ATTACK;
 }
 
 HorrorMonster::HorrorMonster()
@@ -379,31 +400,44 @@ void HorrorMonster::OnHit(const BulletData& bullet)
 
 void HorrorMonster::UpdateAnimation()
 {
+	bool isDefault{ true };
 	switch (m_aniType)
 	{
 	case eMobAnimationType::ATTACK:
 		if (m_atkTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::ATTACK;
+			isDefault = false;
 		}
 		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::HIT;
+			isDefault = false;
 		}
 		break;
-	default:
+	}
+	if (isDefault)
+	{
 		m_aniType = eMobAnimationType::WALKING;
 		m_atkTimer = 0.0f;
 		m_wasAttack = false;
-		break;
 	}
 }
 
 void HorrorMonster::CalcAttack()
 {
-
+	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
+	{
+		if (range < 27.0f)
+			g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
+		m_wasAttack = true;
+		return;
+	}
+	if (range < 25.0f)
+		m_aniType = eMobAnimationType::ATTACK;
 }
 
 UlifoMonster::UlifoMonster()
@@ -445,29 +479,41 @@ void UlifoMonster::OnHit(const BulletData& bullet)
 
 void UlifoMonster::UpdateAnimation()
 {
+	bool isDefault{ true };
 	switch (m_aniType)
 	{
-	//case eMobAnimationType::ATTACK:
-	//	if (m_atkTimer < m_knockbackTime)
-	//	{
-	//		m_aniType = eMobAnimationType::ATTACK;
-	//	}
-	//	break;
+	case eMobAnimationType::ATTACK:
+		if (m_atkTimer < m_knockbackTime)
+		{
+			m_aniType = eMobAnimationType::ATTACK;
+		}
+		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer < m_knockbackTime)
 		{
 			m_aniType = eMobAnimationType::HIT;
+			isDefault = false;
 		}
 		break;
-	default:
+	}
+	if (isDefault)
+	{
 		m_aniType = eMobAnimationType::WALKING;
 		m_atkTimer = 0.0f;
 		m_wasAttack = false;
-		break;
 	}
 }
 
 void UlifoMonster::CalcAttack()
 {
-
+	//float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	//if (m_aniType == eMobAnimationType::ATTACK && m_atkTimer >= 0.3f && !m_wasAttack)
+	//{
+	//	if (range < 27.0f)
+	//		g_networkFramework.SendMonsterAttackPacket(m_target, m_id, m_damage);
+	//	m_wasAttack = true;
+	//	return;
+	//}
+	//if (range < 25.0f)
+	//	m_aniType = eMobAnimationType::ATTACK;
 }
