@@ -355,7 +355,7 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
-		m_damage = 1;
+		m_damage = 20;
 		m_atkFrame = 11.0f;
 		m_atkRange = 90.0f;
 		break;

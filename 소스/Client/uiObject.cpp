@@ -248,7 +248,7 @@ void HpUIObject::Update(FLOAT deltaTime)
 	}
 	m_maxHp = m_player->GetMaxHp();
 
-	constexpr float decreseSpeed{ 50.0f };
+	constexpr float decreseSpeed{ 150.0f };
 	if (m_deltaHp > 0.0f)
 	{
 		m_deltaHp = max(0.0f, m_deltaHp - decreseSpeed * deltaTime);

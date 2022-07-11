@@ -258,7 +258,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 			}
 			else if (upperAnimationInfo->state == eAnimationState::BLENDING)
 			{
-				// 상체 애니메이션은 블렌딩할 때 하체 애니메이션의 타이밍과 맞춘다.
+				// 현재 하체 애니메이션과 상체 애니메이션을 선형보간한다.
 				const Animation& upperAfterAni{
 					m_linkMesh
 					? m_linkMesh->GetAnimation(upperAnimationInfo->afterAnimationName)
@@ -270,17 +270,17 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 
 				for (int i = 0; i < start; ++i)
 				{
-					XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nUpperCurrFrame],
-														   currAnimation.joints[i].animationTransformMatrix[nUpperNextFrame],
-														   upperT) };
+					XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints[i].animationTransformMatrix[nCurrFrame],
+														   currAnimation.joints[i].animationTransformMatrix[nNextFrame],
+														   t) };
 					XMFLOAT4X4 after{ upperAfterAni.joints[i].animationTransformMatrix.front() };
 					pcbMesh->boneTransformMatrix[i] = Matrix::Interpolate(before, after, t2);
 				}
 
 				// 총 애니메이션
-				XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints.back().animationTransformMatrix[nUpperCurrFrame],
-													   currAnimation.joints.back().animationTransformMatrix[nUpperNextFrame],
-													   upperT) };
+				XMFLOAT4X4 before{ Matrix::Interpolate(currAnimation.joints.back().animationTransformMatrix[nCurrFrame],
+													   currAnimation.joints.back().animationTransformMatrix[nNextFrame],
+													   t) };
 				XMFLOAT4X4 after{ upperAfterAni.joints.back().animationTransformMatrix.front() };
 				pcbMesh->boneTransformMatrix[currUpperAnimation.joints.size() - 1] = Matrix::Interpolate(before, after, t2);
 
