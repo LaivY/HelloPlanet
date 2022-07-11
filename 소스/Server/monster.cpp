@@ -500,10 +500,10 @@ void HorrorMonster::CalcAttack()
 		m_aniType = eMobAnimationType::ATTACK;
 }
 
-UlifoMonster::UlifoMonster()
+UlifoMonster::UlifoMonster() : m_isAppear{ TRUE }
 {
 	m_mobType = eMobType::ULIFO;
-	m_hp = 1000;
+	m_hp = 5000;
 	m_damage = 30;
 	m_speed = 30.0f;
 	m_knockbackTime = 0.2f;
@@ -513,6 +513,11 @@ UlifoMonster::UlifoMonster()
 void UlifoMonster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
+	if (m_isAppear)
+	{
+		UpdateAppear(deltaTime);
+		return;
+	}
 
 	XMVECTOR look{ GetPlayerVector(m_target) };
 	UpdatePosition(deltaTime, look);
@@ -567,4 +572,66 @@ void UlifoMonster::UpdateAnimation()
 void UlifoMonster::CalcAttack()
 {
 
+}
+
+void UlifoMonster::UpdateAppear(FLOAT deltaTime)
+{
+	/*
+	0 : 하늘에서 idle 상태로 떨어져서 착지하면 down 애니메이션을 재생 후 0.6초 대기
+	1 : standup 애니메이션 재생, 0.6초 대기
+	2 : roar 애니메이션 재생, 1.0초 대기
+	3 : 3.0초 대기후 연출 끝
+	*/
+	static int order{ 0 };
+	static float timer{ 0.0f };
+
+	switch (order)
+	{
+	case 0:
+		m_velocity = XMFLOAT3{ 0.0f, -1000.0f, 0.0f };
+		m_position.y = max(0.0f, m_position.y - 1000.0f * deltaTime);
+		if (m_position.y <= 500.0f)
+		{
+			if (m_position.y == 0.0f)
+				m_velocity = XMFLOAT3{};
+			if (timer >= 0.6f)
+			{
+				order = 1;
+				timer = 0.0f;
+				break;
+			}
+			SetAnimationType(eMobAnimationType::DOWN);
+			timer += deltaTime;
+		}
+		break;
+	case 1:
+		if (timer >= 0.6f)
+		{
+			order = 2;
+			timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::STANDUP);
+		timer += deltaTime;
+		break;
+	case 2:
+		if (timer >= 1.0f)
+		{
+			order = 3;
+			timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::ROAR);
+		timer += deltaTime;
+		break;
+	case 3:
+		if (timer >= 3.0f)
+		{
+			m_isAppear = FALSE;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::IDLE);
+		timer += deltaTime;
+		break;
+	}
 }

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+class GameObject;
 class Player;
 
 struct cbCamera
@@ -17,11 +18,13 @@ public:
 
 	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	virtual void Update(FLOAT deltaTime);
-	void Move(const XMFLOAT3& shift);
 	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+
 	void CreateShaderVariable(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList);
 	void UpdateShaderVariableByPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandList);
+
+	void Move(const XMFLOAT3& shift);
 
 	void SetViewMatrix(const XMFLOAT4X4& viewMatrix) { m_viewMatrix = viewMatrix; }
 	void SetProjMatrix(const XMFLOAT4X4& projMatrix) { m_projMatrix = projMatrix; }
@@ -66,9 +69,9 @@ public:
 	ThirdPersonCamera();
 	~ThirdPersonCamera() = default;
 
-	void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-	void Update(FLOAT deltaTime);
-	void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
+	virtual void OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	virtual void Update(FLOAT deltaTime);
+	virtual void Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw);
 
 	void SetFocusOffset(const XMFLOAT3& focusOffset) { m_focusOffset = focusOffset; }
 	void SetDistance(FLOAT distance) { m_distance = clamp(distance, 3.0f, 9999.0f); }
@@ -81,4 +84,23 @@ private:
 	XMFLOAT3	m_focusOffset;	// 카메라가 바라볼 위치
 	FLOAT		m_distance;		// 오프셋 방향으로 떨어진 거리
 	FLOAT		m_delay;		// 움직임 딜레이 (0.0 ~ 1.0)
+};
+
+class ShowCamera : public Camera
+{
+public:
+	ShowCamera();
+	~ShowCamera() = default;
+
+	virtual void Update(FLOAT deltaTime);
+
+	void SetTarget(GameObject* target);
+	void SetTime(FLOAT time);
+	void SetTimerCallback(const function<void()>& callBackFunc);
+
+private:
+	GameObject*			m_target;
+	FLOAT				m_timer;
+	FLOAT				m_time;
+	function<void()>	m_timerCallBack;
 };

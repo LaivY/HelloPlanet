@@ -110,4 +110,9 @@ public:
 private:
 	void UpdateAnimation();
 	void CalcAttack();
+
+	void UpdateAppear(FLOAT deltaTime);
+
+private:
+	BOOL m_isAppear; // 등장 연출
 };

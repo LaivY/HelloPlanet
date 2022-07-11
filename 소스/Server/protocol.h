@@ -47,7 +47,8 @@ enum class eMobType : char
 
 enum class eMobAnimationType : char
 {
-	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE
+	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE,
+	DOWN, STANDUP, JUMPATK, LEGATK, REST, ROAR  // 보스 애니메이션
 };
 
 enum class eSceneType : char

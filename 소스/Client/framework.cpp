@@ -681,7 +681,7 @@ void GameFramework::ChangeToNextScene()
 		break;
 	case eSceneType::MAIN:
 		m_scene = make_unique<MainScene>();
-		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")));
+		g_audioEngine.ChangeMusic("LOBBY");
 		break;
 	case eSceneType::LOBBY:
 		m_scene = make_unique<LobbyScene>();
@@ -696,7 +696,7 @@ void GameFramework::ChangeToNextScene()
 		gameScene->SetPlayer(player);
 		gameScene->SetMultiPlayers(lobbyScene->GetMultiPlayers());
 		m_scene = move(gameScene);
-		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")));
+		g_audioEngine.ChangeMusic("INGAME");
 		break;
 	}
 	}
@@ -716,9 +716,7 @@ void GameFramework::ChangeToNextScene()
 	m_scene->OnInitEnd();
 
 	// 페이드 인
-	m_cbPostGameFrameworkData->fadeType = 1;
-	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
-	m_cbPostGameFrameworkData->fadeTime = 0.3f;
+	SetFadeIn(0.3f);
 }
 
 BOOL GameFramework::ConnectServer()
@@ -763,12 +761,22 @@ void GameFramework::SetIsFullScreen(BOOL isFullScreen)
 
 void GameFramework::SetNextScene(eSceneType scene)
 {
-	// 페이드 아웃
+	SetFadeOut(0.3f);
+	m_nextTempScene = scene;
+}
+
+void GameFramework::SetFadeIn(FLOAT time)
+{
+	m_cbPostGameFrameworkData->fadeType = 1;
+	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
+	m_cbPostGameFrameworkData->fadeTime = time;
+}
+
+void GameFramework::SetFadeOut(FLOAT time)
+{
 	m_cbPostGameFrameworkData->fadeType = -1;
 	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
-	m_cbPostGameFrameworkData->fadeTime = 0.3f;
-
-	m_nextTempScene = scene;
+	m_cbPostGameFrameworkData->fadeTime = time;
 }
 
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const

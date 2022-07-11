@@ -4,7 +4,7 @@ using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
 	isAccept{ false }, readyCount{ 0 }, 
-	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	round{ 4 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");
@@ -389,19 +389,23 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		{
 		case 1:
 			m = std::make_unique<GarooMonster>();
+			m->SetRandomPosition();
 			break;
 		case 2:
 			m = std::make_unique<SerpentMonster>();
+			m->SetRandomPosition();
 			break;
 		case 3:
 			m = std::make_unique<HorrorMonster>();
+			m->SetRandomPosition();
 			break;
 		case 4:
 			m = std::make_unique<UlifoMonster>();
+			m->SetPosition(XMFLOAT3{ 0.0f, 1000.0f, 300.0f });
+			m->SetYaw(180.0f);
 			break;
 		}
 		m->SetId(lastMobId++);
-		m->SetRandomPosition();
 		m->SetTargetId(DetectPlayer(m->GetPosition()));
 		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));

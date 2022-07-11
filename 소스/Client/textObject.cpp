@@ -349,7 +349,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
 	{
-		g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_CLICK.wav")));
+		g_audioEngine.Play("CLICK");
 		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
 	}
@@ -376,7 +376,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		r.top <= p.y && p.y <= r.bottom)
 	{
 		if (!m_isMouseOver)
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_HOVER.wav")));
+			g_audioEngine.Play("HOVER");
 		m_isMouseOver = TRUE;
 	}
 	else

@@ -211,8 +211,8 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/down.bin"), "DOWN");
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/hit.bin"), "HIT");
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/idle.bin"), "IDLE");
-	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/jumpAttack.bin"), "JUMP_ATK");
-	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/legAttack.bin"), "LEG_ATK");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/jumpAttack.bin"), "JUMPATK");
+	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/legAttack.bin"), "LEGATK");
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/rest.bin"), "REST");
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/roar.bin"), "ROAR");
 	s_meshes["ULIFO"]->LoadAnimationBinary(device, commandList, Utile::PATH("Mob/Ulifo/standup.bin"), "STANDUP");
@@ -401,10 +401,11 @@ void LoadingScene::LoadTextFormats(const ComPtr<IDWriteFactory>& dWriteFactory)
 
 void LoadingScene::LoadAudios()
 {
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")), eAudioType::MUSIC);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")), eAudioType::MUSIC);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")), eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")), eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_CLICK.wav")), eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH(TEXT("Sound/UI_HOVER.wav")), eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/BGM_INGAME.wav"), "INGAME", eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH("Sound/BGM_LOBBY.wav"), "LOBBY", eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT0", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT1", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_FOOTSTEP.wav"), "FOOTSTEP", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/UI_CLICK.wav"), "CLICK", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/UI_HOVER.wav"), "HOVER", eAudioType::SOUND);
 }

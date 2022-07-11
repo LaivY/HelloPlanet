@@ -86,26 +86,29 @@ private:
 	void RecvRoundClear();
 
 public:
-	ComPtr<ID3D12Resource>					m_cbGameScene;		// 상수 버퍼
-	cbGameScene*							m_pcbGameScene;		// 상수 버퍼 포인터
-	unique_ptr<cbGameScene>					m_cbGameSceneData;	// 상수 버퍼 데이터
+	ComPtr<ID3D12Resource>				m_cbGameScene;		// 상수 버퍼
+	cbGameScene*						m_pcbGameScene;		// 상수 버퍼 포인터
+	unique_ptr<cbGameScene>				m_cbGameSceneData;	// 상수 버퍼 데이터
 
-	unique_ptr<OutlineObject>				m_redOutliner;		// 빨강 외곽선
-	unique_ptr<OutlineObject>				m_greenOutliner;	// 초록 외곽선
-	unique_ptr<OutlineObject>				m_blackOutliner;	// 검정 외곽선
+	unique_ptr<BlurFilter>				m_blurFilter;		// 블러필터
+	unique_ptr<OutlineObject>			m_redOutliner;		// 빨강 외곽선
+	unique_ptr<OutlineObject>			m_greenOutliner;	// 초록 외곽선
+	unique_ptr<OutlineObject>			m_blackOutliner;	// 검정 외곽선
 
-	unique_ptr<Skybox>						m_skybox;			// 스카이박스
-	shared_ptr<Camera>						m_camera;			// 카메라
-	shared_ptr<Camera>						m_observeCamera;	// 관전 카메라
-	unique_ptr<Camera>						m_screenCamera;		// 스크린카메라
-	unique_ptr<Camera>						m_uiCamera;			// UI 카메라
-	shared_ptr<Player>						m_player;			// 플레이어
+	shared_ptr<Camera>					m_camera;			// 메인 카메라
+	shared_ptr<Camera>					m_showCamera;		// 연출 카메라
+	shared_ptr<Camera>					m_observeCamera;	// 관전 카메라
+	unique_ptr<Camera>					m_screenCamera;		// 스크린 카메라
+	unique_ptr<Camera>					m_uiCamera;			// UI 카메라
+
+	unique_ptr<Skybox>					m_skybox;			// 스카이박스
+	shared_ptr<Player>					m_player;			// 플레이어
 	array<shared_ptr<Player>,
-		  Setting::MAX_PLAYERS>				m_multiPlayers;		// 멀티플레이어
-	vector<unique_ptr<GameObject>>			m_gameObjects;		// 게임오브젝트들
-	vector<unique_ptr<UIObject>>			m_uiObjects;		// UI 오브젝트
-	vector<unique_ptr<TextObject>>			m_textObjects;		// 텍스트 오브젝트
-	vector<unique_ptr<WindowObject>>		m_windowObjects;	// 윈도우 오브젝트
+		  Setting::MAX_PLAYERS>			m_multiPlayers;		// 멀티플레이어
+	vector<unique_ptr<GameObject>>		m_gameObjects;		// 게임오브젝트들
+	vector<unique_ptr<UIObject>>		m_uiObjects;		// UI 오브젝트
+	vector<unique_ptr<TextObject>>		m_textObjects;		// 텍스트 오브젝트
+	vector<unique_ptr<WindowObject>>	m_windowObjects;	// 윈도우 오브젝트
 
-	unique_ptr<BlurFilter>					m_blurFilter;		// 블러필터
+	BOOL								m_isShowing;		// 연출 중
 };

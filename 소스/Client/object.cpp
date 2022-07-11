@@ -420,6 +420,30 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 			PlayAnimation("DIE", TRUE);
 		SetVelocity(XMFLOAT3{ 0.0f, -3.0f, 0.0f });
 		return;
+	case eMobAnimationType::DOWN:
+		if (m_animationInfo->currAnimationName != "DOWN" && m_animationInfo->afterAnimationName != "DOWN")
+			PlayAnimation("DOWN", TRUE);
+		break;
+	case eMobAnimationType::STANDUP:
+		if (m_animationInfo->currAnimationName != "STANDUP" && m_animationInfo->afterAnimationName != "STANDUP")
+			PlayAnimation("STANDUP", TRUE);
+		break;
+	case eMobAnimationType::JUMPATK:
+		if (m_animationInfo->currAnimationName != "JUMPATK" && m_animationInfo->afterAnimationName != "JUMPATK")
+			PlayAnimation("JUMPATK", TRUE);
+		break;
+	case eMobAnimationType::LEGATK:
+		if (m_animationInfo->currAnimationName != "LEGATK" && m_animationInfo->afterAnimationName != "LEGATK")
+			PlayAnimation("LEGATK", TRUE);
+		break;
+	case eMobAnimationType::REST:
+		if (m_animationInfo->currAnimationName != "REST" && m_animationInfo->afterAnimationName != "REST")
+			PlayAnimation("REST", TRUE);
+		break;
+	case eMobAnimationType::ROAR:
+		if (m_animationInfo->currAnimationName != "ROAR" && m_animationInfo->afterAnimationName != "ROAR")
+			PlayAnimation("ROAR", TRUE);
+		break;
 	}
 
 	m_id = monsterData.id;

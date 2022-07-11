@@ -482,8 +482,10 @@ AutoTargetUIObject::AutoTargetUIObject() : UIObject{ 0.0f, 0.0f }
 
 void AutoTargetUIObject::Update(FLOAT deltaTime)
 {
-	// 플레이어가 AR이고, 스킬 활성화 상태가 아니라면 패스
-	if (m_player->GetWeaponType() == eWeaponType::AR && !m_player->GetIsSkillActive())
+	if (m_player->GetWeaponType() != eWeaponType::AR)
+		return;
+
+	if (!m_player->GetIsSkillActive())
 	{
 		SetPosition(XMFLOAT2{ -999.0f, -999.0f });
 		m_player->SetAutoTarget(-1);

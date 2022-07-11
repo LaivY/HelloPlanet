@@ -251,12 +251,12 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 		if (currPureAnimationName == "RUNNING" && currFrame >= 9.0f)
 		{
 			m_isMoved = TRUE;
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+			g_audioEngine.Play("FOOTSTEP");
 		}
 		else if (currFrame >= 5.0f)
 		{
 			m_isMoved = TRUE;
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+			g_audioEngine.Play("FOOTSTEP");
 		}
 	}
 
@@ -618,7 +618,10 @@ void Player::Fire()
 	GameScene::s_screenObjects.push_back(move(frontEffect));
 
 	// 발사 효과음
-	g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")));
+	// 효과음이 끊기지않게 같은 소리를 번갈아가면서 재생
+	static int count{ 0 };
+	g_audioEngine.Play("SHOT" + to_string(count));
+	++count %= 2;
 
 	m_isFired = TRUE;
 }

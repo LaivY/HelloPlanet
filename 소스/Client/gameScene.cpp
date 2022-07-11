@@ -14,7 +14,7 @@
 vector<unique_ptr<Monster>>		GameScene::s_monsters;
 vector<unique_ptr<GameObject>>	GameScene::s_screenObjects;
 
-GameScene::GameScene() : m_pcbGameScene{ nullptr }
+GameScene::GameScene() : m_pcbGameScene{ nullptr }, m_isShowing{ false }
 {
 	ShowCursor(FALSE);
 }
@@ -57,9 +57,6 @@ void GameScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12Gr
 
 	// 블러 필터
 	m_blurFilter = make_unique<BlurFilter>(device, commandList);
-
-	// 배경음 재생
-	g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/bgm.wav")));
 
 #ifdef NETWORK
 	g_networkThread = thread{ &GameScene::ProcessClient, this };
@@ -297,13 +294,18 @@ void GameScene::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, D3D
 	RenderGameObjects(commandList, rtvHandle, dsvHandle);
 	RenderMultiPlayers(commandList, rtvHandle, dsvHandle);
 	RenderMonsters(commandList, rtvHandle, dsvHandle);
-	RenderScreenObjects(commandList, rtvHandle, dsvHandle);
-	RenderPlayer(commandList, rtvHandle, dsvHandle);
-	RenderUIObjects(commandList, rtvHandle, dsvHandle);
+	if (!m_isShowing)
+	{
+		RenderScreenObjects(commandList, rtvHandle, dsvHandle);
+		RenderPlayer(commandList, rtvHandle, dsvHandle);
+		RenderUIObjects(commandList, rtvHandle, dsvHandle);
+	}
 }
 
 void GameScene::Render2D(const ComPtr<ID2D1DeviceContext2>& device) const
 {
+	if (m_isShowing) return;
+
 	unique_lock<mutex> lock{ g_mutex };
 	for (const auto& t : m_textObjects)
 		t->Render(device);
@@ -380,6 +382,11 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_camera->CreateShaderVariable(device, commandList);
 	m_camera->SetProjMatrix(projMatrix);
 
+	// 연출 카메라 생성
+	m_showCamera = make_shared<ShowCamera>();
+	m_showCamera->CreateShaderVariable(device, commandList);
+	m_showCamera->SetProjMatrix(projMatrix);
+
 	// 관전 카메라 생성
 	m_observeCamera = make_shared<ThirdPersonCamera>();
 	m_observeCamera->CreateShaderVariable(device, commandList);
@@ -453,9 +460,9 @@ void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 {
 	// UI 카메라 생성
 	XMFLOAT4X4 projMatrix{};
+	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
 	m_uiCamera = make_unique<Camera>();
 	m_uiCamera->CreateShaderVariable(device, commandList);
-	XMStoreFloat4x4(&projMatrix, XMMatrixOrthographicLH(static_cast<float>(g_width), static_cast<float>(g_height), 0.0f, 1.0f));
 	m_uiCamera->SetProjMatrix(projMatrix);
 
 	// 조준점
@@ -1073,6 +1080,23 @@ void GameScene::RecvUpdateMonster()
 			auto mob{ make_unique<Monster>(m.id, m.type) };
 			mob->ApplyServerData(m);
 
+			if (m.type == eMobType::ULIFO)
+			{
+				auto camera{ reinterpret_cast<ShowCamera*>(m_showCamera.get()) };
+				camera->SetTarget(mob.get());
+				camera->SetTime(4.0f);
+				camera->SetTimerCallback(
+					[&]()
+					{
+						m_camera.swap(m_showCamera);
+						m_skybox->SetCamera(m_camera);
+						m_isShowing = FALSE;
+					});
+				m_camera.swap(m_showCamera);
+				m_skybox->SetCamera(m_camera);
+				m_isShowing = TRUE;
+			}
+
 			unique_lock<mutex> lock{ g_mutex };
 			s_monsters.push_back(move(mob));
 			continue;
@@ -1271,6 +1295,13 @@ void GameScene::RecvRoundClear()
 	if (m_player->GetHp() <= 0)
 		OnPlayerRevive();
 
+	// 멀티플레이어도 죽어있다면 IDLE 애니메이션 재생
+	for (auto& player : m_multiPlayers)
+	{
+		if (!player) continue;
+		player->PlayAnimation("IDLE");
+	}
+
 	// 중복없이 보상 3개 선택
 	const auto r = { eReward::DAMAGE, eReward::SPEED, eReward::MAXHP, eReward::MAXBULLET, eReward::SPECIAL };
 	vector<eReward> rewards;
@@ -1408,7 +1439,7 @@ void GameScene::RecvRoundClear()
 				break;
 			case eWeaponType::SG:
 				rewardImageObjects[i]->SetTexture(s_textures["REWARD_SG"]);
-				rewardTextObjects[i]->SetText(TEXT("발사 탄환 수 +2%"));
+				rewardTextObjects[i]->SetText(TEXT("발사 탄환 수 +2"));
 				break;
 			case eWeaponType::MG:
 				rewardImageObjects[i]->SetTexture(s_textures["REWARD_MG"]);
