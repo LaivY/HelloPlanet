@@ -2,7 +2,7 @@
 #include "session.h"
 #include "framework.h"
 
-Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE },
+Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE }, isAlive{ TRUE },
                      state{ STATE::ST_FREE }, prev_size{ 0 }
 {
 	strcpy_s(name, "Player\0");

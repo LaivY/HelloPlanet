@@ -500,7 +500,7 @@ void HorrorMonster::CalcAttack()
 		m_aniType = eMobAnimationType::ATTACK;
 }
 
-UlifoMonster::UlifoMonster() : m_isAppear{ TRUE }
+UlifoMonster::UlifoMonster() : m_isAppear{ TRUE }, m_order{ 0 }, m_timer{ 0.0f }
 {
 	m_mobType = eMobType::ULIFO;
 	m_hp = 5000;
@@ -577,15 +577,13 @@ void UlifoMonster::CalcAttack()
 void UlifoMonster::UpdateAppear(FLOAT deltaTime)
 {
 	/*
-	0 : 하늘에서 idle 상태로 떨어져서 착지하면 down 애니메이션을 재생 후 0.6초 대기
-	1 : standup 애니메이션 재생, 0.6초 대기
-	2 : roar 애니메이션 재생, 1.0초 대기
-	3 : 3.0초 대기후 연출 끝
+	0 : 하늘에서 idle 상태로 떨어져서 착지하면 down 애니메이션을 재생(0.6초)
+	1 : standup 애니메이션 재생(0.6초)
+	2 : roar 애니메이션 재생(1.0초)
+	3 : 대기(2.0초)
 	*/
-	static int order{ 0 };
-	static float timer{ 0.0f };
 
-	switch (order)
+	switch (m_order)
 	{
 	case 0:
 		m_velocity = XMFLOAT3{ 0.0f, -1000.0f, 0.0f };
@@ -594,44 +592,44 @@ void UlifoMonster::UpdateAppear(FLOAT deltaTime)
 		{
 			if (m_position.y == 0.0f)
 				m_velocity = XMFLOAT3{};
-			if (timer >= 0.6f)
+			if (m_timer >= 0.6f)
 			{
-				order = 1;
-				timer = 0.0f;
+				m_order = 1;
+				m_timer = 0.0f;
 				break;
 			}
 			SetAnimationType(eMobAnimationType::DOWN);
-			timer += deltaTime;
+			m_timer += deltaTime;
 		}
 		break;
 	case 1:
-		if (timer >= 0.6f)
+		if (m_timer >= 0.6f)
 		{
-			order = 2;
-			timer = 0.0f;
+			m_order = 2;
+			m_timer = 0.0f;
 			break;
 		}
 		SetAnimationType(eMobAnimationType::STANDUP);
-		timer += deltaTime;
+		m_timer += deltaTime;
 		break;
 	case 2:
-		if (timer >= 1.0f)
+		if (m_timer >= 1.0f)
 		{
-			order = 3;
-			timer = 0.0f;
+			m_order = 3;
+			m_timer = 0.0f;
 			break;
 		}
 		SetAnimationType(eMobAnimationType::ROAR);
-		timer += deltaTime;
+		m_timer += deltaTime;
 		break;
 	case 3:
-		if (timer >= 3.0f)
+		if (m_timer >= 2.0f)
 		{
 			m_isAppear = FALSE;
 			break;
 		}
 		SetAnimationType(eMobAnimationType::IDLE);
-		timer += deltaTime;
+		m_timer += deltaTime;
 		break;
 	}
 }

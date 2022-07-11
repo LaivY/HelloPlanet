@@ -114,5 +114,7 @@ private:
 	void UpdateAppear(FLOAT deltaTime);
 
 private:
-	BOOL m_isAppear; // 등장 연출
+	BOOL	m_isAppear; // 등장 연출
+	INT		m_order;	// 현재 연출 순서
+	FLOAT	m_timer;	// 연출 타이머
 };

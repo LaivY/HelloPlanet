@@ -334,6 +334,14 @@ void GameScene::OnPlayerDie()
 	m_player->SetMesh(s_meshes["PLAYER"]);
 	m_player->PlayAnimation("DIE", TRUE);
 	m_player->SendPlayerData();
+	
+	// 서버에 죽었다고 알림
+	cs_packet_player_state packet{};
+	packet.size = sizeof(packet);
+	packet.type = CS_PACKET_PLAYER_STATE;
+	packet.playerId = m_player->GetId();
+	packet.playerState = ePlayerState::DIE;
+	send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
 }
 
 void GameScene::OnPlayerRevive()
@@ -1220,8 +1228,7 @@ void GameScene::RecvRoundResult()
 		RecvRoundClear();
 		break;
 	case eRoundResult::OVER:
-		break;
-	case eRoundResult::ENDING:
+	{
 		auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
 		window->SetTexture(s_textures["WHITE"]);
 
@@ -1239,7 +1246,7 @@ void GameScene::RecvRoundResult()
 		descText->SetFormat("32L");
 		descText->SetPivot(ePivot::CENTER);
 		descText->SetScreenPivot(ePivot::CENTER);
-		descText->SetText(TEXT("모든 라운드를 클리어했습니다!"));
+		descText->SetText(TEXT("클리어에 실패했습니다..."));
 		descText->SetPosition(XMFLOAT2{});
 		window->Add(descText);
 
@@ -1262,6 +1269,50 @@ void GameScene::RecvRoundResult()
 		unique_lock<mutex> lock{ g_mutex };
 		m_windowObjects.push_back(move(window));
 		break;
+	}
+	case eRoundResult::ENDING:
+	{
+		auto window{ make_unique<WindowObject>(400.0f, 300.0f) };
+		window->SetTexture(s_textures["WHITE"]);
+
+		auto title{ make_unique<TextObject>() };
+		title->SetBrush("BLACK");
+		title->SetFormat("36L");
+		title->SetText(TEXT("알림"));
+		title->SetPivot(ePivot::LEFTCENTER);
+		title->SetScreenPivot(ePivot::LEFTTOP);
+		title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+		window->Add(title);
+
+		auto descText{ make_unique<TextObject>() };
+		descText->SetBrush("BLACK");
+		descText->SetFormat("32L");
+		descText->SetPivot(ePivot::CENTER);
+		descText->SetScreenPivot(ePivot::CENTER);
+		descText->SetText(TEXT("모든 라운드를\r\n클리어했습니다!"));
+		descText->SetPosition(XMFLOAT2{});
+		window->Add(descText);
+
+		auto goToMainText{ make_unique<MenuTextObject>() };
+		goToMainText->SetBrush("BLACK");
+		goToMainText->SetMouseOverBrush("BLUE");
+		goToMainText->SetFormat("32L");
+		goToMainText->SetText(TEXT("메인으로"));
+		goToMainText->SetPivot(ePivot::CENTERBOT);
+		goToMainText->SetScreenPivot(ePivot::CENTERBOT);
+		goToMainText->SetPosition(XMFLOAT2{});
+		goToMainText->SetMouseClickCallBack(
+			[]()
+			{
+				g_gameFramework.SetNextScene(eSceneType::MAIN);
+				ShowCursor(TRUE);
+			});
+		window->Add(goToMainText);
+
+		unique_lock<mutex> lock{ g_mutex };
+		m_windowObjects.push_back(move(window));
+		break;
+	}
 	}
 }
 

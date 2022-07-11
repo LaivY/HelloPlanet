@@ -5,7 +5,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 //constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 1;
+constexpr int  MAX_USER = 3;
 constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 
@@ -16,6 +16,7 @@ constexpr char CS_PACKET_UPDATE_PLAYER = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
 constexpr char CS_PACKET_SELECT_REWARD = 7;
+constexpr char CS_PACKET_PLAYER_STATE = 8;
 constexpr char CS_PACKET_LOGOUT = 127;
 
 constexpr char SC_PACKET_LOGIN_CONFIRM = 1;
@@ -64,6 +65,11 @@ enum class eWeaponType : char
 enum class eRoundResult : char
 {
 	CLEAR, OVER, ENDING
+};
+
+enum class ePlayerState : char
+{
+	DIE
 };
 
 #pragma pack (push, 1)
@@ -161,6 +167,14 @@ struct cs_packet_select_reward
 	UCHAR	size;
 	UCHAR	type;
 	CHAR	playerId;
+};
+
+struct cs_packet_player_state
+{
+	UCHAR			size;
+	UCHAR			type;
+	CHAR			playerId;
+	ePlayerState	playerState;
 };
 
 // ---------------------------------

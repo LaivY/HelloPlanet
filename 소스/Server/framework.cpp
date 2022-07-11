@@ -3,8 +3,8 @@
 using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
-	isAccept{ false }, readyCount{ 0 }, 
-	round{ 4 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	isAccept{ false }, readyCount{ 0 }, disconnectCount{ 0 },
+	isGameOver{ FALSE }, round{ 4 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");
@@ -257,7 +257,7 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		}
 		if (readyCount >= MAX_USER)
 		{
-			isAccept = true;
+			isAccept = true;		
 			SendChangeScenePacket(eSceneType::GAME);
 		}
 		readyCount = 0;
@@ -296,6 +296,13 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		}
 		break;
 	}
+	case CS_PACKET_PLAYER_STATE:
+	{
+		auto packet{ reinterpret_cast<cs_packet_player_state*>(p) };
+		if (packet->playerState == ePlayerState::DIE)
+			clients[static_cast<int>(packet->playerId)].isAlive = FALSE;
+		break;
+	}
 	case CS_PACKET_LOGOUT:
 	{
 		sc_packet_logout_ok send_packet{};
@@ -315,8 +322,14 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
 			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
 		}
-
 		std::cout << "[" << id << " Session] Logout" << std::endl;
+
+		++disconnectCount;
+		if (disconnectCount == MAX_USER)
+		{
+			Reset();
+			std::cout << "─ RESET ─" << std::endl;
+		}
 		break;
 	}
 	default:
@@ -324,6 +337,26 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 			static_cast<int>(p[0]) << ", type : "<< static_cast<int>(p[1]) <<")" << std::endl;
 		break;
 	}
+}
+
+void NetworkFramework::Reset()
+{
+	isAccept = FALSE;
+	readyCount = 0;
+	disconnectCount = 0;
+
+	isGameOver = FALSE;
+	doSpawnMonster = TRUE;
+
+	round = 1;
+	std::ranges::copy(roundGoal, roundMobCount);
+	spawnCooldown = 0.0f;
+	lastMobId = 0;
+	killCount = 0;
+
+	bullets.clear();
+	bulletHits.clear();
+	monsters.clear();
 }
 
 void NetworkFramework::Update(const FLOAT deltaTime)
@@ -336,40 +369,14 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	for (auto& m : monsters)
 		m->Update(deltaTime);
 
-	// 충돌체크
+	// 충돌 체크
 	CollisionCheck();
 
-	// 종료체크
-	if (killCount >= roundGoal[round - 1])
-	{
-		std::cout << "[system] Stage" << round << " Clear!" << std::endl;
-		for (auto& mob : monsters)
-		{
-			mob->SetHp(0);
-			mob->SetAnimationType(eMobAnimationType::DIE);
-		}
+	// 종료 체크
+	RoundClearCheck();
 
-		// 라운드 클리어 시 관련 변수 초기화
-		spawnCooldown = g_spawnCooldown;
-		lastMobId = 0;
-		killCount = 0;
-
-		// 마지막 라운드 클리어
-		if (round == 4)
-		{
-			isAccept = FALSE;
-			doSpawnMonster = TRUE;
-			readyCount = 0;
-			round = 0;
-			SendRoundResultPacket(eRoundResult::ENDING);
-			return;
-		}
-
-		// 나머지 라운드 클리어
-		doSpawnMonster = FALSE;
-		SendRoundResultPacket(eRoundResult::CLEAR);
-		++round;
-	}
+	// 게임오버 체크
+	GameOverCheck();
 }
 
 void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
@@ -420,16 +427,16 @@ UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
 {
 	UCHAR index{ 0 };
 	float length{ FLT_MAX };		// 가까운 플레이어의 거리
-	for (const auto& cl : clients)
+for (const auto& cl : clients)
+{
+	const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
+	if (l < length)
 	{
-		const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
-		if (l < length)
-		{
-			length = l;
-			index = cl.data.id;
-		}
+		length = l;
+		index = cl.data.id;
 	}
-	return index;
+}
+return index;
 }
 
 void NetworkFramework::CollisionCheck()
@@ -479,6 +486,47 @@ void NetworkFramework::CollisionCheck()
 
 	// 충돌체크가 완료된 총알들은 삭제
 	erase_if(bullets, [](const BulletDataFrame& b) { return b.isCollisionCheck && b.isBulletCast; });
+}
+
+void NetworkFramework::RoundClearCheck()
+{
+	if (killCount >= roundGoal[round - 1])
+	{
+		std::cout << "[system] Stage" << round << " Clear!" << std::endl;
+		for (auto& mob : monsters)
+		{
+			mob->SetHp(0);
+			mob->SetAnimationType(eMobAnimationType::DIE);
+		}
+
+		// 라운드 클리어 시 관련 변수 초기화
+		for (auto& c : clients)
+			c.isAlive = TRUE;
+		spawnCooldown = g_spawnCooldown;
+		lastMobId = 0;
+		killCount = 0;
+
+		// 마지막 라운드 클리어
+		if (round == 4)
+		{
+			SendRoundResultPacket(eRoundResult::ENDING);
+			return;
+		}
+
+		// 나머지 라운드 클리어
+		doSpawnMonster = FALSE;
+		SendRoundResultPacket(eRoundResult::CLEAR);
+		++round;
+	}
+}
+
+void NetworkFramework::GameOverCheck()
+{
+	if (std::ranges::all_of(clients, [](const Session& c) { return !c.isAlive; }) && !isGameOver)
+	{
+		isGameOver = TRUE;
+		SendRoundResultPacket(eRoundResult::OVER);
+	}
 }
 
 void NetworkFramework::Disconnect(const int id)
