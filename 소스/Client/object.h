@@ -140,15 +140,21 @@ public:
 	Monster(INT id, eMobType type);
 	~Monster() = default;
 
-	void OnAnimation(FLOAT currFrame, UINT endFrame);
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
+
 	void ApplyServerData(const MonsterData& monsterData);
 
 	INT GetId() const;
 	eMobType GetType() const;
+	INT GetDamage() const;
 
 private:
 	INT			m_id;
 	eMobType	m_type;
+	INT			m_damage;
+	FLOAT		m_atkFrame;
+	FLOAT		m_atkRange;
+	BOOL		m_isAttacked;
 };
 
 class OutlineObject : public GameObject

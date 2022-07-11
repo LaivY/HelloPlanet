@@ -5,7 +5,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 //constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 3;
+constexpr int  MAX_USER = 1;
 constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 

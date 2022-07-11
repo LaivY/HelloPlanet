@@ -326,6 +326,23 @@ void GameScene::ProcessClient()
 		RecvPacket();
 }
 
+void GameScene::OnPlayerHit(Monster* monster)
+{
+	// 체력 감소
+	int hp{ m_player->GetHp() };
+	m_player->SetHp(hp - static_cast<INT>(monster->GetDamage()));
+
+	// 애니메이션
+	if (hp > 0 && m_player->GetHp() <= 0)
+		OnPlayerDie();
+	else if (m_player->GetHp() > 0)
+		m_player->PlayAnimation("HIT");
+
+	// 피격 이펙트
+	auto hit{ make_unique<HitUIObject>(monster->GetId()) };
+	m_uiObjects.push_back(move(hit));
+}
+
 void GameScene::OnPlayerDie()
 {
 	// 플레이어가 죽으면 카메라를 3인칭으로 변경하고 사망 애니메이션을 재생함

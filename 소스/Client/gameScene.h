@@ -41,6 +41,7 @@ public:
 	virtual Player* GetPlayer() const;
 	virtual Camera* GetCamera() const;
 
+	void OnPlayerHit(Monster* monster);
 	void OnPlayerDie();
 	void OnPlayerRevive();
 

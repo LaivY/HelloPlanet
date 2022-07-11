@@ -46,6 +46,7 @@ protected:
 	INT								m_damage;		// 데미지
 	FLOAT							m_speed;		// 이동속도
 	FLOAT							m_knockbackTime;// 피격 시 뒤로 밀리는 시간
+	FLOAT							m_atkRange;		// 공격 범위
 
 	// 서버 계산에 필요한 변수들
 	DirectX::XMFLOAT4X4				m_worldMatrix;	// 월드변환행렬
@@ -53,7 +54,7 @@ protected:
 	FLOAT							m_hitTimer;		// 피격당한 시점부터 시작되는 타이머
 	FLOAT							m_atkTimer;		// 공격한 시점부터 시작되는 타이머
 	UCHAR							m_target;		// 공격 대상 플레이어 id
-	bool							m_wasAttack;	// 공격 애니메이션 때 공격했는지
+	INT								m_atkAniFrame;	// 공격 애니메이션 길이
 };
 
 class GarooMonster : public Monster
@@ -66,7 +67,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
-	void UpdateAnimation();
+	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
 
@@ -80,7 +81,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
-	void UpdateAnimation();
+	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
 
@@ -94,7 +95,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
-	void UpdateAnimation();
+	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
 
@@ -108,7 +109,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
-	void UpdateAnimation();
+	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 
 	void UpdateAppear(FLOAT deltaTime);
