@@ -433,7 +433,7 @@ void RewardUIObject::Update(FLOAT deltaTime)
 		m_timer = max(0.0f, m_timer - deltaTime * 3.0f);
 }
 
-HitUIObject::HitUIObject(int monsterId) : UIObject{ 50.0f, 50.0f }, m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
+HitUIObject::HitUIObject(int monsterId) : UIObject{ 30.0f, 30.0f }, m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
 {
 	SetTexture(Scene::s_textures["ARROW"]);
 }

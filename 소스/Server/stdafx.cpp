@@ -4,6 +4,7 @@
 NetworkFramework	g_networkFramework{};
 SOCKET				g_socket{};
 HANDLE				g_h_iocp;
+std::mt19937		g_randomEngine{ std::random_device{}() };
 
 void errorDisplay(const int errNum, const char* msg)
 {

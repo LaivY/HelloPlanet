@@ -234,8 +234,8 @@ namespace Setting
 	constexpr auto MAX_MATERIALS    = 10;   // 메쉬 재질 최대 개수
 	constexpr auto MAX_JOINTS       = 50;   // 메쉬 뼈 최대 개수
 	constexpr auto BLENDING_FRAMES  = 5;    // 메쉬 애니메이션 블렌딩에 걸리는 프레임
-	constexpr auto CAMERA_MIN_PITCH = -60;  // 카메라 위아래 최소 각도
-	constexpr auto CAMERA_MAX_PITCH = 60;   // 카메라 위아래 최대 각도
+	constexpr auto CAMERA_MIN_PITCH = -80;  // 카메라 위아래 최소 각도
+	constexpr auto CAMERA_MAX_PITCH = 80;   // 카메라 위아래 최대 각도
 	constexpr auto SHADOWMAP_COUNT  = 4;    // 케스케이드 그림자맵 개수
 }
 

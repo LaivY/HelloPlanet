@@ -109,13 +109,22 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
+	enum class ePattern
+	{
+		NONE, APPEAR, SMASH, JUMPATK
+	};
+
+private:
 	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 
-	void UpdateAppear(FLOAT deltaTime);
+	void Appear(FLOAT deltaTime);
+	void Smash(FLOAT deltaTime);
+	void JumpAttack(FLOAT deltaTime);
 
 private:
-	BOOL	m_isAppear; // 등장 연출
-	INT		m_order;	// 현재 연출 순서
-	FLOAT	m_timer;	// 연출 타이머
+	ePattern	m_pattern;			// 패턴 종류
+	INT			m_order;			// 패턴 내의 현재 순서
+	FLOAT		m_timer;			// 타이머
+	FLOAT		m_smashCoolDown;	// 내려찍기 쿨타임
 };

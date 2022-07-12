@@ -4,7 +4,7 @@ using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
 	isAccept{ false }, readyCount{ 0 }, disconnectCount{ 0 },
-	isGameOver{ FALSE }, round{ 1 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	isGameOver{ FALSE }, round{ 4 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");

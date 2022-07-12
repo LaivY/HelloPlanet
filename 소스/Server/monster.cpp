@@ -51,14 +51,13 @@ void Monster::SetTargetId(UCHAR id)
 
 void Monster::SetRandomPosition()
 {
-	static std::mt19937 generator{ std::random_device{}() };
 	constexpr DirectX::XMFLOAT3 mobSpawnAreas[]
 	{ 
 		{ 0.0f,	  0.0f, 400.0f }, { 0.0f,	 0.0f, -400.0f },	{ 400.0f,  0.0f, 0.0f },	{ -400.0f, 0.0f, 0.0f },
 		{ 300.0f, 0.0f, 300.0f }, { -300.0f, 0.0f,  300.0f },	{ -300.0f, 0.0f, -300.0f }, {  300.0f, 0.0f, -300.0f }
 	};
 	const std::uniform_int_distribution<int> areasDistribution{ 0, static_cast<int>(std::size(mobSpawnAreas) - 1) };
-	SetPosition(mobSpawnAreas[areasDistribution(generator)]);
+	SetPosition(mobSpawnAreas[areasDistribution(g_randomEngine)]);
 }
 
 MonsterData Monster::GetData() const
@@ -102,6 +101,7 @@ void Monster::UpdatePosition(FLOAT deltaTime, XMVECTOR& look)
 	switch (m_aniType)
 	{
 	case eMobAnimationType::ATTACK:
+	case eMobAnimationType::LEGATK:
 		XMStoreFloat3(&velocity, look * 0);
 		m_velocity = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
 		break;
@@ -114,6 +114,14 @@ void Monster::UpdatePosition(FLOAT deltaTime, XMVECTOR& look)
 		break;
 	}
 	default:
+		// 보스는 오브젝트와 충돌하지 않음
+		if (m_mobType == eMobType::ULIFO)
+		{
+			XMStoreFloat3(&velocity, look * m_speed);
+			m_velocity = XMFLOAT3{ 0.0f, 0.0f, m_speed };
+			break;
+		}
+
 		// 이동한 뒤 부딪힌다면 경로수정
 		bool isCollision{ false };
 		// 몬스터 바운딩박스의 모서리를 담을 배열
@@ -444,22 +452,47 @@ void HorrorMonster::CalcAttack()
 		m_aniType = eMobAnimationType::ATTACK;
 }
 
-UlifoMonster::UlifoMonster() : m_isAppear{ TRUE }, m_order{ 0 }, m_timer{ 0.0f }
+UlifoMonster::UlifoMonster() : m_pattern{ ePattern::APPEAR }, m_order{ 0 }, m_timer{ 0.0f }, m_smashCoolDown{ 15.0f }
 {
 	m_mobType = eMobType::ULIFO;
 	m_hp = 5000;
 	m_damage = 30;
-	m_speed = 30.0f;
+	m_speed = 40.0f;
 	m_knockbackTime = 0.2f;
+	m_atkAniFrame = 38;
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -1.0f, 125.0f, 0.0f }, XMFLOAT3{ 28.0f, 17.0f, 30.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
 }
 
 void UlifoMonster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
-	if (m_isAppear)
+	switch (m_pattern)
 	{
-		UpdateAppear(deltaTime);
+	case ePattern::NONE:
+	{
+		//m_pattern = ePattern::SMASH;
+		m_pattern = ePattern::JUMPATK;
+		//static const std::uniform_int_distribution<int> dis{ 0, 2 };
+		//int pattern{ dis(g_randomEngine) };
+		//if (pattern == 0 && m_smashCoolDown <= 0.0f)
+		//{
+		//	m_pattern = ePattern::SMASH;
+		//	m_smashCoolDown = 15.0f;
+		//}
+		//else if (pattern == 1)
+		//{
+		//	m_pattern = ePattern::JUMPATK;
+		//}
+		break;
+	}
+	case ePattern::APPEAR:
+		Appear(deltaTime);
+		return;
+	case ePattern::SMASH:
+		Smash(deltaTime);
+		return;
+	case ePattern::JUMPATK:
+		JumpAttack(deltaTime);
 		return;
 	}
 
@@ -469,21 +502,20 @@ void UlifoMonster::Update(FLOAT deltaTime)
 	UpdateWorldMatrix(look);
 	UpdateAnimation(deltaTime);
 	CalcAttack();
+
+	m_smashCoolDown = max(0.0f, m_smashCoolDown - deltaTime);
 }
 
 void UlifoMonster::OnHit(const BulletData& bullet)
 {
 	SetTargetId(bullet.playerId);
 	SetHp(m_hp - bullet.damage);
-
 	if (m_hp <= 0)
 	{
 		m_aniType = eMobAnimationType::DIE;
 		g_networkFramework.killCount++;
 		return;
 	}
-	if (m_aniType == eMobAnimationType::WALKING)
-		m_aniType = eMobAnimationType::HIT;
 }
 
 void UlifoMonster::UpdateAnimation(FLOAT deltaTime)
@@ -493,12 +525,15 @@ void UlifoMonster::UpdateAnimation(FLOAT deltaTime)
 	case eMobAnimationType::IDLE:
 		m_aniType = eMobAnimationType::WALKING;
 		break;
-	//case eMobAnimationType::ATTACK:
-	//	if (m_atkTimer < m_knockbackTime)
-	//	{
-	//		m_aniType = eMobAnimationType::ATTACK;
-	//	}
-	//	break;
+	case eMobAnimationType::LEGATK:
+		if (m_atkTimer > m_atkAniFrame * 1.0f / 30.0f)
+		{
+			m_aniType = eMobAnimationType::WALKING;
+			m_atkTimer = 0.0f;
+			break;
+		}
+		m_atkTimer += deltaTime;
+		break;
 	case eMobAnimationType::HIT:
 		if (m_hitTimer > m_knockbackTime)
 		{
@@ -513,10 +548,19 @@ void UlifoMonster::UpdateAnimation(FLOAT deltaTime)
 
 void UlifoMonster::CalcAttack()
 {
-
+	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+	if (range <= 10.0f && m_smashCoolDown <= 0.0f)
+	{
+		m_pattern = ePattern::SMASH;
+		m_order = 2;
+		m_timer = 0.0f;
+		m_smashCoolDown = 5.0f;
+	}
+	else if (115.0f <= range && range <= 120.0f)
+		m_aniType = eMobAnimationType::LEGATK;
 }
 
-void UlifoMonster::UpdateAppear(FLOAT deltaTime)
+void UlifoMonster::Appear(FLOAT deltaTime)
 {
 	/*
 	0 : 하늘에서 idle 상태로 떨어져서 착지하면 down 애니메이션을 재생(0.6초)
@@ -567,11 +611,220 @@ void UlifoMonster::UpdateAppear(FLOAT deltaTime)
 	case 3:
 		if (m_timer >= 2.0f)
 		{
-			m_isAppear = FALSE;
+			m_pattern = ePattern::NONE;
+			m_order = 0;
+			m_timer = 0.0f;
 			break;
 		}
 		SetAnimationType(eMobAnimationType::IDLE);
 		m_timer += deltaTime;
 		break;
+	}
+}
+
+void UlifoMonster::Smash(FLOAT deltaTime)
+{
+	/*
+	0. 랜덤으로 타겟 한 명을 지정함
+	1. 타겟과의 거리가 5이하가 될 때까지 빠른 속도로 타겟에게 달려감. 
+	2. 대기(1.0초)
+	3. 내려찍음(0.5초)
+	4. 일어남(0.5초)
+	5. 대기(1.0초)
+	*/
+	
+	switch (m_order)
+	{
+	case 0:
+	{
+		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
+		m_target = dis(g_randomEngine);
+		m_order = 1;
+		break;
+	}
+	case 1:
+	{
+		m_speed = 300.0f;
+		auto look{ GetPlayerVector(m_target) };
+		UpdatePosition(deltaTime, look);
+		UpdateRotation(look);
+		UpdateWorldMatrix(look);
+		SetAnimationType(eMobAnimationType::WALKING);
+
+		float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
+		if (range <= 5.0f)
+		{
+			m_order = 2;
+			m_speed = 40.0f;
+		}
+		break;
+	}
+	case 2:
+	{
+		if (m_timer >= 0.5f)
+		{
+			m_order = 3;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::IDLE);
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	}
+	case 3:
+	{
+		if (m_timer >= 0.5f)
+		{
+			m_order = 4;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::DOWN);
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	}
+	case 4:
+	{
+		if (m_timer >= 0.5f)
+		{
+			m_order = 5;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::STANDUP);
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	}
+	case 5:
+	{
+		if (m_timer >= 1.0f)
+		{
+			m_pattern = ePattern::NONE;
+			m_order = 0;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::IDLE);
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	}
+	}
+}
+
+void UlifoMonster::JumpAttack(FLOAT deltaTime)
+{
+	/*
+	0. 랜덤으로 타겟 한 명을 지정
+	1. 하늘로 점프
+	2. 대기(3.0초)
+	3. 타겟에 낙하
+	4. 대기(1.0초)
+	*/
+
+	static XMFLOAT3 targetPosition{};
+	switch (m_order)
+	{
+	case 0:
+	{
+		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
+		m_target = dis(g_randomEngine);
+		targetPosition = g_networkFramework.clients[m_target].data.pos;
+		m_order = 1;
+		break;
+	}
+	case 1:
+	{
+		if (m_timer >= 1.0f)
+		{
+			m_order = 2;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::JUMPATK);
+		if (m_timer >= 0.5f)
+		{
+			m_velocity = XMFLOAT3{ 0.0f, 3000.0f, 0.0f };
+			m_position.y += 3000.0f * deltaTime;
+		}
+		else
+		{
+			m_velocity = XMFLOAT3{ 0.0f, 100.0f, 0.0f };
+			m_position.y += 100.0f * deltaTime;
+		}
+		auto look{ GetPlayerVector(m_target) };
+		UpdateWorldMatrix(look);
+		m_timer += deltaTime;
+		break;
+	}
+	case 2:
+		if (m_timer >= 1.0f)
+		{
+			m_order = 3;
+			m_timer = 0.0f;
+			m_position = targetPosition;
+			m_position.y = 5000.0f;
+			break;
+		}
+
+		// 클라이언트에서 안보이도록
+		m_position = XMFLOAT3{ 0.0f, -999.0f, 0.0f };
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	case 3:
+	{
+		m_velocity = XMFLOAT3{ 0.0f, -5000.0f, 0.0f };
+		m_position.y = max(0.0f, m_position.y - 5000.0f * deltaTime);
+		if (m_position.y <= 3000.0f)
+		{
+			if (m_position.y == 0.0f)
+				m_velocity = XMFLOAT3{};
+			if (m_timer >= 0.8f)
+			{
+				m_order = 4;
+				m_timer = 0.0f;
+				break;
+			}
+			SetAnimationType(eMobAnimationType::DOWN);
+			m_timer += deltaTime;
+		}
+		auto look{ GetPlayerVector(m_target) };
+		UpdatePosition(deltaTime, look);
+		break;
+	}
+	case 4:
+	{
+		if (m_timer >= 0.6f)
+		{
+			m_order = 5;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::STANDUP);
+		auto look{ GetPlayerVector(m_target) };
+		UpdateWorldMatrix(look);
+		m_timer += deltaTime;
+		break;
+	}
+	case 5:
+	{
+		if (m_timer >= 1.0f)
+		{
+			m_pattern = ePattern::NONE;
+			m_order = 0;
+			m_timer = 0.0f;
+			break;
+		}
+		SetAnimationType(eMobAnimationType::IDLE);
+		auto look{ GetPlayerVector(m_target) };
+		UpdateWorldMatrix(look);
+		m_velocity = XMFLOAT3{};
+		m_timer += deltaTime;
+		break;
+	}
 	}
 }
