@@ -141,20 +141,28 @@ public:
 	~Monster() = default;
 
 	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
-
-	void ApplyServerData(const MonsterData& monsterData);
+	virtual void ApplyServerData(const MonsterData& monsterData);
 
 	INT GetId() const;
 	eMobType GetType() const;
 	INT GetDamage() const;
 
-private:
+protected:
 	INT			m_id;
 	eMobType	m_type;
 	INT			m_damage;
 	FLOAT		m_atkFrame;
 	FLOAT		m_atkRange;
 	BOOL		m_isAttacked;
+};
+
+class BossMonster : public Monster
+{
+public:
+	BossMonster(INT id);
+	~BossMonster() = default;
+
+	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
 };
 
 class OutlineObject : public GameObject

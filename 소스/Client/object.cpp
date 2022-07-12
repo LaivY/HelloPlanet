@@ -425,6 +425,8 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 
 	switch (monsterData.aniType)
 	{
+	case eMobAnimationType::NONE:
+		break;
 	case eMobAnimationType::IDLE:
 		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
 			PlayAnimation("IDLE", TRUE);
@@ -495,6 +497,84 @@ eMobType Monster::GetType() const
 INT Monster::GetDamage() const
 {
 	return m_damage;
+}
+
+BossMonster::BossMonster(INT id) : Monster{ id, eMobType::ULIFO }
+{
+
+}
+
+void BossMonster::OnAnimation(FLOAT currFrame, UINT endFrame)
+{
+	// 다리 공격
+	if (m_animationInfo->currAnimationName == "LEGATK" && !m_isAttacked && currFrame >= 14.0f)
+	{
+		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
+		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition())) };
+		if (113.0f <= range && range <= 122.0f)
+		{
+			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
+			scene->OnPlayerHit(this);
+		}
+		m_isAttacked = TRUE;
+	}
+
+	// 내려 찍기 공격
+	if (m_animationInfo->currAnimationName == "DOWN" && !m_isAttacked && currFrame >= 20.0f)
+	{
+		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
+		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition())) };
+		if (range <= 30.0f)
+		{
+			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
+			scene->OnPlayerHit(this);
+		}
+		m_isAttacked = TRUE;
+	}
+
+	// 공격 초기화
+	if (m_animationInfo->currAnimationName != "LEGATK" &&
+		m_animationInfo->currAnimationName != "DOWN")
+		m_isAttacked = FALSE;
+
+	if (currFrame >= endFrame)
+	{
+		switch (m_animationInfo->state)
+		{
+		case eAnimationState::PLAY:
+			// 사망
+			if (m_animationInfo->currAnimationName == "DIE")
+			{
+				Delete();
+				break;
+			}
+
+			// 공격 초기화
+			if (m_animationInfo->currAnimationName == "LEGATK" ||
+				m_animationInfo->currAnimationName == "DOWN")
+				m_isAttacked = FALSE;
+
+			// 착지 후 일어남
+			if (m_animationInfo->currAnimationName == "DOWN")
+			{
+				PlayAnimation("STANDUP");
+				break;
+			}
+
+			// 일어난 후 대기
+			if (m_animationInfo->currAnimationName == "STANDUP")
+			{
+				PlayAnimation("IDLE");
+				break;
+			}
+
+			PlayAnimation(m_animationInfo->currAnimationName);
+			break;
+		case eAnimationState::BLENDING:
+			PlayAnimation(m_animationInfo->afterAnimationName);
+			break;
+		}
+	}
 }
 
 OutlineObject::OutlineObject(const XMFLOAT3& color, FLOAT thickness)

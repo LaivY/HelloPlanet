@@ -452,7 +452,7 @@ void HorrorMonster::CalcAttack()
 		m_aniType = eMobAnimationType::ATTACK;
 }
 
-UlifoMonster::UlifoMonster() : m_pattern{ ePattern::APPEAR }, m_order{ 0 }, m_timer{ 0.0f }, m_smashCoolDown{ 15.0f }
+UlifoMonster::UlifoMonster() : m_pattern{ ePattern::APPEAR }, m_order{ 0 }, m_timer{ 0.0f }, m_smashCoolDown{ 15.0f }, m_jumpAtkCoolDown{ 20.0f }
 {
 	m_mobType = eMobType::ULIFO;
 	m_hp = 5000;
@@ -470,19 +470,18 @@ void UlifoMonster::Update(FLOAT deltaTime)
 	{
 	case ePattern::NONE:
 	{
-		//m_pattern = ePattern::SMASH;
-		m_pattern = ePattern::JUMPATK;
-		//static const std::uniform_int_distribution<int> dis{ 0, 2 };
-		//int pattern{ dis(g_randomEngine) };
-		//if (pattern == 0 && m_smashCoolDown <= 0.0f)
-		//{
-		//	m_pattern = ePattern::SMASH;
-		//	m_smashCoolDown = 15.0f;
-		//}
-		//else if (pattern == 1)
-		//{
-		//	m_pattern = ePattern::JUMPATK;
-		//}
+		static const std::uniform_int_distribution<int> dis{ 0, 2 };
+		int pattern{ dis(g_randomEngine) };
+		if (pattern == 0 && m_smashCoolDown <= 0.0f)
+		{
+			m_pattern = ePattern::SMASH;
+			m_smashCoolDown = 15.0f;
+		}
+		else if (pattern == 1 && m_jumpAtkCoolDown <= 0.0f)
+		{
+			m_pattern = ePattern::JUMPATK;
+			m_jumpAtkCoolDown = 20.0f;
+		}
 		break;
 	}
 	case ePattern::APPEAR:
@@ -504,6 +503,7 @@ void UlifoMonster::Update(FLOAT deltaTime)
 	CalcAttack();
 
 	m_smashCoolDown = max(0.0f, m_smashCoolDown - deltaTime);
+	m_jumpAtkCoolDown = max(0.0f, m_jumpAtkCoolDown - deltaTime);
 }
 
 void UlifoMonster::OnHit(const BulletData& bullet)
@@ -554,7 +554,7 @@ void UlifoMonster::CalcAttack()
 		m_pattern = ePattern::SMASH;
 		m_order = 2;
 		m_timer = 0.0f;
-		m_smashCoolDown = 5.0f;
+		m_smashCoolDown = 3.0f;
 	}
 	else if (115.0f <= range && range <= 120.0f)
 		m_aniType = eMobAnimationType::LEGATK;
@@ -674,26 +674,42 @@ void UlifoMonster::Smash(FLOAT deltaTime)
 	}
 	case 3:
 	{
-		if (m_timer >= 0.5f)
+		static int count{ 0 };
+		if (m_timer >= 30.0f * 1.0f / 30.0f)
 		{
 			m_order = 4;
 			m_timer = 0.0f;
+			count = 0;
 			break;
 		}
-		SetAnimationType(eMobAnimationType::DOWN);
+		if (count < 2)
+		{
+			SetAnimationType(eMobAnimationType::DOWN);
+			++count;
+		}
+		else
+			SetAnimationType(eMobAnimationType::NONE);
 		m_velocity = XMFLOAT3{};
 		m_timer += deltaTime;
 		break;
 	}
 	case 4:
 	{
-		if (m_timer >= 0.5f)
+		static int count{ 0 };
+		if (m_timer >= 20.0f * 1.0f / 30.0f)
 		{
 			m_order = 5;
 			m_timer = 0.0f;
+			count = 0;
 			break;
 		}
-		SetAnimationType(eMobAnimationType::STANDUP);
+		if (count < 2)
+		{
+			SetAnimationType(eMobAnimationType::STANDUP);
+			++count;
+		}
+		else
+			SetAnimationType(eMobAnimationType::NONE);
 		m_velocity = XMFLOAT3{};
 		m_timer += deltaTime;
 		break;
@@ -719,10 +735,11 @@ void UlifoMonster::JumpAttack(FLOAT deltaTime)
 {
 	/*
 	0. 랜덤으로 타겟 한 명을 지정
-	1. 하늘로 점프
-	2. 대기(3.0초)
-	3. 타겟에 낙하
-	4. 대기(1.0초)
+	1. 점프 준비
+	2. 점프
+	3. 대기(3.0초)
+	4. 타겟에 낙하
+	5. 대기(1.0초)
 	*/
 
 	static XMFLOAT3 targetPosition{};
@@ -733,37 +750,46 @@ void UlifoMonster::JumpAttack(FLOAT deltaTime)
 		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
 		m_target = dis(g_randomEngine);
 		targetPosition = g_networkFramework.clients[m_target].data.pos;
+		targetPosition = XMFLOAT3{ m_position };
 		m_order = 1;
 		break;
 	}
 	case 1:
-	{
 		if (m_timer >= 1.0f)
 		{
 			m_order = 2;
 			m_timer = 0.0f;
 			break;
 		}
+		SetAnimationType(eMobAnimationType::DOWN);
+		auto look{ GetPlayerVector(m_target) };
+		UpdateRotation(look);
+		UpdateWorldMatrix(look);
+		m_timer += deltaTime;
+		break;
+	case 2:
+	{
+		if (m_timer >= 1.0f)
+		{
+			m_order = 3;
+			m_timer = 0.0f;
+			break;
+		}
 		SetAnimationType(eMobAnimationType::JUMPATK);
-		if (m_timer >= 0.5f)
+		if (m_timer >= 0.2f)
 		{
 			m_velocity = XMFLOAT3{ 0.0f, 3000.0f, 0.0f };
 			m_position.y += 3000.0f * deltaTime;
-		}
-		else
-		{
-			m_velocity = XMFLOAT3{ 0.0f, 100.0f, 0.0f };
-			m_position.y += 100.0f * deltaTime;
 		}
 		auto look{ GetPlayerVector(m_target) };
 		UpdateWorldMatrix(look);
 		m_timer += deltaTime;
 		break;
 	}
-	case 2:
+	case 3:
 		if (m_timer >= 1.0f)
 		{
-			m_order = 3;
+			m_order = 4;
 			m_timer = 0.0f;
 			m_position = targetPosition;
 			m_position.y = 5000.0f;
@@ -775,42 +801,60 @@ void UlifoMonster::JumpAttack(FLOAT deltaTime)
 		m_velocity = XMFLOAT3{};
 		m_timer += deltaTime;
 		break;
-	case 3:
+	case 4:
 	{
+		static int count{ 0 };
+
 		m_velocity = XMFLOAT3{ 0.0f, -5000.0f, 0.0f };
 		m_position.y = max(0.0f, m_position.y - 5000.0f * deltaTime);
 		if (m_position.y <= 3000.0f)
 		{
 			if (m_position.y == 0.0f)
 				m_velocity = XMFLOAT3{};
-			if (m_timer >= 0.8f)
+			if (m_timer >= 30.0f * 1.0f / 30.0f)
 			{
-				m_order = 4;
+				m_order = 5;
 				m_timer = 0.0f;
+				count = 0;
 				break;
 			}
-			SetAnimationType(eMobAnimationType::DOWN);
+			if (count < 2)
+			{
+				SetAnimationType(eMobAnimationType::DOWN);
+				++count;
+			}
+			else
+				SetAnimationType(eMobAnimationType::NONE);
 			m_timer += deltaTime;
 		}
 		auto look{ GetPlayerVector(m_target) };
 		UpdatePosition(deltaTime, look);
 		break;
 	}
-	case 4:
+	case 5:
 	{
-		if (m_timer >= 0.6f)
+		static int count{ 0 };
+
+		if (m_timer >= 20.0f * 1.0f / 30.0f)
 		{
-			m_order = 5;
+			m_order = 6;
 			m_timer = 0.0f;
+			count = 0;
 			break;
 		}
-		SetAnimationType(eMobAnimationType::STANDUP);
+		if (count < 2)
+		{
+			SetAnimationType(eMobAnimationType::STANDUP);
+			++count;
+		}
+		else
+			SetAnimationType(eMobAnimationType::NONE);
 		auto look{ GetPlayerVector(m_target) };
 		UpdateWorldMatrix(look);
 		m_timer += deltaTime;
 		break;
 	}
-	case 5:
+	case 6:
 	{
 		if (m_timer >= 1.0f)
 		{

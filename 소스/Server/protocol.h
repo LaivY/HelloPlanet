@@ -5,7 +5,7 @@ constexpr const char* SERVER_IP = "127.0.0.1";
 //constexpr const char* SERVER_IP = "121.173.248.190";
 
 constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 2;
+constexpr int  MAX_USER = 1;
 constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 
@@ -48,7 +48,7 @@ enum class eMobType : char
 
 enum class eMobAnimationType : char
 {
-	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE,
+	NONE, IDLE, WALKING, RUNNING, ATTACK, HIT, DIE,
 	DOWN, STANDUP, JUMPATK, LEGATK, REST, ROAR  // 보스 애니메이션
 };
 

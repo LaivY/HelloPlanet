@@ -1102,11 +1102,10 @@ void GameScene::RecvUpdateMonster()
 		auto it{ ranges::find_if(s_monsters, [&](const unique_ptr<Monster>& monster) { return monster->GetId() == static_cast<int>(m.id); }) };
 		if (it == s_monsters.end())
 		{
-			auto mob{ make_unique<Monster>(m.id, m.type) };
-			mob->ApplyServerData(m);
-
+			unique_ptr<Monster> mob{};
 			if (m.type == eMobType::ULIFO)
 			{
+				mob = make_unique<BossMonster>(m.id);
 				auto camera{ reinterpret_cast<ShowCamera*>(m_showCamera.get()) };
 				camera->SetTarget(mob.get());
 				camera->SetTime(4.0f);
@@ -1121,6 +1120,11 @@ void GameScene::RecvUpdateMonster()
 				m_skybox->SetCamera(m_camera);
 				m_isShowing = TRUE;
 			}
+			else
+			{
+				mob = make_unique<Monster>(m.id, m.type);
+			}
+			mob->ApplyServerData(m);
 
 			unique_lock<mutex> lock{ g_mutex };
 			s_monsters.push_back(move(mob));

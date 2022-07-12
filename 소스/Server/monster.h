@@ -109,7 +109,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
-	enum class ePattern
+	enum class ePattern : char
 	{
 		NONE, APPEAR, SMASH, JUMPATK
 	};
@@ -124,7 +124,8 @@ private:
 
 private:
 	ePattern	m_pattern;			// 패턴 종류
-	INT			m_order;			// 패턴 내의 현재 순서
-	FLOAT		m_timer;			// 타이머
-	FLOAT		m_smashCoolDown;	// 내려찍기 쿨타임
+	INT				m_order;			// 패턴 내의 현재 순서
+	FLOAT			m_timer;			// 타이머
+	FLOAT			m_smashCoolDown;	// 내려찍기 쿨타임
+	FLOAT			m_jumpAtkCoolDown;	// 점프공격 쿨타임
 };
