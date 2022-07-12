@@ -59,3 +59,10 @@ float4 PS_SKILL_GAGE(PS_INPUT input) : SV_TARGET
     }
     return float4(0.0f, 0.0f, 0.0f, 0.0f);
 }
+
+float4 PS_WARNING(PS_INPUT input) : SV_TARGET
+{
+    float4 color = g_texture.Sample(g_sampler, input.uv);
+    color.a *= g_worldMatrix[3][3]; // 여기에 알파값을 저장해둠
+    return color;
+}

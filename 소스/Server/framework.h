@@ -6,25 +6,7 @@
 #include "monster.h"
 #include "database.h"
 
-//constexpr INT stage1Goal = 10;
 constexpr FLOAT g_spawnCooldown = 2.0f;
-
-//class ObjectHitbox
-//{
-//public:
-//	ObjectHitbox(const DirectX::XMFLOAT3& center, const DirectX::XMFLOAT3& extents, const DirectX::XMFLOAT3& rollPitchYaw = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f });
-//	~ObjectHitbox() = default;
-//
-//	void Render(const Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>& commandList) const;
-//	void Update(FLOAT /*deltaTime*/);
-//
-//	DirectX::BoundingOrientedBox GetBoundingBox() const;
-//
-//private:
-//	DirectX::XMFLOAT3				m_center;
-//	DirectX::XMFLOAT3				m_extents;
-//	DirectX::XMFLOAT3				m_rollPitchYaw;
-//};
 
 struct BulletDataFrame
 {

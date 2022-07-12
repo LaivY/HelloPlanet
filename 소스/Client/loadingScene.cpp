@@ -46,7 +46,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 31 + 19 + 25 + 4 + 10 + 6 };
+	constexpr size_t allResourceCount{ 31 + 20 + 26 + 4 + 10 + 7 };
 	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -260,6 +260,7 @@ void LoadingScene::LoadShaders(const ComPtr<ID3D12Device>& device, const ComPtr<
 	s_shaders["UI"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS");
 	s_shaders["UI_ATC"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS", true); // 알파 투 커버리지
 	s_shaders["UI_SKILL_GAGE"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS_SKILL_GAGE");
+	s_shaders["UI_WARNING"] = make_shared<BlendingShader>(device, rootSignature, Utile::PATH(TEXT("Shader/ui.hlsl")), "VS", "PS_WARNING");
 
 	// 그림자 셰이더
 	s_shaders["SHADOW_MODEL"] = make_shared<ShadowShader>(device, rootSignature, Utile::PATH(TEXT("Shader/shadow.hlsl")), "VS_MODEL", "GS");
@@ -344,6 +345,9 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["REWARD_MG"] = make_shared<Texture>();
 	s_textures["REWARD_MG"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/REWARD_MG.dds")));
 
+	s_textures["WARNING"] = make_shared<Texture>();
+	s_textures["WARNING"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/WARNING.dds")));
+
 	// 총구 이펙트
 	s_textures["MUZZLE_FRONT"] = make_shared<Texture>();
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_1.dds")));
@@ -352,11 +356,6 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 
 	s_textures["TARGET"] = make_shared<Texture>();
 	s_textures["TARGET"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/AUTO_TARGET.dds")));
-
-	//s_textures["MUZZLE_SIDE"] = make_shared<Texture>();
-	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_1.dds")));
-	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_2.dds")));
-	//s_textures["MUZZLE_SIDE"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_side_3.dds")));
 }
 
 void LoadingScene::LoadTextBurshes(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext)
@@ -403,6 +402,7 @@ void LoadingScene::LoadAudios()
 {
 	g_audioEngine.Load(Utile::PATH("Sound/BGM_INGAME.wav"), "INGAME", eAudioType::MUSIC);
 	g_audioEngine.Load(Utile::PATH("Sound/BGM_LOBBY.wav"), "LOBBY", eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH("Sound/HEARTBEAT.wav"), "HEARTBEAT", eAudioType::MUSIC);
 	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT0", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT1", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/GAME_FOOTSTEP.wav"), "FOOTSTEP", eAudioType::SOUND);

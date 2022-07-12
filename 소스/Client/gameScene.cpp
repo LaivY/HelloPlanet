@@ -529,6 +529,10 @@ void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	skillGage->SetScreenPivot(ePivot::CENTERBOT);
 	skillGage->SetPosition(XMFLOAT2{ 0.0f, 40.0f });
 	m_uiObjects.push_back(move(skillGage));
+
+	// 체력 경고
+	auto warning{ make_unique<WarningUIObject>() };
+	m_uiObjects.push_back(move(warning));
 }
 
 void GameScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
