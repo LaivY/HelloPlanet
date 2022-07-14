@@ -592,14 +592,14 @@ WarningUIObject::WarningUIObject() : UIObject{ static_cast<float>(g_width), stat
 void WarningUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
 {
 	float ratio{ static_cast<float>(m_player->GetHp()) / static_cast<float>(m_player->GetMaxHp()) };
-	if (ratio <= 0.3f)
+	if (m_player->GetHp() > 0 && ratio <= 0.3f)
 		UIObject::Render(commandList, shader);
 }
 
 void WarningUIObject::Update(FLOAT deltaTime)
 {
 	float ratio{ static_cast<float>(m_player->GetHp()) / static_cast<float>(m_player->GetMaxHp()) };
-	if (ratio <= 0.3f)
+	if (m_player->GetHp() > 0 && ratio <= 0.3f)
 	{
 		// 한번 깜빡임에 걸리는 시간
 		constexpr float frequence{ 3.0f };

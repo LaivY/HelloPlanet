@@ -928,7 +928,7 @@ void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 
 void Player::SetSkillGage(INT value)
 {
-	m_skillGage = value;
+	m_skillGage = min(100, value);
 }
 
 void Player::AddMaxHp(INT hp)
@@ -1213,10 +1213,10 @@ void Player::UpdateSkill(FLOAT deltaTime)
 	}
 	else
 	{
-		timerLimit = 0.1f;
+		timerLimit = 1.0f;
 		if (m_skillGageTimer >= timerLimit)
 		{
-			m_skillGage = min(100, m_skillGage + 1);
+			SetSkillGage(m_skillGage + 1);
 			m_skillGageTimer -= timerLimit;
 		}
 	}

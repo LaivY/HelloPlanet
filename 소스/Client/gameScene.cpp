@@ -1209,6 +1209,23 @@ void GameScene::RecvBulletHit()
 		lock.lock();
 		m_textObjects.push_back(move(dmgText));
 	}
+
+	// 총알 맞춘게 나라면 스킬 게이지 증가
+	if (data.bullet.playerId == m_player->GetId() && !m_player->GetIsSkillActive())
+	{
+		switch (m_player->GetWeaponType())
+		{
+		case eWeaponType::AR:
+			m_player->SetSkillGage(m_player->GetSkillGage() + 2);
+			break;
+		case eWeaponType::SG:
+			m_player->SetSkillGage(m_player->GetSkillGage() + 1);
+			break;
+		case eWeaponType::MG:
+			m_player->SetSkillGage(m_player->GetSkillGage() + 1);
+			break;
+		}
+	}
 }
 
 void GameScene::RecvMosterAttack()
