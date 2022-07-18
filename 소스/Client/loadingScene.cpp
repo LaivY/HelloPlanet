@@ -221,6 +221,7 @@ void LoadingScene::LoadMeshes(const ComPtr<ID3D12Device>& device, const ComPtr<I
 	// 게임오브젝트 관련 로딩
 	s_meshes["FLOOR"] = make_shared<RectMesh>(device, commandList, 2000.0f, 0.0f, 2000.0f, XMFLOAT3{}, XMFLOAT4{ 217.0f / 255.0f, 112.0f / 255.0f, 61.0f / 255.0f, 1.0f });
 	s_meshes["BULLET"] = make_shared<CubeMesh>(device, commandList, 0.1f, 0.1f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
+	s_meshes["BULLET2"] = make_shared<CubeMesh>(device, commandList, 0.2f, 0.2f, 10.0f, XMFLOAT3{ 0.0f, 0.0f, 5.0f }, XMFLOAT4{ 39.0f / 255.0f, 151.0f / 255.0f, 255.0f / 255.0f, 1.0f });
 
 	// 맵 오브젝트 관련 로딩
 	for (int i = 0; i <= 11; ++i)

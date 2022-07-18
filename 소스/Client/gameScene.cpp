@@ -336,7 +336,10 @@ void GameScene::OnPlayerHit(Monster* monster)
 	if (hp > 0 && m_player->GetHp() <= 0)
 		OnPlayerDie();
 	else if (m_player->GetHp() > 0)
+	{
 		m_player->PlayAnimation("HIT");
+		m_player->SendPlayerData();
+	}
 
 	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(monster->GetId()) };
@@ -350,6 +353,7 @@ void GameScene::OnPlayerDie()
 	m_skybox->SetCamera(m_camera);
 	m_player->SetMesh(s_meshes["PLAYER"]);
 	m_player->PlayAnimation("DIE", TRUE);
+	m_player->SetVelocity(XMFLOAT3{});
 	m_player->SendPlayerData();
 	
 	// 서버에 죽었다고 알림
@@ -1020,7 +1024,7 @@ void GameScene::RecvPacket()
 	default:
 	{
 		string debug{};
-		debug += "RECV_ERR | size : " + to_string(static_cast<int>(size)) + ", type : " + to_string(static_cast<int>(type)) + "\n";
+		debug += "GAMESCENE::RECV_ERR | size : " + to_string(static_cast<int>(size)) + ", type : " + to_string(static_cast<int>(type)) + "\n";
 		OutputDebugStringA(debug.c_str());
 		break;
 	}
@@ -1048,18 +1052,21 @@ void GameScene::RecvLoginOk()
 		return;
 	}
 
+	// 나에 관한 데이터면 무시
+	if (m_player->GetId() == data.id)
+		return;
+
 	// 다른 플레이어들 정보일 경우
-	if (m_player->GetId() != data.id)
-		for (auto& p : m_multiPlayers)
-		{
-			if (p) continue;
-			p = make_shared<Player>(TRUE);
-			p->SetId(static_cast<int>(data.id));
-			p->SetWeaponType(eWeaponType::SG);
-			p->PlayAnimation("IDLE");
-			p->ApplyServerData(data);
-			break;
-		}
+	for (auto& p : m_multiPlayers)
+	{
+		if (p) continue;
+		p = make_shared<Player>(TRUE);
+		p->SetId(static_cast<int>(data.id));
+		p->SetWeaponType(eWeaponType::SG);
+		p->PlayAnimation("IDLE");
+		p->ApplyServerData(data);
+		break;
+	}
 }
 
 void GameScene::RecvUpdateClient()
@@ -1151,7 +1158,10 @@ void GameScene::RecvBulletFire()
 	memcpy(&bulletData, &subBuf, sizeof(BulletData));
 
 	auto bullet{ make_unique<Bullet>(bulletData.dir) };
-	bullet->SetMesh(s_meshes["BULLET"]);
+	if (bulletData.playerId == m_player->GetId())
+		bullet->SetMesh(s_meshes["BULLET"]);
+	else
+		bullet->SetMesh(s_meshes["BULLET2"]);
 	bullet->SetShader(s_shaders["DEFAULT"]);
 	bullet->SetPosition(bulletData.pos);
 
@@ -1216,13 +1226,13 @@ void GameScene::RecvBulletHit()
 		switch (m_player->GetWeaponType())
 		{
 		case eWeaponType::AR:
-			m_player->SetSkillGage(m_player->GetSkillGage() + 2);
+			m_player->SetSkillGage(m_player->GetSkillGage() + 2.0f);
 			break;
 		case eWeaponType::SG:
-			m_player->SetSkillGage(m_player->GetSkillGage() + 1);
+			m_player->SetSkillGage(m_player->GetSkillGage() + 1.0f);
 			break;
 		case eWeaponType::MG:
-			m_player->SetSkillGage(m_player->GetSkillGage() + 1);
+			m_player->SetSkillGage(m_player->GetSkillGage() + 0.2f);
 			break;
 		}
 	}
@@ -1237,12 +1247,12 @@ void GameScene::RecvMosterAttack()
 
 	MonsterAttackData data{};
 	memcpy(&data, buf, sizeof(data));
-	if (m_player->GetId() != data.id) return;
 	if (m_player->GetHp() == 0) return;
+	if (m_player->GetId() != data.id) return;
 
 	// 체력 감소
 	int hp{ m_player->GetHp() };
-	m_player->SetHp(hp - static_cast<INT>(data.damage));
+	m_player->SetHp(hp - static_cast<int>(data.damage));
 
 	// 애니메이션
 	if (hp > 0 && m_player->GetHp() <= 0)

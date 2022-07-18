@@ -239,7 +239,6 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		cl.weaponType = packet->weaponType;
 		SendSelectWeaponPacket(cl);
 		std::cout << id << " client is select" << std::endl;
-
 		break;
 	}
 	case CS_PACKET_READY:
@@ -431,17 +430,18 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
 {
 	UCHAR index{ 0 };
-	float length{ FLT_MAX };		// 가까운 플레이어의 거리
-for (const auto& cl : clients)
-{
-	const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
-	if (l < length)
+	float length{ FLT_MAX };
+	for (const auto& cl : clients)
 	{
-		length = l;
-		index = cl.data.id;
+		if (!cl.isAlive) continue;
+		const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
+		if (l < length)
+		{
+			length = l;
+			index = cl.data.id;
+		}
 	}
-}
-return index;
+	return index;
 }
 
 void NetworkFramework::CollisionCheck()

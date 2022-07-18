@@ -6,7 +6,7 @@ using namespace DirectX;
 Monster::Monster() : 
 	m_id{}, m_mobType{}, m_aniType{ eMobAnimationType::IDLE }, m_position{}, m_velocity{}, m_yaw{},
 	m_worldMatrix{}, m_boundingBox{}, m_hitTimer{}, m_atkTimer{}, m_target{},
-	m_hp{}, m_damage{}, m_speed{}, m_knockbackTime{}, m_atkRange{}
+	m_hp{}, m_damage{}, m_speed{}, m_knockbackTime{}, m_atkRange{}, m_atkAniFrame{}
 {
 
 }
@@ -242,6 +242,9 @@ void GarooMonster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
 
+	// 타겟 유효성 검사
+	UpdateTarget();
+
 	// 몹 -> 플레이어 벡터
 	XMVECTOR look{ GetPlayerVector(m_target) };
 
@@ -273,6 +276,12 @@ void GarooMonster::OnHit(const BulletData& bullet)
 	}
 	if (m_aniType == eMobAnimationType::RUNNING)
 		m_aniType = eMobAnimationType::HIT;
+}
+
+void GarooMonster::UpdateTarget()
+{
+	if (!g_networkFramework.clients[m_target].isAlive)
+		m_target = g_networkFramework.DetectPlayer(GetPosition());
 }
 
 void GarooMonster::UpdateAnimation(FLOAT deltaTime)
@@ -324,6 +333,7 @@ SerpentMonster::SerpentMonster()
 void SerpentMonster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
+	UpdateTarget();
 	XMVECTOR look{ GetPlayerVector(m_target) };
 	UpdatePosition(deltaTime, look);
 	UpdateRotation(look);
@@ -344,6 +354,12 @@ void SerpentMonster::OnHit(const BulletData& bullet)
 	}
 	if (m_aniType == eMobAnimationType::WALKING)
 		m_aniType = eMobAnimationType::HIT;
+}
+
+void SerpentMonster::UpdateTarget()
+{
+	if (!g_networkFramework.clients[m_target].isAlive)
+		m_target = g_networkFramework.DetectPlayer(GetPosition());
 }
 
 void SerpentMonster::UpdateAnimation(FLOAT deltaTime)
@@ -395,6 +411,7 @@ HorrorMonster::HorrorMonster()
 void HorrorMonster::Update(FLOAT deltaTime)
 {
 	if (m_hp <= 0) return;
+	UpdateTarget();
 	XMVECTOR look{ GetPlayerVector(m_target) };
 	UpdatePosition(deltaTime, look);
 	UpdateRotation(look);
@@ -415,6 +432,12 @@ void HorrorMonster::OnHit(const BulletData& bullet)
 	}
 	if (m_aniType == eMobAnimationType::WALKING)
 		m_aniType = eMobAnimationType::HIT;
+}
+
+void HorrorMonster::UpdateTarget()
+{
+	if (!g_networkFramework.clients[m_target].isAlive)
+		m_target = g_networkFramework.DetectPlayer(GetPosition());
 }
 
 void HorrorMonster::UpdateAnimation(FLOAT deltaTime)
@@ -495,6 +518,7 @@ void UlifoMonster::Update(FLOAT deltaTime)
 		return;
 	}
 
+	UpdateTarget();
 	XMVECTOR look{ GetPlayerVector(m_target) };
 	UpdatePosition(deltaTime, look);
 	UpdateRotation(look);
@@ -508,7 +532,7 @@ void UlifoMonster::Update(FLOAT deltaTime)
 
 void UlifoMonster::OnHit(const BulletData& bullet)
 {
-	SetTargetId(bullet.playerId);
+	//SetTargetId(bullet.playerId);
 	SetHp(m_hp - bullet.damage);
 	if (m_hp <= 0)
 	{
@@ -516,6 +540,12 @@ void UlifoMonster::OnHit(const BulletData& bullet)
 		g_networkFramework.killCount++;
 		return;
 	}
+}
+
+void UlifoMonster::UpdateTarget()
+{
+	if (!g_networkFramework.clients[m_target].isAlive)
+		m_target = g_networkFramework.DetectPlayer(GetPosition());
 }
 
 void UlifoMonster::UpdateAnimation(FLOAT deltaTime)

@@ -67,6 +67,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
+	void UpdateTarget();
 	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
@@ -81,6 +82,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
+	void UpdateTarget();
 	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
@@ -95,6 +97,7 @@ public:
 	virtual void OnHit(const BulletData& bullet);
 
 private:
+	void UpdateTarget();
 	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 };
@@ -115,6 +118,7 @@ private:
 	};
 
 private:
+	void UpdateTarget();
 	void UpdateAnimation(FLOAT deltaTime);
 	void CalcAttack();
 

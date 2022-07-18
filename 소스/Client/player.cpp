@@ -926,9 +926,9 @@ void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 	m_gunShadowShader = shadowShader;
 }
 
-void Player::SetSkillGage(INT value)
+void Player::SetSkillGage(FLOAT value)
 {
-	m_skillGage = min(100, value);
+	m_skillGage = min(100.0f, value);
 }
 
 void Player::AddMaxHp(INT hp)
@@ -1018,7 +1018,7 @@ INT Player::GetMaxBulletCount() const
 	return m_maxBulletCount;
 }
 
-INT Player::GetSkillGage() const
+FLOAT Player::GetSkillGage() const
 {
 	return m_skillGage;
 }
@@ -1213,10 +1213,11 @@ void Player::UpdateSkill(FLOAT deltaTime)
 	}
 	else
 	{
+		// timerLimit초가 지나면 스킬게이지가 1씩 증가한다.
 		timerLimit = 1.0f;
 		if (m_skillGageTimer >= timerLimit)
 		{
-			SetSkillGage(m_skillGage + 1);
+			SetSkillGage(m_skillGage + 1.0f);
 			m_skillGageTimer -= timerLimit;
 		}
 	}

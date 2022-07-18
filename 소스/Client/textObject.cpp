@@ -479,10 +479,10 @@ SkillGageTextObject::SkillGageTextObject() : m_percent{}
 
 void SkillGageTextObject::Update(FLOAT deltaTime)
 {
-	int value{ m_player->GetSkillGage() };
-	if (value == 100)
+	float value{ m_player->GetSkillGage() };
+	if (value >= 100.0f)
 		SetText(TEXT("Q"));
 	else
-		SetText(to_wstring(m_player->GetSkillGage()));
+		SetText(to_wstring(static_cast<int>(m_player->GetSkillGage())));
 	SetPosition(GetPivotPosition());
 }
