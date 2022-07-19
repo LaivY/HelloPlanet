@@ -320,6 +320,10 @@ void GameScene::ProcessClient()
 
 void GameScene::OnPlayerHit(Monster* monster)
 {
+	// 이미 죽은 상태면 피격 당하지 않음
+	if (m_player->GetHp() <= 0)
+		return;
+
 	// 체력 감소
 	int hp{ m_player->GetHp() };
 	m_player->SetHp(hp - static_cast<INT>(monster->GetDamage()));
@@ -332,6 +336,9 @@ void GameScene::OnPlayerHit(Monster* monster)
 		m_player->PlayAnimation("HIT");
 		m_player->SendPlayerData();
 	}
+
+	// 효과음
+	g_audioEngine.Play("HIT");
 
 	// 피격 이펙트
 	auto hit{ make_unique<HitUIObject>(monster->GetId()) };
@@ -348,6 +355,9 @@ void GameScene::OnPlayerDie()
 	m_player->SetVelocity(XMFLOAT3{});
 	m_player->SendPlayerData();
 	
+	// 효과음
+	g_audioEngine.Play("DEATH");
+
 	// 서버에 죽었다고 알림
 	cs_packet_player_state packet{};
 	packet.size = sizeof(packet);

@@ -46,7 +46,7 @@ void LoadingScene::OnUpdate(FLOAT deltaTime)
 
 void LoadingScene::Update(FLOAT deltaTime)
 {
-	constexpr size_t allResourceCount{ 31 + 20 + 26 + 4 + 10 + 7 };
+	constexpr size_t allResourceCount{ 32 + 20 + 26 + 4 + 10 + 11 };
 	size_t currResourceCount{ 0 };
 	currResourceCount += s_meshes.size();
 	currResourceCount += s_shaders.size();
@@ -403,10 +403,13 @@ void LoadingScene::LoadAudios()
 {
 	g_audioEngine.Load(Utile::PATH("Sound/BGM_INGAME.wav"), "INGAME", eAudioType::MUSIC);
 	g_audioEngine.Load(Utile::PATH("Sound/BGM_LOBBY.wav"), "LOBBY", eAudioType::MUSIC);
-	g_audioEngine.Load(Utile::PATH("Sound/HEARTBEAT.wav"), "HEARTBEAT", eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_HEARTBEAT.wav"), "HEARTBEAT", eAudioType::MUSIC);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_DEATH.wav"), "DEATH", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_FOOTSTEP.wav"), "FOOTSTEP", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_HIT.wav"), "HIT", eAudioType::SOUND);
+	g_audioEngine.Load(Utile::PATH("Sound/GAME_ROAR.wav"), "ROAR", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT0", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/GAME_SHOT.wav"), "SHOT1", eAudioType::SOUND);
-	g_audioEngine.Load(Utile::PATH("Sound/GAME_FOOTSTEP.wav"), "FOOTSTEP", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/UI_CLICK.wav"), "CLICK", eAudioType::SOUND);
 	g_audioEngine.Load(Utile::PATH("Sound/UI_HOVER.wav"), "HOVER", eAudioType::SOUND);
 }

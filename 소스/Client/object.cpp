@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "object.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "mesh.h"
@@ -499,13 +500,20 @@ INT Monster::GetDamage() const
 	return m_damage;
 }
 
-BossMonster::BossMonster(INT id) : Monster{ id, eMobType::ULIFO }
+BossMonster::BossMonster(INT id) : Monster{ id, eMobType::ULIFO }, m_isRoared{ FALSE }
 {
 
 }
 
 void BossMonster::OnAnimation(FLOAT currFrame, UINT endFrame)
 {
+	// 울부짖기 효과음
+	if (m_animationInfo->currAnimationName == "ROAR" && !m_isRoared)
+	{
+		g_audioEngine.Play("ROAR");
+		m_isRoared = TRUE;
+	}
+
 	// 다리 공격
 	if (m_animationInfo->currAnimationName == "LEGATK" && !m_isAttacked && currFrame >= 14.0f)
 	{
@@ -524,7 +532,7 @@ void BossMonster::OnAnimation(FLOAT currFrame, UINT endFrame)
 	{
 		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
 		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition())) };
-		if (range <= 30.0f)
+		if (range <= 35.0f)
 		{
 			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
 			scene->OnPlayerHit(this);
@@ -542,6 +550,10 @@ void BossMonster::OnAnimation(FLOAT currFrame, UINT endFrame)
 		switch (m_animationInfo->state)
 		{
 		case eAnimationState::PLAY:
+			// 효과음 초기화
+			if (m_animationInfo->currAnimationName == "ROAR")
+				m_isRoared = FALSE;
+
 			// 사망
 			if (m_animationInfo->currAnimationName == "DIE")
 			{

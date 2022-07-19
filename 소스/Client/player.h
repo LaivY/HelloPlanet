@@ -89,7 +89,7 @@ private:
 private:
 	INT					m_id;				// 플레이어 고유 아이디
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
-	BOOL				m_isFired;			// 발사 여부
+	BOOL				m_isFired;			// 발사 여부(총소리)
 	BOOL				m_isMoved;			// 이동 여부(발소리)
 	bool				m_isInvincible;		// 무적 여부
 

@@ -668,7 +668,10 @@ void UlifoMonster::Smash(FLOAT deltaTime)
 	case 0:
 	{
 		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
-		m_target = dis(g_randomEngine);
+		do
+		{
+			m_target = dis(g_randomEngine);
+		} while (!g_networkFramework.clients[m_target].isAlive);
 		m_order = 1;
 		break;
 	}
@@ -778,8 +781,11 @@ void UlifoMonster::JumpAttack(FLOAT deltaTime)
 	case 0:
 	{
 		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
-		m_target = dis(g_randomEngine);
-		targetPosition = g_networkFramework.clients[m_target].data.pos;
+		do
+		{
+			m_target = dis(g_randomEngine);
+			targetPosition = g_networkFramework.clients[m_target].data.pos;
+		} while (!g_networkFramework.clients[m_target].isAlive);
 		m_order = 1;
 		break;
 	}

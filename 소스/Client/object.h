@@ -163,6 +163,9 @@ public:
 	~BossMonster() = default;
 
 	virtual void OnAnimation(FLOAT currFrame, UINT endFrame);
+
+private:
+	BOOL m_isRoared;
 };
 
 class OutlineObject : public GameObject
