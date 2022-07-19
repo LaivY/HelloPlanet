@@ -1431,11 +1431,11 @@ void GameScene::RecvRoundClear()
 					switch (weaponType)
 					{
 					case eWeaponType::AR:
-						player->AddBonusDamage(10);
-						break;
 					case eWeaponType::SG:
-					case eWeaponType::MG:
 						player->AddBonusDamage(5);
+						break;
+					case eWeaponType::MG:
+						player->AddBonusDamage(3);
 						break;
 					}
 					break;
@@ -1502,11 +1502,11 @@ void GameScene::RecvRoundClear()
 			switch (m_player->GetWeaponType())
 			{
 			case eWeaponType::AR:
-				rewardTextObjects[i]->SetText(TEXT("공격력 +10"));
-				break;
 			case eWeaponType::SG:
-			case eWeaponType::MG:
 				rewardTextObjects[i]->SetText(TEXT("공격력 +5"));
+				break;
+			case eWeaponType::MG:
+				rewardTextObjects[i]->SetText(TEXT("공격력 +3"));
 				break;
 			}
 			break;

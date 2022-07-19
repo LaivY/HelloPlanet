@@ -326,7 +326,7 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
-		m_damage = 10;
+		m_damage = 20;
 		m_atkFrame = 7.0f;
 		m_atkRange = 27.0f;
 		break;
@@ -338,7 +338,7 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}
 		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
 		collisionBox->SetOwner(this);
 		AddHitbox(collisionBox);
-		m_damage = 15;
+		m_damage = 30;
 		m_atkFrame = 10.0f;
 		m_atkRange = 85.0f;
 		break;
@@ -355,7 +355,7 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
-		m_damage = 20;
+		m_damage = 50;
 		m_atkFrame = 11.0f;
 		m_atkRange = 90.0f;
 		break;
@@ -369,7 +369,7 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
-		m_damage = 25;
+		m_damage = 70;
 		m_atkFrame = 10.0f;
 		m_atkRange = 85.0f;
 		break;
