@@ -11,7 +11,7 @@
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
 	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isMoved{ FALSE }, m_isInvincible{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
-	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
+	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 40.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
 	m_isSkillActive{ FALSE }, m_skillActiveTime{}, m_skillGage{}, m_skillGageTimer{}, m_autoTargetMobId{ -1 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
@@ -123,7 +123,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
-			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) * 5.0f;
+			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) * 3.0f;
 			SendPlayerData();
 		}
 		else
@@ -805,7 +805,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::AR:
 		m_gunMesh = Scene::s_meshes["AR"];
 		m_hp = m_maxHp = 150;
-		m_damage = 40;
+		m_damage = 30;
 		m_attackSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -814,7 +814,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::SG:
 		m_gunMesh = Scene::s_meshes["SG"];
 		m_hp = m_maxHp = 175;
-		m_damage = 30;
+		m_damage = 20;
 		m_attackSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -822,8 +822,8 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		break;
 	case eWeaponType::MG:
 		m_gunMesh = Scene::s_meshes["MG"];
-		m_hp = m_maxHp = 200;
-		m_damage = 20;
+		m_hp = m_maxHp = 175;
+		m_damage = 10;
 		m_attackSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
@@ -880,8 +880,8 @@ void Player::SendPlayerData() const
 void Player::ApplyServerData(const PlayerData& playerData)
 {
 	// 죽는 애니메이션 중이면 패스
-	if (GetCurrAnimationName() == "DIE" || GetAfterAnimationName() == "DIE")
-		return;
+	/*if (GetCurrAnimationName() == "DIE" || GetAfterAnimationName() == "DIE")
+		return;*/
 
 	// 애니메이션
 	switch (playerData.aniType)

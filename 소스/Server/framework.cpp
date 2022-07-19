@@ -4,7 +4,7 @@ using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
 	isAccept{ false }, readyCount{ 0 }, disconnectCount{ 0 },
-	isGameOver{ FALSE }, round{ 1 }, roundGoal{ 5, 5, 5, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	isGameOver{ FALSE }, round{ 1 }, roundGoal{ 20, 20, 20, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");
@@ -116,9 +116,9 @@ void NetworkFramework::WorkThreads()
 {
 	std::cout << "worker_threads is start" << std::endl;
 	for (;;) {
-		DWORD num_byte;
-		LONG64 iocp_key;
-		WSAOVERLAPPED* p_over;
+		DWORD num_byte{};
+		LONG64 iocp_key{};
+		WSAOVERLAPPED* p_over{};
 		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, reinterpret_cast<PULONG_PTR>(&iocp_key), &p_over, INFINITE);
 		//std::cout << iocp_key << std::endl;
 		int client_id = static_cast<int>(iocp_key);
@@ -355,6 +355,7 @@ void NetworkFramework::Reset()
 
 	for (auto& c : clients)
 	{
+
 		c.isReady = FALSE;
 		c.isAlive = TRUE;
 	}

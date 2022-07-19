@@ -230,9 +230,9 @@ XMVECTOR Monster::GetPlayerVector(UCHAR playerId)
 GarooMonster::GarooMonster() : Monster{}
 {
 	m_mobType = eMobType::GAROO;
-	m_hp = 100;
-	m_damage = 10;
-	m_speed = 50.0f;
+	m_hp = 150;
+	m_damage = 20;
+	m_speed = 70.0f;
 	m_knockbackTime = 0.7f;
 	m_atkAniFrame = 26;
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -0.5f, 11.5f, -1.0f }, XMFLOAT3{ 5.0f, 4.0f, 7.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -322,9 +322,9 @@ void GarooMonster::CalcAttack()
 SerpentMonster::SerpentMonster()
 {
 	m_mobType = eMobType::SERPENT;
-	m_hp = 200;
-	m_damage = 1;
-	m_speed = 40.0f;
+	m_hp = 250;
+	m_damage = 30;
+	m_speed = 60.0f;
 	m_knockbackTime = 0.5f;
 	m_atkAniFrame = 25; // 원래 31인데 적당히 줄임
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -400,9 +400,9 @@ void SerpentMonster::CalcAttack()
 HorrorMonster::HorrorMonster()
 {
 	m_mobType = eMobType::HORROR;
-	m_hp = 300;
-	m_damage = 20;
-	m_speed = 30.0f;
+	m_hp = 350;
+	m_damage = 50;
+	m_speed = 50.0f;
 	m_knockbackTime = 0.3f;
 	m_atkAniFrame = 25;
 	m_boundingBox = BoundingOrientedBox{ XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }, XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f } };
@@ -475,11 +475,11 @@ void HorrorMonster::CalcAttack()
 		m_aniType = eMobAnimationType::ATTACK;
 }
 
-UlifoMonster::UlifoMonster() : m_pattern{ ePattern::APPEAR }, m_order{ 0 }, m_timer{ 0.0f }, m_smashCoolDown{ 15.0f }, m_jumpAtkCoolDown{ 20.0f }
+UlifoMonster::UlifoMonster() : m_pattern{ ePattern::APPEAR }, m_order{ 0 }, m_timer{ 0.0f }, m_smashCoolDown{ 5.0f }, m_jumpAtkCoolDown{ 10.0f }
 {
 	m_mobType = eMobType::ULIFO;
-	m_hp = 5000;
-	m_damage = 30;
+	m_hp = 10000;
+	m_damage = 70;
 	m_speed = 40.0f;
 	m_knockbackTime = 0.2f;
 	m_atkAniFrame = 38;
@@ -498,12 +498,12 @@ void UlifoMonster::Update(FLOAT deltaTime)
 		if (pattern == 0 && m_smashCoolDown <= 0.0f)
 		{
 			m_pattern = ePattern::SMASH;
-			m_smashCoolDown = 15.0f;
+			m_smashCoolDown = 5.0f;
 		}
 		else if (pattern == 1 && m_jumpAtkCoolDown <= 0.0f)
 		{
 			m_pattern = ePattern::JUMPATK;
-			m_jumpAtkCoolDown = 20.0f;
+			m_jumpAtkCoolDown = 10.0f;
 		}
 		break;
 	}
@@ -579,12 +579,12 @@ void UlifoMonster::UpdateAnimation(FLOAT deltaTime)
 void UlifoMonster::CalcAttack()
 {
 	float range{ Vector3::Length(Vector3::Sub(g_networkFramework.clients[m_target].data.pos, m_position)) };
-	if (range <= 10.0f && m_smashCoolDown <= 0.0f)
+	if (range <= 10.0f)
 	{
 		m_pattern = ePattern::SMASH;
 		m_order = 2;
 		m_timer = 0.0f;
-		m_smashCoolDown = 3.0f;
+		m_smashCoolDown = max(3.0f, m_smashCoolDown);
 	}
 	else if (115.0f <= range && range <= 120.0f)
 		m_aniType = eMobAnimationType::LEGATK;
@@ -780,7 +780,6 @@ void UlifoMonster::JumpAttack(FLOAT deltaTime)
 		std::uniform_int_distribution<int> dis{ 0, MAX_USER - 1 };
 		m_target = dis(g_randomEngine);
 		targetPosition = g_networkFramework.clients[m_target].data.pos;
-		targetPosition = XMFLOAT3{ m_position };
 		m_order = 1;
 		break;
 	}
