@@ -132,8 +132,13 @@ void NetworkFramework::SendPlayerDataPacket()
 	}
 
 	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
+	// + 피격 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
 	for (auto& c : clients)
+	{
 		c.data.upperAniType = eUpperAnimationType::NONE;
+		if (c.data.aniType == eAnimationType::HIT)
+			c.data.aniType = eAnimationType::NONE;
+	}
 }
 
 void NetworkFramework::SendBulletDataPacket()

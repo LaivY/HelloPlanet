@@ -71,6 +71,9 @@ float CalcShadowFactor(float4 positionW)
 	{
 		float4 shadowPosH = mul(mul(positionW, g_shadowLight.lightViewMatrix[i]), g_shadowLight.lightProjMatrix[i]);
 
+		// Complete projection by doing division by w.
+		shadowPosH.xyz /= shadowPosH.w;
+
 		// NDC -> 텍스쳐 좌표계
 		shadowPosH.x = shadowPosH.x * 0.5f + 0.5f;
 		shadowPosH.y = shadowPosH.y * -0.5f + 0.5f;
@@ -81,9 +84,6 @@ float CalcShadowFactor(float4 positionW)
 		{
 			continue;
 		}
-
-		// Complete projection by doing division by w.
-		shadowPosH.xyz /= shadowPosH.w;
 
 		// Depth in NDC space.
 		float depth = shadowPosH.z;

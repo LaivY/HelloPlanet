@@ -91,6 +91,7 @@ private:
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
 	BOOL				m_isFired;			// 발사 여부
 	BOOL				m_isMoved;			// 이동 여부(발소리)
+	bool				m_isInvincible;		// 무적 여부
 
 	bool				m_isFocusing;		// 확대 조준 중인지
 	bool				m_isZooming;		// 줌인, 줌아웃 중인지

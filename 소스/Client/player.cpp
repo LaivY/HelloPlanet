@@ -10,7 +10,7 @@
 #include "uiObject.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isMoved{ FALSE }, m_isInvincible{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
 	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
 	m_isSkillActive{ FALSE }, m_skillActiveTime{}, m_skillGage{}, m_skillGageTimer{}, m_autoTargetMobId{ -1 },
@@ -209,6 +209,22 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		switch (wParam)
 		{
+		case VK_F1:
+			SetHp(max(10, GetHp() - 10));
+			break;
+		case VK_F2:
+			SetHp(GetHp() + 5);
+			break;
+		case VK_F3:
+			m_isInvincible = !m_isInvincible;
+			break;
+		}
+		break;
+	}
+	case WM_CHAR:
+	{
+		switch (wParam)
+		{
 		case 'r': case 'R':
 			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
 			{
@@ -220,7 +236,6 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 					m_isZooming = true;
 					m_zoomTimer = 0.0f;
 				}
-
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();
 			}
@@ -669,6 +684,10 @@ void Player::Update(FLOAT deltaTime)
 
 	UpdateZoomInOut(deltaTime);
 	UpdateSkill(deltaTime);
+
+	// 무적모드면 풀피로 만듦
+	if (m_isInvincible)
+		SetHp(m_maxHp);
 
 	// 공격 타이머 진행
 	m_attackTimer += deltaTime;

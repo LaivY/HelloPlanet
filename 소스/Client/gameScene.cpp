@@ -218,14 +218,6 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
-		case VK_F1:
-			if (m_player)
-				m_player->SetHp(m_player->GetHp() - 10);
-			break;
-		case VK_F2:
-			if (m_player)
-				m_player->SetHp(m_player->GetHp() + 5);
-			break;
 		case VK_LEFT:
 			if (m_multiPlayers[0])
 				m_camera->SetPlayer(m_multiPlayers[0].get());
@@ -683,8 +675,11 @@ void GameScene::RenderPlayer(const ComPtr<ID3D12GraphicsCommandList>& commandLis
 {
 	m_camera->UpdateShaderVariable(commandList);
 	commandList->OMSetStencilRef(1);
+
+	D3D12_CLEAR_FLAGS flag{ D3D12_CLEAR_FLAG_STENCIL };
 	if (m_player->GetHp() > 0)
-		commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
+		flag |= D3D12_CLEAR_FLAG_DEPTH;
+	commandList->ClearDepthStencilView(dsvHandle, flag, 1.0f, 0, 0, NULL);
 	m_player->Render(commandList);
 	RenderOutline(commandList, m_blackOutliner);
 	commandList->OMSetStencilRef(0);
@@ -851,7 +846,7 @@ void GameScene::PlayerCollisionCheck(FLOAT deltaTime)
 void GameScene::UpdateShadowMatrix()
 {
 	// 케스케이드 범위를 나눔
-	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.1f, 0.4f, 0.8f };
+	constexpr array<float, Setting::SHADOWMAP_COUNT> casecade{ 0.0f, 0.02f, 0.1f, 0.4f };
 
 	// NDC좌표계에서의 한 변의 길이가 1인 정육면체의 꼭짓점 8개
 	XMFLOAT3 frustum[]
