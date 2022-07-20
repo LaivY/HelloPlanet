@@ -137,6 +137,7 @@ private:
 	BOOL		m_isOnScreen;
 	BOOL		m_direction;
 	XMFLOAT3	m_startPosition;
+	FLOAT		m_scale;
 	FLOAT		m_timer;
 };
 

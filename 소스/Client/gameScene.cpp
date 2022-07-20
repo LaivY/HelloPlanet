@@ -350,11 +350,12 @@ void GameScene::OnPlayerDie()
 	// 플레이어가 죽으면 카메라를 3인칭으로 변경하고 사망 애니메이션을 재생함
 	m_camera.swap(m_observeCamera);
 	m_skybox->SetCamera(m_camera);
+	m_player->SetSkillGage(0.0f);
 	m_player->SetMesh(s_meshes["PLAYER"]);
 	m_player->PlayAnimation("DIE", TRUE);
 	m_player->SetVelocity(XMFLOAT3{});
 	m_player->SendPlayerData();
-	
+
 	// 효과음
 	g_audioEngine.Play("DEATH");
 
@@ -1219,7 +1220,7 @@ void GameScene::RecvBulletHit()
 			break;
 		}
 		// 랜덤하게 좀 더 움직임
-		offset = Vector3::Add(offset, XMFLOAT3{ Utile::Random(-5.0f, 5.0f), Utile::Random(-5.0f, 5.0f), 0.0f });
+		offset = Vector3::Add(offset, XMFLOAT3{ Utile::Random(-4.0f, 4.0f), Utile::Random(-2.0f, 2.0f), 0.0f });
 		dmgText->SetStartPosition(Vector3::Add((*it)->GetPosition(), offset));
 		lock.lock();
 		m_textObjects.push_back(move(dmgText));

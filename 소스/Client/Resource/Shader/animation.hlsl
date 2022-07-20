@@ -32,5 +32,13 @@ float4 PS(PS_INPUT input) : SV_TARGET
     }
     float4 lightColor = Lighting(input.positionW.xyz, input.normalW, input.materialIndex);
     float shadowFactor = CalcShadowFactor(input.positionW);
+
+    if (shadowFactor > 0.66f)
+        shadowFactor = 0.66f;
+    else if (shadowFactor > 0.33f)
+        shadowFactor = 0.33f;
+    else
+        shadowFactor = 0.0f;
+
     return output + lightColor * shadowFactor;
 }

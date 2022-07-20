@@ -218,6 +218,17 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		case VK_F3:
 			m_isInvincible = !m_isInvincible;
 			break;
+		case VK_F4:
+		{
+#ifdef NETWORK
+			cs_packet_debug packet{};
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_DEBUG;
+			packet.debugType = eDebugType::KILLALL;
+			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+#endif
+			break;
+		}
 		}
 		break;
 	}
@@ -1216,6 +1227,8 @@ void Player::UpdateSkill(FLOAT deltaTime)
 	스킬게이지가 가득 찼을 때 'Q'를 누르게되면 스킬이 발동한다.
 	스킬이 발동하면 스킬 게이지를 감소시키고 0이되면 스킬이 종료된다.
 	*/
+
+	if (m_hp <= 0) return;
 
 	float timerLimit{};
 	if (m_isSkillActive)

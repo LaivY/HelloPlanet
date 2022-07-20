@@ -86,7 +86,7 @@ float CalcShadowFactor(float4 positionW)
 		}
 
 		// Depth in NDC space.
-		float depth = shadowPosH.z;
+		float depth = shadowPosH.z - 0.0001f;
 		if (depth < 0.0f || depth > 1.0f)
 		{
 			continue;

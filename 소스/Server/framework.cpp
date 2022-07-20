@@ -327,7 +327,24 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		if (disconnectCount == MAX_USER)
 		{
 			Reset();
-			std::cout << "─ RESET ─" << std::endl;
+			std::cout << "─RESET─" << std::endl;
+		}
+		break;
+	}
+	case CS_PACKET_DEBUG:
+	{
+		auto packet{ reinterpret_cast<cs_packet_debug*>(p) };
+		switch (packet->debugType)
+		{
+		case eDebugType::KILLALL:
+			for (auto& m : monsters)
+			{
+				BulletData bullet{};
+				bullet.damage = m->GetHp();
+				m->OnHit(bullet);
+			}
+			killCount = roundGoal[round - 1];
+			break;
 		}
 		break;
 	}
@@ -479,15 +496,18 @@ void NetworkFramework::CollisionCheck()
 					length = l;
 					//std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
-
-				// 해당 플레이어가 총알을 맞췄다는 것을 저장
-				BulletHitData hitData{};
-				hitData.bullet = b.data;
-				hitData.mobId = m->GetId();
-				bulletHits.push_back(std::move(hitData));
 			}
 		}
-		if (hitMonster) hitMonster->OnHit(b.data);
+		if (hitMonster)
+		{
+			hitMonster->OnHit(b.data);
+
+			// 해당 플레이어가 총알을 맞췄다는 것을 저장
+			BulletHitData hitData{};
+			hitData.bullet = b.data;
+			hitData.mobId = hitMonster->GetId();
+			bulletHits.push_back(std::move(hitData));
+		} 
 	}
 
 	// 충돌체크가 완료된 총알들은 삭제
