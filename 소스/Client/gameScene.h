@@ -76,7 +76,6 @@ private:
 	void CreateExitWindow();
 
 	void RecvPacket();
-	void RecvLoginOk();
 	void RecvUpdateClient();
 	void RecvUpdateMonster();
 	void RecvBulletFire();

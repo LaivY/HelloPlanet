@@ -167,7 +167,7 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 		return;
 
 	// 해당 게임오브젝트가 사용할 상수 버퍼가 없다면 생성
-	if (!m_cbMesh[object])
+	if (!m_cbMesh.contains(object))
 	{
 		UINT cbMeshByteSize{ 0 };
 		if (m_animations.empty())
@@ -181,17 +181,13 @@ void Mesh::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& command
 	cbMesh* pcbMesh{ nullptr };
 	m_cbMesh[object]->Map(0, NULL, reinterpret_cast<void**>(&pcbMesh));
 
-	// 변환 행렬
+	// 메쉬 변환 행렬 설정
 	if (m_transformMatrix)
-	{
-		for (int i = 0; i < 4; ++i)
-			for (int j = 0; j < 4; ++j)
-				pcbMesh->transformMatrix.m[i][j] = m_transformMatrix->m[i][j];
-	}
+		memcpy(&pcbMesh->transformMatrix, m_transformMatrix.get(), sizeof(XMFLOAT4X4));
 
-	// 재질
-	for (int i = 0; i < m_materials.size(); ++i)
-		pcbMesh->materials[i] = m_materials[i];
+	// 재질 설정
+	if (!m_materials.empty())
+		memcpy(&pcbMesh->materials, m_materials.data(), sizeof(Material) * m_materials.size());
 
 	// 애니메이션
 	if (AnimationInfo* animationInfo{ object ? object->GetAnimationInfo() : nullptr })

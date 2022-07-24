@@ -228,7 +228,6 @@ void GameScene::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 			break;
 		case VK_ESCAPE:
 			CreateExitWindow();
-			//PostMessage(hWnd, WM_QUIT, 0, 0);
 			break;
 		}
 		break;
@@ -241,22 +240,23 @@ void GameScene::OnUpdate(FLOAT deltaTime)
 	if (m_player) m_player->Update(deltaTime);
 	if (m_camera) m_camera->Update(deltaTime);
 	if (m_skybox) m_skybox->Update(deltaTime);
+	for (auto& ui : m_uiObjects)
+		ui->Update(deltaTime);
+	for (auto& o : s_screenObjects)
+		o->Update(deltaTime);
+
+	unique_lock<mutex> lock{ g_mutex };
 	for (auto& p : m_multiPlayers)
 		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
-	for (auto& ui : m_uiObjects)
-		ui->Update(deltaTime);
 	for (auto& t : m_textObjects)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
-	for (auto& o : s_screenObjects)
-		o->Update(deltaTime);
 	for (auto& m : s_monsters)
 		m->Update(deltaTime);
 }
-
 
 void GameScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
 {
@@ -435,11 +435,38 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	m_player->PlayAnimation("IDLE");
 	m_player->DeleteUpperAnimation();
 	m_player->SetSkillGage(0);
+	switch (m_player->GetId())
+	{
+	case 0:
+		m_player->SetPosition(XMFLOAT3{ -50.0f, 0.0f, 0.0f });
+		break;
+	case 1:
+		m_player->SetPosition(XMFLOAT3{});
+		break;
+	case 2:
+		m_player->SetPosition(XMFLOAT3{ 50.0f, 0.0f, 0.0f });
+		break;
+	}
+	m_player->SendPlayerData();
+
 	for (auto& p : m_multiPlayers)
 	{
 		if (!p) continue;
 		p->PlayAnimation("IDLE");
 		p->DeleteUpperAnimation();
+
+		switch (p->GetId())
+		{
+		case 0:
+			p->SetPosition(XMFLOAT3{ -50.0f, 0.0f, 0.0f });
+			break;
+		case 1:
+			p->SetPosition(XMFLOAT3{});
+			break;
+		case 2:
+			p->SetPosition(XMFLOAT3{ 50.0f, 0.0f, 0.0f });
+			break;
+		}
 	}
 
 	// 카메라, 플레이어 설정
@@ -465,27 +492,6 @@ void GameScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComP
 	// 파티클
 	auto particle{ make_unique<DustParticle>() };
 	m_gameObjects.push_back(move(particle));
-
-	// 몬스터
-	//auto mob1{ make_unique<Monster>(0, eMobType::GAROO) };
-	//mob1->Move(XMFLOAT3{ -75.0f, 0.0f, 150.0f });
-	//mob1->Rotate(0.0f, 0.0f, 180.0f);
-	//m_gameObjects.push_back(move(mob1));
-
-	//auto mob2{ make_unique<Monster>(1, eMobType::SERPENT) };
-	//mob2->Move(XMFLOAT3{ -25.0f, 0.0f, 150.0f });
-	//mob2->Rotate(0.0f, 0.0f, 180.0f);
-	//m_gameObjects.push_back(move(mob2));
-
-	//auto mob3{ make_unique<Monster>(3, eMobType::HORROR) };
-	//mob3->Move(XMFLOAT3{ 25.0f, 0.0f, 150.0f });
-	//mob3->Rotate(0.0f, 0.0f, 180.0f);
-	//m_gameObjects.push_back(move(mob3));
-
-	//auto mob4{ make_unique<Monster>(4, eMobType::ULIFO) };
-	//mob4->Move(XMFLOAT3{ 75.0f, 0.0f, 150.0f });
-	//mob4->Rotate(0.0f, 0.0f, 180.0f);
-	//m_gameObjects.push_back(move(mob4));
 }
 
 void GameScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
@@ -1037,44 +1043,6 @@ void GameScene::RecvPacket()
 	}
 }
 
-void GameScene::RecvLoginOk()
-{
-	char subBuf[sizeof(PlayerData)]{};
-	WSABUF wsabuf{ sizeof(subBuf), subBuf };
-	DWORD recvByte{}, recvFlag{};
-	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
-
-	char nameBuf[10]{};
-	wsabuf = WSABUF{ sizeof(nameBuf), nameBuf };
-	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
-
-	PlayerData data{};
-	memcpy(&data, subBuf, sizeof(data));
-
-	// 로그인 패킷을 처음 수신했을 경우 자신의 id 설정
-	if (m_player->GetId() == -1)
-	{
-		m_player->SetId(static_cast<int>(data.id));
-		return;
-	}
-
-	// 나에 관한 데이터면 무시
-	if (m_player->GetId() == data.id)
-		return;
-
-	// 다른 플레이어들 정보일 경우
-	for (auto& p : m_multiPlayers)
-	{
-		if (p) continue;
-		p = make_shared<Player>(TRUE);
-		p->SetId(static_cast<int>(data.id));
-		p->SetWeaponType(eWeaponType::SG);
-		p->PlayAnimation("IDLE");
-		p->ApplyServerData(data);
-		break;
-	}
-}
-
 void GameScene::RecvUpdateClient()
 {
 	char subBuf[sizeof(PlayerData) * MAX_USER]{};
@@ -1094,6 +1062,7 @@ void GameScene::RecvUpdateClient()
 		{
 			if (!d.isActive) continue;
 			if (p->GetId() != d.id) continue;
+			unique_lock<mutex> lock{ g_mutex };
 			p->ApplyServerData(d);
 		}
 	}
@@ -1246,30 +1215,30 @@ void GameScene::RecvBulletHit()
 
 void GameScene::RecvMosterAttack()
 {
-	char buf[sizeof(MonsterAttackData)]{};
-	WSABUF wsabuf{ sizeof(buf), buf };
-	DWORD recvByte{}, recvFlag{};
-	WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
+	//char buf[sizeof(MonsterAttackData)]{};
+	//WSABUF wsabuf{ sizeof(buf), buf };
+	//DWORD recvByte{}, recvFlag{};
+	//WSARecv(g_socket, &wsabuf, 1, &recvByte, &recvFlag, nullptr, nullptr);
 
-	MonsterAttackData data{};
-	memcpy(&data, buf, sizeof(data));
-	if (m_player->GetHp() == 0) return;
-	if (m_player->GetId() != data.id) return;
+	//MonsterAttackData data{};
+	//memcpy(&data, buf, sizeof(data));
+	//if (m_player->GetHp() == 0) return;
+	//if (m_player->GetId() != data.id) return;
 
-	// 체력 감소
-	int hp{ m_player->GetHp() };
-	m_player->SetHp(hp - static_cast<int>(data.damage));
+	//// 체력 감소
+	//int hp{ m_player->GetHp() };
+	//m_player->SetHp(hp - static_cast<int>(data.damage));
 
-	// 애니메이션
-	if (hp > 0 && m_player->GetHp() <= 0)
-		OnPlayerDie();
-	else
-		m_player->PlayAnimation("HIT");
+	//// 애니메이션
+	//if (hp > 0 && m_player->GetHp() <= 0)
+	//	OnPlayerDie();
+	//else
+	//	m_player->PlayAnimation("HIT");
 
-	// 피격 이펙트
-	auto hit{ make_unique<HitUIObject>(data.mobId) };
-	unique_lock<mutex> lock{ g_mutex };
-	m_uiObjects.push_back(move(hit));
+	//// 피격 이펙트
+	//auto hit{ make_unique<HitUIObject>(data.mobId) };
+	//unique_lock<mutex> lock{ g_mutex };
+	//m_uiObjects.push_back(move(hit));
 }
 
 void GameScene::RecvRoundResult()

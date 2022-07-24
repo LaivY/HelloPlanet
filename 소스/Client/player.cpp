@@ -489,7 +489,7 @@ void Player::Fire()
 					offset = XMFLOAT3{ -0.5f, 11.5f, -1.0f };
 					break;
 				case eMobType::SERPENT:
-					offset = XMFLOAT3{ 0.0f, 22.0f, 10.0f };
+					offset = XMFLOAT3{ 0.0f, 22.0f, 3.0f };
 					break;
 				case eMobType::HORROR:
 					offset = XMFLOAT3{ -3.0f, 26.0f, 5.0f };

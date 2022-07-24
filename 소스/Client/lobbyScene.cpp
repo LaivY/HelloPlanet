@@ -107,8 +107,6 @@ void LobbyScene::OnUpdate(FLOAT deltaTime)
 	if (m_player) m_player->Update(deltaTime);
 	if (m_camera) m_camera->Update(deltaTime);
 	if (m_skybox) m_skybox->Update(deltaTime);
-	for (auto& p : m_multiPlayers)
-		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
@@ -117,6 +115,10 @@ void LobbyScene::OnUpdate(FLOAT deltaTime)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
+
+	unique_lock<mutex> lock{ g_mutex };
+	for (auto& p : m_multiPlayers)
+		if (p) p->Update(deltaTime);
 }
 
 void LobbyScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -585,8 +587,9 @@ void LobbyScene::RecvLoginOkPacket()
 	{
 		if (p) continue;
 		p = make_shared<Player>(TRUE);
-		p->SetWeaponType(weaponType);
 		p->SetId(static_cast<int>(data.id));
+		p->SetWeaponType(weaponType);
+		p->PlayAnimation("IDLE");
 		if (m_leftSlotPlayerId == -1)
 		{
 			p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
@@ -749,6 +752,8 @@ void LobbyScene::RecvLogoutOkPacket()
 			m_rightSlotReadyText->SetText(TEXT("대기중"));
 			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
 		}
+
+		unique_lock<mutex> lock{ g_mutex };
 		p.reset();
 		return;
 	}
