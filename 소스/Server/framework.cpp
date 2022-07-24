@@ -319,7 +319,13 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		{
 			if (!c.data.isActive) continue;
 			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+			if (retVal == SOCKET_ERROR)
+			{
+				if (WSAGetLastError() == WSAECONNRESET)
+					std::cout << "[" << static_cast<int>(c.data.id) << " Session] Disconnect(Send(SC_PACKET_LOGOUT_OK))" << std::endl;
+				else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+			}
+			
 		}
 		std::cout << "[" << id << " Session] Logout" << std::endl;
 
@@ -511,6 +517,7 @@ void NetworkFramework::CollisionCheck()
 	}
 
 	// 충돌체크가 완료된 총알들은 삭제
+	std::unique_lock<std::mutex> lock{ g_mutex };
 	erase_if(bullets, [](const BulletDataFrame& b) { return b.isCollisionCheck && b.isBulletCast; });
 }
 
