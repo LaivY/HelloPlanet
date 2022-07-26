@@ -8,6 +8,7 @@
 
 constexpr FLOAT g_spawnCooldown = 2.0f;
 
+
 struct BulletDataFrame
 {
 	BulletData	data;
@@ -74,4 +75,5 @@ public:
 	std::vector<BulletHitData>					bulletHits;			// 총알을 맞춘 정보
 	std::vector<std::unique_ptr<Monster>>		monsters;			// 몬스터
 	std::vector<DirectX::BoundingOrientedBox>	hitboxes;			// 맵 오브젝트 히트박스
+	std::mutex									g_mutex{};
 };

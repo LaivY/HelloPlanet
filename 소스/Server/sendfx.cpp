@@ -226,6 +226,7 @@ void NetworkFramework::SendMonsterDataPacket()
 	}
 
 	// 죽은 몬스터는 서버에서 삭제
+	std::unique_lock<std::mutex> lock{ g_mutex };
 	erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() <= 0; });
 }
 
