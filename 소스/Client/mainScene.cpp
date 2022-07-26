@@ -176,7 +176,7 @@ void MainScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr
 	title->SetTexture(s_textures["TITLE"]);
 	title->SetPivot(ePivot::LEFTCENTER);
 	title->SetScreenPivot(ePivot::LEFTCENTER);
-	title->SetPosition(XMFLOAT2{ 50.0f, 0.0f });
+	title->SetPosition(XMFLOAT2{ 50.0f, 60.0f });
 	title->SetScale(XMFLOAT2{ 0.5f, 0.5f });
 	title->SetFitToScreen(TRUE);
 	m_uiObjects.push_back(move(title));
@@ -191,7 +191,7 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 	gameStartText->SetText(TEXT("게임시작"));
 	gameStartText->SetPivot(ePivot::LEFTBOT);
 	gameStartText->SetScreenPivot(ePivot::LEFTBOT);
-	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -170.0f });
+	gameStartText->SetPosition(XMFLOAT2{ 50.0f, -230.0f });
 	gameStartText->SetMouseClickCallBack(
 		[]()
 		{
@@ -205,6 +205,17 @@ void MainScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceCo
 			g_gameFramework.SetNextScene(eSceneType::LOBBY);
 		});
 	m_textObjects.push_back(move(gameStartText));
+
+	auto manualText{ make_unique<MenuTextObject>() };
+	manualText->SetBrush("BLACK");
+	manualText->SetMouseOverBrush("WHITE");
+	manualText->SetFormat("48R");
+	manualText->SetText(TEXT("조작법"));
+	manualText->SetPivot(ePivot::LEFTBOT);
+	manualText->SetScreenPivot(ePivot::LEFTBOT);
+	manualText->SetPosition(XMFLOAT2{ 50.0f, -170.0f });
+	manualText->SetMouseClickCallBack(bind(&MainScene::CreateManualWindow, this));
+	m_textObjects.push_back(move(manualText));
 
 	auto settingText{ make_unique<MenuTextObject>() };
 	settingText->SetBrush("BLACK");
@@ -470,6 +481,42 @@ void MainScene::CreateSettingWindow()
 	setting->Add(musicOnOff);
 	setting->Add(soundOnOff);
 	m_windowObjects.push_back(move(setting));
+}
+
+void MainScene::CreateManualWindow()
+{
+	auto title{ make_unique<TextObject>() };
+	title->SetBrush("BLACK");
+	title->SetFormat("36R");
+	title->SetText(TEXT("조작법"));
+	title->SetPivot(ePivot::LEFTCENTER);
+	title->SetScreenPivot(ePivot::LEFTTOP);
+	title->SetPosition(XMFLOAT2{ 0.0f, title->GetHeight() / 2.0f + 2.0f });
+
+	auto close{ make_unique<MenuTextObject>() };
+	close->SetBrush("BLACK");
+	close->SetMouseOverBrush("BLUE");
+	close->SetFormat("36R");
+	close->SetText(TEXT("확인"));
+	close->SetScreenPivot(ePivot::CENTERBOT);
+	close->SetPivot(ePivot::CENTERBOT);
+	close->SetPosition(XMFLOAT2{ 0.0f, -close->GetHeight() / 2.0f + 10.0f });
+	close->SetMouseClickCallBack(
+		[&]()
+		{
+			m_windowObjects.back()->Delete();
+		});
+
+	auto manual{ make_unique<UIObject>(600.0f, 400.0f) };
+	manual->SetTexture(s_textures["WARNING"]);
+
+	auto window{ make_unique<WindowObject>(800.0f, 600.0f) };
+	window->SetTexture(s_textures["WHITE"]);
+	window->SetPosition(XMFLOAT2{});
+	window->Add(title);
+	window->Add(close);
+	window->Add(manual);
+	m_windowObjects.push_back(move(window));
 }
 
 void MainScene::UpdateCameraPosition(FLOAT deltaTime)
