@@ -230,6 +230,9 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		cl.state = STATE::ST_INGAME;
 		cl.lock.unlock();
 		std::cout << packet->name << " is connect" << std::endl;
+
+		// 재접속 시 disconnectCount를 감소시켜야함
+		disconnectCount = max(0, disconnectCount - 1);
 		break;
 	}
 	case CS_PACKET_SELECT_WEAPON:
@@ -329,8 +332,7 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		}
 		std::cout << "[" << id << " Session] Logout" << std::endl;
 
-		++disconnectCount;
-		if (disconnectCount == MAX_USER)
+		if (++disconnectCount == MAX_USER)
 		{
 			Reset();
 			std::cout << "─RESET─" << std::endl;

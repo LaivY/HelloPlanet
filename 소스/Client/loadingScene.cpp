@@ -349,6 +349,9 @@ void LoadingScene::LoadTextures(const ComPtr<ID3D12Device>& device, const ComPtr
 	s_textures["WARNING"] = make_shared<Texture>();
 	s_textures["WARNING"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/WARNING.dds")));
 
+	s_textures["MANUAL"] = make_shared<Texture>();
+	s_textures["MANUAL"]->Load(device, commandList, 5, Utile::PATH(TEXT("UI/MANUAL.dds")));
+
 	// 총구 이펙트
 	s_textures["MUZZLE_FRONT"] = make_shared<Texture>();
 	s_textures["MUZZLE_FRONT"]->Load(device, commandList, 5, Utile::PATH(TEXT("Effect/muzzle_front_1.dds")));

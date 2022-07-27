@@ -506,11 +506,12 @@ void MainScene::CreateManualWindow()
 		{
 			m_windowObjects.back()->Delete();
 		});
+	
+	auto manual{ make_unique<UIObject>(628.2f, 301.2f) };
+	manual->SetPosition(XMFLOAT2{ 0.0f, close->GetHeight() / 2.0f });
+	manual->SetTexture(s_textures["MANUAL"]);
 
-	auto manual{ make_unique<UIObject>(600.0f, 400.0f) };
-	manual->SetTexture(s_textures["WARNING"]);
-
-	auto window{ make_unique<WindowObject>(800.0f, 600.0f) };
+	auto window{ make_unique<WindowObject>(800.0f, 500.0f) };
 	window->SetTexture(s_textures["WHITE"]);
 	window->SetPosition(XMFLOAT2{});
 	window->Add(title);
