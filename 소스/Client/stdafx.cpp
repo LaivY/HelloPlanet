@@ -18,6 +18,7 @@ UINT                    g_dsvDescriptorIncrementSize{};
 SOCKET                  g_socket{};
 BOOL                    g_isConnected{};
 thread                  g_networkThread{};
+string					g_serverIP{ "127.0.0.1" };
 mutex                   g_mutex{};
 
 namespace Utile

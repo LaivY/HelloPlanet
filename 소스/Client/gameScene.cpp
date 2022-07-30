@@ -1055,6 +1055,7 @@ void GameScene::RecvUpdateClient()
 	memcpy(&data, subBuf, sizeof(PlayerData) * MAX_USER);
 
 	// 멀티플레이어 업데이트
+	unique_lock<mutex> lock{ g_mutex };
 	for (auto& p : m_multiPlayers)
 	{
 		if (!p) continue;
@@ -1062,7 +1063,6 @@ void GameScene::RecvUpdateClient()
 		{
 			if (!d.isActive) continue;
 			if (p->GetId() != d.id) continue;
-			unique_lock<mutex> lock{ g_mutex };
 			p->ApplyServerData(d);
 		}
 	}

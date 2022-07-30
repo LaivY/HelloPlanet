@@ -735,7 +735,7 @@ BOOL GameFramework::ConnectServer()
 	SOCKADDR_IN server_address{};
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(SERVER_PORT);
-	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
+	inet_pton(AF_INET, g_serverIP.c_str(), &(server_address.sin_addr.s_addr));
 
 	if (connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address)) == SOCKET_ERROR)
 		return FALSE;
