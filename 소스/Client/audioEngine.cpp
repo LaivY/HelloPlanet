@@ -19,7 +19,7 @@
 #define fourccDPDS 'sdpd'
 #endif
 
-AudioEngine::AudioEngine() : m_musicVolume{ 0.0f }, m_soundVolume{ 0.5f }, m_isChanging{ FALSE }, m_isDecreasing{ FALSE }, m_tempVolume{ 0.0f }, m_timer{ 0.0f }
+AudioEngine::AudioEngine() : m_musicVolume{ 0.5f }, m_soundVolume{ 0.5f }, m_isChanging{ FALSE }, m_isDecreasing{ FALSE }, m_tempVolume{ 0.0f }, m_timer{ 0.0f }
 {
 	DX::ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 	DX::ThrowIfFailed(XAudio2Create(&m_xAduio, 0, XAUDIO2_DEFAULT_PROCESSOR));
@@ -65,13 +65,13 @@ void AudioEngine::Update(FLOAT deltaTime)
 	m_timer = min(CHANGE_TIME, m_timer + deltaTime);
 }
 
-HRESULT AudioEngine::Load(const wstring& fileName, eAudioType audioType)
+HRESULT AudioEngine::Load(const string& fileName, const string& key, eAudioType audioType)
 {
 	AudioData audioData{};
 	audioData.audioType = audioType;
 
 	// Open the file
-	HANDLE hFile = CreateFile(fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+	HANDLE hFile = CreateFileA(fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 	if (INVALID_HANDLE_VALUE == hFile)
 		return HRESULT_FROM_WIN32(GetLastError());
 	if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, 0, NULL, FILE_BEGIN))
@@ -101,13 +101,13 @@ HRESULT AudioEngine::Load(const wstring& fileName, eAudioType audioType)
 	DX::ThrowIfFailed(m_xAduio->CreateSourceVoice(&audioData.pSourceVoice, (WAVEFORMATEX*)&audioData.wfx));
 	DX::ThrowIfFailed(audioData.pSourceVoice->SubmitSourceBuffer(&audioData.buffer));
 
-	m_audios[fileName] = move(audioData);
+	m_audios[key] = move(audioData);
 	return S_OK;
 }
 
-void AudioEngine::Play(const wstring& fileName, bool isLoop)
+void AudioEngine::Play(const string& key, bool isLoop)
 {
-	auto& audioData{ m_audios.at(fileName) };
+	auto& audioData{ m_audios.at(key) };
 	if (isLoop)
 		audioData.buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
 	audioData.pSourceVoice->Stop();
@@ -118,7 +118,7 @@ void AudioEngine::Play(const wstring& fileName, bool isLoop)
 	{
 	case eAudioType::MUSIC:
 		audioData.pSourceVoice->SetVolume(m_musicVolume);
-		m_currMusicName = fileName;
+		m_currMusicName = key;
 		break;
 	case eAudioType::SOUND:
 		audioData.pSourceVoice->SetVolume(m_soundVolume);
@@ -127,19 +127,19 @@ void AudioEngine::Play(const wstring& fileName, bool isLoop)
 	audioData.pSourceVoice->Start();
 }
 
-void AudioEngine::Stop(const wstring& fileName)
+void AudioEngine::Stop(const string& key)
 {
-	if (!m_audios.contains(fileName)) return;
-	m_audios[fileName].pSourceVoice->Stop();
+	if (!m_audios.contains(key)) return;
+	m_audios[key].pSourceVoice->Stop();
 }
 
-void AudioEngine::ChangeMusic(const wstring& fileName)
+void AudioEngine::ChangeMusic(const string& key)
 {
-	if (!m_audios.contains(fileName)) return;
-	if (m_currMusicName == fileName) return;
+	if (!m_audios.contains(key)) return;
+	if (m_currMusicName == key) return;
 	m_isChanging = TRUE;
 	m_isDecreasing = TRUE;
-	m_targetMusicName = fileName;
+	m_targetMusicName = key;
 	m_tempVolume = m_musicVolume;
 	m_timer = 0.0f;
 }

@@ -10,8 +10,8 @@
 #include "uiObject.h"
 
 Player::Player(BOOL isMultiPlayer) : GameObject{},
-	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
-	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 20.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
+	m_id{ -1 }, m_isMultiPlayer{ isMultiPlayer }, m_isFired{ FALSE }, m_isMoved{ FALSE }, m_isInvincible{ FALSE }, m_isFocusing{ false }, m_isZooming{ false }, m_isZoomIn{ false },
+	m_weaponType{ eWeaponType::AR }, m_hp{}, m_maxHp{}, m_speed{ 40.0f }, m_damage{}, m_attackSpeed{}, m_attackTimer{}, m_bulletCount{}, m_maxBulletCount{},
 	m_bonusSpeed{}, m_bonusDamage{}, m_bonusAttackSpeed{}, m_bonusReloadSpeed{}, m_bonusBulletFire{},
 	m_isSkillActive{ FALSE }, m_skillActiveTime{}, m_skillGage{}, m_skillGageTimer{}, m_autoTargetMobId{ -1 },
 	m_delayRoll{}, m_delayPitch{}, m_delayYaw{}, m_delayTime{}, m_delayTimer{},
@@ -123,7 +123,7 @@ void Player::OnKeyboardEvent(FLOAT deltaTime)
 			if ((m_animationInfo->state == eAnimationState::PLAY && currPureAnimationName != "RUNNING") ||
 				(m_animationInfo->state == eAnimationState::BLENDING && afterPureAnimationName == "IDLE"))
 				PlayAnimation("RUNNING", TRUE);
-			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) * 5.0f;
+			m_velocity.z = m_speed * (1.0f + m_bonusSpeed / 100.0f) * 3.0f;
 			SendPlayerData();
 		}
 		else
@@ -209,6 +209,33 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		switch (wParam)
 		{
+		case VK_F1:
+			SetHp(max(10, GetHp() - 10));
+			break;
+		case VK_F2:
+			SetHp(GetHp() + 5);
+			break;
+		case VK_F3:
+			m_isInvincible = !m_isInvincible;
+			break;
+		case VK_F4:
+		{
+#ifdef NETWORK
+			cs_packet_debug packet{};
+			packet.size = sizeof(packet);
+			packet.type = CS_PACKET_DEBUG;
+			packet.debugType = eDebugType::KILLALL;
+			send(g_socket, reinterpret_cast<char*>(&packet), sizeof(packet), NULL);
+#endif
+			break;
+		}
+		}
+		break;
+	}
+	case WM_CHAR:
+	{
+		switch (wParam)
+		{
 		case 'r': case 'R':
 			if (!m_upperAnimationInfo || (m_upperAnimationInfo && GetUpperCurrAnimationName() != "RELOAD" && GetUpperAfterAnimationName() != "RELOAD"))
 			{
@@ -220,7 +247,6 @@ void Player::OnKeyboardEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 					m_isZooming = true;
 					m_zoomTimer = 0.0f;
 				}
-
 				PlayAnimation("RELOAD", TRUE);
 				SendPlayerData();
 			}
@@ -251,12 +277,12 @@ void Player::OnAnimation(FLOAT currFrame, UINT endFrame)
 		if (currPureAnimationName == "RUNNING" && currFrame >= 9.0f)
 		{
 			m_isMoved = TRUE;
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+			g_audioEngine.Play("FOOTSTEP");
 		}
 		else if (currFrame >= 5.0f)
 		{
 			m_isMoved = TRUE;
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_FOOTSTEP.wav")));
+			g_audioEngine.Play("FOOTSTEP");
 		}
 	}
 
@@ -463,7 +489,7 @@ void Player::Fire()
 					offset = XMFLOAT3{ -0.5f, 11.5f, -1.0f };
 					break;
 				case eMobType::SERPENT:
-					offset = XMFLOAT3{ 0.0f, 22.0f, 10.0f };
+					offset = XMFLOAT3{ 0.0f, 22.0f, 3.0f };
 					break;
 				case eMobType::HORROR:
 					offset = XMFLOAT3{ -3.0f, 26.0f, 5.0f };
@@ -618,7 +644,10 @@ void Player::Fire()
 	GameScene::s_screenObjects.push_back(move(frontEffect));
 
 	// 발사 효과음
-	g_audioEngine.Play(Utile::PATH(TEXT("Sound/GAME_SHOT.wav")));
+	// 효과음이 끊기지않게 같은 소리를 번갈아가면서 재생
+	static int count{ 0 };
+	g_audioEngine.Play("SHOT" + to_string(count));
+	++count %= 2;
 
 	m_isFired = TRUE;
 }
@@ -666,6 +695,10 @@ void Player::Update(FLOAT deltaTime)
 
 	UpdateZoomInOut(deltaTime);
 	UpdateSkill(deltaTime);
+
+	// 무적모드면 풀피로 만듦
+	if (m_isInvincible)
+		SetHp(m_maxHp);
 
 	// 공격 타이머 진행
 	m_attackTimer += deltaTime;
@@ -783,7 +816,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::AR:
 		m_gunMesh = Scene::s_meshes["AR"];
 		m_hp = m_maxHp = 150;
-		m_damage = 40;
+		m_damage = 30;
 		m_attackSpeed = 0.16f;
 		m_bulletCount = m_maxBulletCount = 30;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -792,7 +825,7 @@ void Player::SetWeaponType(eWeaponType weaponType)
 	case eWeaponType::SG:
 		m_gunMesh = Scene::s_meshes["SG"];
 		m_hp = m_maxHp = 175;
-		m_damage = 30;
+		m_damage = 20;
 		m_attackSpeed = 0.8f;
 		m_bulletCount = m_maxBulletCount = 8;
 		m_gunOffset = XMFLOAT3{ 0.0f, 30.0f, -1.0f };
@@ -800,8 +833,8 @@ void Player::SetWeaponType(eWeaponType weaponType)
 		break;
 	case eWeaponType::MG:
 		m_gunMesh = Scene::s_meshes["MG"];
-		m_hp = m_maxHp = 200;
-		m_damage = 20;
+		m_hp = m_maxHp = 175;
+		m_damage = 10;
 		m_attackSpeed = 0.1f;
 		m_bulletCount = m_maxBulletCount = 100;
 		m_gunOffset = XMFLOAT3{ 0.0f, 19.0f, 0.0f };
@@ -858,8 +891,8 @@ void Player::SendPlayerData() const
 void Player::ApplyServerData(const PlayerData& playerData)
 {
 	// 죽는 애니메이션 중이면 패스
-	if (GetCurrAnimationName() == "DIE" || GetAfterAnimationName() == "DIE")
-		return;
+	/*if (GetCurrAnimationName() == "DIE" || GetAfterAnimationName() == "DIE")
+		return;*/
 
 	// 애니메이션
 	switch (playerData.aniType)
@@ -923,9 +956,9 @@ void Player::SetGunShadowShader(const shared_ptr<Shader>& shadowShader)
 	m_gunShadowShader = shadowShader;
 }
 
-void Player::SetSkillGage(INT value)
+void Player::SetSkillGage(FLOAT value)
 {
-	m_skillGage = value;
+	m_skillGage = min(100.0f, value);
 }
 
 void Player::AddMaxHp(INT hp)
@@ -1015,7 +1048,7 @@ INT Player::GetMaxBulletCount() const
 	return m_maxBulletCount;
 }
 
-INT Player::GetSkillGage() const
+FLOAT Player::GetSkillGage() const
 {
 	return m_skillGage;
 }
@@ -1195,6 +1228,8 @@ void Player::UpdateSkill(FLOAT deltaTime)
 	스킬이 발동하면 스킬 게이지를 감소시키고 0이되면 스킬이 종료된다.
 	*/
 
+	if (m_hp <= 0) return;
+
 	float timerLimit{};
 	if (m_isSkillActive)
 	{
@@ -1210,10 +1245,11 @@ void Player::UpdateSkill(FLOAT deltaTime)
 	}
 	else
 	{
-		timerLimit = 0.1f;
+		// timerLimit초가 지나면 스킬게이지가 1씩 증가한다.
+		timerLimit = 1.0f;
 		if (m_skillGageTimer >= timerLimit)
 		{
-			m_skillGage = min(100, m_skillGage + 1);
+			SetSkillGage(m_skillGage + 1.0f);
 			m_skillGageTimer -= timerLimit;
 		}
 	}

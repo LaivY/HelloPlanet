@@ -132,8 +132,13 @@ void NetworkFramework::SendPlayerDataPacket()
 	}
 
 	// 플레이어의 상체 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
+	// + 피격 애니메이션은 한 번 보내고 나면 NONE 상태로 초기화
 	for (auto& c : clients)
+	{
 		c.data.upperAniType = eUpperAnimationType::NONE;
+		if (c.data.aniType == eAnimationType::HIT)
+			c.data.aniType = eAnimationType::NONE;
+	}
 }
 
 void NetworkFramework::SendBulletDataPacket()
@@ -155,7 +160,13 @@ void NetworkFramework::SendBulletDataPacket()
 		{
 			if (!c.data.isActive) continue;
 			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+			if (retVal == SOCKET_ERROR)
+			{
+				if (WSAGetLastError() == WSAECONNRESET)
+					std::cout << "[" << static_cast<int>(c.data.id) << " Session] Disconnect" << std::endl;
+				else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_BULLET_FIRE)");
+			}
+			
 		}
 		bl.isBulletCast = TRUE;
 	}
@@ -206,10 +217,16 @@ void NetworkFramework::SendMonsterDataPacket()
 	{
 		if (!player.data.isActive) continue;
 		const int retVal = WSASend(player.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-		if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_UPDATE_MONSTER)");
+		if (retVal == SOCKET_ERROR)
+		{
+			if (WSAGetLastError() == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(player.data.id) << " Session] Disconnect" << std::endl;
+			else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_UPDATE_MONSTER)");
+		}
 	}
 
 	// 죽은 몬스터는 서버에서 삭제
+	std::unique_lock<std::mutex> lock{ g_mutex };
 	erase_if(monsters, [](const std::unique_ptr<Monster>& m) { return m->GetHp() <= 0; });
 }
 

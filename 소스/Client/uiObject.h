@@ -153,3 +153,18 @@ public:
 private:
 	Player* m_player;
 };
+
+class WarningUIObject : public UIObject
+{
+public:
+	WarningUIObject();
+	~WarningUIObject() = default;
+
+	virtual void Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader = nullptr);
+	virtual void Update(FLOAT deltaTime);
+
+private:
+	Player* m_player;
+	FLOAT	m_timer;
+	BOOL	m_warning;
+};

@@ -1,8 +1,12 @@
 ﻿#include "stdafx.h"
 #include "object.h"
+#include "audioEngine.h"
 #include "camera.h"
+#include "framework.h"
 #include "mesh.h"
+#include "player.h"
 #include "scene.h"
+#include "gameScene.h"
 #include "shader.h"
 #include "texture.h"
 
@@ -304,7 +308,7 @@ void Bullet::Update(FLOAT deltaTime)
 		Delete();
 }
 
-Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
+Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }, m_damage{}, m_atkFrame{}, m_atkRange{}, m_isAttacked{ FALSE }
 {
 	SetShader(Scene::s_shaders["ANIMATION"]);
 	SetShadowShader(Scene::s_shaders["SHADOW_ANIMATION"]);
@@ -318,13 +322,14 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 20.0f, -1.0f }, XMFLOAT3{ 5.0f, 20.0f, 7.0f }) };
 		collisionBox->SetOwner(this);
 		AddHitbox(collisionBox);
-
 #ifdef RENDER_HITBOX
 		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -0.5f, 11.5f, -1.0f }, XMFLOAT3{ 5.0f, 4.0f, 7.0f }) };
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
-
+		m_damage = 20;
+		m_atkFrame = 7.0f;
+		m_atkRange = 27.0f;
 		break;
 	}
 	case eMobType::SERPENT:
@@ -334,6 +339,9 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ 0.0f, 22.0f, 10.0f }, XMFLOAT3{ 9.0f, 22.0f, 10.0f }) };
 		collisionBox->SetOwner(this);
 		AddHitbox(collisionBox);
+		m_damage = 30;
+		m_atkFrame = 10.0f;
+		m_atkRange = 85.0f;
 		break;
 	}
 	case eMobType::HORROR:
@@ -343,12 +351,14 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 		auto collisionBox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 20.0f, 5.0f }, XMFLOAT3{ 15.0f, 20.0f, 22.0f }) };
 		collisionBox->SetOwner(this);
 		AddHitbox(collisionBox);
-
 #ifdef RENDER_HITBOX
 		auto hitbox{ make_unique<Hitbox>(XMFLOAT3{ -3.0f, 26.0f, 5.0f }, XMFLOAT3{ 15.0f, 7.0f, 22.0f }) };
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
+		m_damage = 50;
+		m_atkFrame = 11.0f;
+		m_atkRange = 90.0f;
 		break;
 	}
 	case eMobType::ULIFO:
@@ -360,15 +370,34 @@ Monster::Monster(INT id, eMobType type) : m_id{ id }, m_type{ type }
 		hitbox->SetOwner(this);
 		AddHitbox(hitbox);
 #endif
+		m_damage = 70;
+		m_atkFrame = 10.0f;
+		m_atkRange = 85.0f;
 		break;
 	}
 	}
-
 	PlayAnimation("IDLE");
 }
 
 void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
 {
+	// 몬스터 공격
+	if (m_animationInfo->currAnimationName == "ATTACK" && !m_isAttacked && currFrame >= m_atkFrame)
+	{
+		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
+		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition()))};
+		if (range < m_atkRange)
+		{
+			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
+			scene->OnPlayerHit(this);
+		}
+		m_isAttacked = TRUE;
+	}
+
+	// 공격 초기화
+	if (m_animationInfo->currAnimationName != "ATTACK")
+		m_isAttacked = FALSE;
+
 	if (currFrame >= endFrame)
 	{
 		switch (m_animationInfo->state)
@@ -379,6 +408,8 @@ void Monster::OnAnimation(FLOAT currFrame, UINT endFrame)
 				Delete();
 				break;
 			}
+			if (m_animationInfo->currAnimationName == "ATTACK")
+				m_isAttacked = FALSE;
 			PlayAnimation(m_animationInfo->currAnimationName);
 			break;
 		case eAnimationState::BLENDING:
@@ -395,6 +426,8 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 
 	switch (monsterData.aniType)
 	{
+	case eMobAnimationType::NONE:
+		break;
 	case eMobAnimationType::IDLE:
 		if (m_animationInfo->currAnimationName != "IDLE" && m_animationInfo->afterAnimationName != "IDLE")
 			PlayAnimation("IDLE", TRUE);
@@ -420,6 +453,30 @@ void Monster::ApplyServerData(const MonsterData& monsterData)
 			PlayAnimation("DIE", TRUE);
 		SetVelocity(XMFLOAT3{ 0.0f, -3.0f, 0.0f });
 		return;
+	case eMobAnimationType::DOWN:
+		if (m_animationInfo->currAnimationName != "DOWN" && m_animationInfo->afterAnimationName != "DOWN")
+			PlayAnimation("DOWN", TRUE);
+		break;
+	case eMobAnimationType::STANDUP:
+		if (m_animationInfo->currAnimationName != "STANDUP" && m_animationInfo->afterAnimationName != "STANDUP")
+			PlayAnimation("STANDUP", TRUE);
+		break;
+	case eMobAnimationType::JUMPATK:
+		if (m_animationInfo->currAnimationName != "JUMPATK" && m_animationInfo->afterAnimationName != "JUMPATK")
+			PlayAnimation("JUMPATK", TRUE);
+		break;
+	case eMobAnimationType::LEGATK:
+		if (m_animationInfo->currAnimationName != "LEGATK" && m_animationInfo->afterAnimationName != "LEGATK")
+			PlayAnimation("LEGATK", TRUE);
+		break;
+	case eMobAnimationType::REST:
+		if (m_animationInfo->currAnimationName != "REST" && m_animationInfo->afterAnimationName != "REST")
+			PlayAnimation("REST", TRUE);
+		break;
+	case eMobAnimationType::ROAR:
+		if (m_animationInfo->currAnimationName != "ROAR" && m_animationInfo->afterAnimationName != "ROAR")
+			PlayAnimation("ROAR", TRUE);
+		break;
 	}
 
 	m_id = monsterData.id;
@@ -436,6 +493,100 @@ INT Monster::GetId() const
 eMobType Monster::GetType() const
 {
 	return m_type;
+}
+
+INT Monster::GetDamage() const
+{
+	return m_damage;
+}
+
+BossMonster::BossMonster(INT id) : Monster{ id, eMobType::ULIFO }, m_isRoared{ FALSE }
+{
+
+}
+
+void BossMonster::OnAnimation(FLOAT currFrame, UINT endFrame)
+{
+	// 울부짖기 효과음
+	if (m_animationInfo->currAnimationName == "ROAR" && !m_isRoared)
+	{
+		g_audioEngine.Play("ROAR");
+		m_isRoared = TRUE;
+	}
+
+	// 다리 공격
+	if (m_animationInfo->currAnimationName == "LEGATK" && !m_isAttacked && currFrame >= 14.0f)
+	{
+		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
+		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition())) };
+		if (113.0f <= range && range <= 122.0f)
+		{
+			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
+			scene->OnPlayerHit(this);
+		}
+		m_isAttacked = TRUE;
+	}
+
+	// 내려 찍기 공격
+	if (m_animationInfo->currAnimationName == "DOWN" && !m_isAttacked && currFrame >= 20.0f)
+	{
+		Player* player{ g_gameFramework.GetScene()->GetPlayer() };
+		float range{ Vector3::Length(Vector3::Sub(player->GetPosition(), GetPosition())) };
+		if (range <= 35.0f)
+		{
+			auto scene{ reinterpret_cast<GameScene*>(g_gameFramework.GetScene()) };
+			scene->OnPlayerHit(this);
+		}
+		m_isAttacked = TRUE;
+	}
+
+	// 공격 초기화
+	if (m_animationInfo->currAnimationName != "LEGATK" &&
+		m_animationInfo->currAnimationName != "DOWN")
+		m_isAttacked = FALSE;
+
+	if (currFrame >= endFrame)
+	{
+		switch (m_animationInfo->state)
+		{
+		case eAnimationState::PLAY:
+			// 효과음 초기화
+			if (m_animationInfo->currAnimationName == "ROAR")
+				m_isRoared = FALSE;
+
+			// 사망
+			if (m_animationInfo->currAnimationName == "DIE")
+			{
+				Delete();
+				break;
+			}
+
+			// 공격 초기화
+			if (m_animationInfo->currAnimationName == "LEGATK" ||
+				m_animationInfo->currAnimationName == "DOWN")
+				m_isAttacked = FALSE;
+
+			// 착지 후 일어남
+			if (m_animationInfo->currAnimationName == "DOWN")
+			{
+				PlayAnimation("STANDUP");
+				break;
+			}
+
+			// 일어난 후 대기
+			if (m_animationInfo->currAnimationName == "STANDUP")
+			{
+				PlayAnimation("IDLE");
+				break;
+			}
+
+			PlayAnimation(m_animationInfo->currAnimationName);
+			break;
+		case eAnimationState::BLENDING:
+			PlayAnimation(m_animationInfo->afterAnimationName);
+			break;
+		}
+	}
 }
 
 OutlineObject::OutlineObject(const XMFLOAT3& color, FLOAT thickness)

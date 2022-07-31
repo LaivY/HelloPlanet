@@ -47,7 +47,6 @@ void LobbyScene::OnInit(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12G
 {
 	CreateShaderVariable(device, commandList);
 	CreateGameObjects(device, commandList);
-	CreateUIObjects(device, commandList);
 	CreateTextObjects(d2dDeivceContext, dWriteFactory);
 	CreateLights();
 	LoadMapObjects(device, commandList, Utile::PATH("map.txt"));
@@ -108,8 +107,6 @@ void LobbyScene::OnUpdate(FLOAT deltaTime)
 	if (m_player) m_player->Update(deltaTime);
 	if (m_camera) m_camera->Update(deltaTime);
 	if (m_skybox) m_skybox->Update(deltaTime);
-	for (auto& p : m_multiPlayers)
-		if (p) p->Update(deltaTime);
 	for (auto& o : m_gameObjects)
 		o->Update(deltaTime);
 	for (auto& ui : m_uiObjects)
@@ -118,6 +115,10 @@ void LobbyScene::OnUpdate(FLOAT deltaTime)
 		t->Update(deltaTime);
 	for (auto& w : m_windowObjects)
 		w->Update(deltaTime);
+
+	unique_lock<mutex> lock{ g_mutex };
+	for (auto& p : m_multiPlayers)
+		if (p) p->Update(deltaTime);
 }
 
 void LobbyScene::UpdateShaderVariable(const ComPtr<ID3D12GraphicsCommandList>& commandList) const
@@ -186,13 +187,12 @@ void LobbyScene::CreateShaderVariable(const ComPtr<ID3D12Device>& device, const 
 void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	// 카메라
+	XMFLOAT4X4 projMatrix{};
+	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera = make_shared<Camera>();
 	m_camera->CreateShaderVariable(device, commandList);
 	m_camera->SetEye(XMFLOAT3{ 0.0f, 35.0f, 50.0f });
 	m_camera->SetAt(Vector3::Normalize(Vector3::Sub(XMFLOAT3{ 0.0f, 20.0f, 0.0f }, m_camera->GetEye())));
-
-	XMFLOAT4X4 projMatrix;
-	XMStoreFloat4x4(&projMatrix, XMMatrixPerspectiveFovLH(0.25f * XM_PI, static_cast<float>(g_width) / static_cast<float>(g_height), 1.0f, 2500.0f));
 	m_camera->SetProjMatrix(projMatrix);
 
 	// 스카이박스
@@ -218,11 +218,6 @@ void LobbyScene::CreateGameObjects(const ComPtr<ID3D12Device>& device, const Com
 	m_player->SetWeaponType(eWeaponType::AR);
 	m_player->PlayAnimation("RELOAD");
 	m_player->SetCamera(m_camera.get());
-}
-
-void LobbyScene::CreateUIObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList)
-{
-
 }
 
 void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceContext, const ComPtr<IDWriteFactory>& dWriteFactory)
@@ -357,7 +352,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	leftReadyText->SetText(TEXT("대기중"));
 	leftReadyText->SetPivot(ePivot::CENTERBOT);
 	leftReadyText->SetScreenPivot(ePivot::CENTERBOT);
-	leftReadyText->SetPosition(XMFLOAT2{ -650.0f * g_width / g_maxWidth, -200.0f * g_width / g_maxWidth });
+	leftReadyText->SetPosition(XMFLOAT2{ -0.25f * g_width, -0.13f * g_height });
 	m_leftSlotReadyText = leftReadyText.get();
 	m_textObjects.push_back(move(leftReadyText));
 
@@ -367,7 +362,7 @@ void LobbyScene::CreateTextObjects(const ComPtr<ID2D1DeviceContext2>& d2dDeivceC
 	rightReadyText->SetText(TEXT("대기중"));
 	rightReadyText->SetPivot(ePivot::CENTERBOT);
 	rightReadyText->SetScreenPivot(ePivot::CENTERBOT);
-	rightReadyText->SetPosition(XMFLOAT2{ 650.0f * g_width / g_maxWidth, -200.0f * g_width / g_maxWidth });
+	rightReadyText->SetPosition(XMFLOAT2{ 0.25f * g_width, -0.13f * g_height });
 	m_rightSlotReadyText = rightReadyText.get();
 	m_textObjects.push_back(move(rightReadyText));
 }
@@ -592,8 +587,9 @@ void LobbyScene::RecvLoginOkPacket()
 	{
 		if (p) continue;
 		p = make_shared<Player>(TRUE);
-		p->SetWeaponType(weaponType);
 		p->SetId(static_cast<int>(data.id));
+		p->SetWeaponType(weaponType);
+		p->PlayAnimation("IDLE");
 		if (m_leftSlotPlayerId == -1)
 		{
 			p->Move(XMFLOAT3{ 25.0f, 0.0f, -20.0f });
@@ -756,6 +752,8 @@ void LobbyScene::RecvLogoutOkPacket()
 			m_rightSlotReadyText->SetText(TEXT("대기중"));
 			m_rightSlotReadyText->SetPosition(m_rightSlotReadyText->GetPivotPosition());
 		}
+
+		unique_lock<mutex> lock{ g_mutex };
 		p.reset();
 		return;
 	}

@@ -45,7 +45,8 @@ public:
 
 	// 게임 관련 변수
 	PlayerData			data;					// 클라이언트로 보낼 데이터 구조체
-	eWeaponType			weaponType;				// 무기 종류
 	CHAR				name[MAX_NAME_SIZE];	// 닉네임
+	eWeaponType			weaponType;				// 무기 종류
 	std::atomic_bool	isReady;				// 로비에서 준비 여부
+	BOOL				isAlive;				// 생존 여부
 };

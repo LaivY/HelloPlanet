@@ -28,7 +28,13 @@ int APIENTRY wWinMain(_In_		HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// TODO: 여기에 코드를 입력합니다.
+	// 명령행 인자로부터 서버 IP를 받음
+	wstring ip{ lpCmdLine };
+	if (!ip.empty())
+	{
+		g_serverIP.clear();
+		ranges::transform(ip, back_inserter(g_serverIP), [](wchar_t c) { return static_cast<char>(c); });
+	}
 
 	// 전역 문자열을 초기화합니다.
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -125,6 +131,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_RBUTTONDOWN:
 		g_gameFramework.OnMouseEvent(hWnd, message, wParam, lParam);
 		break;
+	case WM_CHAR:
 	case WM_KEYUP:
 	case WM_KEYDOWN:
 		g_gameFramework.OnKeyboardEvent(hWnd, message, wParam, lParam);

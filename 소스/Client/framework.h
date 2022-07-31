@@ -45,6 +45,8 @@ public:
 	void SetIsActive(BOOL isActive);
 	void SetIsFullScreen(BOOL isFullScreen);
 	void SetNextScene(eSceneType sceneType);
+	void SetFadeIn(FLOAT time);
+	void SetFadeOut(FLOAT time);
 
 	HWND GetWindow() const;
 	BOOL isActive() const;

@@ -48,7 +48,7 @@ public:
 	void SetGunShader(const shared_ptr<Shader>& shader) { m_gunShader = shader; }
 	void SetGunShadowShader(const shared_ptr<Shader>& shadowShader);
 	void SetGunOffset(const XMFLOAT3& gunOffset) { m_gunOffset = gunOffset; };
-	void SetSkillGage(INT value);
+	void SetSkillGage(FLOAT value);
 
 	void AddMaxHp(INT hp);
 	void AddBonusSpeed(INT speed);
@@ -68,7 +68,7 @@ public:
 	INT GetDamage() const;
 	INT GetBulletCount() const;
 	INT GetMaxBulletCount() const;
-	INT GetSkillGage() const;
+	FLOAT GetSkillGage() const;
 	string GetPureAnimationName(const string& animationName) const;
 	string GetCurrAnimationName() const;
 	string GetAfterAnimationName() const;
@@ -89,8 +89,9 @@ private:
 private:
 	INT					m_id;				// 플레이어 고유 아이디
 	BOOL				m_isMultiPlayer;	// 멀티플레이어 여부
-	BOOL				m_isFired;			// 발사 여부
+	BOOL				m_isFired;			// 발사 여부(총소리)
 	BOOL				m_isMoved;			// 이동 여부(발소리)
+	bool				m_isInvincible;		// 무적 여부
 
 	bool				m_isFocusing;		// 확대 조준 중인지
 	bool				m_isZooming;		// 줌인, 줌아웃 중인지
@@ -115,7 +116,7 @@ private:
 
 	BOOL				m_isSkillActive;	// 스킬 활성화 여부
 	FLOAT				m_skillActiveTime;	// 스킬 지속 시간
-	INT					m_skillGage;		// 스킬 게이지 양
+	FLOAT				m_skillGage;		// 스킬 게이지 양
 	FLOAT				m_skillGageTimer;	// 자동으로 스킬 게이지를 채우기 위한 타이머
 	INT					m_autoTargetMobId;	// AR 오토 타겟 대상 몬스터 id
 

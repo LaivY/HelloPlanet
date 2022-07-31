@@ -3,8 +3,8 @@
 using namespace DirectX;
 
 NetworkFramework::NetworkFramework() :
-	isAccept{ false }, readyCount{ 0 }, 
-	round{ 1 }, roundGoal{ 2, 3, 4, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
+	isAccept{ false }, readyCount{ 0 }, disconnectCount{ 0 },
+	isGameOver{ FALSE }, round{ 1 }, roundGoal{ 20, 20, 20, 1 }, doSpawnMonster{ TRUE }, spawnCooldown{ g_spawnCooldown }, lastMobId{ 0 }, killCount{ 0 }
 {
 	std::ranges::copy(roundGoal, roundMobCount);
 	LoadMapObjects("map.txt");
@@ -116,9 +116,9 @@ void NetworkFramework::WorkThreads()
 {
 	std::cout << "worker_threads is start" << std::endl;
 	for (;;) {
-		DWORD num_byte;
-		LONG64 iocp_key;
-		WSAOVERLAPPED* p_over;
+		DWORD num_byte{};
+		LONG64 iocp_key{};
+		WSAOVERLAPPED* p_over{};
 		BOOL ret = GetQueuedCompletionStatus(g_h_iocp, &num_byte, reinterpret_cast<PULONG_PTR>(&iocp_key), &p_over, INFINITE);
 		//std::cout << iocp_key << std::endl;
 		int client_id = static_cast<int>(iocp_key);
@@ -230,6 +230,9 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		cl.state = STATE::ST_INGAME;
 		cl.lock.unlock();
 		std::cout << packet->name << " is connect" << std::endl;
+
+		// 재접속 시 disconnectCount를 감소시켜야함
+		disconnectCount = max(0, disconnectCount - 1);
 		break;
 	}
 	case CS_PACKET_SELECT_WEAPON:
@@ -239,7 +242,6 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		cl.weaponType = packet->weaponType;
 		SendSelectWeaponPacket(cl);
 		std::cout << id << " client is select" << std::endl;
-
 		break;
 	}
 	case CS_PACKET_READY:
@@ -257,7 +259,7 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		}
 		if (readyCount >= MAX_USER)
 		{
-			isAccept = true;
+			isAccept = true;		
 			SendChangeScenePacket(eSceneType::GAME);
 		}
 		readyCount = 0;
@@ -296,6 +298,13 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		}
 		break;
 	}
+	case CS_PACKET_PLAYER_STATE:
+	{
+		auto packet{ reinterpret_cast<cs_packet_player_state*>(p) };
+		if (packet->playerState == ePlayerState::DIE)
+			clients[static_cast<int>(packet->playerId)].isAlive = FALSE;
+		break;
+	}
 	case CS_PACKET_LOGOUT:
 	{
 		sc_packet_logout_ok send_packet{};
@@ -313,10 +322,38 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 		{
 			if (!c.data.isActive) continue;
 			int retVal = WSASend(c.socket, &wsabuf, 1, &sent_byte, 0, nullptr, nullptr);
-			if (retVal == SOCKET_ERROR) errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+			if (retVal == SOCKET_ERROR)
+			{
+				if (WSAGetLastError() == WSAECONNRESET)
+					std::cout << "[" << static_cast<int>(c.data.id) << " Session] Disconnect(Send(SC_PACKET_LOGOUT_OK))" << std::endl;
+				else errorDisplay(WSAGetLastError(), "Send(SC_PACKET_LOGOUT_OK)");
+			}
+			
 		}
-
 		std::cout << "[" << id << " Session] Logout" << std::endl;
+
+		if (++disconnectCount == MAX_USER)
+		{
+			Reset();
+			std::cout << "─RESET─" << std::endl;
+		}
+		break;
+	}
+	case CS_PACKET_DEBUG:
+	{
+		auto packet{ reinterpret_cast<cs_packet_debug*>(p) };
+		switch (packet->debugType)
+		{
+		case eDebugType::KILLALL:
+			for (auto& m : monsters)
+			{
+				BulletData bullet{};
+				bullet.damage = m->GetHp();
+				m->OnHit(bullet);
+			}
+			killCount = roundGoal[round - 1];
+			break;
+		}
 		break;
 	}
 	default:
@@ -324,6 +361,32 @@ void NetworkFramework::ProcessRecvPacket(const int id, char* p)
 			static_cast<int>(p[0]) << ", type : "<< static_cast<int>(p[1]) <<")" << std::endl;
 		break;
 	}
+}
+
+void NetworkFramework::Reset()
+{
+	isAccept = FALSE;
+	readyCount = 0;
+	disconnectCount = 0;
+
+	isGameOver = FALSE;
+	doSpawnMonster = TRUE;
+
+	round = 1;
+	std::ranges::copy(roundGoal, roundMobCount);
+	spawnCooldown = 0.0f;
+	lastMobId = 0;
+	killCount = 0;
+
+	for (auto& c : clients)
+	{
+
+		c.isReady = FALSE;
+		c.isAlive = TRUE;
+	}
+	bullets.clear();
+	bulletHits.clear();
+	monsters.clear();
 }
 
 void NetworkFramework::Update(const FLOAT deltaTime)
@@ -336,40 +399,14 @@ void NetworkFramework::Update(const FLOAT deltaTime)
 	for (auto& m : monsters)
 		m->Update(deltaTime);
 
-	// 충돌체크
+	// 충돌 체크
 	CollisionCheck();
 
-	// 종료체크
-	if (killCount >= roundGoal[round - 1])
-	{
-		std::cout << "[system] Stage" << round << " Clear!" << std::endl;
-		for (auto& mob : monsters)
-		{
-			mob->SetHp(0);
-			mob->SetAnimationType(eMobAnimationType::DIE);
-		}
+	// 종료 체크
+	RoundClearCheck();
 
-		// 라운드 클리어 시 관련 변수 초기화
-		spawnCooldown = g_spawnCooldown;
-		lastMobId = 0;
-		killCount = 0;
-
-		// 마지막 라운드 클리어
-		if (round == 4)
-		{
-			isAccept = FALSE;
-			doSpawnMonster = TRUE;
-			readyCount = 0;
-			round = 0;
-			SendRoundResultPacket(eRoundResult::ENDING);
-			return;
-		}
-
-		// 나머지 라운드 클리어
-		doSpawnMonster = FALSE;
-		SendRoundResultPacket(eRoundResult::CLEAR);
-		++round;
-	}
+	// 게임오버 체크
+	GameOverCheck();
 }
 
 void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
@@ -389,19 +426,23 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 		{
 		case 1:
 			m = std::make_unique<GarooMonster>();
+			m->SetRandomPosition();
 			break;
 		case 2:
 			m = std::make_unique<SerpentMonster>();
+			m->SetRandomPosition();
 			break;
 		case 3:
 			m = std::make_unique<HorrorMonster>();
+			m->SetRandomPosition();
 			break;
 		case 4:
 			m = std::make_unique<UlifoMonster>();
+			m->SetPosition(XMFLOAT3{ 0.0f, 1000.0f, 300.0f });
+			m->SetYaw(180.0f);
 			break;
 		}
 		m->SetId(lastMobId++);
-		m->SetRandomPosition();
 		m->SetTargetId(DetectPlayer(m->GetPosition()));
 		std::cout << static_cast<int>(m->GetId()) << " is generated, capacity: " << monsters.size() << " / " << MAX_MONSTER << std::endl;
 		monsters.push_back(std::move(m));
@@ -415,9 +456,10 @@ void NetworkFramework::SpawnMonsters(const FLOAT deltaTime)
 UCHAR NetworkFramework::DetectPlayer(const XMFLOAT3& pos) const
 {
 	UCHAR index{ 0 };
-	float length{ FLT_MAX };		// 가까운 플레이어의 거리
+	float length{ FLT_MAX };
 	for (const auto& cl : clients)
 	{
+		if (!cl.isAlive) continue;
 		const float l{ Vector3::Length(Vector3::Sub(cl.data.pos, pos)) };
 		if (l < length)
 		{
@@ -462,19 +504,64 @@ void NetworkFramework::CollisionCheck()
 					length = l;
 					//std::cout << static_cast<int>(m.GetId()) << " is hit" << std::endl;
 				}
-
-				// 해당 플레이어가 총알을 맞췄다는 것을 저장
-				BulletHitData hitData{};
-				hitData.bullet = b.data;
-				hitData.mobId = m->GetId();
-				bulletHits.push_back(std::move(hitData));
 			}
 		}
-		if (hitMonster) hitMonster->OnHit(b.data);
+		if (hitMonster)
+		{
+			hitMonster->OnHit(b.data);
+
+			// 해당 플레이어가 총알을 맞췄다는 것을 저장
+			BulletHitData hitData{};
+			hitData.bullet = b.data;
+			hitData.mobId = hitMonster->GetId();
+			bulletHits.push_back(std::move(hitData));
+		} 
 	}
 
 	// 충돌체크가 완료된 총알들은 삭제
+	std::unique_lock<std::mutex> lock{ g_mutex };
 	erase_if(bullets, [](const BulletDataFrame& b) { return b.isCollisionCheck && b.isBulletCast; });
+}
+
+void NetworkFramework::RoundClearCheck()
+{
+	if (killCount >= roundGoal[round - 1])
+	{
+		std::cout << "[system] Stage" << round << " Clear!" << std::endl;
+		for (auto& mob : monsters)
+		{
+			mob->SetHp(0);
+			mob->SetAnimationType(eMobAnimationType::DIE);
+		}
+
+		// 라운드 클리어 시 관련 변수 초기화
+		for (auto& c : clients)
+			c.isAlive = TRUE;
+		spawnCooldown = g_spawnCooldown;
+		lastMobId = 0;
+		killCount = 0;
+
+		// 마지막 라운드 클리어
+		if (round == 4)
+		{
+			SendRoundResultPacket(eRoundResult::ENDING);
+			return;
+		}
+
+		// 나머지 라운드 클리어
+		doSpawnMonster = FALSE;
+		SendRoundResultPacket(eRoundResult::CLEAR);
+		++round;
+	}
+}
+
+void NetworkFramework::GameOverCheck()
+{
+	if (std::ranges::all_of(clients, [](const Session& c) { return !c.isAlive; }) && !isGameOver)
+	{
+		isGameOver = TRUE;
+		SendRoundResultPacket(eRoundResult::OVER);
+	}
 }
 
 void NetworkFramework::Disconnect(const int id)

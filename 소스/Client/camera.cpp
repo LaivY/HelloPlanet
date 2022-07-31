@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 #include "camera.h"
 #include "player.h"
+#include "framework.h"
 
 Camera::Camera() : m_pcbCamera{ nullptr }, m_pcbCamera2{ nullptr }, m_eye{ 0.0f, 0.0f, 0.0f }, m_at{ 0.0f, 0.0f, 1.0f }, m_up{ 0.0f, 1.0f, 0.0f },
 				   m_roll{ 0.0f }, m_pitch{ 0.0f }, m_yaw{ 0.0f }, m_player{ nullptr }, m_offset{0.0f, 29.5f, 0.0f}
@@ -222,4 +223,41 @@ void ThirdPersonCamera::Rotate(FLOAT roll, FLOAT pitch, FLOAT yaw)
 	//XMFLOAT3 look{ Vector3::Sub(m_player->GetPosition(), m_eye) };
 	//if (Vector3::Length(look))
 	//	m_at = Vector3::Normalize(look);
+}
+
+ShowCamera::ShowCamera() : m_target{ nullptr }, m_timer{}, m_time{}, m_timerCallBack{}
+{
+
+}
+
+void ShowCamera::Update(FLOAT deltaTime)
+{
+	if (!m_target) return;
+	if (m_timer >= m_time)
+		m_timerCallBack();
+
+	m_eye.y = lerp(100.0f, 50.0f, m_timer / m_time);
+
+	XMFLOAT3 pos{ m_target->GetPosition() };
+	pos.y += 100.0f;
+
+	m_at = Vector3::Normalize(Vector3::Sub(pos, m_eye));
+	XMStoreFloat4x4(&m_viewMatrix, XMMatrixLookAtLH(XMLoadFloat3(&m_eye), XMLoadFloat3(&Vector3::Add(m_eye, m_at)), XMLoadFloat3(&m_up)));
+
+	m_timer += deltaTime;
+}
+
+void ShowCamera::SetTarget(GameObject* target)
+{
+	m_target = target;
+}
+
+void ShowCamera::SetTime(FLOAT time)
+{
+	m_time = time;
+}
+
+void ShowCamera::SetTimerCallback(const function<void()>& callBackFunc)
+{
+	m_timerCallBack = callBackFunc;
 }

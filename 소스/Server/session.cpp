@@ -2,7 +2,7 @@
 #include "session.h"
 #include "framework.h"
 
-Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE },
+Session::Session() : socket{}, data{ 0, false, eAnimationType::IDLE, eUpperAnimationType::NONE, {}, {}, {} }, weaponType{ eWeaponType::AR }, isReady{ FALSE }, isAlive{ TRUE },
                      state{ STATE::ST_FREE }, prev_size{ 0 }
 {
 	strcpy_s(name, "Player\0");
@@ -26,18 +26,9 @@ void Session::do_recv()
 		if (ERROR_IO_PENDING != error_num)
 		{
 			g_networkFramework.Disconnect(data.id);
-			errorDisplay(error_num, "do_recv");
+			if (error_num == WSAECONNRESET)
+				std::cout << "[" << static_cast<int>(data.id) << " Session] Disconnect(do_recv)" << std::endl;
+			else errorDisplay(WSAGetLastError(), "do_recv");
 		}
-	}
-}
-
-void Session::do_send(int num_bytes, void* mess)
-{
-	EXP_OVER* ex_over = new EXP_OVER(OP_SEND, num_bytes, mess);
-	int ret = WSASend(socket, &ex_over->_wsa_buf, 1, 0, 0, &ex_over->_wsa_over, NULL);
-	if (SOCKET_ERROR == ret) 
-	{
-		int error_num = WSAGetLastError();
-		if (ERROR_IO_PENDING != error_num) errorDisplay(error_num, "do_send");
 	}
 }

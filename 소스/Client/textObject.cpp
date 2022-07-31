@@ -349,7 +349,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 {
 	if (message == WM_LBUTTONDOWN && m_isMouseOver)
 	{
-		g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_CLICK.wav")));
+		g_audioEngine.Play("CLICK");
 		m_isMouseOver = FALSE;
 		m_mouseClickCallBack();
 	}
@@ -376,7 +376,7 @@ void MenuTextObject::OnMouseEvent(HWND hWnd, FLOAT deltaTime)
 		r.top <= p.y && p.y <= r.bottom)
 	{
 		if (!m_isMouseOver)
-			g_audioEngine.Play(Utile::PATH(TEXT("Sound/UI_HOVER.wav")));
+			g_audioEngine.Play("HOVER");
 		m_isMouseOver = TRUE;
 	}
 	else
@@ -421,7 +421,7 @@ INT MenuTextObject::GetValue() const
 	return m_value;
 }
 
-DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }, m_startPosition{}, m_timer{}
+DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE }, m_startPosition{}, m_scale{}, m_timer{}
 {
 	SetBrush("BLUE");
 	SetFormat("24L");
@@ -433,13 +433,18 @@ DamageTextObject::DamageTextObject(const wstring& damage) : m_isOnScreen{ FALSE 
 
 void DamageTextObject::Render(const ComPtr<ID2D1DeviceContext2>& device)
 {
-	if (m_isOnScreen)
-		TextObject::Render(device);
+	if (!m_isOnScreen) return;
+	D2D1::Matrix3x2F matrix{ D2D1::Matrix3x2F::Identity() };
+	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Scale(m_scale, m_scale, D2D1_POINT_2F{ m_rect.right / 2.0f, m_rect.bottom / 2.0f }));
+	matrix.SetProduct(matrix, D2D1::Matrix3x2F::Translation(m_position.x, m_position.y));
+	device->SetTransform(matrix);
+	device->DrawText(m_text.c_str(), static_cast<UINT32>(m_text.size()), s_formats[m_format].Get(), &m_rect, s_brushes[m_brush].Get());
 }
 
 void DamageTextObject::Update(FLOAT deltaTime)
 {
-	constexpr float lifeTime{ 0.5f };
+	constexpr float PI{ 3.141592f };
+	constexpr float lifeTime{ 0.3f };
 
 	XMFLOAT3 screenPosition{ m_startPosition };
 	screenPosition = Vector3::TransformCoord(screenPosition, m_camera->GetViewMatrix());
@@ -460,6 +465,8 @@ void DamageTextObject::Update(FLOAT deltaTime)
 		m_isOnScreen = TRUE;
 	}
 
+	m_scale = 2.5f * sinf(m_timer / lifeTime * 0.85f * PI + 0.15f * PI);
+
 	m_timer += deltaTime;
 	if (m_timer >= lifeTime)
 		Delete();
@@ -479,10 +486,10 @@ SkillGageTextObject::SkillGageTextObject() : m_percent{}
 
 void SkillGageTextObject::Update(FLOAT deltaTime)
 {
-	int value{ m_player->GetSkillGage() };
-	if (value == 100)
+	float value{ m_player->GetSkillGage() };
+	if (value >= 100.0f)
 		SetText(TEXT("Q"));
 	else
-		SetText(to_wstring(m_player->GetSkillGage()));
+		SetText(to_wstring(static_cast<int>(m_player->GetSkillGage())));
 	SetPosition(GetPivotPosition());
 }

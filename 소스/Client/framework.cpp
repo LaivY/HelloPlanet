@@ -681,7 +681,7 @@ void GameFramework::ChangeToNextScene()
 		break;
 	case eSceneType::MAIN:
 		m_scene = make_unique<MainScene>();
-		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_LOBBY.wav")));
+		g_audioEngine.ChangeMusic("LOBBY");
 		break;
 	case eSceneType::LOBBY:
 		m_scene = make_unique<LobbyScene>();
@@ -696,7 +696,7 @@ void GameFramework::ChangeToNextScene()
 		gameScene->SetPlayer(player);
 		gameScene->SetMultiPlayers(lobbyScene->GetMultiPlayers());
 		m_scene = move(gameScene);
-		g_audioEngine.ChangeMusic(Utile::PATH(TEXT("Sound/BGM_INGAME.wav")));
+		g_audioEngine.ChangeMusic("INGAME");
 		break;
 	}
 	}
@@ -716,9 +716,7 @@ void GameFramework::ChangeToNextScene()
 	m_scene->OnInitEnd();
 
 	// 페이드 인
-	m_cbPostGameFrameworkData->fadeType = 1;
-	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
-	m_cbPostGameFrameworkData->fadeTime = 0.3f;
+	SetFadeIn(0.3f);
 }
 
 BOOL GameFramework::ConnectServer()
@@ -737,7 +735,7 @@ BOOL GameFramework::ConnectServer()
 	SOCKADDR_IN server_address{};
 	server_address.sin_family = AF_INET;
 	server_address.sin_port = htons(SERVER_PORT);
-	inet_pton(AF_INET, SERVER_IP, &(server_address.sin_addr.s_addr));
+	inet_pton(AF_INET, g_serverIP.c_str(), &(server_address.sin_addr.s_addr));
 
 	if (connect(g_socket, reinterpret_cast<SOCKADDR*>(&server_address), sizeof(server_address)) == SOCKET_ERROR)
 		return FALSE;
@@ -763,12 +761,22 @@ void GameFramework::SetIsFullScreen(BOOL isFullScreen)
 
 void GameFramework::SetNextScene(eSceneType scene)
 {
-	// 페이드 아웃
+	SetFadeOut(0.3f);
+	m_nextTempScene = scene;
+}
+
+void GameFramework::SetFadeIn(FLOAT time)
+{
+	m_cbPostGameFrameworkData->fadeType = 1;
+	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
+	m_cbPostGameFrameworkData->fadeTime = time;
+}
+
+void GameFramework::SetFadeOut(FLOAT time)
+{
 	m_cbPostGameFrameworkData->fadeType = -1;
 	m_cbPostGameFrameworkData->fadeTimer = 0.0f;
-	m_cbPostGameFrameworkData->fadeTime = 0.3f;
-
-	m_nextTempScene = scene;
+	m_cbPostGameFrameworkData->fadeTime = time;
 }
 
 ComPtr<IDWriteFactory> GameFramework::GetDWriteFactory() const

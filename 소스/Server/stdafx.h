@@ -27,6 +27,7 @@ class NetworkFramework;
 extern NetworkFramework	g_networkFramework;
 extern SOCKET			g_socket;
 extern HANDLE           g_h_iocp;
+extern std::mt19937		g_randomEngine;
 
 namespace Vector3
 {

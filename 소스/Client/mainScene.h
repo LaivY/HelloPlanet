@@ -37,13 +37,16 @@ public:
 	void CreateLights() const;
 	void LoadMapObjects(const ComPtr<ID3D12Device>& device, const ComPtr<ID3D12GraphicsCommandList>& commandList, const string& mapFile);
 
-	void CreateSettingWindow();
 
 	void Update(FLOAT deltaTime);
 	void UpdateCameraPosition(FLOAT deltaTime);
 	void UpdateShadowMatrix();
 
 	void RenderToShadowMap(const ComPtr<ID3D12GraphicsCommandList>& commandList) const;
+
+private:
+	void CreateSettingWindow();
+	void CreateManualWindow();
 
 private:
 	ComPtr<ID3D12Resource>				m_cbGameScene;

@@ -22,10 +22,10 @@ public:
 
 	void Update(FLOAT deltaTime);
 
-	HRESULT Load(const wstring& fileName, eAudioType audioType);
-	void Play(const wstring& fileName, bool isLoop = false);
-	void Stop(const wstring& fileName);
-	void ChangeMusic(const wstring& fileName);
+	HRESULT Load(const string& fileName, const string& key, eAudioType audioType);
+	void Play(const string& key, bool isLoop = false);
+	void Stop(const string& key);
+	void ChangeMusic(const string& key);
 
 	void SetVolume(eAudioType audioType, FLOAT volume);
 	int GetVolume(eAudioType audioType) const;
@@ -38,14 +38,14 @@ private:
 private:
 	ComPtr<IXAudio2>					m_xAduio;
 	unique_ptr<IXAudio2MasteringVoice>	m_masterVoice;
-	unordered_map<wstring, AudioData>	m_audios;
-	wstring								m_currMusicName;
+	unordered_map<string, AudioData>	m_audios;
+	string								m_currMusicName;
 	FLOAT								m_musicVolume;
 	FLOAT								m_soundVolume;
 
 	BOOL								m_isChanging;
 	BOOL								m_isDecreasing;
-	wstring								m_targetMusicName;
+	string								m_targetMusicName;
 	FLOAT								m_tempVolume;
 	FLOAT								m_timer;
 };

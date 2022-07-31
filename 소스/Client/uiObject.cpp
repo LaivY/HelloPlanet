@@ -1,5 +1,6 @@
 ﻿#include "stdafx.h"
 #include "uiObject.h"
+#include "audioEngine.h"
 #include "camera.h"
 #include "framework.h"
 #include "gameScene.h"
@@ -24,19 +25,21 @@ void UIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, cons
 {
 	if (m_isFitToScreen)
 	{
+		XMFLOAT4X4 worldMatrix{ m_worldMatrix };
+		XMFLOAT4X4 scale{};
+		XMStoreFloat4x4(&scale, XMMatrixScaling(g_width / static_cast<float>(g_maxWidth), g_height / static_cast<float>(g_maxHeight), 1.0f));
+		m_worldMatrix = Matrix::Mul(m_worldMatrix, scale);
+
 		float width{ m_width }, height{ m_height };
 		m_width *= g_width / static_cast<float>(g_maxWidth);
 		m_height *= g_height / static_cast<float>(g_maxHeight);
-		m_worldMatrix._11 = m_width;
-		m_worldMatrix._22 = m_height;
 		SetPosition(m_pivotPosition);
 
 		GameObject::Render(commandList, shader);
 
+		m_worldMatrix = worldMatrix;
 		m_width = width;
 		m_height = height;
-		m_worldMatrix._11 = width;
-		m_worldMatrix._22 = height;
 	}
 	else GameObject::Render(commandList, shader);
 }
@@ -248,7 +251,7 @@ void HpUIObject::Update(FLOAT deltaTime)
 	}
 	m_maxHp = m_player->GetMaxHp();
 
-	constexpr float decreseSpeed{ 50.0f };
+	constexpr float decreseSpeed{ 150.0f };
 	if (m_deltaHp > 0.0f)
 	{
 		m_deltaHp = max(0.0f, m_deltaHp - decreseSpeed * deltaTime);
@@ -436,6 +439,8 @@ void RewardUIObject::Update(FLOAT deltaTime)
 HitUIObject::HitUIObject(int monsterId) : UIObject{ 50.0f, 50.0f }, m_monsterId{ monsterId }, m_angle{ 0.0f }, m_timer{ 2.0f }
 {
 	SetTexture(Scene::s_textures["ARROW"]);
+	SetPosition(XMFLOAT2{ -9999.0f, -9999.0f });
+	m_isFitToScreen = TRUE;
 }
 
 void HitUIObject::Update(FLOAT deltaTime)
@@ -482,8 +487,10 @@ AutoTargetUIObject::AutoTargetUIObject() : UIObject{ 0.0f, 0.0f }
 
 void AutoTargetUIObject::Update(FLOAT deltaTime)
 {
-	// 플레이어가 AR이고, 스킬 활성화 상태가 아니라면 패스
-	if (m_player->GetWeaponType() == eWeaponType::AR && !m_player->GetIsSkillActive())
+	if (m_player->GetWeaponType() != eWeaponType::AR)
+		return;
+
+	if (!m_player->GetIsSkillActive())
 	{
 		SetPosition(XMFLOAT2{ -999.0f, -999.0f });
 		m_player->SetAutoTarget(-1);
@@ -573,4 +580,57 @@ void SkillGageUIObject::Update(FLOAT deltaTime)
 	// 정점 셰이더에서는 (4, 4)는 1로 바꿔서 렌더링함
 	// 픽셀 셰이더에서는 (4, 4)값을 읽어 각도로 사용함
 	m_worldMatrix._44 = lerp(0.0f, 360.0f, m_player->GetSkillGage() / 100.0f);
+}
+
+WarningUIObject::WarningUIObject() : UIObject{ static_cast<float>(g_width), static_cast<float>(g_height) }, m_timer{}, m_warning{ FALSE }
+{
+	SetShader(Scene::s_shaders["UI_WARNING"]);
+	SetTexture(Scene::s_textures["WARNING"]);
+	m_player = g_gameFramework.GetScene()->GetPlayer();
+}
+
+void WarningUIObject::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList, const shared_ptr<Shader>& shader)
+{
+	float ratio{ static_cast<float>(m_player->GetHp()) / static_cast<float>(m_player->GetMaxHp()) };
+	if (m_player->GetHp() > 0 && ratio <= 0.3f)
+		UIObject::Render(commandList, shader);
+}
+
+void WarningUIObject::Update(FLOAT deltaTime)
+{
+	float ratio{ static_cast<float>(m_player->GetHp()) / static_cast<float>(m_player->GetMaxHp()) };
+	if (m_player->GetHp() > 0 && ratio <= 0.3f)
+	{
+		// 한번 깜빡임에 걸리는 시간
+		constexpr float frequence{ 3.0f };
+		if (m_timer <= frequence / 2.0f)
+		{
+			m_worldMatrix._44 = lerp(0.0f, 1.0f, m_timer / (frequence / 2.0f));
+		}
+		else
+		{
+			m_worldMatrix._44 = lerp(1.0f, 0.0f, (m_timer - frequence / 2.0f) / (frequence / 2.0f));
+		}
+		m_timer = min(frequence, m_timer + deltaTime);
+		if (m_timer >= frequence)
+			m_timer = 0.0f;
+
+		// 효과음
+		if (!m_warning)
+		{
+			m_warning = TRUE;
+			g_audioEngine.ChangeMusic("HEARTBEAT");
+		}
+	}
+	else
+	{
+		m_timer = 0.0f;
+		m_worldMatrix._44 = 0.0f;
+
+		if (m_warning)
+		{
+			m_warning = FALSE;
+			g_audioEngine.ChangeMusic("INGAME");
+		}
+	}
 }

@@ -2,10 +2,10 @@
 
 constexpr short SERVER_PORT = 9000;
 constexpr const char* SERVER_IP = "127.0.0.1";
-//constexpr const char* SERVER_IP = "121.173.248.190";
+//constexpr const char* SERVER_IP = "211.216.149.203";
 
-constexpr int  BUF_SIZE = 256;
-constexpr int  MAX_USER = 1;
+constexpr int  BUF_SIZE = 1600;
+constexpr int  MAX_USER = 3;
 constexpr int  MAX_MONSTER = 20;
 constexpr int  MAX_NAME_SIZE = 10;
 
@@ -16,6 +16,8 @@ constexpr char CS_PACKET_UPDATE_PLAYER = 4;
 constexpr char CS_PACKET_BULLET_FIRE = 5;
 constexpr char CS_PACKET_BULLET_HIT = 6;
 constexpr char CS_PACKET_SELECT_REWARD = 7;
+constexpr char CS_PACKET_PLAYER_STATE = 8;
+constexpr char CS_PACKET_DEBUG = 9;
 constexpr char CS_PACKET_LOGOUT = 127;
 
 constexpr char SC_PACKET_LOGIN_CONFIRM = 1;
@@ -47,7 +49,8 @@ enum class eMobType : char
 
 enum class eMobAnimationType : char
 {
-	IDLE, WALKING, RUNNING, ATTACK, HIT, DIE
+	NONE, IDLE, WALKING, RUNNING, ATTACK, HIT, DIE,
+	DOWN, STANDUP, JUMPATK, LEGATK, REST, ROAR  // 보스 애니메이션
 };
 
 enum class eSceneType : char
@@ -63,6 +66,16 @@ enum class eWeaponType : char
 enum class eRoundResult : char
 {
 	CLEAR, OVER, ENDING
+};
+
+enum class ePlayerState : char
+{
+	DIE
+};
+
+enum class eDebugType : char
+{
+	KILLALL
 };
 
 #pragma pack (push, 1)
@@ -160,6 +173,21 @@ struct cs_packet_select_reward
 	UCHAR	size;
 	UCHAR	type;
 	CHAR	playerId;
+};
+
+struct cs_packet_player_state
+{
+	UCHAR			size;
+	UCHAR			type;
+	CHAR			playerId;
+	ePlayerState	playerState;
+};
+
+struct cs_packet_debug
+{
+	UCHAR		size;
+	UCHAR		type;
+	eDebugType	debugType;
 };
 
 // ---------------------------------
